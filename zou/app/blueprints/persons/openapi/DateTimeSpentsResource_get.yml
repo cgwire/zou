@@ -1,6 +1,10 @@
-Get time spents for date
+Get the time spents of a person for a date
 ---
-description: Get time spents for given person and specific date.
+description: Get the time spent entries of a person for one date. An
+  administrator and the person get all the entries. A manager gets the
+  entries of their projects. A supervisor gets the entries of their projects
+  and departments. Other users cannot read the time spents of other persons.
+  You cannot read the time spents of a bot.
 tags:
   - Persons
 parameters:
@@ -18,11 +22,11 @@ parameters:
     schema:
       type: string
       format: date
-    description: Date to get time spents for
-    example: "2022-07-12"
+    description: Date in the YYYY-MM-DD format
+    example: '2022-07-12'
 responses:
   200:
-    description: Time spents for given person and date
+    description: The list of time spent entries
     content:
       application/json:
         schema:
@@ -49,6 +53,9 @@ responses:
                 type: string
                 format: date
                 description: Date of time spent entry
-                example: "2022-07-12"
+                example: '2022-07-12'
   400:
-    description: Wrong date format
+    description: The date is not valid
+  403:
+    description: You cannot read the time spents of this person, or the
+      person is a bot

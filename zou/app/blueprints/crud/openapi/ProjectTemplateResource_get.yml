@@ -1,5 +1,23 @@
-Get project template
+Get a project template
 ---
 tags:
   - Crud
-description: Retrieve a project template by its ID. Manager+ access.
+description: Get a project template.
+responses:
+  200:
+    description: The project template
+  400:
+    description: The identifier is not a valid UUID
+  403:
+    description: You cannot read this project template
+  404:
+    description: The project template does not exist
+parameters:
+  - in: path
+    name: instance_id
+    required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid

@@ -1,6 +1,9 @@
-Add entity to playlist
+Add an entity to a playlist
 ---
-description: Atomically add a single entity to the given playlist.
+description: Add an entity to a playlist, with a preview. Without
+  preview_file_id, the route uses the last preview of the task type of the
+  playlist. A manager of the project can change all the playlists. A
+  supervisor can change the playlists that the supervisor created.
 tags:
   - Playlists
 parameters:
@@ -28,11 +31,18 @@ requestBody:
             type: string
             format: uuid
             nullable: true
-            description: Optional preview file identifier associated to the entity
+            description: Optional preview file identifier associated to the
+              entity
 responses:
   200:
-    description: Updated playlist
+    description: The updated playlist
     content:
       application/json:
         schema:
           type: object
+  400:
+    description: The body is not valid
+  403:
+    description: You cannot change this playlist
+  404:
+    description: The playlist does not exist

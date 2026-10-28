@@ -1,6 +1,9 @@
-Get day quota shots
+Get the quota shots of a person for a day
 ---
-description: Get ended shots used for quota calculation of this day.
+description: 'Get the shots that count in the quota of a person for a day. A quota
+  shot is a shot that the person ended. Give project_id to read the quotas of
+  an other person: you must be a manager or a supervisor of the project. Without
+  project_id, you can read your own quotas only.'
 tags:
   - Persons
 parameters:
@@ -17,33 +20,37 @@ parameters:
     required: true
     schema:
       type: integer
-    description: Year to get quota shots for
+    description: Year, for example 2026
     example: 2022
   - in: path
     name: month
     required: true
     schema:
       type: integer
-    description: Month to get quota shots for
+      minimum: 1
+      maximum: 12
+    description: Month, from 1 to 12
     example: 7
-    minimum: 1
-    maximum: 12
   - in: path
     name: day
     required: true
     schema:
       type: integer
-    description: Day to get quota shots for
+      minimum: 1
+      maximum: 31
+    description: Day of the month
     example: 12
-    minimum: 1
-    maximum: 31
   - in: query
     name: count_mode
     required: false
     schema:
       type: string
       enum: [weighted, weighteddone, feedback, done]
-    description: Count mode for quota calculation
+    description: 'How to count the shots: weighted, weighteddone, feedback or
+      done. The default value is weighted. The weighted modes give each shot the
+      part of its work time that is in the period. The other modes count each
+      shot on its end date. The feedback modes end a shot at its first feedback.
+      The done modes end a shot when it is done.'
     example: weighted
   - in: query
     name: project_id
@@ -52,8 +59,7 @@ parameters:
       type: string
       format: uuid
     description: >-
-      Restrict the shots to this production. Without it, the shots of every
-      production are listed; a manager can then only read their own quotas.
+      Get only the shots of this project
     example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: task_type_id
@@ -62,12 +68,11 @@ parameters:
       type: string
       format: uuid
     description: >-
-      Restrict the shots to this task type. Without it, the shots of every
-      task type are listed.
+      Get only the shots of this task type
     example: b35b7fb5-df86-5776-b181-68564193d361
 responses:
   200:
-    description: Ended shots used for quota calculation of this day
+    description: The list of quota shots
     content:
       application/json:
         schema:
@@ -78,4 +83,7 @@ responses:
               A serialized shot, with its project_id, full_name and the
               weight it carries in the period.
   400:
-    description: Wrong date format or invalid count mode
+    description: The date or count_mode is not valid
+  403:
+    description: You cannot read the quotas of this person, or the person is
+      a bot

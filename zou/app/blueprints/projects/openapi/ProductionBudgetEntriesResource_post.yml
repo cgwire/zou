@@ -1,6 +1,7 @@
-Create budget entry
+Create a budget entry
 ---
-description: Create a budget entry for given production and budget.
+description: Create an entry in a budget of a project. You must be a manager
+  of the project.
 tags:
   - Projects
 parameters:
@@ -18,7 +19,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Budget unique identifier
+    description: Unique identifier of the budget
     example: b35b7fb5-df86-5776-b181-68564193d360
 requestBody:
   required: true
@@ -43,7 +44,7 @@ requestBody:
             type: string
             format: date
             description: Budget entry start date
-            example: "2025-01-01"
+            example: '2025-01-01'
           months_duration:
             type: integer
             description: Budget entry duration in months
@@ -56,14 +57,14 @@ requestBody:
           position:
             type: string
             description: Position name
-            example: "Artist"
+            example: Artist
           seniority:
             type: string
             description: Seniority level
-            example: "Mid"
+            example: Mid
 responses:
   201:
-    description: Budget entry created
+    description: The new budget entry
     content:
       application/json:
         schema:
@@ -80,4 +81,6 @@ responses:
               description: Department unique identifier
               example: c46c80c6-e097-6887-c292-79675204e470
   400:
-    description: Invalid parameters
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

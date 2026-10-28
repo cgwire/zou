@@ -1,11 +1,8 @@
-Create person
+Create a person
 ---
 tags:
   - Crud
-description: Create a new person with data provided in the
-  request body. JSON format is expected. Requires admin
-  permissions. Validates role, contract_type, two_factor_authentication,
-  email, and expiration_date. Checks user limit for active non-bot users.
+description: Create a person. Send the fields of the new row in JSON.
 requestBody:
   required: true
   content:
@@ -40,13 +37,10 @@ requestBody:
           contract_type:
             type: string
             example: permanent
-          two_factor_authentication:
-            type: string
-            example: none
           expiration_date:
             type: string
             format: date
-            example: "2025-12-31"
+            example: '2025-12-31'
           is_bot:
             type: boolean
             default: false
@@ -56,53 +50,56 @@ requestBody:
             description: ISO 3166-1 alpha-2 country code (nullable)
             example: FR
 responses:
-    201:
-      description: Person created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              first_name:
-                type: string
-                example: John
-              last_name:
-                type: string
-                example: Doe
-              email:
-                type: string
-                format: email
-                example: john.doe@example.com
-              role:
-                type: string
-                example: user
-              active:
-                type: boolean
-                example: true
-              contract_type:
-                type: string
-                example: permanent
-              two_factor_authentication:
-                type: string
-                example: none
-              country:
-                type: string
-                description: ISO 3166-1 alpha-2 country code (nullable)
-                example: FR
-              access_token:
-                type: string
-                example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid data format or validation error or user limit reached
+  201:
+    description: The new person
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            first_name:
+              type: string
+              example: John
+            last_name:
+              type: string
+              example: Doe
+            email:
+              type: string
+              format: email
+              example: john.doe@example.com
+            role:
+              type: string
+              example: user
+            active:
+              type: boolean
+              example: true
+            contract_type:
+              type: string
+              example: permanent
+            two_factor_authentication:
+              type: string
+              example: none
+            country:
+              type: string
+              description: ISO 3166-1 alpha-2 country code (nullable)
+              example: FR
+            access_token:
+              type: string
+              example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The body is not valid, or a field breaks a database
+      constraint
+  403:
+    description: You cannot create a person

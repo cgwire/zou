@@ -1,7 +1,10 @@
-Delete metadata descriptor
+Delete a metadata descriptor
 ---
-description: Delete a metadata descriptor. Descriptors serve to describe
-  extra fields listed in the data attribute of entities.
+description: Delete a metadata descriptor of a project. A metadata
+  descriptor describes an extra column. The values of the column are in the
+  data field of the entities. Administrators and managers of the project can
+  use this route. A supervisor of the project can use it if the supervisor
+  has access to all the departments of the descriptor.
 tags:
   - Projects
 parameters:
@@ -23,6 +26,8 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: Metadata descriptor deleted
+    description: The descriptor is deleted
+  403:
+    description: You cannot change this descriptor
   404:
-    description: No descriptor of this project with this id
+    description: The project has no descriptor with this identifier

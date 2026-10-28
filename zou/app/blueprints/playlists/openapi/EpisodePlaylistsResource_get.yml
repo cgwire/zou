@@ -1,8 +1,9 @@
-Get episode playlists
+Get the playlists of an episode
 ---
-description: Retrieve all playlists related to given episode. The full
-  list is returned because the number of playlists in an episode is not
-  that big.
+description: Get the playlists of an episode. Give main to get the playlists
+  that are in no episode. Give all to get the playlists of all the episodes.
+  A client gets only the playlists for clients. Vendors cannot use this
+  route.
 tags:
   - Playlists
 parameters:
@@ -20,19 +21,37 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Episode unique identifier or special value (main, all)
+    description: Unique identifier of the episode, or main, or all
     example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: for_entity
     required: false
     schema:
       type: string
-    description: Only list playlists of this entity type (asset,
-      shot, sequence, edit, episode)
+    description: 'Get only the playlists of this entity type: asset, shot, sequence,
+      edit or episode'
     example: shot
+  - in: query
+    name: page
+    required: false
+    description: Page to get. Each page has 20 playlists.
+    schema:
+      type: integer
+  - in: query
+    name: sort_by
+    required: false
+    description: Field to sort the playlists on, for example created_at
+    schema:
+      type: string
+  - in: query
+    name: task_type_id
+    required: false
+    description: Get only the playlists of this task type
+    schema:
+      type: string
 responses:
   200:
-    description: All playlists related to given episode
+    description: The list of playlists
     content:
       application/json:
         schema:
@@ -48,9 +67,11 @@ responses:
               name:
                 type: string
                 description: Playlist name
-                example: "Review Playlist"
+                example: Review Playlist
               episode_id:
                 type: string
                 format: uuid
                 description: Episode unique identifier
                 example: b35b7fb5-df86-5776-b181-68564193d360
+  403:
+    description: You do not have access to this project, or you are a vendor

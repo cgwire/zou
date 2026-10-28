@@ -1,9 +1,10 @@
-Update metadata descriptor
+Update a metadata descriptor
 ---
 tags:
   - Crud
-description: Update a metadata descriptor with data provided in the
-  request body. JSON format is expected. Validates data_type.
+description: Update the fields of a metadata descriptor. Send only the
+  fields to change. You cannot change id, created_at, updated_at and
+  project_id. Dates use the ISO 8601 format. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,6 +13,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the metadata descriptor
 requestBody:
   required: true
   content:
@@ -26,45 +28,49 @@ requestBody:
             type: string
             example: number
 responses:
-    200:
-      description: Metadata descriptor updated successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
+  200:
+    description: The updated metadata descriptor
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: Updated Custom Field
+            field_name:
+              type: string
+              example: custom_field
+            data_type:
+              type: string
+              example: number
+            departments:
+              type: array
+              description: Departments the descriptor is limited to
+              items:
                 type: string
                 format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              name:
-                type: string
-                example: Updated Custom Field
-              field_name:
-                type: string
-                example: custom_field
-              data_type:
-                type: string
-                example: number
-              departments:
-                type: array
-                description: Departments the descriptor is limited to
-                items:
-                  type: string
-                  format: uuid
-                example: ["a24a6ea4-ce75-4665-a070-57453082c250"]
-              project_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T11:00:00Z"
-    400:
-      description: Invalid data format, invalid data_type, or a field name
-        taken by a built-in field
+              example: [a24a6ea4-ce75-4665-a070-57453082c250]
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T11:00:00Z'
+  400:
+    description: The body is not valid, a date is not valid, or a field
+      breaks a database constraint
+  403:
+    description: You cannot update this metadata descriptor
+  404:
+    description: The metadata descriptor does not exist

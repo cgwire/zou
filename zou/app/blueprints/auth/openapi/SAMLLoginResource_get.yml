@@ -1,11 +1,12 @@
-SAML SSO login redirect
+Start the SAML SSO login
 ---
-description: Initiate SAML SSO login by redirecting to SAML identity
+description: Start an SSO login. This route redirects to the SAML identity
   provider.
 tags:
-    - Authentication
+  - Authentication
+security: []
 responses:
   302:
-    description: Redirect to SAML identity provider
+    description: Redirect to the SAML identity provider
   400:
-    description: SAML not enabled or wrong parameter
+    description: SAML is not enabled, or a parameter is wrong

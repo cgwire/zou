@@ -1,20 +1,20 @@
-Get concept
+Get a concept
 ---
-description: Retrieve detailed information about a specific concept
-  including metadata, project context, and related data.
+description: Get a concept with its related data.
 tags:
   - Concepts
 parameters:
   - in: path
     name: concept_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the concept
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Concept information successfully retrieved
+    description: The concept
     content:
       application/json:
         schema:
@@ -28,11 +28,11 @@ responses:
             name:
               type: string
               description: Concept name
-              example: "Character Design"
+              example: Character Design
             description:
               type: string
               description: Concept description
-              example: "Main character concept art"
+              example: Main character concept art
             project_id:
               type: string
               format: uuid
@@ -42,9 +42,13 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:30:00Z"
+              example: '2023-01-01T12:30:00Z'
+  403:
+    description: You do not have access to this project, or you are a client
+  404:
+    description: The concept does not exist

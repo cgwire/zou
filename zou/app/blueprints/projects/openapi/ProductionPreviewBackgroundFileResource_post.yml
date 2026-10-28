@@ -1,6 +1,7 @@
-Add preview background file to production
+Add a preview background file to a project
 ---
-description: Add a preview background file linked to a production.
+description: Add a preview background file to the settings of a project. You
+  must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -28,7 +29,7 @@ requestBody:
             example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   201:
-    description: Preview background file added to production
+    description: The updated project
     content:
       application/json:
         schema:
@@ -42,4 +43,8 @@ responses:
             name:
               type: string
               description: Project name
-              example: "My Project"
+              example: My Project
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

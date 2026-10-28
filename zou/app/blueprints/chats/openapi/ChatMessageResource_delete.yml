@@ -1,24 +1,32 @@
-Delete chat message
+Delete a chat message
 ---
-description: Delete a specific chat message. Only the message author
-  or administrators can delete messages.
+description: Delete a message of the chat of an entity. Only the author of
+  the message or an administrator can delete it. Clients cannot use this
+  route.
 tags:
   - Chat
 parameters:
   - in: path
     name: entity_id
-    description: ID of the entity related to the chat
-    type: string
-    format: uuid
+    description: Unique identifier of the entity that has the chat
     required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: chat_message_id
-    description: ID of the chat message to delete
-    type: string
-    format: uuid
+    description: Unique identifier of the message to delete
     required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
 responses:
   204:
-    description: Chat message successfully deleted
+    description: The message is deleted
+  403:
+    description: You are a client, you cannot delete this message, or the
+      message is not in this chat
+  404:
+    description: The entity or the message does not exist

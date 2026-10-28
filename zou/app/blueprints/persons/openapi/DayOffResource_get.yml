@@ -1,6 +1,9 @@
-Get day off
+Get the day off of a person for a date
 ---
-description: Get day off object for given person and date.
+description: Get the day off of a person for one date. An administrator, the
+  person, and a manager of a project of the person get the day offs with
+  their description. A supervisor of the department of the person gets the
+  dates only. Other users cannot read them.
 tags:
   - Persons
 parameters:
@@ -18,11 +21,12 @@ parameters:
     schema:
       type: string
       format: date
-    description: Date to get day off for
-    example: "2022-07-12"
+    description: Date in the YYYY-MM-DD format
+    example: '2022-07-12'
 responses:
   200:
-    description: Day off object for given person and date
+    description: The day off, or an empty object if the person works on this
+      date
     content:
       application/json:
         schema:
@@ -42,10 +46,13 @@ responses:
               type: string
               format: date
               description: Day off date
-              example: "2022-07-12"
+              example: '2022-07-12'
             type:
               type: string
               description: Day off type
-              example: "vacation"
+              example: vacation
   400:
-    description: Wrong date format
+    description: The date is not valid
+  403:
+    description: You cannot read the day offs of this person, or the person
+      is a bot

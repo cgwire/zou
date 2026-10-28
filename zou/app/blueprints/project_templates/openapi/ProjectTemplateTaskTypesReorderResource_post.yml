@@ -1,14 +1,16 @@
-Reorder template task types
+Reorder the task types of a project template
 ---
+description: Set the priority of the task types of a project template in one
+  request. The order of the list gives the priority. You must be an
+  administrator.
 tags:
-  - Project templates
-description: Set the priority of the template's task type links from
-  the given ordered id list in a single request, replacing one link
-  request per task type.
+  - Project Templates
 parameters:
   - in: path
     name: project_template_id
     required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     schema:
       type: string
       format: uuid
@@ -26,6 +28,11 @@ requestBody:
             items:
               type: string
               format: uuid
+            description: Task types in the new order
 responses:
-    200:
-      description: Updated task type links
+  200:
+    description: The updated links
+  400:
+    description: The body is not valid
+  403:
+    description: You are not an administrator

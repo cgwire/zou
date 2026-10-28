@@ -1,6 +1,7 @@
-Get all month time spents
+Get all the time spents of a person for a month
 ---
-description: Get all time spents for a given person and month.
+description: Get all the time spent entries of a person for a month. Only an
+  administrator and the person can use this route.
 tags:
   - Persons
 parameters:
@@ -17,23 +18,28 @@ parameters:
     required: true
     schema:
       type: integer
-    description: Year to get time spents for
+    description: Year, for example 2026
     example: 2022
   - in: path
     name: month
     required: true
     schema:
       type: integer
-    description: Month to get time spents for
+      minimum: 1
+      maximum: 12
+    description: Month, from 1 to 12
     example: 7
-    minimum: 1
-    maximum: 12
 responses:
   200:
-    description: All time spents for the given person and month
+    description: The list of time spent entries
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  400:
+    description: The month or the year is not valid
+  403:
+    description: You are not an administrator or this person, or the person
+      is a bot

@@ -1,7 +1,7 @@
-Get news item
+Get a news of a project
 ---
-description: Retrieves detailed information about a specific news item
-  from a givenproject.
+description: Get a news of a project. Clients and vendors cannot use this
+  route.
 tags:
   - News
 parameters:
@@ -22,34 +22,10 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the news item
 responses:
-  '200':
-    description: News item successfully retrieved
-    content:
-      application/json:
-        schema:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-              description: Unique news item identifier
-            title:
-              type: string
-              description: News item title
-            content:
-              type: string
-              description: News item content
-            created_at:
-              type: string
-              format: date-time
-              description: Creation timestamp
-            author_id:
-              type: string
-              format: uuid
-              description: Author's user ID
-            project_id:
-              type: string
-              format: uuid
-              description: Project identifier
+  200:
+    description: The news
+  403:
+    description: You do not have access to this project, or you are a client
+      or a vendor
   404:
-    description: News item or project not found
+    description: The project or the news does not exist

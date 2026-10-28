@@ -1,26 +1,30 @@
-Get sequence shots casting
+Get the casting of the shots of a sequence
 ---
-description: Retrieve the casting information for all shots from a specific sequence.
+description: Get the casting of each shot of a sequence. The casting of an
+  entity is the list of assets in the entity, with the number of occurrences
+  of each asset.
 tags:
   - Breakdown
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: sequence_id
     required: true
-    type: string
-    format: uuid
     example: f79f13f9-1320-9110-f625-029085371700
     description: Unique identifier of the sequence
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Sequence shots casting information successfully retrieved
+    description: A map of shot identifiers to castings
     content:
       application/json:
         schema:
@@ -36,7 +40,7 @@ responses:
               shot_name:
                 type: string
                 description: Shot name
-                example: "SH001"
+                example: SH001
               sequence_id:
                 type: string
                 format: uuid
@@ -55,4 +59,9 @@ responses:
                     asset_name:
                       type: string
                       description: Asset name
-                      example: "Main Character"
+                      example: Main Character
+  403:
+    description: You do not have access to this project, or you are a
+      vendor, or the sequence is not in the project
+  404:
+    description: The sequence does not exist

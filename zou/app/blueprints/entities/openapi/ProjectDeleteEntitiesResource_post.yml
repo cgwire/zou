@@ -1,11 +1,12 @@
-Delete entities batch
+Delete entities
 ---
-description: Delete assets, shots, edits and concepts given by id
-  list in a single request. Each entity follows the same rules as
-  its single deletion route. Without force, entities with tasks are
-  marked as canceled on first deletion, then removed for real when
-  already canceled; concepts are always removed. Only entity
-  creators or project managers can delete entities.
+description: Delete the assets, shots, edits and concepts of the list in one
+  request. The body is a list of entity identifiers. Without force, an
+  entity with tasks is marked as canceled. If the entity is already
+  canceled, it is deleted. A concept is always deleted. With force=true, all
+  the entities are deleted with their tasks. The creator of an entity can
+  delete it if the creator is in the project team. For the other entities,
+  you must be a manager of the project.
 tags:
   - Entities
 parameters:
@@ -22,8 +23,8 @@ parameters:
     required: false
     schema:
       type: boolean
-    description: Remove the entities and their tasks for real,
-      instead of only canceling the ones that have tasks
+    description: Delete the entities and their tasks, also when they are not
+      canceled
     example: false
 requestBody:
   required: true
@@ -37,9 +38,8 @@ requestBody:
         description: Entity unique identifiers to delete
 responses:
   200:
-    description: Ids of the entities that were deleted. Entities that
-      do not belong to the project or are not an asset, a shot, an
-      edit or a concept are skipped.
+    description: The identifiers of the deleted entities. The entities of
+      other projects and the entities of other types are skipped.
     content:
       application/json:
         schema:
@@ -47,3 +47,9 @@ responses:
           items:
             type: string
             format: uuid
+  400:
+    description: The body is not a list of valid identifiers
+  403:
+    description: You cannot delete one of the entities
+  404:
+    description: The project does not exist

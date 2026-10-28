@@ -1,8 +1,11 @@
-Delete a metadata descriptor from all accessible projects
+Delete a metadata descriptor in all projects
 ---
-description: Remove every metadata descriptor sharing the given field
-  name across the open projects the user can access. Replaces one
-  delete request per project.
+description: Delete the metadata descriptors with this field name in your
+  projects, in one request. A metadata descriptor describes an extra column.
+  The values of the column are in the data field of the entities. The route
+  changes the open projects where you are a manager. An administrator
+  changes all the open projects. You must have the manager role or a higher
+  role.
 tags:
   - Projects
 parameters:
@@ -11,13 +14,18 @@ parameters:
     required: true
     schema:
       type: string
+    description: Field name of the descriptor, the key in the data field
   - in: query
     name: entity_type
     required: true
     schema:
       type: string
+    description: 'Entity type of the descriptor: Asset, Shot, Edit, Episode or
+      Sequence'
 responses:
   200:
-    description: Removed descriptor ids
+    description: The identifiers of the deleted descriptors
   400:
-    description: Invalid parameters
+    description: The entity type is not valid
+  403:
+    description: You do not have the manager role

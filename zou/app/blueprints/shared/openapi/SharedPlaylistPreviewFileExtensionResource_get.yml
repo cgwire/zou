@@ -1,13 +1,14 @@
-Get shared original picture preview for any extension
+Get the original file of a shared preview
 ---
-description: Serve the original still preview for an arbitrary
-  extension (gif, svg, jpg, pdf, ...), authorized by the share token.
-  Mirrors the authenticated
-  ``/pictures/originals/preview-files/<id>.<extension>`` route, which
-  the ``.png``-only shared route did not cover, so animated GIFs and
-  other non-PNG originals 404'd through a share link.
+description: Get the original file of a preview of the shared playlist, for
+  example a GIF, an SVG, a JPEG or a PDF file. The extension of the path
+  must be the extension of the preview. The preview must be in the playlist.
+  You do not need an account. The token of the link is the credential. This
+  route does not read the password. For a link with a password, the route
+  returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -39,9 +40,10 @@ responses:
   400:
     description: Extension not allowed
   403:
-    description: Preview file is not part of this shared playlist
+    description: The preview is not in the shared playlist
   404:
-    description: Original file missing
+    description: The link is not valid, has expired, or has a password, or
+      the file does not exist
     content:
       application/json:
         schema:

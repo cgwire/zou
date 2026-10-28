@@ -1,9 +1,19 @@
-Refresh access token
+Refresh the access token
 ---
-description: Tokens are considered outdated every two weeks.
-  This route allows to extend their lifetime before they get outdated.
+description: Get a new access token. Send the refresh token as the bearer
+  token. An access token expires after a period. Use this route before the
+  access token expires. A browser gets the new token in a cookie.
 tags:
-    - Authentication
+  - Authentication
 responses:
   200:
-    description: Access Token
+    description: The new access token, or a refresh flag for a browser
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh:
+              type: boolean

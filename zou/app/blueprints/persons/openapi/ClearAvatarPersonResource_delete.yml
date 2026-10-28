@@ -1,7 +1,7 @@
-Clear person avatar
+Delete the avatar of a person
 ---
-description: Set has_avatar flag to False for current user and remove
-  its avatar file.
+description: Delete the avatar file of a person and set has_avatar to false.
+  You must be an administrator.
 tags:
   - Persons
 parameters:
@@ -15,4 +15,6 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   204:
-    description: Avatar file deleted
+    description: The avatar is deleted
+  403:
+    description: You are not an administrator

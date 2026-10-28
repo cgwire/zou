@@ -1,9 +1,12 @@
-Get shared original picture preview
+Get the original picture of a shared preview
 ---
-description: Serve the full-size PNG for a still preview, authorized by
-  the share token.
+description: Get the full size PNG picture of a preview of the shared
+  playlist. The preview must be in the playlist. You do not need an account.
+  The token of the link is the credential. This route does not read the
+  password. For a link with a password, the route returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -27,9 +30,10 @@ responses:
           type: string
           format: binary
   403:
-    description: Preview file is not part of this shared playlist
+    description: The preview is not in the shared playlist
   404:
-    description: Original file missing
+    description: The link is not valid, has expired, or has a password, or
+      the file does not exist
     content:
       application/json:
         schema:

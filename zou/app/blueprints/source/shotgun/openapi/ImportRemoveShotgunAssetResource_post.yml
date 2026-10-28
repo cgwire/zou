@@ -1,8 +1,9 @@
-Remove shotgun asset
+Remove a Shotgun asset
 ---
-description: Remove a Shotgun asset from the database. Provide the
-  Shotgun entry ID in the JSON body. If the asset has working files
-  linked to tasks, it will be cancelled instead of deleted.
+description: Remove an asset. If tasks of the asset have working files, the
+  asset is only canceled that was imported from Shotgun. Send the Shotgun
+  identifier of the row in the body. If no row has this identifier, the
+  response is a success. You must be an administrator.
 tags:
   - Import
 requestBody:
@@ -22,7 +23,7 @@ requestBody:
         id: 12345
 responses:
   200:
-    description: Removal result returned
+    description: The result of the removal
     content:
       application/json:
         schema:
@@ -38,4 +39,6 @@ responses:
               description: ID of the removed asset, if found
               example: a24a6ea4-ce75-4665-a070-57453082c250
   400:
-    description: Invalid request body or instance not found
+    description: The body is not valid
+  403:
+    description: You are not an administrator

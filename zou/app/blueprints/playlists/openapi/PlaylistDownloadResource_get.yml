@@ -1,6 +1,9 @@
-Download playlist build
+Download the movie of a playlist
 ---
-description: Download given playlist build as MP4 file.
+description: Download the MP4 movie of a build job. A manager of the project
+  can use this route. A supervisor can use it for the playlists that the
+  supervisor can see. A client can use it for the playlists for clients.
+  Artists and vendors cannot use it.
 tags:
   - Playlists
 parameters:
@@ -22,14 +25,14 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Playlist build downloaded as MP4 file
+    description: The MP4 file
     content:
       video/mp4:
         schema:
           type: string
           format: binary
   400:
-    description: Build not finished, need to retry later
+    description: The build is not finished. Try again later.
     content:
       application/json:
         schema:
@@ -42,4 +45,8 @@ responses:
             message:
               type: string
               description: Error message
-              example: "Build is not finished"
+              example: Build is not finished
+  403:
+    description: You cannot access this playlist
+  404:
+    description: The playlist or the build job does not exist

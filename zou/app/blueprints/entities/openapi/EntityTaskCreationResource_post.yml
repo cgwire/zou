@@ -1,12 +1,10 @@
 Create tasks for an entity
 ---
-description: Create one task per provided task type for the given
-  entity. Each task type is validated against the entity's project
-  and (for assets) the entity's asset type workflow. When
-  task_type_ids is omitted or empty, default to every task type
-  valid for the entity (project workflow, asset-type workflow if
-  asset, and matching for_entity). Existing tasks for the same
-  (entity, task_type) pair are skipped.
+description: Create one task for each task type of the list. The project
+  must use each task type. For an asset, the workflow of the asset type must
+  also have each task type. If the list is empty, the route uses all the
+  task types that are valid for the entity. If a task with the same task
+  type exists, it is skipped. Clients and vendors cannot use this route.
 tags:
   - Entities
 parameters:
@@ -30,16 +28,20 @@ requestBody:
             items:
               type: string
               format: uuid
-            description: Optional list of task type IDs to create.
-              Omit or pass an empty list to default to every task
-              type valid for the entity.
+            description: Optional list of task type IDs to create. Omit or
+              pass an empty list to default to every task type valid for the
+              entity.
         example:
           task_type_ids:
             - b24a6ea4-ce75-4665-a070-57453082c250
 responses:
   201:
-    description: Created tasks
+    description: The new tasks
   400:
-    description: A task type is not enabled in the project, not in
-      the asset type workflow, or does not target this kind of
-      entity
+    description: A task type is not used by the project, is not in the
+      workflow of the asset type, or is not for this type of entity
+  403:
+    description: You do not have access to this entity, or you are a client
+      or a vendor
+  404:
+    description: The entity or a task type does not exist

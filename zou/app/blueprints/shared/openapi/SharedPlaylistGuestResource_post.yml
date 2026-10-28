@@ -1,9 +1,12 @@
-Create or retrieve guest for shared playlist
+Create a guest for a shared playlist
 ---
-description: Create a guest identity for the shared playlist, or return
-  an existing guest when `guest_id` is provided and still valid.
+description: Create a guest identity for the shared playlist. If you give a
+  guest_id that is still valid, the route returns this guest. You do not
+  need an account. The token of the link is the credential. This route does
+  not read the password. For a link with a password, the route returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -29,14 +32,16 @@ requestBody:
             description: If set, return this guest if it still exists
 responses:
   200:
-    description: Existing guest returned
+    description: The guest already exists
     content:
       application/json:
         schema:
           type: object
   201:
-    description: New guest created
+    description: The new guest
     content:
       application/json:
         schema:
           type: object
+  404:
+    description: The link is not valid, has expired, or has a password

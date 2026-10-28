@@ -1,9 +1,8 @@
-Reorder metadata descriptors
+Reorder the metadata descriptors of a project
 ---
-description: Reorder metadata descriptors for a specific entity type
-  and project. Descriptors are reordered based on the list of
-  descriptor IDs provided in the request body. Position is set
-  according to the order in the list.
+description: Set the order of the metadata descriptors of an entity type.
+  Give the descriptor identifiers in the new order. You must be a manager of
+  the project.
 tags:
   - Projects
 parameters:
@@ -35,18 +34,19 @@ requestBody:
               - Episode
               - Sequence
               - Project
-            example: "Asset"
+            example: Asset
           descriptor_ids:
             type: array
-            description: List of metadata descriptor IDs in the
-              desired order
+            description: List of metadata descriptor IDs in the desired
+              order
             items:
               type: string
               format: uuid
-            example: ["b35b7fb5-df86-5776-b181-68564193d360", "c46c80c6-e097-6887-c292-79675204e470"]
+            example: [b35b7fb5-df86-5776-b181-68564193d360,
+                  c46c80c6-e097-6887-c292-79675204e470]
 responses:
   200:
-    description: Metadata descriptors reordered successfully
+    description: The reordered descriptors
     content:
       application/json:
         schema:
@@ -62,7 +62,7 @@ responses:
               name:
                 type: string
                 description: Metadata descriptor name
-                example: "Custom Field"
+                example: Custom Field
               position:
                 type: integer
                 description: Position of the descriptor
@@ -70,6 +70,8 @@ responses:
               entity_type:
                 type: string
                 description: Entity type
-                example: "Asset"
+                example: Asset
   400:
-    description: Invalid parameters or descriptor not found
+    description: The body is not valid, or a descriptor does not exist
+  403:
+    description: You are not a manager of the project

@@ -1,8 +1,9 @@
-Create project template
+Create a project template
 ---
 tags:
   - Crud
-description: Create a new empty project template. Admin only.
+description: Create an empty project template. Give a name and the
+  production settings of the template. You must be an administrator.
 requestBody:
   required: true
   content:
@@ -27,7 +28,10 @@ requestBody:
           production_style:
             type: string
 responses:
-    201:
-      description: Project template created successfully
-    400:
-      description: Invalid data or duplicate name
+  201:
+    description: The new project template
+  400:
+    description: The name is missing, a bitrate is not valid, or the name is
+      already used
+  403:
+    description: You are not an administrator

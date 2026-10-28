@@ -1,19 +1,21 @@
-Get asset casting
+Get the casting of an asset
 ---
-description: Retrieve the casting information for a specific asset showing which shots or sequences use this asset
+description: Get the casting of an asset. The casting is the list of assets
+  that the asset contains, with the number of occurrences of each asset.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Asset casting information successfully retrieved
+    description: The casting of the asset
     content:
       application/json:
         schema:
@@ -42,8 +44,12 @@ responses:
                   entity_name:
                     type: string
                     description: Entity name
-                    example: "SH001"
+                    example: SH001
                   entity_type:
                     type: string
                     description: Entity type (shot/sequence)
-                    example: "shot"
+                    example: shot
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset does not exist

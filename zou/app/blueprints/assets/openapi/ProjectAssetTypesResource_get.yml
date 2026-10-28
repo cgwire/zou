@@ -1,19 +1,20 @@
-Get project asset types
+Get the asset types of a project
 ---
-description: Retrieve all asset types available for a specific project
+description: Get the asset types that the assets of a project use.
 tags:
   - Assets
 parameters:
   - in: path
     name: project_id
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     required: true
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of project asset types successfully retrieved
+    description: The list of asset types
     content:
       application/json:
         schema:
@@ -29,9 +30,11 @@ responses:
               name:
                 type: string
                 description: Asset type name
-                example: "Character"
+                example: Character
               project_id:
                 type: string
                 format: uuid
                 description: Project identifier
                 example: b35b7fb5-df86-5776-b181-68564193d360
+  403:
+    description: You do not have access to this project

@@ -1,4 +1,36 @@
-Set the default preview background file for a project template.
+Set the default preview background of a project template
 ---
+description: Set the default preview background file of a project template.
+  Send null to remove the default background. You must be an administrator.
 tags:
   - Project Templates
+parameters:
+  - in: path
+    name: project_template_id
+    required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          default_preview_background_file_id:
+            type: string
+            format: uuid
+            description: Default preview background file
+            nullable: true
+responses:
+  200:
+    description: The updated project template
+  400:
+    description: The preview background file is not valid
+  403:
+    description: You are not an administrator
+  404:
+    description: The project template does not exist

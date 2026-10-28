@@ -1,6 +1,7 @@
-Delete the preview account of a production
+Delete the preview account of a project
 ---
-description: Delete the preview account of the production. Restricted to managers of the production.
+description: Delete the preview account of a project. You must be a manager
+  of the project.
 tags:
   - Projects
 parameters:
@@ -14,4 +15,6 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   204:
-    description: Preview account deleted
+    description: The preview account is deleted
+  403:
+    description: You are not a manager of the project

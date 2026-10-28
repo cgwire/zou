@@ -1,4 +1,30 @@
-Detach a preview background file from a project template.
+Remove a preview background file from a project template
 ---
+description: Remove a preview background file from a project template. The
+  preview background file is not deleted. You must be an administrator.
 tags:
   - Project Templates
+parameters:
+  - in: path
+    name: project_template_id
+    required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+  - in: path
+    name: preview_background_file_id
+    required: true
+    description: Unique identifier of the preview background file
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+responses:
+  204:
+    description: The preview background file is removed from the template
+  403:
+    description: You are not an administrator
+  404:
+    description: The project template does not exist

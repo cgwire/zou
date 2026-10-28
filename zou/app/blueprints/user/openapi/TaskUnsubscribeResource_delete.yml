@@ -1,10 +1,8 @@
-Unsubscribe from task
+Unsubscribe from a task
 ---
-description: Remove the subscription entry for the current user and
-  given task. The user will no longer receive notifications for this
-  task.
+description: Remove your subscription to a task.
 tags:
-- User
+  - User
 parameters:
   - in: path
     name: task_id
@@ -12,8 +10,8 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Task unique identifier
+    description: Unique identifier of the task
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
-    204:
-      description: Subscription removed successfully
+  204:
+    description: The subscription is removed

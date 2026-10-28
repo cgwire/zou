@@ -1,10 +1,9 @@
-Subscribe to several tasks
+Subscribe to tasks
 ---
-description: Create subscription entries for the current user and
-  every task in the id list. Useful to subscribe to a selection in
-  one request. Returns the created subscriptions.
+description: Subscribe to each task of the list in one request. A
+  subscription sends you a notification for each comment on these tasks.
 tags:
-- User
+  - User
 requestBody:
   required: true
   content:
@@ -20,11 +19,13 @@ requestBody:
               type: string
               format: uuid
 responses:
-    201:
-      description: Subscriptions created successfully
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              type: object
+  201:
+    description: The new subscriptions
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+  400:
+    description: The body is not valid

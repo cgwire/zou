@@ -1,85 +1,112 @@
-Import persons csv
+Import persons from a CSV file
 ---
 tags:
   - Import
-description: Import persons from a CSV file. Creates or updates
-  persons based on CSV rows. Supports first/last name, email, phone,
-  role, departments, studio, country, contract type, position,
-  seniority, daily salary and active status.
-consumes:
-  - multipart/form-data
+description: Create persons from a CSV file. A line gives the name, email,
+  phone, role, departments, studio, country, contract type, position,
+  seniority, daily salary and active status. Send the CSV file in a
+  multipart form. The route finds the separator of the file. Each line is
+  imported in order. If a line is not valid, the import stops. Without
+  update=true, the lines of the entities that exist are skipped. You must be
+  an administrator.
 parameters:
   - in: query
     name: update
     required: false
     schema:
       type: boolean
-    default: false
+      default: false
     example: false
-    description: Whether to update existing persons
-  - in: formData
-    name: file
-    type: file
-    required: true
-    description: CSV file with person data
+    description: Update the entities that exist
 responses:
-    201:
-      description: Persons imported successfully
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
+  201:
+    description: The imported lines
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              first_name:
+                type: string
+                example: John
+              last_name:
+                type: string
+                example: Doe
+              email:
+                type: string
+                format: email
+                example: john.doe@example.com
+              phone:
+                type: string
+                example: 1234567890
+              role:
+                type: string
+                example: user
+              departments:
+                type: array
+                items:
                   type: string
                   format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                first_name:
-                  type: string
-                  example: John
-                last_name:
-                  type: string
-                  example: Doe
-                email:
-                  type: string
-                  format: email
-                  example: john.doe@example.com
-                phone:
-                  type: string
-                  example: +1234567890
-                role:
-                  type: string
-                  example: user
-                departments:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                  example: []
-                studio_id:
-                  type: string
-                  format: uuid
-                  example: null
-                country:
-                  type: string
-                  description: ISO 3166-1 alpha-2 country code (nullable)
-                  example: FR
-                contract_type:
-                  type: string
-                  example: open-ended
-                position:
-                  type: string
-                  example: lead
-                seniority:
-                  type: string
-                  example: senior
-                daily_salary:
-                  type: integer
-                  example: 320
-                active:
-                  type: boolean
-                  example: true
-    400:
-      description: Invalid CSV format or missing required columns
+                example: []
+              studio_id:
+                type: string
+                format: uuid
+                example:
+              country:
+                type: string
+                description: ISO 3166-1 alpha-2 country code (nullable)
+                example: FR
+              contract_type:
+                type: string
+                example: open-ended
+              position:
+                type: string
+                example: lead
+              seniority:
+                type: string
+                example: senior
+              daily_salary:
+                type: integer
+                example: 320
+              active:
+                type: boolean
+                example: true
+  400:
+    description: A line of the file is not valid. The lines before this line
+      are imported.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: boolean
+            message:
+              type: string
+            line_number:
+              type: integer
+              description: Number of the line that is not valid
+            imported_rows:
+              type: integer
+              description: Number of lines that are imported
+  403:
+    description: You are not an administrator
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        properties:
+          file:
+            type: string
+            description: CSV file with person data
+            format: binary
+        required:
+          - file

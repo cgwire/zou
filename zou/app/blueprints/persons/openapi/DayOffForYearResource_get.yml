@@ -1,9 +1,9 @@
-Get day offs for year
+Get the day offs of a year
 ---
-description: Return all day off recorded for given year, for
-  everybody the caller may read. Admins get them all, managers and
-  supervisors get the ones of the team of their productions, the
-  latter without description, everybody else gets their own only.
+description: Get the day offs of a year. An administrator gets all the day
+  offs. A manager gets the day offs of the persons of their projects. A
+  supervisor gets the dates only, for the persons of their departments.
+  Other users get their own day offs.
 tags:
   - Persons
 parameters:
@@ -12,14 +12,16 @@ parameters:
     required: true
     schema:
       type: integer
-    description: Year to get day offs for
+    description: Year, for example 2026
     example: 2022
 responses:
   200:
-    description: All day off recorded for given year
+    description: The list of day offs
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  400:
+    description: The date is not valid

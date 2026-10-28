@@ -1,9 +1,9 @@
-Create hardware item
+Create a hardware item
 ---
 tags:
   - Crud
-description: Create a new hardware item with data provided in the
-  request body. JSON format is expected.
+description: Create a hardware item. Send the fields of the new row in JSON.
+  You must be an administrator.
 requestBody:
   required: true
   content:
@@ -16,34 +16,40 @@ requestBody:
           name:
             type: string
             example: Workstation 01
-          serial_number:
-            type: string
-            example: SN123456
+          monthly_cost:
+            type: integer
+            description: Monthly cost of the item
+          inventory_amount:
+            type: integer
+            description: Number of items in the inventory
 responses:
-    201:
-      description: Hardware item created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              name:
-                type: string
-                example: Workstation 01
-              serial_number:
-                type: string
-                example: SN123456
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid data format or validation error
+  201:
+    description: The new hardware item
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: Workstation 01
+            serial_number:
+              type: string
+              example: SN123456
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The body is not valid, or a field breaks a database
+      constraint
+  403:
+    description: You cannot create a hardware item

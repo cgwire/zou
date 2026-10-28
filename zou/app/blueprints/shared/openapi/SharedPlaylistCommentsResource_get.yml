@@ -1,10 +1,12 @@
-List shared playlist comments
+Get the comments of a shared playlist
 ---
-description: List comments for tasks that appear in the shared playlist
-  (aggregated from each shot's preview task). Same optional `password`
-  query param as the main shared playlist when the link is protected.
+description: Get the comments of the tasks of the shared playlist that the
+  link shows. You do not need an account. The token of the link is the
+  credential. If the link has a password, give it in the password query
+  parameter.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -20,10 +22,13 @@ parameters:
     description: Password when the link is protected
 responses:
   200:
-    description: Comment entries for the playlist
+    description: The list of comments
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  404:
+    description: The link is not valid, has expired, or the password is
+      wrong

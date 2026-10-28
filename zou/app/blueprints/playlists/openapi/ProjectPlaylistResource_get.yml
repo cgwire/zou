@@ -1,7 +1,8 @@
-Get playlist
+Get a playlist
 ---
-description: Retrieve a specific playlist by ID with preview file
-  revisions.
+description: Get a playlist with the revisions of its preview files. All the
+  members of the project can read it, but vendors cannot. A client can read
+  only the playlists for clients.
 tags:
   - Playlists
 parameters:
@@ -23,7 +24,7 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Playlist details with preview file revisions
+    description: The playlist
     content:
       application/json:
         schema:
@@ -37,7 +38,7 @@ responses:
             name:
               type: string
               description: Playlist name
-              example: "Review Playlist"
+              example: Review Playlist
             project_id:
               type: string
               format: uuid
@@ -48,8 +49,8 @@ responses:
               description: List of shots with preview file revisions
               items:
                 type: object
-                example: [{"id": "uuid", "preview_file_id": "uuid"}]
+                example: [{id: uuid, preview_file_id: uuid}]
   403:
-    description: Playlist kept from the role held on the project
+    description: You cannot read this playlist
   404:
-    description: No playlist of this project with this id
+    description: The project has no playlist with this identifier

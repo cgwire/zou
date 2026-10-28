@@ -1,6 +1,6 @@
-Get preview background file
+Download a preview background file
 ---
-description: Download a preview background file.
+description: Download the file of a preview background.
 tags:
   - Previews
 parameters:
@@ -10,20 +10,22 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Preview background file unique identifier
+    description: Unique identifier of the preview background file
     example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: path
     name: extension
     required: true
     schema:
       type: string
-    description: File extension
+    description: Extension of the file, for example hdr
     example: hdr
 responses:
   200:
-    description: Preview background file downloaded
+    description: The file
     content:
       image/vnd.radiance:
         schema:
           type: string
           format: binary
+  404:
+    description: The preview background file or its file does not exist

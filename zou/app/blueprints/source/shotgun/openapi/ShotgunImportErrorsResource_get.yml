@@ -1,12 +1,12 @@
-Get shotgun import errors
+Get the Shotgun import errors
 ---
-description: Get all Shotgun import errors from the database.
-  Returns a list of data import errors with source "shotgun".
+description: Get the errors of the Shotgun imports. You must be an
+  administrator.
 tags:
   - Import
 responses:
   200:
-    description: List of import errors retrieved successfully
+    description: The list of import errors
     content:
       application/json:
         schema:
@@ -22,15 +22,15 @@ responses:
               source:
                 type: string
                 description: Source of the import error
-                example: "shotgun"
+                example: shotgun
               event_data:
                 type: object
                 description: Error event data
-                example: {"error": "Import failed"}
+                example: {error: Import failed}
               created_at:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2024-01-15T10:30:00Z"
-  400:
-    description: Invalid request
+                example: '2024-01-15T10:30:00Z'
+  403:
+    description: You are not an administrator

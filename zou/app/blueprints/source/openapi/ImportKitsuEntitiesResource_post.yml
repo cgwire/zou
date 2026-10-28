@@ -1,8 +1,10 @@
-Import kitsu entities
+Import entities from an other Kitsu instance
 ---
-description: Import Kitsu entities (assets, shots, sequences, etc.).
-  Send a list of Kitsu entity entries in the JSON body. Returns
-  created or updated entities.
+description: 'Import entities: assets, shots, sequences, episodes, edits and concepts,
+  from an other Kitsu instance. Synchronization tools use this route to copy data
+  from an other Kitsu instance. Send a JSON list of rows, with their identifiers.
+  A row that exists is updated. Else, it is created. Only an administrator can
+  import: for other users, the route skips all the rows and returns an empty list.'
 tags:
   - Import
 requestBody:
@@ -22,7 +24,7 @@ requestBody:
             name:
               type: string
               description: Entity name
-              example: "Asset01"
+              example: Asset01
             project_id:
               type: string
               format: uuid
@@ -35,12 +37,12 @@ requestBody:
               example: c24a6ea4-ce75-4665-a070-57453082c250
       example:
         - id: a24a6ea4-ce75-4665-a070-57453082c250
-          name: "Asset01"
+          name: Asset01
           project_id: b24a6ea4-ce75-4665-a070-57453082c250
           entity_type_id: c24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Entities imported successfully
+    description: The created and updated rows
     content:
       application/json:
         schema:
@@ -56,16 +58,26 @@ responses:
               name:
                 type: string
                 description: Entity name
-                example: "Asset01"
+                example: Asset01
               created_at:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2024-01-15T10:30:00Z"
+                example: '2024-01-15T10:30:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Update timestamp
-                example: "2024-01-15T11:00:00Z"
+                example: '2024-01-15T11:00:00Z'
   400:
-    description: Invalid request body or missing required fields
+    description: The body is not a list, or a row breaks a database
+      constraint
+parameters:
+  - in: query
+    name: silent
+    required: false
+    description: Do not send an event for each imported row. Use it for
+      large imports.
+    schema:
+      type: boolean
+      default: false

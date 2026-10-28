@@ -1,9 +1,8 @@
-Get entity output type files
+Get the output files of an output type
 ---
-description: Retrieve all output files for a given entity and
-  output type. Optionally filter by representation.
+description: Get the output files of an entity that have an output type.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: entity_id
@@ -19,18 +18,19 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Output type unique identifier
+    description: Get only the files of this output type
     example: b35b7fb5-df86-5776-b181-68564193d360
   - in: query
     name: representation
     required: false
     schema:
       type: string
-    description: Filter by representation
-    example: "mp4"
+    description: Get only the files with this representation, for example
+      abc or fbx
+    example: mp4
 responses:
   200:
-    description: All output files for the entity and output type
+    description: The list of output files
     content:
       application/json:
         schema:
@@ -46,7 +46,7 @@ responses:
               name:
                 type: string
                 description: Output file name
-                example: "main"
+                example: main
               revision:
                 type: integer
                 description: Output file revision
@@ -54,14 +54,18 @@ responses:
               path:
                 type: string
                 description: Output file path
-                example: "/project/asset/output/main_v001.mp4"
+                example: /project/asset/output/main_v001.mp4
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               entity_id:
                 type: string
                 format: uuid
                 description: Entity identifier
                 example: d57d91d7-f108-7998-d403-80786315f580
+  403:
+    description: You do not have access to this project
+  404:
+    description: The entity or the output type does not exist

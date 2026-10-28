@@ -1,7 +1,10 @@
-Create metadata descriptor
+Create a metadata descriptor
 ---
-description: Create a new metadata descriptor. It serves to describe
-  extra fields listed in the data attribute of entities.
+description: Create a metadata descriptor in a project. A metadata
+  descriptor describes an extra column. The values of the column are in the
+  data field of the entities. Administrators and managers of the project can
+  use this route. A supervisor of the project can use it if the supervisor
+  has access to all the departments of the descriptor.
 tags:
   - Projects
 parameters:
@@ -34,42 +37,42 @@ requestBody:
               - Sequence
               - Project
               - Task
-            default: "Asset"
-            example: "Asset"
+            default: Asset
+            example: Asset
           task_type_id:
             type: string
             format: uuid
-            description: Task type the descriptor is scoped to.
-              Required for Task descriptors, forbidden otherwise.
+            description: Task type the descriptor is scoped to. Required for
+              Task descriptors, forbidden otherwise.
             example: a24a6ea4-ce75-4665-a070-57453082c250
           name:
             type: string
             description: Name of the metadata descriptor
-            example: "Custom Field"
+            example: Custom Field
           data_type:
             type: string
             description: Type of data (string, number, boolean, etc.)
-            example: "string"
+            example: string
           for_client:
             type: string
             description: Whether the descriptor is for client
-            default: "False"
-            example: "True"
+            default: 'False'
+            example: 'True'
           choices:
             type: array
             description: List of choices for the descriptor
             items:
               type: string
-            example: ["option1", "option2"]
+            example: [option1, option2]
           departments:
             type: array
             description: List of departments for the descriptor
             items:
               type: string
-            example: ["department1", "department2"]
+            example: [department1, department2]
 responses:
   201:
-    description: Metadata descriptor created
+    description: The new descriptor
     content:
       application/json:
         schema:
@@ -83,17 +86,20 @@ responses:
             name:
               type: string
               description: Metadata descriptor name
-              example: "Custom Field"
+              example: Custom Field
             data_type:
               type: string
               description: Metadata descriptor data type
-              example: "string"
+              example: string
             departments:
               type: array
               description: Departments the descriptor is limited to
               items:
                 type: string
                 format: uuid
-              example: ["a24a6ea4-ce75-4665-a070-57453082c250"]
+              example: [a24a6ea4-ce75-4665-a070-57453082c250]
   400:
-    description: Invalid parameters, or a name taken by a built-in field
+    description: A value is not valid, the task type does not exist, or the
+      name is used by a built-in field
+  403:
+    description: You cannot create this descriptor

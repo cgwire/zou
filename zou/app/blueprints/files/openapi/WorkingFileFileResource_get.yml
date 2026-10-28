@@ -1,9 +1,8 @@
-Download working file
+Download a working file
 ---
-description: Download a working file from storage. Returns the file
-  content with appropriate headers for caching and attachment.
+description: Download the file of a working file from the storage.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: working_file_id
@@ -15,29 +14,33 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Working file downloaded successfully
+    description: The file
     content:
       image/png:
         schema:
           type: string
           format: binary
           description: PNG image file
-          example: "binary data"
+          example: binary data
       image/jpg:
         schema:
           type: string
           format: binary
           description: JPEG image file
-          example: "binary data"
+          example: binary data
       image/gif:
         schema:
           type: string
           format: binary
           description: GIF image file
-          example: "binary data"
+          example: binary data
       application/octet-stream:
         schema:
           type: string
           format: binary
           description: Binary file content
-          example: "binary data"
+          example: binary data
+  403:
+    description: You do not have access to this task
+  404:
+    description: The working file or its file does not exist

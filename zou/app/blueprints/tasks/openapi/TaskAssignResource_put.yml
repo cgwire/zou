@@ -1,7 +1,7 @@
-Assign task to person
+Assign a task to a person
 ---
 tags:
-- Tasks
+  - Tasks
 parameters:
   - in: path
     name: task_id
@@ -10,6 +10,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
 requestBody:
   required: true
   content:
@@ -24,41 +25,46 @@ requestBody:
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
-    200:
-        description: Task assigned to person
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: SH010 Animation
-                task_type_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                task_status_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                entity_id:
-                  type: string
-                  format: uuid
-                  example: d24a6ea4-ce75-4665-a070-57453082c250
-                project_id:
-                  type: string
-                  format: uuid
-                  example: e24a6ea4-ce75-4665-a070-57453082c250
-                assignees:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                  example: ["f24a6ea4-ce75-4665-a070-57453082c250"]
-    400:
-        description: Assignee does not exist
+  200:
+    description: The task
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: SH010 Animation
+            task_type_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            task_status_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            entity_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            project_id:
+              type: string
+              format: uuid
+              example: e24a6ea4-ce75-4665-a070-57453082c250
+            assignees:
+              type: array
+              items:
+                type: string
+                format: uuid
+              example: [f24a6ea4-ce75-4665-a070-57453082c250]
+  400:
+    description: The person does not exist
+  403:
+    description: You cannot assign this task, or the person is a bot
+description: Add a person to the assignees of a task. A manager of the
+  project can assign all the tasks. A supervisor can assign the tasks of
+  their departments. You cannot assign a bot.

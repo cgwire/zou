@@ -1,22 +1,31 @@
-Delete asset
+Delete an asset
 ---
-description: Permanently remove an asset from the system. Only asset creators or project managers can delete assets
+description: Delete an asset. The creator of the asset can delete it if the
+  creator is in the project team. Other users must be managers of the
+  project. If the asset has tasks, the asset is only marked as canceled. Use
+  force=true to delete the asset and all its related data.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     required: true
     description: Unique identifier of the asset to delete
+    schema:
+      type: string
+      format: uuid
   - in: query
     name: force
-    type: boolean
     required: false
-    description: Force deletion bypassing validation checks
+    description: Delete the asset and all its related data
     example: false
+    schema:
+      type: boolean
 responses:
   204:
-    description: Asset successfully deleted
+    description: The asset is deleted
+  403:
+    description: You cannot delete this asset
+  404:
+    description: The asset does not exist

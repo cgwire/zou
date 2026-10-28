@@ -1,9 +1,9 @@
-Register FIDO device
+Register a FIDO device
 ---
-description: Register a FIDO device for WebAuthn authentication.
-  It requires registration response from the device.
+description: Register a FIDO device for the current user. First, prepare the
+  registration. Then, send the response of the device.
 tags:
-    - Authentication
+  - Authentication
 requestBody:
   required: true
   content:
@@ -13,15 +13,17 @@ requestBody:
         properties:
           registration_response:
             type: object
-            description: FIDO device registration response
+            description: Registration response of the FIDO device
           device_name:
             type: string
-            description: Name for the FIDO device
+            minLength: 1
+            description: Name of the FIDO device
         required:
           - registration_response
           - device_name
 responses:
   200:
-    description: FIDO device registered
+    description: The FIDO device is registered
   400:
-    description: Registration failed or no preregistration
+    description: The registration failed, or the registration is not
+      prepared

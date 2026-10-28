@@ -1,7 +1,10 @@
-Get open projects news
+Get the news of the open projects
 ---
-description: Returns the latest news and activity feed from all
-  projects the user has access to. Clients get a 403.
+description: Get the last news of the open projects that you can access,
+  the newest first. A news is made when a comment is posted on a task.
+  Give project_id to get the news of one project. If you cannot access
+  this project, the route gives the news of all your open projects.
+  Clients cannot use this route.
 tags:
   - News
 parameters:
@@ -12,23 +15,25 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by specific project
+    description: Get only the news of this open project
   - in: query
     name: before
     required: false
     schema:
       type: string
       format: date
-    example: "2022-07-12"
-    description: Filter news before this date
+    example: '2022-07-12'
+    description: Get the news before this date. Date in the ISO 8601 format,
+      for example 2026-10-28T10:00:00
   - in: query
     name: after
     required: false
     schema:
       type: string
       format: date
-    example: "2022-07-12"
-    description: Filter news after this date
+    example: '2022-07-12'
+    description: Get the news after this date. Date in the ISO 8601 format,
+      for example 2026-10-28T10:00:00
   - in: query
     name: page
     required: false
@@ -36,7 +41,7 @@ parameters:
       type: integer
       default: 1
     example: 1
-    description: Page number for pagination
+    description: Page to get
   - in: query
     name: limit
     required: false
@@ -44,7 +49,7 @@ parameters:
       type: integer
       default: 50
     example: 50
-    description: Number of news items per page
+    description: Number of news in a page
   - in: query
     name: person_id
     required: false
@@ -52,7 +57,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by specific team member
+    description: Get only the news of this author
   - in: query
     name: task_type_id
     required: false
@@ -60,7 +65,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by task type
+    description: Get only the news of this task type
   - in: query
     name: task_status_id
     required: false
@@ -68,7 +73,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by task status
+    description: Get only the news of this task status
   - in: query
     name: episode_id
     required: false
@@ -76,7 +81,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by specific episode
+    description: Get only the news of this episode
   - in: query
     name: only_preview
     required: false
@@ -84,10 +89,10 @@ parameters:
       type: boolean
       default: false
     example: false
-    description: Show only news related to preview uploads
+    description: Get only the news with a preview
 responses:
-  '200':
-    description: News feed successfully retrieved
+  200:
+    description: A page of news, with the statistics of the news
     content:
       application/json:
         schema:
@@ -97,10 +102,20 @@ responses:
               type: array
               items:
                 type: object
-              description: Array of news items
             stats:
               type: object
-              description: News statistics
+              description: Number of news for each task status
             total:
               type: integer
-              description: Total number of news items
+            nb_pages:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            page:
+              type: integer
+  400:
+    description: A date is not valid
+  403:
+    description: You are a client

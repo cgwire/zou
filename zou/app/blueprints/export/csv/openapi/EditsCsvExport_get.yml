@@ -1,26 +1,30 @@
-        Export edits csv
-        ---
-        tags:
-          - Export
-        description: Export project edits as CSV file. Includes edit
-          information, task statuses, assignments, and metadata.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c250
-        responses:
-            200:
-              description: Edits exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Episode,Name,Description,Time Spent
-Project A,EP01,Edit_001,Description,8.75"
-        
+Export the edits of a project to CSV
+---
+tags:
+  - Export
+description: Get a CSV file with the edits of a project. Each row gives the
+  edit, its metadata, and the status and the assignees of each task type.
+  Vendors cannot use this route.
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+responses:
+  200:
+    description: The CSV file
+    content:
+      text/csv:
+        schema:
+          type: string
+        example: Project,Episode,Name,Description,Time Spent Project
+          A,EP01,Edit_001,Description,8.75
+
+  403:
+    description: You do not have access to this project, or you are a vendor
+  404:
+    description: The project does not exist

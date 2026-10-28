@@ -1,10 +1,9 @@
-Create task type
+Create a task type
 ---
 tags:
   - Crud
-description: Create a new task type with data provided in the
-  request body. JSON format is expected. Task type names must
-  be unique.
+description: Create a task type. Send the fields of the new row in JSON. You
+  must be an administrator.
 requestBody:
   required: true
   content:
@@ -23,35 +22,38 @@ requestBody:
             example: Shot
           color:
             type: string
-            example: "#FF5733"
+            example: '#FF5733'
 responses:
-    201:
-      description: Task type created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              name:
-                type: string
-                example: Animation
-              for_entity:
-                type: string
-                example: Shot
-              color:
-                type: string
-                example: "#FF5733"
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid data format or task type name already exists
+  201:
+    description: The new task type
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: Animation
+            for_entity:
+              type: string
+              example: Shot
+            color:
+              type: string
+              example: '#FF5733'
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The body is not valid, or a field breaks a database
+      constraint
+  403:
+    description: You cannot create a task type

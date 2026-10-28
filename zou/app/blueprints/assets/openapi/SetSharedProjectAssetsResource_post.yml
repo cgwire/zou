@@ -1,16 +1,19 @@
-Set project assets shared
+Share or unshare the assets of a project
 ---
-description: Share or unshare all assets for a specific project or a list of specific assets.
+description: Share or unshare the assets of a project. If you give
+  asset_ids, only these assets change. Else, all the assets of the project
+  change. You must be a manager of the project.
 tags:
   - Assets
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: false
   content:
@@ -28,10 +31,11 @@ requestBody:
               type: string
               format: uuid
             description: Specific asset IDs to update.
-            example: ["a24a6ea4-ce75-4665-a070-57453082c250", "b35b7fb5-df86-5776-b181-68564193d360"]
+            example: [a24a6ea4-ce75-4665-a070-57453082c250,
+                  b35b7fb5-df86-5776-b181-68564193d360]
 responses:
   200:
-    description: Assets shared status successfully updated
+    description: The updated assets
     content:
       application/json:
         schema:
@@ -46,3 +50,7 @@ responses:
               format: uuid
               description: Project identifier
               example: b35b7fb5-df86-5776-b181-68564193d360
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

@@ -1,7 +1,7 @@
-Get production task type softwares
+Get the softwares of the task types of a project
 ---
-description: Get the softwares set for the task types of a production. Each
-  link gives a software that the artists use for a task type.
+description: Get the softwares that the artists use for each task type of a
+  project.
 tags:
   - Projects
 parameters:
@@ -15,7 +15,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Task type software links of the production
+    description: The list of links between task types and softwares
     content:
       application/json:
         schema:
@@ -38,3 +38,5 @@ responses:
                 format: uuid
                 description: Software unique identifier
                 example: c46c8fc6-ef97-4887-a292-79675204e471
+  403:
+    description: You do not have access to this project

@@ -1,8 +1,9 @@
-Import shotgun project connections
+Import Shotgun team members
 ---
-description: Import Shotgun project-user connections. Send a list of
-  Shotgun project connection entries in the JSON body. Returns
-  projects with team members added.
+description: Import team members from Shotgun. Each row adds a person to the
+  team of a project. Send a JSON list of Shotgun rows. A row that exists in
+  Kitsu, with the same Shotgun identifier, is updated. Else, it is created.
+  A row with a wrong format is skipped. You must be an administrator.
 tags:
   - Import
 requestBody:
@@ -40,7 +41,7 @@ requestBody:
             id: 22222
 responses:
   200:
-    description: Project connections imported successfully
+    description: The created and updated rows
     content:
       application/json:
         schema:
@@ -56,7 +57,7 @@ responses:
               name:
                 type: string
                 description: Project name
-                example: "My Project"
+                example: My Project
               team:
                 type: array
                 description: Team member IDs
@@ -69,11 +70,15 @@ responses:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2024-01-15T10:30:00Z"
+                example: '2024-01-15T10:30:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Update timestamp
-                example: "2024-01-15T11:00:00Z"
+                example: '2024-01-15T11:00:00Z'
   400:
-    description: Invalid request body or data format error
+    description: The body is not valid
+  403:
+    description: You are not an administrator
+  500:
+    description: A row breaks a database constraint

@@ -1,6 +1,7 @@
-Add asset type to production
+Add an asset type to a project
 ---
-description: Add an asset type linked to a production.
+description: Add an asset type to the settings of a project. You must be a
+  manager of the project.
 tags:
   - Projects
 parameters:
@@ -28,7 +29,7 @@ requestBody:
             example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   201:
-    description: Asset type added to production
+    description: The updated project
     content:
       application/json:
         schema:
@@ -42,6 +43,8 @@ responses:
             name:
               type: string
               description: Project name
-              example: "My Project"
+              example: My Project
   400:
-    description: Invalid parameters
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

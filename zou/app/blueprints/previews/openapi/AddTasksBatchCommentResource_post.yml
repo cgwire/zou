@@ -1,8 +1,11 @@
-Add tasks batch comments
+Comment several tasks
 ---
-description: Creates new comments for given tasks. Each comment requires
-  a task_id, text, a task_status and a person as arguments. Can include
-  preview files and attachments.
+description: Add comments to several tasks in one request. Each comment
+  gives its task_id. Send a multipart form. Each comments field is a JSON
+  object with task_status_id, comment, and optional checklist and links.
+  Each comment sets the status of its task. Files in the form are added as
+  previews or attachments. Only a manager can set person_id and created_at.
+  You must be able to do actions on each task.
 tags:
   - Comments
 requestBody:
@@ -17,13 +20,19 @@ requestBody:
           comments:
             type: string
             description: JSON string containing array of comments
-            example: '[{"task_id": "uuid", "text": "Good work", "task_status_id": "uuid"}]'
+            example: '[{"task_id": "uuid", "text": "Good work", "task_status_id":
+              "uuid"}]'
 responses:
   201:
-    description: New comments created
+    description: The new comments
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  400:
+    description: The body is not valid
+  403:
+    description: You cannot do actions on a task, or you cannot use a task
+      status

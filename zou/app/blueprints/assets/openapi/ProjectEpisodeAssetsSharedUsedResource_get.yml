@@ -1,26 +1,29 @@
-Get shared assets used in episode
+Get the shared assets used in an episode
 ---
-description: Retrieve all shared assets that are used in a specific project episode.
+description: Get the shared assets of other projects that are cast in an
+  episode.
 tags:
   - Assets
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: episode_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the episode
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of shared assets used in episode successfully retrieved
+    description: The list of shared assets
     content:
       application/json:
         schema:
@@ -36,7 +39,7 @@ responses:
               name:
                 type: string
                 description: Asset name
-                example: "Character Name"
+                example: Character Name
               project_id:
                 type: string
                 format: uuid
@@ -56,3 +59,5 @@ responses:
                 format: uuid
                 description: Episode identifier
                 example: d57d91d7-f108-7998-d403-80786315f580
+  403:
+    description: You do not have access to this project

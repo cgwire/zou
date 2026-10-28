@@ -1,9 +1,10 @@
-Remove shotgun resource
+Remove a Shotgun row
 ---
 tags:
   - Import
-description: Remove a Shotgun resource from the database. Provide the
-  Shotgun entry ID in the JSON body.
+description: Remove a row that was imported from Shotgun. Send the Shotgun
+  identifier of the row in the body. If no row has this identifier, the
+  response is a success. You must be an administrator.
 requestBody:
   required: true
   content:
@@ -20,21 +21,23 @@ requestBody:
       example:
         id: 12345
 responses:
-    200:
-      description: Removal result returned
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              success:
-                type: boolean
-                example: true
-                description: Whether the removal was successful
-              removed_instance_id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-                description: ID of the removed instance, if found
-    400:
-      description: Invalid request body or instance not found
+  200:
+    description: The result of the removal
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              example: true
+              description: Whether the removal was successful
+            removed_instance_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+              description: ID of the removed instance, if found
+  400:
+    description: The body is not valid
+  403:
+    description: You are not an administrator

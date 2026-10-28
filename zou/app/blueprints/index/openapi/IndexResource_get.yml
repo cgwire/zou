@@ -1,10 +1,13 @@
-Get API name and version
+Get the API name and version
 ---
+description: Get the name and the version of the API. You do not need a
+  token for this route.
 tags:
   - Index
+security: []
 responses:
-  '200':
-    description: API name and version
+  200:
+    description: The name and the version of the API
     content:
       application/json:
         schema:
@@ -12,7 +15,5 @@ responses:
           properties:
             api:
               type: string
-              example: "Zou"
             version:
               type: string
-              example: "0.20.0"

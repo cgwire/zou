@@ -1,6 +1,9 @@
-Get production schedule version task links
+Get the task dates of a schedule version
 ---
-description: Get task links for given production schedule version.
+description: Get the task links of a production schedule version. Each link
+  gives the start date and the due date of a task in this version. A
+  production schedule version is a copy of the schedule. You can change it,
+  and then apply it to the tasks. Clients and vendors cannot use this route.
 tags:
   - Projects
 parameters:
@@ -10,7 +13,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Production schedule version unique identifier
+    description: Unique identifier of the production schedule version
     example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: task_type_id
@@ -18,11 +21,11 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Task type unique identifier for filtering
+    description: Get only the links of the tasks of this task type
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Task links for given production schedule version
+    description: The list of task links
     content:
       application/json:
         schema:
@@ -30,4 +33,9 @@ responses:
           items:
             type: object
   400:
-    description: Wrong ID format
+    description: An identifier is not a valid UUID
+  403:
+    description: You do not have access to this project, or you are a client
+      or a vendor
+  404:
+    description: The production schedule version does not exist

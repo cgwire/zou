@@ -1,6 +1,8 @@
-Get the preview account of a production
+Get the preview account of a project
 ---
-description: Return the preview account of the production, or null when there is none. Restricted to managers of the production.
+description: Get the preview account of a project. If the project has no
+  preview account, the response is null. You must be a manager of the
+  project.
 tags:
   - Projects
 parameters:
@@ -14,7 +16,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Preview account or null
+    description: The preview account, or null
     content:
       application/json:
         schema:
@@ -35,3 +37,5 @@ responses:
               format: date-time
               nullable: true
               description: End of the access window, null when closed
+  403:
+    description: You are not a manager of the project

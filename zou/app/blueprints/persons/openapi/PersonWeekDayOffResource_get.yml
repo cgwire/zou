@@ -1,6 +1,9 @@
-Get person week day offs
+Get the day offs of a person for a week
 ---
-description: Return all day off recorded for given week and person.
+description: Get the day offs of a person for a week. An administrator, the
+  person, and a manager of a project of the person get the day offs with
+  their description. A supervisor of the department of the person gets the
+  dates only. Other users cannot read them.
 tags:
   - Persons
 parameters:
@@ -17,23 +20,26 @@ parameters:
     required: true
     schema:
       type: integer
-    description: Year to get day offs for
+    description: Year, for example 2026
     example: 2022
   - in: path
     name: week
     required: true
     schema:
       type: integer
-    description: Week number to get day offs for
+      minimum: 1
+      maximum: 52
+    description: Week number of the ISO year, from 1 to 53
     example: 35
-    minimum: 1
-    maximum: 52
 responses:
   200:
-    description: All day off recorded for given week and person
+    description: The list of day offs
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  403:
+    description: You cannot read the day offs of this person, or the person
+      is a bot

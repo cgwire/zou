@@ -1,11 +1,9 @@
-Pre-register FIDO device
+Prepare a FIDO registration
 ---
-description: Prepare FIDO device for registration.
-  It returns registration options for WebAuthn.
+description: Get the WebAuthn registration options for a new FIDO device of
+  the current user.
 tags:
-    - Authentication
+  - Authentication
 responses:
   200:
-    description: FIDO device pre-registered data
-  400:
-    description: Invalid request
+    description: The WebAuthn registration options

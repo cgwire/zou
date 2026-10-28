@@ -1,7 +1,10 @@
-Get metadata descriptor
+Get a metadata descriptor
 ---
-description: Get a metadata descriptor. Descriptors serve to describe
-  extra fields listed in the data attribute of entities.
+description: Get a metadata descriptor of a project. A metadata descriptor
+  describes an extra column. The values of the column are in the data field
+  of the entities. A client gets only the descriptors for clients. A vendor
+  gets only the descriptors of their departments and the descriptors without
+  department.
 tags:
   - Projects
 parameters:
@@ -23,12 +26,12 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Metadata descriptor
+    description: The descriptor
     content:
       application/json:
         schema:
           type: object
   403:
-    description: Descriptor kept from the role held on the project
+    description: You cannot read this descriptor
   404:
-    description: No descriptor of this project with this id
+    description: The project has no descriptor with this identifier

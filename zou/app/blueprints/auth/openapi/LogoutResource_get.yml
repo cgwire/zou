@@ -1,8 +1,18 @@
-Logout user
+Log out
 ---
-description: Log user out by revoking auth tokens. Once logged out, current user cannot access the API anymore.
+description: Log out the current user. This route revokes the access token
+  and the refresh token. After this operation, the tokens cannot access the
+  API.
 tags:
-    - Authentication
+  - Authentication
 responses:
   200:
-    description: Logout successful
+    description: The logout is successful
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            logout:
+              type: boolean
+              example: true

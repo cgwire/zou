@@ -1,19 +1,20 @@
-Get event names
+Get the event names
 ---
 description: >-
-  Retrieve the distinct event names present in the log. It is meant to
-  build the object and action filters of the log screen. The list is
-  not scoped to the caller's productions: it exposes the event
-  vocabulary, not any production data.
+  Get the names of the events in the event log, sorted. The log screen uses these
+  names to make its filters. The list is the same for all the productions. It
+  does not show production data. You must be a manager.
 tags:
   - Events
 responses:
   200:
-    description: Sorted list of the event names in use
+    description: The sorted list of event names
     content:
       application/json:
         schema:
           type: array
           items:
             type: string
-            example: "task:update"
+            example: task:update
+  403:
+    description: You are not a manager

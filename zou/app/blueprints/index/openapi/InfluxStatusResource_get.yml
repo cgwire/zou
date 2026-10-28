@@ -1,11 +1,14 @@
-Get status of the API services for InfluxDB
+Get the status of the services for InfluxDB
 ---
-description: Get status of the database, key value store, event stream, job queue, indexer as a JSON object.
+description: Get the status of the services of the API in a format for
+  InfluxDB. The value is 1 when the service is up and 0 when the service is
+  down. You do not need a token for this route.
 tags:
   - Index
+security: []
 responses:
-  '200':
-    description: Status of database, key value, event stream, job queue and time
+  200:
+    description: The status of each service and the time
     content:
       application/json:
         schema:
@@ -13,20 +16,29 @@ responses:
           properties:
             database-up:
               type: integer
-              example: 1
+              enum:
+                - 0
+                - 1
             key-value-store-up:
               type: integer
-              example: 1
+              enum:
+                - 0
+                - 1
             event-stream-up:
               type: integer
-              example: 1
+              enum:
+                - 0
+                - 1
             job-queue-up:
               type: integer
-              example: 1
+              enum:
+                - 0
+                - 1
             indexer-up:
               type: integer
-              example: 1
+              enum:
+                - 0
+                - 1
             time:
               type: number
-              format: float
-              example: 1701948600.123
+              description: UNIX timestamp

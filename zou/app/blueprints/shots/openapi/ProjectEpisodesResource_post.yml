@@ -1,16 +1,18 @@
-Create project episode
+Create an episode
 ---
 tags:
-- Shots
-description: Create an episode in a project. Provide name and
-  description. Status is optional.
+  - Shots
+description: Create an episode in a project. The default status is running.
+  You must be a manager of the project.
 parameters:
   - in: path
     name: project_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the project
 requestBody:
   required: true
   content:
@@ -19,42 +21,45 @@ requestBody:
         type: object
         required:
           - name
-          - description
         properties:
           name:
             type: string
-            required: true
             example: EP01
           description:
             type: string
-            required: true
             example: A short description of the episode
           status:
             type: string
-            required: false
             example: running
+          data:
+            type: object
+            description: Values of the metadata columns
 responses:
-    201:
-        description: Episode created
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: EP01
-                project_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                description:
-                  type: string
-                  example: A short description of the episode
-                status:
-                  type: string
-                  example: running
+  201:
+    description: The new episode
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: EP01
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            description:
+              type: string
+              example: A short description of the episode
+            status:
+              type: string
+              example: running
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

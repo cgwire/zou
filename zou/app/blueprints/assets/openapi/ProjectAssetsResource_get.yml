@@ -1,35 +1,29 @@
-Get project assets
+Get the assets of a project
 ---
-description: Retrieve all assets belonging to a specific project with filtering support
+description: Get the assets of a project. Add a query parameter for each
+  column to filter on. For example, use name=Chair to get the assets with
+  this name.
 tags:
   - Assets
 parameters:
   - in: path
     name: project_id
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     required: true
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
   - in: query
     name: asset_type_id
-    type: string
-    format: uuid
     description: Filter assets by asset type
     example: a24a6ea4-ce75-4665-a070-57453082c250
-  - in: query
-    name: page
-    type: integer
-    description: Page number for pagination
-    example: 1
-  - in: query
-    name: limit
-    type: integer
-    description: Number of assets per page
-    example: 100
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of project assets successfully retrieved
+    description: The list of assets
     content:
       application/json:
         schema:
@@ -45,7 +39,7 @@ responses:
               name:
                 type: string
                 description: Asset name
-                example: "Character Name"
+                example: Character Name
               project_id:
                 type: string
                 format: uuid
@@ -59,8 +53,10 @@ responses:
               project_name:
                 type: string
                 description: Project name
-                example: "My Project"
+                example: My Project
               asset_type_name:
                 type: string
                 description: Asset type name
-                example: "Character"
+                example: Character
+  403:
+    description: You do not have access to this project

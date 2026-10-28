@@ -1,6 +1,9 @@
-Get build job
+Get a build job
 ---
-description: Retrieve build job related to given playlist.
+description: Get a build job of a playlist. A build job makes a movie of the
+  playlist. A manager of the project can use this route. A supervisor can
+  use it for the playlists that the supervisor can see. A client can use it
+  for the playlists for clients. Artists and vendors cannot use it.
 tags:
   - Playlists
 parameters:
@@ -22,7 +25,7 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Build job related to given playlist
+    description: The build job
     content:
       application/json:
         schema:
@@ -36,9 +39,13 @@ responses:
             status:
               type: string
               description: Build job status
-              example: "succeeded"
+              example: succeeded
             created_at:
               type: string
               format: date-time
               description: Build job creation timestamp
-              example: "2022-07-12T10:30:00Z"
+              example: '2022-07-12T10:30:00Z'
+  403:
+    description: You cannot access this playlist
+  404:
+    description: The playlist or the build job does not exist

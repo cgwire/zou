@@ -1,80 +1,94 @@
-Get events
+Get the last events
 ---
-description: Retrieve last events with filtering support. Filters can be
-  specified in the query string to narrow down results by date range,
-  project, or other criteria.
+description: Get the last events of the event log, the newest first. Use the
+  query parameters to filter the events. To get the next page, give the
+  identifier of the last event in cursor_event_id. An administrator gets the
+  events of all projects. A manager gets the events of their projects only.
+  You must be a manager.
 tags:
   - Events
 parameters:
   - in: query
     name: after
-    type: string
-    format: date
-    example: "2022-07-12"
-    description: Filter events after this date
+    example: '2022-07-12'
+    description: Get the events after this date. Date in the ISO 8601
+      format, for example 2026-10-28T10:00:00
+    schema:
+      type: string
+      format: date
   - in: query
     name: before
-    type: string
-    format: date
-    example: "2022-07-12"
-    description: Filter events before this date
+    example: '2022-07-12'
+    description: Get the events before this date. Date in the ISO 8601
+      format, for example 2026-10-28T10:00:00
+    schema:
+      type: string
+      format: date
   - in: query
     name: only_files
-    type: boolean
-    default: false
-    description: Return only file-related events
+    description: Get only the events about files
     example: false
+    schema:
+      type: boolean
+      default: false
   - in: query
     name: cursor_event_id
-    required: False
-    type: string
-    format: uuid
+    required: false
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: ID of the last event from previous page for cursor-based pagination
-  - in: query
-    name: limit
-    type: integer
-    default: 100
-    example: 100
-    description: Maximum number of events to return
-  - in: query
-    name: project_id
-    type: string
-    format: uuid
-    example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter events by specific project
-  - in: query
-    name: name
-    type: string
-    example: "user_login"
-    description: Filter events by event name
-  - in: query
-    name: name_prefixes
-    type: array
-    items:
-      type: string
-    example: ["task", "comment"]
-    description: Filter events by object, the part of the event name
-      before the colon. Repeat the parameter for each value.
-  - in: query
-    name: name_suffixes
-    type: array
-    items:
-      type: string
-    example: ["update", "delete"]
-    description: Filter events by action, the part of the event name
-      after the colon. Repeat the parameter for each value.
-  - in: query
-    name: person_ids
-    type: array
-    items:
+    description: Get the events that are older than this event
+    schema:
       type: string
       format: uuid
-    description: Filter events by author. Repeat the parameter for
-      each value.
+  - in: query
+    name: limit
+    example: 100
+    description: Maximum number of events. The maximum value is 1000.
+    schema:
+      type: integer
+      default: 100
+  - in: query
+    name: project_id
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Get only the events of this project
+    schema:
+      type: string
+      format: uuid
+  - in: query
+    name: name
+    example: user_login
+    description: Get only the events with this name, for example task:update
+    schema:
+      type: string
+  - in: query
+    name: name_prefixes
+    example: [task, comment]
+    description: Filter events by object, the part of the event name before
+      the colon. Repeat the parameter for each value.
+    schema:
+      type: array
+      items:
+        type: string
+  - in: query
+    name: name_suffixes
+    example: [update, delete]
+    description: Filter events by action, the part of the event name after
+      the colon. Repeat the parameter for each value.
+    schema:
+      type: array
+      items:
+        type: string
+  - in: query
+    name: person_ids
+    description: Filter events by author. Repeat the parameter for each
+      value.
+    schema:
+      type: array
+      items:
+        type: string
+        format: uuid
 responses:
   200:
-    description: List of events successfully retrieved
+    description: The list of events
     content:
       application/json:
         schema:
@@ -90,11 +104,11 @@ responses:
               name:
                 type: string
                 description: Event name
-                example: "user_login"
+                example: user_login
               data:
                 type: object
                 description: Event data content
-                example: {"user_id": "b35b7fb5-df86-5776-b181-68564193d360"}
+                example: {user_id: b35b7fb5-df86-5776-b181-68564193d360}
               project_id:
                 type: string
                 format: uuid
@@ -104,9 +118,14 @@ responses:
                 type: string
                 format: date-time
                 description: Event timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               user_id:
                 type: string
                 format: uuid
                 description: User identifier who triggered the event
                 example: d57d91d7-f108-7998-d403-80786315f580
+  400:
+    description: A date or an identifier is not valid
+  403:
+    description: You are not a manager, or you do not have access to this
+      project

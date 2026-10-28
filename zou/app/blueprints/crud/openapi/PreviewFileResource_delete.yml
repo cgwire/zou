@@ -1,10 +1,12 @@
-Delete preview file
+Delete a preview file
 ---
 tags:
   - Crud
-description: Delete a preview file by its ID. Returns empty
-  response on success. May require force flag if file has
-  associated data.
+description: Delete a preview file. Its files in the storage are marked as
+  deleted. The files are removed from the storage if REMOVE_FILES is set, or
+  if you give force=true. If the entity showed this preview, the entity gets
+  the newest preview of its other tasks. You must be a manager of the
+  project.
 parameters:
   - in: path
     name: instance_id
@@ -13,16 +15,23 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the preview file
   - in: query
     name: force
     required: false
     schema:
       type: boolean
-    default: false
+      default: false
     example: false
-    description: Force deletion even if file has associated data
+    description: Remove the files from the storage, even if REMOVE_FILES is
+      not set
 responses:
-    204:
-      description: Preview file deleted successfully
-    400:
-      description: Integrity error or cannot delete
+  204:
+    description: The preview file is deleted
+  400:
+    description: The identifier is not valid, or other data uses the preview
+      file
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The preview file does not exist

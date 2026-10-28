@@ -1,6 +1,8 @@
-Set assets shared
+Share or unshare assets
 ---
-description: Share or unshare a specific list of assets by their IDs.
+description: Share or unshare the assets of the list. A shared asset is
+  available to the other projects of the studio. You must be a manager of
+  each project of the assets.
 tags:
   - Assets
 requestBody:
@@ -18,14 +20,15 @@ requestBody:
               type: string
               format: uuid
             description: List of asset IDs to update
-            example: ["a24a6ea4-ce75-4665-a070-57453082c250", "b35b7fb5-df86-5776-b181-68564193d360"]
+            example: [a24a6ea4-ce75-4665-a070-57453082c250,
+                  b35b7fb5-df86-5776-b181-68564193d360]
           is_shared:
             type: boolean
             description: Whether to share or unshare the assets
             example: true
 responses:
   200:
-    description: Assets shared status successfully updated
+    description: The updated assets
     content:
       application/json:
         schema:
@@ -41,4 +44,9 @@ responses:
                 type: string
                 format: uuid
               description: List of updated asset IDs
-              example: ["a24a6ea4-ce75-4665-a070-57453082c250", "b35b7fb5-df86-5776-b181-68564193d360"]
+              example: [a24a6ea4-ce75-4665-a070-57453082c250,
+                    b35b7fb5-df86-5776-b181-68564193d360]
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of a project of the assets

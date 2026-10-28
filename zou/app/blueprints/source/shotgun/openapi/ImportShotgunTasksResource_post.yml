@@ -1,8 +1,10 @@
-Import shotgun tasks
+Import Shotgun tasks
 ---
-description: Import Shotgun tasks. Send a list of Shotgun task
-  entries in the JSON body. Only tasks with steps and projects are
-  imported. Returns created or updated tasks with assignees.
+description: Import tasks from Shotgun. The route imports only the tasks
+  that have a step and a project. Send a JSON list of Shotgun rows. A row
+  that exists in Kitsu, with the same Shotgun identifier, is updated. Else,
+  it is created. A row with a wrong format is skipped. You must be an
+  administrator.
 tags:
   - Import
 requestBody:
@@ -21,17 +23,17 @@ requestBody:
             cached_display_name:
               type: string
               description: Task display name
-              example: "Modeling for Asset"
+              example: Modeling for Asset
             start_date:
               type: string
               format: date
               description: Start date
-              example: "2024-01-15"
+              example: '2024-01-15'
             due_date:
               type: string
               format: date
               description: Due date
-              example: "2024-02-15"
+              example: '2024-02-15'
             sg_sort_order:
               type: integer
               description: Sort order
@@ -63,11 +65,11 @@ requestBody:
                   example: 33333
                 type:
                   type: string
-                  example: "Asset"
+                  example: Asset
             sg_status_list:
               type: string
               description: Status short name
-              example: "IP"
+              example: IP
             created_by:
               type: object
               description: Creator information
@@ -86,9 +88,9 @@ requestBody:
                     example: 55555
       example:
         - id: 12345
-          cached_display_name: "Modeling for Asset"
-          start_date: "2024-01-15"
-          due_date: "2024-02-15"
+          cached_display_name: Modeling for Asset
+          start_date: '2024-01-15'
+          due_date: '2024-02-15'
           sg_sort_order: 1
           duration: 30
           step:
@@ -97,15 +99,15 @@ requestBody:
             id: 22222
           entity:
             id: 33333
-            type: "Asset"
-          sg_status_list: "IP"
+            type: Asset
+          sg_status_list: IP
           created_by:
             id: 44444
           task_assignees:
             - id: 55555
 responses:
   200:
-    description: Tasks imported successfully
+    description: The created and updated rows
     content:
       application/json:
         schema:
@@ -121,26 +123,30 @@ responses:
               name:
                 type: string
                 description: Task name
-                example: "Modeling for Asset"
+                example: Modeling for Asset
               start_date:
                 type: string
                 format: date
                 description: Start date
-                example: "2024-01-15"
+                example: '2024-01-15'
               due_date:
                 type: string
                 format: date
                 description: Due date
-                example: "2024-02-15"
+                example: '2024-02-15'
               created_at:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2024-01-15T10:30:00Z"
+                example: '2024-01-15T10:30:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Update timestamp
-                example: "2024-01-15T11:00:00Z"
+                example: '2024-01-15T11:00:00Z'
   400:
-    description: Invalid request body or data format error
+    description: The body is not valid
+  403:
+    description: You are not an administrator
+  500:
+    description: A row breaks a database constraint

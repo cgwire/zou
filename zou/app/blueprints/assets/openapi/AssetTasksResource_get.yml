@@ -1,31 +1,27 @@
-Get asset tasks
+Get the tasks of an asset
 ---
-description: Retrieve all tasks related to a specific asset.
+description: Get the tasks of an asset.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset
+    schema:
+      type: string
+      format: uuid
   - in: query
-    name: task_type_id
-    type: string
-    format: uuid
-    description: Filter tasks by task type
-    example: a24a6ea4-ce75-4665-a070-57453082c250
-  - in: query
-    name: task_status_id
-    type: string
-    format: uuid
-    description: Filter tasks by task status
-    example: a24a6ea4-ce75-4665-a070-57453082c250
+    name: relations
+    required: false
+    description: Add the related data to each task
+    schema:
+      type: boolean
+      default: false
 responses:
   200:
-    description: List of asset tasks successfully retrieved
+    description: The list of tasks
     content:
       application/json:
         schema:
@@ -41,7 +37,7 @@ responses:
               name:
                 type: string
                 description: Task name
-                example: "Modeling Task"
+                example: Modeling Task
               task_type_id:
                 type: string
                 format: uuid
@@ -66,9 +62,13 @@ responses:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
+                example: '2023-01-01T12:30:00Z'
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset does not exist

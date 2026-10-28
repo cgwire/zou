@@ -1,11 +1,13 @@
-Update guest annotations for a preview file
+Change the annotations of a shared preview
 ---
-description: Update preview file annotations in the context of a shared
-  playlist. Reuses the same additions/updates/deletions diff format as
-  the manager-facing /actions/preview-files/<id>/update-annotations
-  route, so concurrent edits stay safe via the Redis lock.
+description: Change the annotations of a preview of the shared playlist. The
+  body uses the same additions, updates and deletions as the route for
+  users. A guest can change only the annotations of this guest. You do not
+  need an account. The token of the link is the credential. This route does
+  not read the password. For a link with a password, the route returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -52,5 +54,7 @@ responses:
   400:
     description: Missing required body fields
   403:
-    description: Annotations disabled for this share link, or the
-      preview file is not part of the shared playlist
+    description: Annotations disabled for this share link, or the preview
+      file is not part of the shared playlist
+  404:
+    description: The link is not valid, has expired, or has a password

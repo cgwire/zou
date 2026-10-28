@@ -1,10 +1,9 @@
-Leave chat
+Leave a chat
 ---
-description: Leave a chat for a specific entity by removing the
-  current user from participants. The user will no longer receive
-  chat messages for this entity.
+description: Leave the chat of an entity. You do not get the messages of
+  this chat after.
 tags:
-- User
+  - User
 parameters:
   - in: path
     name: entity_id
@@ -12,8 +11,12 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Entity unique identifier
+    description: Unique identifier of the entity
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
-    204:
-      description: Chat left successfully
+  204:
+    description: You left the chat
+  403:
+    description: You do not have access to this entity
+  404:
+    description: The entity does not exist

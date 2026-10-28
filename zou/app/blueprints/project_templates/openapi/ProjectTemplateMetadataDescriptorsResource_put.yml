@@ -1,5 +1,40 @@
-Replace the JSONB metadata descriptors snapshot on a project
-template. Admin only.
+Replace the metadata descriptors of a project template
 ---
+description: Replace the metadata descriptors of a project template. Send a
+  list of descriptors, or an object with a metadata_descriptors list. You
+  must be an administrator.
 tags:
   - Project Templates
+parameters:
+  - in: path
+    name: project_template_id
+    required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        oneOf:
+          - type: array
+            items:
+              type: object
+          - type: object
+            properties:
+              metadata_descriptors:
+                type: array
+                items:
+                  type: object
+responses:
+  200:
+    description: The updated project template
+  400:
+    description: A descriptor is not valid
+  403:
+    description: You are not an administrator
+  404:
+    description: The project template does not exist

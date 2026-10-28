@@ -1,11 +1,12 @@
-OIDC SSO login redirect
+Start the OIDC SSO login
 ---
-description: Initiate OIDC SSO login by redirecting to the OpenID
-  Connect identity provider.
+description: Start an SSO login. This route redirects to the OpenID Connect
+  identity provider.
 tags:
-    - Authentication
+  - Authentication
+security: []
 responses:
   302:
-    description: Redirect to OIDC identity provider
+    description: Redirect to the OIDC identity provider
   400:
-    description: OIDC not enabled
+    description: OIDC is not enabled

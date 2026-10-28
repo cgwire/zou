@@ -1,6 +1,6 @@
-Add person to department
+Add a person to a department
 ---
-description: Add a user to given department.
+description: Add a person to a department. You must be an administrator.
 tags:
   - Persons
 parameters:
@@ -28,7 +28,7 @@ requestBody:
             example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   201:
-    description: User added to given department
+    description: The person, with its departments
     content:
       application/json:
         schema:
@@ -45,4 +45,7 @@ responses:
               description: Department unique identifier
               example: b35b7fb5-df86-5776-b181-68564193d360
   400:
-    description: Invalid department ID
+    description: The department does not exist, or the identifier is not
+      valid
+  403:
+    description: You are not an administrator

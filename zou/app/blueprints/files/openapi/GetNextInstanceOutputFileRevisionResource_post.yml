@@ -1,10 +1,10 @@
-Get next instance output file revision
+Get the next revision of an instance output file
 ---
-description: Get the next revision number for an output file based
-  on asset instance, output type, task type, and name. Used for
-  automatic revision numbering.
+description: Get the next revision number of an output file of an asset
+  instance. An asset instance is a copy of an asset in a shot or a scene.
+  The temporal entity is this shot or this scene.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: asset_instance_id
@@ -36,7 +36,7 @@ requestBody:
             type: string
             description: File name
             default: main
-            example: "main"
+            example: main
           output_type_id:
             type: string
             format: uuid
@@ -49,7 +49,7 @@ requestBody:
             example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Next revision number for the instance output file
+    description: The next revision number
     content:
       application/json:
         schema:
@@ -59,3 +59,9 @@ responses:
               type: integer
               description: Next available revision number
               example: 2
+  400:
+    description: The body is not valid
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset instance does not exist

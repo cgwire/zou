@@ -1,19 +1,20 @@
-Create task comment
+Comment a task
 ---
-description: Create a new comment for a specific task. It requires a
-  text, a task_status and a person as arguments. This way, comments
-  keep history of status changes. When the comment is created, it
-  updates the task status with the given task status.
+description: Add a comment to a task and set the status of the task. Thus,
+  the comments keep the history of the status changes. Send JSON, or send a
+  multipart form to attach files. A user who is mentioned on the task, but
+  cannot do actions on it, can comment without a status change.
 tags:
   - Comments
 parameters:
   - in: path
     name: task_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the task
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: true
   content:
@@ -26,35 +27,86 @@ requestBody:
           task_status_id:
             type: string
             format: uuid
-            description: Task status identifier
-            example: c46c80c6-e097-6887-c292-79675204e470
+            description: New status of the task
+            example: a24a6ea4-ce75-4665-a070-57453082c250
           comment:
             type: string
-            description: Comment text content
-            example: "This looks great! Ready for review."
+            default: ''
+            description: Text of the comment
           person_id:
             type: string
             format: uuid
-            description: Person identifier (optional, defaults to current user)
-            example: d57d91d7-f108-7998-d403-80786315f580
+            description: Author of the comment. Managers only. Else the
+              author is the current user.
           created_at:
             type: string
-            format: date-time
-            description: Creation timestamp (optional, defaults to current time)
-            example: "2023-01-01T12:00:00Z"
+            example: '2026-10-28T10:00:00'
+            description: Creation date of the comment. Managers only.
           checklist:
-            type: object
-            description: Checklist items for the comment
-            example: {"item1": "Check lighting", "item2": "Verify textures"}
+            type: array
+            items:
+              type: object
+            description: Checklist items. In a multipart form, send a JSON
+              string.
           links:
             type: array
             items:
               type: string
-            description: List of related links
-            example: ["https://example.com/reference1", "https://example.com/reference2"]
+            description: URLs linked to the comment. In a multipart form,
+              send a JSON string.
+          for_client:
+            type: boolean
+            default: false
+            description: Show the comment to the clients. Managers only.
+    multipart/form-data:
+      schema:
+        type: object
+        required:
+          - task_status_id
+        properties:
+          task_status_id:
+            type: string
+            format: uuid
+            description: New status of the task
+            example: a24a6ea4-ce75-4665-a070-57453082c250
+          comment:
+            type: string
+            default: ''
+            description: Text of the comment
+          person_id:
+            type: string
+            format: uuid
+            description: Author of the comment. Managers only. Else the
+              author is the current user.
+          created_at:
+            type: string
+            example: '2026-10-28T10:00:00'
+            description: Creation date of the comment. Managers only.
+          checklist:
+            type: array
+            items:
+              type: object
+            description: Checklist items. In a multipart form, send a JSON
+              string.
+          links:
+            type: array
+            items:
+              type: string
+            description: URLs linked to the comment. In a multipart form,
+              send a JSON string.
+          for_client:
+            type: boolean
+            default: false
+            description: Show the comment to the clients. Managers only.
+          files:
+            type: array
+            items:
+              type: string
+              format: binary
+            description: Files to attach
 responses:
   201:
-    description: Comment successfully created
+    description: The new comment
     content:
       application/json:
         schema:
@@ -78,7 +130,7 @@ responses:
             comment:
               type: string
               description: Comment text content
-              example: "This looks great! Ready for review."
+              example: This looks great! Ready for review.
             task_status_id:
               type: string
               format: uuid
@@ -88,4 +140,9 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
+  400:
+    description: The body is not valid
+  403:
+    description: You do not have access to this task, or you cannot use this
+      task status

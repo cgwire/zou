@@ -1,6 +1,7 @@
-Remove person from production team
+Remove a person from a project team
 ---
-description: Remove people listed in a production team.
+description: Remove a person from the team of a project. You must be a
+  manager of the project.
 tags:
   - Projects
 parameters:
@@ -18,8 +19,10 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Person unique identifier
+    description: Unique identifier of the person
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: Person removed from production team
+    description: The person is removed from the team
+  403:
+    description: You are not a manager of the project

@@ -1,81 +1,92 @@
-Get project tasks
+Get the tasks of a project
 ---
 tags:
-- Tasks
-description: Retrieve tasks related to a project. Useful for sync.
+  - Tasks
+description: Get the tasks of a project, page by page. Synchronization
+  tools use this route. A vendor gets only the tasks assigned to them. A
+  client gets reduced tasks.
 parameters:
   - in: path
     name: project_id
     required: true
     schema:
       type: string
-    format: uuid
+      format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
   - in: query
     name: page
-    required: False
-    type: integer
+    required: false
     example: 1
+    schema:
+      type: integer
+    description: Page to get
   - in: query
     name: task_type_id
-    required: False
-    type: string
-    format: uuid
+    required: false
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Get only the tasks of this task type
   - in: query
     name: episode_id
-    required: False
-    type: string
-    format: uuid
+    required: false
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Get only the tasks of this episode
 responses:
-    200:
-        description: All tasks related to given project
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                data:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c250
-                      name:
-                        type: string
-                        example: SH010 Animation
-                      task_type_id:
-                        type: string
-                        format: uuid
-                        example: b24a6ea4-ce75-4665-a070-57453082c250
-                      task_status_id:
-                        type: string
-                        format: uuid
-                        example: c24a6ea4-ce75-4665-a070-57453082c250
-                      entity_id:
-                        type: string
-                        format: uuid
-                        example: d24a6ea4-ce75-4665-a070-57453082c250
-                      project_id:
-                        type: string
-                        format: uuid
-                        example: e24a6ea4-ce75-4665-a070-57453082c250
-                      assignees:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
-                        example: ["f24a6ea4-ce75-4665-a070-57453082c250"]
-                limit:
-                  type: integer
-                  example: 100
-                page:
-                  type: integer
-                  example: 1
-                is_more:
-                  type: boolean
-                  example: true
+  200:
+    description: The list of tasks
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: SH010 Animation
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  task_status_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
+                  entity_id:
+                    type: string
+                    format: uuid
+                    example: d24a6ea4-ce75-4665-a070-57453082c250
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: e24a6ea4-ce75-4665-a070-57453082c250
+                  assignees:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    example: [f24a6ea4-ce75-4665-a070-57453082c250]
+            limit:
+              type: integer
+              example: 100
+            page:
+              type: integer
+              example: 1
+            is_more:
+              type: boolean
+              example: true
+  403:
+    description: You do not have access to this project

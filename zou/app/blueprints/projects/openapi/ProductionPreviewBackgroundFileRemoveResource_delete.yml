@@ -1,6 +1,8 @@
-Remove preview background file from production
+Remove a preview background file from a project
 ---
-description: Remove a preview background file from a production.
+description: Remove a preview background file from the settings of a
+  project. The preview background file is not deleted. You must be a manager
+  of the project.
 tags:
   - Projects
 parameters:
@@ -22,4 +24,6 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: Preview background file removed from production
+    description: The preview background file is removed from the project
+  403:
+    description: You are not a manager of the project

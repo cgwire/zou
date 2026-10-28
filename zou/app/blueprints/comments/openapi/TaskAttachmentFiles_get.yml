@@ -1,20 +1,21 @@
-Get task attachment files
+Get the attachments of a task
 ---
-description: Retrieve all attachment files related to a specific task.
-  Requires administrator permissions.
+description: Get the files attached to the comments of a task. You must be
+  an administrator.
 tags:
   - Comments
 parameters:
   - in: path
     name: task_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the task
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Task attachment files successfully retrieved
+    description: The list of attachment files
     content:
       application/json:
         schema:
@@ -30,11 +31,11 @@ responses:
               name:
                 type: string
                 description: File name
-                example: "document.pdf"
+                example: document.pdf
               mimetype:
                 type: string
                 description: File MIME type
-                example: "application/pdf"
+                example: application/pdf
               size:
                 type: integer
                 description: File size in bytes
@@ -54,3 +55,5 @@ responses:
                 format: uuid
                 description: Reply identifier if attached to a reply
                 example: c46c80c6-e097-6887-c292-79675204e470
+  403:
+    description: You are not an administrator

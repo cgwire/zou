@@ -1,10 +1,12 @@
-Get shared playlist context
+Get the context of a shared playlist
 ---
-description: Return minimal project and playlist context needed to
-  render the shared playlist UI, with what the link allows. Optional
-  `password` query param when the link is protected.
+description: Get the minimal data that the share page needs. It gives what the
+  link allows, the project, its task types and its task statuses. You do not
+  need an account. The token of the link is the credential. If the link
+  has a password, give it in the password query parameter.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -20,7 +22,7 @@ parameters:
     description: Password when the link is protected
 responses:
   200:
-    description: Context payload for the share page
+    description: The context of the share page
     content:
       application/json:
         schema:
@@ -31,10 +33,10 @@ responses:
               properties:
                 can_comment:
                   type: boolean
-                  description: Whether guests may comment and annotate
+                  description: True if the guests can comment and annotate
             project:
               type: object
-              description: Production of the playlist
+              description: Project of the playlist
               properties:
                 id:
                   type: string
@@ -52,13 +54,13 @@ responses:
                   nullable: true
                 team:
                   type: array
-                  description: Always empty, the link lists no team
+                  description: Always empty. The link gives no team.
                   items:
                     type: string
                     format: uuid
             task_types:
               type: array
-              description: Task types of the production
+              description: Task types of the project
               items:
                 type: object
                 properties:
@@ -75,7 +77,7 @@ responses:
                     nullable: true
             task_statuses:
               type: array
-              description: Task statuses of the production
+              description: Task statuses of the project
               items:
                 type: object
                 properties:
@@ -91,8 +93,8 @@ responses:
                   is_client_allowed:
                     type: boolean
                     nullable: true
-                    description: Whether a guest may set this status, with
-                      the override of the production applied
+                    description: True if a guest can set this status. The
+                      setting of the project applies.
                   is_default:
                     type: boolean
                     nullable: true
@@ -100,5 +102,5 @@ responses:
                     type: boolean
                     nullable: true
   404:
-    description: Unknown, revoked or expired link, or a missing or wrong
-      password
+    description: The link is not valid, has expired, or the password is
+      wrong

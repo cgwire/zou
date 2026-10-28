@@ -1,7 +1,8 @@
 Invite reviewers to a shared playlist
 ---
-description: Send the share URL by email to a list of recipients
-  (raw emails and/or existing person ids).
+description: Send the URL of a share link by email. Give email addresses,
+  person identifiers, or both. You can add a message. You must be a manager
+  of the project.
 tags:
   - Playlists
 parameters:
@@ -11,11 +12,13 @@ parameters:
     schema:
       type: string
       format: uuid
+    description: Unique identifier of the playlist
   - in: path
     name: token
     required: true
     schema:
       type: string
+    description: Token of the share link
 requestBody:
   required: true
   content:
@@ -37,7 +40,7 @@ requestBody:
             type: string
 responses:
   200:
-    description: Invitations dispatched
+    description: The list of addresses that got the email
     content:
       application/json:
         schema:
@@ -48,4 +51,8 @@ responses:
               items:
                 type: string
   400:
-    description: One of the supplied emails is invalid
+    description: An email address is not valid
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The playlist or the share link does not exist

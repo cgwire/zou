@@ -1,6 +1,11 @@
-Get year time spents
+Get the total time spent of a person for a year
 ---
-description: Get aggregated time spents for given person and year.
+description: Get the total time spent of a person for a year. Give
+  project_id to get the total of one project. An administrator and the
+  person get all the entries. A manager gets the entries of their projects.
+  A supervisor gets the entries of their projects and departments. Other
+  users cannot read the time spents of other persons. You cannot read the
+  time spents of a bot.
 tags:
   - Persons
 parameters:
@@ -17,11 +22,18 @@ parameters:
     required: true
     schema:
       type: integer
-    description: Year to get aggregated time spents for
+    description: Year, for example 2026
     example: 2022
+  - in: query
+    name: project_id
+    required: false
+    description: Get only the time spent on this project
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Aggregated time spents for given person and year
+    description: The total time spent for the year
     content:
       application/json:
         schema:
@@ -37,4 +49,7 @@ responses:
               description: Year
               example: 2022
   400:
-    description: Wrong date format
+    description: The date is not valid
+  403:
+    description: You cannot read the time spents of this person, or the
+      person is a bot, or you cannot access this project

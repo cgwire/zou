@@ -1,11 +1,14 @@
-Get resource usage stats
+Get the resource usage
 ---
-description: Get CPU usage for each core, memory repartition and number of jobs in the job queue.
+description: Get the CPU usage of each core, the load average, the memory
+  usage and the number of running jobs. The number of jobs is 0 if the job
+  queue is disabled. You do not need a token for this route.
 tags:
   - Index
+security: []
 responses:
-  '200':
-    description: CPU, memory and jobs stats
+  200:
+    description: The CPU, memory and job statistics
     content:
       application/json:
         schema:
@@ -13,8 +16,6 @@ responses:
           properties:
             date:
               type: string
-              format: date-time
-              example: "2023-12-07T10:30:00.000Z"
             cpu:
               type: object
               properties:
@@ -22,37 +23,21 @@ responses:
                   type: array
                   items:
                     type: number
-                  example: [25.5, 30.2, 28.1]
                 loadavg:
                   type: object
-                  properties:
-                    "last 1 min":
-                      type: number
-                      example: 0.75
-                    "last 5 min":
-                      type: number
-                      example: 0.82
-                    "last 10 min":
-                      type: number
-                      example: 0.78
             memory:
               type: object
               properties:
                 total:
-                  type: integer
-                  example: 8589934592
+                  type: number
                 used:
-                  type: integer
-                  example: 4294967296
+                  type: number
                 available:
-                  type: integer
-                  example: 4294967296
+                  type: number
                 percent:
                   type: number
-                  example: 50.0
             jobs:
               type: object
               properties:
                 running_jobs:
                   type: integer
-                  example: 3

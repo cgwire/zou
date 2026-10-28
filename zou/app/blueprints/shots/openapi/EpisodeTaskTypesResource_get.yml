@@ -1,28 +1,35 @@
-Get episode task types
+Get the task types of an episode
 ---
 tags:
-- Shots
+  - Shots
 parameters:
   - in: path
     name: episode_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the episode
 responses:
-    200:
-        description: All task types related to given episode
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c250
-                  name:
-                    type: string
-                    example: Animation
+  200:
+    description: The list of task types
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Animation
+  403:
+    description: You do not have access to this project
+  404:
+    description: The episode does not exist
+description: Get the task types of the tasks of an episode.

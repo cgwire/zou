@@ -1,8 +1,7 @@
-Get preview source movie
+Get the source movie of a preview
 ---
-description: Download the movie as it was uploaded, without any
-  normalization. Answers a 404 when the source was not kept. Mainly
-  meant for the synchronisation between two instances.
+description: Get the movie as it was uploaded, before the normalization.
+  Synchronization tools use this route. You must have access to the task.
 tags:
   - Previews
 parameters:
@@ -12,13 +11,18 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Preview file unique identifier
+    description: Unique identifier of the preview file
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Source movie preview downloaded
+    description: The MP4 movie
     content:
       video/mp4:
         schema:
           type: string
           format: binary
+  403:
+    description: You do not have access to the task of this preview
+  404:
+    description: The preview does not exist, or the source movie was not
+      kept

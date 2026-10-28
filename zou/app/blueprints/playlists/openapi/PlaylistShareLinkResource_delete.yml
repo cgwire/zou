@@ -1,8 +1,7 @@
 Revoke a share link
 ---
-description: Deactivate the share link of given token. The token must belong
-  to the playlist named in the path. Requires the manager role on the
-  production.
+description: Disable a share link. The token must be a token of the playlist
+  of the path. You must be a manager of the project.
 tags:
   - Playlists
 parameters:
@@ -13,14 +12,16 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the playlist
   - in: path
     name: token
     required: true
     schema:
       type: string
+    description: Token of the share link
 responses:
   200:
-    description: Share link revoked
+    description: The revoked share link
     content:
       application/json:
         schema:
@@ -33,6 +34,7 @@ responses:
               type: boolean
               example: false
   403:
-    description: Not a manager of the production
+    description: You are not a manager of the project
   404:
-    description: Playlist or share link not found, or token of another playlist
+    description: The playlist or the share link does not exist, or the token
+      is for an other playlist

@@ -1,11 +1,14 @@
-Generate a test event
+Send a test event
 ---
-description: Generate a `main:test` event to test the event stream with the Python client or similar.
+description: Send a main:test event to the event stream. Use this route to
+  test an event listener, for example the Python client. You do not need a
+  token for this route.
 tags:
   - Index
+security: []
 responses:
-  '200':
-    description: Success flag
+  200:
+    description: The event is sent
     content:
       application/json:
         schema:
@@ -13,4 +16,3 @@ responses:
           properties:
             success:
               type: boolean
-              example: true

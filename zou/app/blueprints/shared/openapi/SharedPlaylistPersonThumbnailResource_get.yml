@@ -1,9 +1,12 @@
-Get shared person avatar
+Get the avatar of a person on a shared playlist
 ---
-description: Serve the avatar of a person the page of the share link
-  shows, as the author of a comment it lists or of a reply to one.
+description: Get the avatar of a person that the share page shows, as the
+  author of a comment or of a reply. You do not need an account. The token
+  of the link is the credential. This route does not read the password. For
+  a link with a password, the route returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -27,4 +30,5 @@ responses:
           type: string
           format: binary
   404:
-    description: Person not shown by this link, or without avatar
+    description: The link is not valid or has a password, the page does not
+      show this person, or the person has no avatar

@@ -1,15 +1,23 @@
-Delete scene
+Delete a scene
 ---
 tags:
-- Shots
-description: Delete a scene by id. Requires manager access or ownership.
+  - Shots
+description: Delete a scene. The creator of the scene can delete it if the
+  creator is in the project team. Other users must be managers of the
+  project.
 parameters:
   - in: path
     name: scene_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the scene
 responses:
-    204:
-        description: Scene deleted
+  204:
+    description: The scene is deleted
+  403:
+    description: You cannot delete this scene
+  404:
+    description: The scene does not exist

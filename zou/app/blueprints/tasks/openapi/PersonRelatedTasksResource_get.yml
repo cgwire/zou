@@ -1,11 +1,12 @@
-Get person tasks for type
+Get the tasks of a type on the entities of a person
 ---
 tags:
-- Tasks
-description: For all entities assigned to the person, return tasks for
-  the given task type. Admins get them from every open production, the
-  other roles from their own open productions, and clients and vendors
-  get none.
+  - Tasks
+description: Get the tasks of a task type on the entities where a person
+  has assigned tasks. An administrator gets the tasks of all the open
+  projects. Other users get the tasks of their open projects. Clients and
+  vendors get an empty list. A vendor can ask only for their own tasks.
+  You cannot read the tasks of a bot.
 parameters:
   - in: path
     name: person_id
@@ -14,6 +15,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the person
   - in: path
     name: task_type_id
     required: true
@@ -21,42 +23,46 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task type
 responses:
-    200:
-      description: All tasks for the given task type
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
+  200:
+    description: The list of tasks
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Asset Modeling
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
                   type: string
                   format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: Asset Modeling
-                task_type_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                task_status_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                entity_id:
-                  type: string
-                  format: uuid
-                  example: d24a6ea4-ce75-4665-a070-57453082c250
-                project_id:
-                  type: string
-                  format: uuid
-                  example: e24a6ea4-ce75-4665-a070-57453082c250
-                assignees:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                  example: ["f24a6ea4-ce75-4665-a070-57453082c250"]
+                example: [f24a6ea4-ce75-4665-a070-57453082c250]
+  403:
+    description: You cannot read the tasks of this person, or the person is
+      a bot

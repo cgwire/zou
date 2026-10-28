@@ -1,10 +1,10 @@
-Generate entity output file path
+Get the path of an output file
 ---
-description: Generate an output file path from file tree template
-  based on entity parameters. Revision can be computed automatically
-  if not provided.
+description: Get the folder path and the file name of an output file of an
+  entity. The route uses the file tree of the project to make the path. If
+  revision is 0, the route uses the next revision.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: entity_id
@@ -28,12 +28,12 @@ requestBody:
             type: string
             description: File name
             default: main
-            example: "main"
+            example: main
           mode:
             type: string
             description: File mode
             default: output
-            example: "output"
+            example: output
           output_type_id:
             type: string
             format: uuid
@@ -47,11 +47,11 @@ requestBody:
           extension:
             type: string
             description: File extension
-            example: ".mp4"
+            example: .mp4
           representation:
             type: string
             description: File representation
-            example: "mp4"
+            example: mp4
           revision:
             type: integer
             description: File revision number
@@ -60,10 +60,10 @@ requestBody:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   200:
-    description: Output file path generated successfully
+    description: The folder path and the file name
     content:
       application/json:
         schema:
@@ -72,10 +72,14 @@ responses:
             folder_path:
               type: string
               description: Generated folder path
-              example: "/project/asset/output"
+              example: /project/asset/output
             file_name:
               type: string
               description: Generated file name
-              example: "main_v001.mp4"
+              example: main_v001.mp4
   400:
-    description: Malformed file tree
+    description: The body is not valid, or the file tree is not valid
+  403:
+    description: You do not have access to this project
+  404:
+    description: The entity does not exist

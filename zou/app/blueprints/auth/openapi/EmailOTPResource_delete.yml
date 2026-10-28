@@ -1,30 +1,31 @@
-Disable email OTP
+Disable the email OTP
 ---
-description: Disable email OTP (One-Time Password) authentication.
-  It requires two-factor authentication verification.
+description: Disable the authentication with a one-time password (OTP) sent
+  by email. Give a second factor to confirm this operation.
 tags:
-    - Authentication
+  - Authentication
 requestBody:
   required: true
   content:
     application/json:
       schema:
         type: object
+        description: Give one of the second factors of the user.
         properties:
           totp:
             type: string
-            description: TOTP verification code
+            description: TOTP code from the authenticator app
           email_otp:
             type: string
-            description: Email OTP verification code
+            description: One-time password that the user got by email
           fido_authentication_response:
             type: object
-            description: FIDO authentication response
+            description: Response of the FIDO device to the challenge
           recovery_code:
             type: string
-            description: Recovery code for two-factor authentication
+            description: One recovery code of the user
 responses:
   200:
-    description: Email OTP disabled
+    description: The email OTP is disabled
   400:
-    description: Email OTP not enabled or verification failed
+    description: The email OTP is not enabled, or the second factor is wrong

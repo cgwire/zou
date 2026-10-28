@@ -1,8 +1,8 @@
-Get department members
+Get the members of a department
 ---
-description: Retrieve all persons belonging to a given department.
-  Non admin users get the minimal person payload, the same one the
-  person list route returns them. Clients get a 403.
+description: Get the persons of a department, sorted by name. An
+  administrator gets all the fields of each person. Other users get the
+  minimal fields. Clients cannot use this route.
 tags:
   - Departments
 parameters:
@@ -16,7 +16,7 @@ parameters:
     description: Unique identifier of the department
 responses:
   200:
-    description: Department members successfully retrieved
+    description: The list of persons
     content:
       application/json:
         schema:
@@ -32,11 +32,11 @@ responses:
               first_name:
                 type: string
                 description: Person first name
-                example: "John"
+                example: John
               last_name:
                 type: string
                 description: Person last name
-                example: "Doe"
+                example: Doe
               departments:
                 type: array
                 description: Departments the person belongs to
@@ -44,7 +44,9 @@ responses:
                   type: string
                   format: uuid
                   example: b35b7fb5-df86-5776-b181-68564193d360
+  400:
+    description: The identifier is not a valid UUID
   403:
-    description: Client
+    description: You are a client
   404:
-    description: Department not found
+    description: The department does not exist

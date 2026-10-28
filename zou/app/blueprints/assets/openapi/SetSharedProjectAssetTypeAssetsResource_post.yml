@@ -1,23 +1,26 @@
-Set asset type assets shared
+Share or unshare the assets of an asset type
 ---
-description: Share or unshare all assets for a specific project and asset type.
+description: Share or unshare all the assets of a project that have the
+  asset type of the path. You must be a manager of the project.
 tags:
   - Assets
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: asset_type_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset type
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: false
   content:
@@ -31,7 +34,7 @@ requestBody:
             example: true
 responses:
   200:
-    description: Asset type assets shared status successfully updated
+    description: The updated assets
     content:
       application/json:
         schema:
@@ -51,3 +54,7 @@ responses:
               format: uuid
               description: Asset type identifier
               example: c46c80c6-e097-6887-c292-79675204e470
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

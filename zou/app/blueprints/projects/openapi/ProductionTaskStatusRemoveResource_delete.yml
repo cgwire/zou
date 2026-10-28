@@ -1,6 +1,7 @@
-Remove task status from production
+Remove a task status from a project
 ---
-description: Remove a task status from a production.
+description: Remove a task status from the settings of a project. The task
+  status is not deleted. You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -22,4 +23,6 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: Task status removed from production
+    description: The task status is removed from the project
+  403:
+    description: You are not a manager of the project

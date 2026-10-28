@@ -1,8 +1,10 @@
-Import kitsu comments
+Import comments from an other Kitsu instance
 ---
-description: Import Kitsu comments. Send a list of Kitsu comment
-  entries in the JSON body. Returns created or updated comments
-  linked to tasks.
+description: 'Import comments from an other Kitsu instance. Synchronization tools
+  use this route to copy data from an other Kitsu instance. Send a JSON list of
+  rows, with their identifiers. A row that exists is updated. Else, it is created.
+  Only an administrator can import: for other users, the route skips all the rows
+  and returns an empty list.'
 tags:
   - Import
 requestBody:
@@ -27,7 +29,7 @@ requestBody:
             text:
               type: string
               description: Comment text
-              example: "This is a comment"
+              example: This is a comment
             person_id:
               type: string
               format: uuid
@@ -36,11 +38,11 @@ requestBody:
       example:
         - id: a24a6ea4-ce75-4665-a070-57453082c250
           object_id: b24a6ea4-ce75-4665-a070-57453082c250
-          text: "This is a comment"
+          text: This is a comment
           person_id: c24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Comments imported successfully
+    description: The created and updated rows
     content:
       application/json:
         schema:
@@ -56,16 +58,26 @@ responses:
               text:
                 type: string
                 description: Comment text
-                example: "This is a comment"
+                example: This is a comment
               created_at:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2024-01-15T10:30:00Z"
+                example: '2024-01-15T10:30:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Update timestamp
-                example: "2024-01-15T11:00:00Z"
+                example: '2024-01-15T11:00:00Z'
   400:
-    description: Invalid request body or missing required fields
+    description: The body is not a list, or a row breaks a database
+      constraint
+parameters:
+  - in: query
+    name: silent
+    required: false
+    description: Do not send an event for each imported row. Use it for
+      large imports.
+    schema:
+      type: boolean
+      default: false

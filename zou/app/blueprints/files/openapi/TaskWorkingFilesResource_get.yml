@@ -1,9 +1,8 @@
-Get task working files
+Get the working files of a task
 ---
-description: Retrieve all working file revisions for a given task.
-  Returns complete list of working files with their revisions.
+description: Get the working files of a task, with all their revisions.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: task_id
@@ -15,7 +14,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: All working file revisions for given task
+    description: The list of working files
     content:
       application/json:
         schema:
@@ -31,7 +30,7 @@ responses:
               name:
                 type: string
                 description: Working file name
-                example: "main"
+                example: main
               revision:
                 type: integer
                 description: Working file revision
@@ -40,9 +39,13 @@ responses:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               task_id:
                 type: string
                 format: uuid
                 description: Task identifier
                 example: c46c80c6-e097-6887-c292-79675204e470
+  403:
+    description: You do not have access to this task
+  404:
+    description: The task does not exist

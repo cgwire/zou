@@ -1,6 +1,7 @@
-Create budget
+Create a budget
 ---
-description: Create a budget for given production.
+description: Create a budget in a project. You must be a manager of the
+  project.
 tags:
   - Projects
 parameters:
@@ -24,15 +25,15 @@ requestBody:
           name:
             type: string
             description: Budget name
-            example: "New Budget"
+            example: New Budget
           currency:
             type: string
             description: Budget currency code
-            default: "USD"
-            example: "USD"
+            default: USD
+            example: USD
 responses:
   201:
-    description: Budget created
+    description: The new budget
     content:
       application/json:
         schema:
@@ -46,10 +47,12 @@ responses:
             name:
               type: string
               description: Budget name
-              example: "New Budget"
+              example: New Budget
             currency:
               type: string
               description: Budget currency code
-              example: "USD"
+              example: USD
   400:
-    description: Invalid parameters
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

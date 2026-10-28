@@ -1,6 +1,9 @@
-Get episodes schedule items
+Get the schedule items of the episodes for a task type
 ---
-description: Retrieve episodes schedule items for given task type.
+description: Get the schedule items of the episodes of a project, for a task
+  type. A schedule item gives the start date and the end date of a part of
+  the production in the schedule. Give episode_id to get the items of one
+  episode. Vendors cannot use this route.
 tags:
   - Projects
 parameters:
@@ -29,10 +32,14 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: All episodes schedule items for given task type
+    description: The list of schedule items
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  400:
+    description: An identifier is not a valid UUID
+  403:
+    description: You do not have access to this project, or you are a vendor

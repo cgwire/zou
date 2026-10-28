@@ -1,19 +1,20 @@
-Get asset task types
+Get the task types of an asset
 ---
-description: Retrieve all task types that are used for tasks related to a specific asset.
+description: Get the task types of the tasks of an asset.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of asset task types successfully retrieved
+    description: The list of task types
     content:
       application/json:
         schema:
@@ -29,16 +30,20 @@ responses:
               name:
                 type: string
                 description: Task type name
-                example: "Modeling"
+                example: Modeling
               short_name:
                 type: string
                 description: Task type short name
-                example: "MOD"
+                example: MOD
               color:
                 type: string
                 description: Task type color code
-                example: "#FF5733"
+                example: '#FF5733'
               for_entity:
                 type: string
                 description: Entity type this task type is for
-                example: "Asset"
+                example: Asset
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset does not exist

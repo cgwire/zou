@@ -1,19 +1,20 @@
 Move concepts to a concept folder
 ---
-description: Move concepts of a project to one of its concept folders, or
-  back to the root of the project when no folder is named. Reserved to the
-  managers and the supervisors of the project. Identifiers that are not
-  concepts of the project are skipped.
+description: Move concepts of a project to a concept folder of the project.
+  If you do not give concept_folder_id, the concepts go back to the root of
+  the project. The identifiers that are not concepts of the project are
+  skipped. You must be a manager or a supervisor of the project.
 tags:
   - Concepts
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: true
   content:
@@ -29,7 +30,8 @@ requestBody:
               type: string
               format: uuid
             description: Identifiers of the concepts to move
-            example: ["b35b7fb5-df86-5776-b181-68564193d360", "c46c80c6-e097-6887-c292-79675204e470"]
+            example: [b35b7fb5-df86-5776-b181-68564193d360,
+                  c46c80c6-e097-6887-c292-79675204e470]
           concept_folder_id:
             type: string
             format: uuid
@@ -38,7 +40,7 @@ requestBody:
             example: e68e02e8-a219-8009-e514-91897426a691
 responses:
   200:
-    description: Identifiers of the concepts that were moved
+    description: The identifiers of the moved concepts
     content:
       application/json:
         schema:
@@ -46,4 +48,9 @@ responses:
           items:
             type: string
             format: uuid
-          example: ["b35b7fb5-df86-5776-b181-68564193d360", "c46c80c6-e097-6887-c292-79675204e470"]
+          example: [b35b7fb5-df86-5776-b181-68564193d360,
+                c46c80c6-e097-6887-c292-79675204e470]
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager or a supervisor of the project

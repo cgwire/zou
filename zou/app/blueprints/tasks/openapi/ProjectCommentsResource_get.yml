@@ -1,52 +1,59 @@
-Get project comments
+Get the comments of a project
 ---
 tags:
-- Tasks
-description: Retrieve comments for tasks related to a project. Useful
-  for sync.
+  - Tasks
+description: Get the comments of the tasks of a project, page by page.
+  Synchronization tools use this route. Clients and vendors cannot use this
+  route.
 parameters:
   - in: path
     name: project_id
     required: true
     schema:
       type: string
-    format: uuid
+      format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
   - in: query
     name: limit
-    type: integer
-    default: 100
     example: 100
+    schema:
+      type: integer
+      default: 100
+    description: Number of rows in a page
 responses:
-    200:
-        description: All comments to tasks related to given project
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c250
-                  object_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c250
-                  person_id:
-                    type: string
-                    format: uuid
-                    example: c24a6ea4-ce75-4665-a070-57453082c250
-                  text:
-                    type: string
-                    example: This task looks good
-                  created_at:
-                    type: string
-                    format: date-time
-                    example: "2024-01-15T10:30:00Z"
-                  updated_at:
-                    type: string
-                    format: date-time
-                    example: "2024-01-15T11:00:00Z"
+  200:
+    description: The list of comments
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: This task looks good
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+  403:
+    description: You do not have access to this project, or you are a client
+      or a vendor

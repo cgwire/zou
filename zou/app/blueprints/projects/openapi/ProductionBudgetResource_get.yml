@@ -1,6 +1,7 @@
-Get budget
+Get a budget
 ---
-description: Retrieve a budget for given production.
+description: Get a budget of a project. You must be a manager of the
+  project.
 tags:
   - Projects
 parameters:
@@ -18,12 +19,18 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Budget unique identifier
+    description: Unique identifier of the budget
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Budget retrieved
+    description: The budget
     content:
       application/json:
         schema:
           type: object
+  400:
+    description: An identifier is not a valid UUID
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The budget does not exist in this project

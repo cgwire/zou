@@ -1,13 +1,12 @@
-Login user
+Log in
 ---
-description: Log in user by creating and registering auth tokens.
-  Login is based on email and password. If no user matches given email
-  It fallbacks to a desktop ID. It is useful for desktop tools that
-  don't know user email.
-  It is also possible to login with TOTP, Email OTP, FIDO and recovery
-  code.
+description: Log in a user and get authentication tokens. The email field
+  accepts the email address or the desktop login of the user. Desktop tools
+  that do not know the email address use the desktop login. If the user has
+  two-factor authentication, give one second factor.
 tags:
-    - Authentication
+  - Authentication
+security: []
 requestBody:
   required: true
   content:
@@ -17,38 +16,41 @@ requestBody:
         properties:
           email:
             type: string
-            format: email
+            minLength: 1
             example: admin@example.com
-            description: User email address
+            description: Email address or desktop login of the user
           password:
             type: string
             format: password
             example: "********"
-            description: User password
-            required: true
+            description: Password of the user
           totp:
             type: string
-            example: 123456
-            description: TOTP verification code for two-factor authentication
-            required: false
+            example: "123456"
+            description: TOTP code from the authenticator app
           email_otp:
             type: string
-            example: 123456
-            description: Email OTP verification code for two-factor authentication
+            example: "123456"
+            description: One-time password that the user got by email
           fido_authentication_response:
             type: object
-            description: FIDO authentication response for WebAuth
+            description: Response of the FIDO device to the challenge
           recovery_code:
             type: string
             example: ABCD-EFGH-IJKL-MNOP
-            description: Recovery code for two-factor authentication
+            description: One recovery code of the user
         required:
           - email
-          - password
 responses:
   200:
-    description: Login successful
+    description: The login is successful
   400:
-    description: Login failed
+    description: The login failed. The body tells the cause with the flags
+      default_password, missing_OTP, wrong_OTP or
+      too_many_failed_login_attemps.
   401:
-    description: User is unactive, flagged by "unactive" in the body
+    description: The user is inactive. The body has the flag unactive.
+  409:
+    description: The authentication strategy is not correctly configured
+  500:
+    description: The database is not available, or a server error occurred

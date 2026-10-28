@@ -1,6 +1,8 @@
-Get production team
+Get the team of a project
 ---
-description: Return the people listed in a production team.
+description: Get the persons of the team of a project, with their role in
+  the project. A manager gets all the fields of each person. A client gets
+  the fields for clients. Other users get the minimal fields.
 tags:
   - Projects
 parameters:
@@ -14,7 +16,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: People listed in a production team
+    description: The list of team members
     content:
       application/json:
         schema:
@@ -30,18 +32,20 @@ responses:
               first_name:
                 type: string
                 description: Person first name
-                example: "John"
+                example: John
               last_name:
                 type: string
                 description: Person last name
-                example: "Doe"
+                example: Doe
               email:
                 type: string
                 description: Person email address
-                example: "john.doe@example.com"
+                example: john.doe@example.com
               project_role:
                 type: string
                 nullable: true
-                description: Person role on this project only. Null
-                  means the person's global role applies.
-                example: "supervisor"
+                description: Person role on this project only. Null means
+                  the person's global role applies.
+                example: supervisor
+  403:
+    description: You do not have access to this project

@@ -1,10 +1,10 @@
-Create new instance output file
+Create an instance output file
 ---
-description: Create a new output file linked to an asset instance
-  for a specific shot. Output files track the source working file
-  and require output type and task type for categorization.
+description: Create an output file for an asset instance. An asset instance
+  is a copy of an asset in a shot or a scene. The temporal entity is this
+  shot or this scene. If revision is 0, the route uses the next revision.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: asset_instance_id
@@ -36,12 +36,12 @@ requestBody:
             type: string
             description: Output file name
             default: main
-            example: "main"
+            example: main
           mode:
             type: string
             description: Output file mode
             default: output
-            example: "output"
+            example: output
           output_type_id:
             type: string
             format: uuid
@@ -67,23 +67,18 @@ requestBody:
             format: uuid
             description: File status identifier
             example: a24a6ea4-ce75-4665-a070-57453082c250
-          is_sequence:
-            type: boolean
-            description: Whether file is a sequence
-            default: false
-            example: false
           comment:
             type: string
             description: Output file comment
-            example: "Final render"
+            example: Final render
           extension:
             type: string
             description: File extension
-            example: ".mp4"
+            example: .mp4
           representation:
             type: string
             description: File representation
-            example: "mp4"
+            example: mp4
           revision:
             type: integer
             description: File revision number
@@ -97,10 +92,10 @@ requestBody:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   201:
-    description: New output file created successfully
+    description: The new output file
     content:
       application/json:
         schema:
@@ -114,11 +109,11 @@ responses:
             name:
               type: string
               description: Output file name
-              example: "main"
+              example: main
             path:
               type: string
               description: Output file path
-              example: "/project/asset/instance/output/main_v001.mp4"
+              example: /project/asset/instance/output/main_v001.mp4
             revision:
               type: integer
               description: Output file revision
@@ -137,9 +132,16 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:30:00Z"
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The body is not valid, the output type or the person does
+      not exist, or the output file already exists
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset instance does not exist

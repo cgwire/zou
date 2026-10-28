@@ -1,9 +1,8 @@
-Delete preview background file
+Delete a preview background file
 ---
 tags:
   - Crud
-description: Delete a preview background file by its ID. Returns
-  empty response on success.
+description: Delete a preview background file. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,8 +11,13 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the preview background file
 responses:
-    204:
-      description: Preview background file deleted successfully
-    400:
-      description: Integrity error or cannot delete
+  204:
+    description: The preview background file is deleted
+  400:
+    description: Other data uses this row
+  403:
+    description: You cannot delete this preview background file
+  404:
+    description: The preview background file does not exist

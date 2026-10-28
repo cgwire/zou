@@ -1,9 +1,13 @@
-Get shared movie tile strip
+Get the tile sheet of a shared movie
 ---
-description: Serve the filmstrip/tile image used for timeline hover
-  previews, when the share token is valid.
+description: Get the tile sheet of a movie of the shared playlist. The
+  player shows it when the mouse is on the timeline. The preview must be in
+  the playlist. You do not need an account. The token of the link is the
+  credential. This route does not read the password. For a link with a
+  password, the route returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -27,9 +31,10 @@ responses:
           type: string
           format: binary
   403:
-    description: Preview file is not part of this shared playlist
+    description: The preview is not in the shared playlist
   404:
-    description: Tile file missing
+    description: The link is not valid, has expired, or has a password, or
+      the file does not exist
     content:
       application/json:
         schema:

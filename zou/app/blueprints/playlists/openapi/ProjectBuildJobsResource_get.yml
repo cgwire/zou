@@ -1,7 +1,7 @@
-Get project build jobs
+Get the build jobs of a project
 ---
-description: Retrieve all build jobs related to given project. It's
-  mainly used for synchronisation purpose.
+description: Get the build jobs of the playlists of a project.
+  Synchronization tools use this route. You must be an administrator.
 tags:
   - Playlists
 parameters:
@@ -15,7 +15,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: All build jobs related to given project
+    description: The list of build jobs
     content:
       application/json:
         schema:
@@ -31,9 +31,11 @@ responses:
               status:
                 type: string
                 description: Build job status
-                example: "succeeded"
+                example: succeeded
               created_at:
                 type: string
                 format: date-time
                 description: Build job creation timestamp
-                example: "2022-07-12T10:30:00Z"
+                example: '2022-07-12T10:30:00Z'
+  403:
+    description: You are not an administrator

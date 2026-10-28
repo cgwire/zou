@@ -1,9 +1,9 @@
-Store working file
+Upload a working file
 ---
-description: Store a working file in the file storage system. Uploads
-  the file content and associates it with the working file record.
+description: Upload the file of a working file to the storage. Send the file
+  in a multipart form.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: working_file_id
@@ -26,10 +26,10 @@ requestBody:
             type: string
             format: binary
             description: Working file to upload
-            example: "file content"
+            example: file content
 responses:
   201:
-    description: Working file stored successfully
+    description: The working file
     content:
       application/json:
         schema:
@@ -43,11 +43,11 @@ responses:
             name:
               type: string
               description: Working file name
-              example: "main"
+              example: main
             path:
               type: string
               description: Working file path
-              example: "/project/asset/working/main_v001.blend"
+              example: /project/asset/working/main_v001.blend
             revision:
               type: integer
               description: Working file revision
@@ -61,9 +61,15 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:30:00Z"
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The file is missing
+  403:
+    description: You do not have access to this task
+  404:
+    description: The working file does not exist

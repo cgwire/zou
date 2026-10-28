@@ -1,9 +1,8 @@
-Clear avatar
+Delete my avatar
 ---
-description: Set the has_avatar flag to false for the current user and
-  remove the avatar file from storage. This action cannot be undone.
+description: Delete your avatar file and set has_avatar to false.
 tags:
-- User
+  - User
 responses:
-    204:
-      description: Avatar file deleted successfully
+  204:
+    description: The avatar is deleted

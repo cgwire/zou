@@ -1,14 +1,11 @@
-Create new entity output file
+Create an output file
 ---
-description: Create a new output file linked to a specific entity.
-  Output files are created when artists are satisfied with their
-  working files. They track the source working file and require
-  output type and task type for categorization. An output type is
-  required for better categorization (textures, caches, ...).
-  A task type can be set too to give the department related to the
-  output file. The revision is automatically set.
+description: Create an output file for an entity. An artist makes an output
+  file from a working file. Give the output type, for example textures or
+  caches. Give the task type to give the department of the file. If revision
+  is 0, the route uses the next revision.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: entity_id
@@ -31,12 +28,12 @@ requestBody:
           name:
             type: string
             description: Output file name
-            example: "main"
+            example: main
           mode:
             type: string
             description: Output file mode
             default: output
-            example: "output"
+            example: output
           output_type_id:
             type: string
             format: uuid
@@ -65,15 +62,15 @@ requestBody:
           comment:
             type: string
             description: Output file comment
-            example: "Final render"
+            example: Final render
           extension:
             type: string
             description: File extension
-            example: ".mp4"
+            example: .mp4
           representation:
             type: string
             description: File representation
-            example: "mp4"
+            example: mp4
           revision:
             type: integer
             description: File revision number
@@ -87,10 +84,10 @@ requestBody:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   201:
-    description: New output file created successfully
+    description: The new output file
     content:
       application/json:
         schema:
@@ -104,11 +101,11 @@ responses:
             name:
               type: string
               description: Output file name
-              example: "main"
+              example: main
             path:
               type: string
               description: Output file path
-              example: "/project/asset/output/main_v001.mp4"
+              example: /project/asset/output/main_v001.mp4
             revision:
               type: integer
               description: Output file revision
@@ -122,9 +119,16 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:30:00Z"
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The body is not valid, the output type or the person does
+      not exist, or the output file already exists
+  403:
+    description: You do not have access to this project
+  404:
+    description: The entity does not exist

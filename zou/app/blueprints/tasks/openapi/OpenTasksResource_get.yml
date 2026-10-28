@@ -1,9 +1,12 @@
-Get open tasks
+Get the open tasks
 ---
 tags:
-- Tasks
-description: Return tasks for open projects with optional filters and
-  pagination. Includes statistics. Clients and vendors get a 403.
+  - Tasks
+description: Get the open tasks that match the filters, page by page, with
+  statistics. The tasks are the tasks of the open projects of your teams.
+  An administrator gets the tasks of all the open projects. The route
+  skips the concept tasks if you do not give task_type_id. Clients and
+  vendors cannot use this route.
 parameters:
   - in: query
     name: project_id
@@ -12,7 +15,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter tasks on given project ID
+    description: Get only the tasks of this project
   - in: query
     name: task_status_id
     required: false
@@ -20,7 +23,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter tasks on given task status ID
+    description: Get only the tasks with this task status
   - in: query
     name: task_type_id
     required: false
@@ -28,7 +31,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter tasks on given task type ID
+    description: Get only the tasks of this task type
   - in: query
     name: person_id
     required: false
@@ -36,30 +39,31 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter tasks on given person ID
+    description: Get only the tasks of these assignees. Give a
+      comma-separated list, or unassigned for the tasks without assignee.
   - in: query
     name: start_date
     required: false
     schema:
       type: string
       format: date
-    example: "2022-07-12"
-    description: Filter tasks posterior to given start date
+    example: '2022-07-12'
+    description: Get only the tasks that start on this date or after
   - in: query
     name: due_date
     required: false
     schema:
       type: string
       format: date
-    example: "2022-07-12"
-    description: Filter tasks anterior to given due date
+    example: '2022-07-12'
+    description: Get only the tasks that end on this date or before
   - in: query
     name: priority
     required: false
     schema:
       type: integer
     example: 3
-    description: Filter tasks on given priority
+    description: Get only the tasks with this priority
   - in: query
     name: page
     required: false
@@ -67,7 +71,7 @@ parameters:
       type: integer
       default: 1
     example: 1
-    description: Page number
+    description: Page to get
   - in: query
     name: limit
     required: false
@@ -75,47 +79,68 @@ parameters:
       type: integer
       default: 100
     example: 100
-    description: Number of tasks per page
+    description: Number of tasks in a page. The default value is 100.
 
+  - in: query
+    name: studio_id
+    required: false
+    description: Get only the tasks of the assignees of this studio
+    schema:
+      type: string
+      format: uuid
+  - in: query
+    name: department_id
+    required: false
+    description: Get only the tasks of the assignees of this department
+    schema:
+      type: string
+      format: uuid
+  - in: query
+    name: group_by
+    required: false
+    description: Group the statistics on this field
+    schema:
+      type: string
 responses:
-    200:
-      description: List of tasks with pagination and statistics
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              data:
-                type: array
-                items:
-                  type: object
-                description: List of tasks
-              stats:
+  200:
+    description: A page of tasks with the statistics
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
                 type: object
-                properties:
-                  total:
-                    type: integer
-                    description: Total number of tasks
-                  total_duration:
-                    type: integer
-                    description: Total duration of tasks in minutes
-                  total_estimation:
-                    type: integer
-                    description: Total estimation of tasks in minutes
-                  status:
-                    type: object
-                    description: Number of tasks per status
-              limit:
-                type: integer
-                description: Number of tasks per page
-              page:
-                type: integer
-                description: Page number
-              is_more:
-                type: boolean
-                description: True if there are more tasks to retrieve
-    400:
-      description: Bad request
-    403:
-      description: Client or vendor on the given project, or globally when
-        no project is given; or not in the team of the given project
+              description: List of tasks
+            stats:
+              type: object
+              properties:
+                total:
+                  type: integer
+                  description: Total number of tasks
+                total_duration:
+                  type: integer
+                  description: Total duration of tasks in minutes
+                total_estimation:
+                  type: integer
+                  description: Total estimation of tasks in minutes
+                status:
+                  type: object
+                  description: Number of tasks per status
+            limit:
+              type: integer
+              description: Number of tasks per page
+            page:
+              type: integer
+              description: Page number
+            is_more:
+              type: boolean
+              description: True if there are more tasks to retrieve
+  400:
+    description: A filter is not valid
+  403:
+    description: You are a client or a vendor on the given project, or
+      globally when you give no project; or you are not in the team of the
+      given project

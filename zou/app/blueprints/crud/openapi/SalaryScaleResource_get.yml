@@ -1,9 +1,8 @@
-Get salary scale
+Get a salary scale
 ---
 tags:
   - Crud
-description: Retrieve a salary scale by its ID and return it as
-  a JSON object. Supports including relations.
+description: Get a salary scale. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,46 +11,51 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the salary scale
   - in: query
     name: relations
     required: false
     schema:
       type: boolean
-    default: true
+      default: true
     example: true
-    description: Whether to include relations
+    description: Add the related data. The default value is true.
 responses:
-    200:
-      description: Salary scale retrieved successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              department_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              position:
-                type: string
-                example: artist
-              seniority:
-                type: string
-                example: junior
-              rate:
-                type: number
-                example: 50.0
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid ID format or query error
+  200:
+    description: The salary scale
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            department_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            position:
+              type: string
+              example: artist
+            seniority:
+              type: string
+              example: junior
+            rate:
+              type: number
+              example: 50.0
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The identifier is not a valid UUID
+  403:
+    description: You cannot read this salary scale
+  404:
+    description: The salary scale does not exist

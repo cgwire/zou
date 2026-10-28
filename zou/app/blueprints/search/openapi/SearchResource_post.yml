@@ -1,11 +1,14 @@
 Search entities
 ---
-description: Search across indexes for persons, assets and shots.
-  Use optional filters to limit results to a project and specific
-  indexes. Results are paginated with limit and offset. A client always
-  gets an empty persons list.
+description: Search the persons, the assets and the shots by name. The query
+  must have 3 characters or more. Else, the response is an empty object. The
+  search uses the open projects that you can access. Give project_id to
+  search one project only. If you cannot access this project, the asset and
+  shot lists are empty. A client does not get persons. A user who is not an
+  administrator gets the minimal fields of each person. A vendor gets only
+  the entities of their tasks, without the hidden metadata columns.
 tags:
-- Search
+  - Search
 requestBody:
   required: true
   content:
@@ -17,34 +20,41 @@ requestBody:
         properties:
           query:
             type: string
-            description: Search query string (minimum 3 characters)
-            example: "kitsu"
+            description: Text to search, 3 characters or more
+            example: chair
           project_id:
             type: string
             format: uuid
-            description: Filter search results by project ID
+            description: Search only this project
             example: a24a6ea4-ce75-4665-a070-57453082c250
           limit:
             type: integer
+            minimum: 1
             default: 3
-            description: Maximum number of results per index
-            example: 3
+            description: Maximum number of results for each index
           offset:
             type: integer
+            minimum: 0
             default: 0
-            description: Number of results to skip
-            example: 0
+            description: Number of results to skip in each index
           index_names:
             type: array
             items:
               type: string
-              enum: ["assets", "shots", "persons"]
-            default: ["assets", "shots", "persons"]
-            description: List of index names to search in
-            example: ["assets"]
+              enum:
+                - assets
+                - shots
+                - persons
+            default:
+              - assets
+              - shots
+              - persons
+            description: Indexes to search
+            example:
+              - assets
 responses:
   200:
-    description: List of entities that contain the query
+    description: The results of each index that you asked for
     content:
       application/json:
         schema:
@@ -52,29 +62,28 @@ responses:
           properties:
             persons:
               type: array
-              description: List of matching persons
-              example: [{
-                  "id": "a24a6ea4-ce75-4665-a070-57453082c250",
-                  "name": "John Doe",
-                  ...
-                }]
+              items:
+                type: object
+              description: Persons that match the query
+              example:
+                - id: a24a6ea4-ce75-4665-a070-57453082c250
+                  first_name: John
+                  last_name: Doe
             assets:
               type: array
-              description: List of matching assets
-              example: [{
-                  "id": "a24a6ea4-ce75-4665-a070-57453082c250",
-                  "name": "Chair prop CHR_001",
-                  ...
-                }]
-              description: List of matching assets
-              example: []
+              items:
+                type: object
+              description: Assets that match the query
+              example:
+                - id: b35b7fb5-df86-5776-b181-68564193d360
+                  name: Chair
             shots:
               type: array
-              description: List of matching shots
-              example: [{
-                  "id": "a24a6ea4-ce75-4665-a070-57453082c250",
-                  "name": "Shot 001",
-                  ...
-                }]
+              items:
+                type: object
+              description: Shots that match the query
+              example:
+                - id: c46c80c6-e097-6887-c292-79675204e470
+                  name: SH010
   400:
-    description: Bad request
+    description: The body is not valid

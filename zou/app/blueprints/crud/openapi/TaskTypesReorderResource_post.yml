@@ -1,10 +1,10 @@
-Reorder task types
+Reorder the task types
 ---
 tags:
   - Crud
-description: Set the global priority of task types from the given
-  ordered id list in a single request, replacing one update request
-  per task type.
+description: Set the priority of all the task types in one request. The
+  order of the list gives the priority, from 1. The identifiers that are not
+  task types are skipped. You must be an administrator.
 requestBody:
   required: true
   content:
@@ -19,6 +19,11 @@ requestBody:
             items:
               type: string
               format: uuid
+            description: Task types in the new order
 responses:
-    200:
-      description: Updated task types
+  200:
+    description: The updated task types
+  400:
+    description: The body does not have a task_type_ids list
+  403:
+    description: You are not an administrator

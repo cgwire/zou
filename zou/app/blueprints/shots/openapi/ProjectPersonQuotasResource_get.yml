@@ -1,53 +1,71 @@
-Get project person quotas
+Get the quotas of a person in a project
 ---
 tags:
-- Shots
-description: Get quotas statistics for a person in a project. Supports
-  weighted and raw modes with optional feedback filtering.
+  - Shots
+description: Get the quota statistics of a person in a project. A quota
+  counts the shots that the person ended. A manager or a supervisor of the
+  project can read the quotas of all the persons. Other users can read their
+  own quotas only. Clients cannot use this route.
 parameters:
   - in: path
     name: project_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the project
   - in: path
     name: person_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the person
   - in: query
     name: count_mode
-    required: True
-    type: string
-    enum: [weighted, weigtheddone, feedback, done]
+    required: false
     example: weighted
+    schema:
+      type: string
+      enum: [weighted, weigtheddone, feedback, done]
+      default: weighted
+    description: 'How to count the shots: weighted, weighteddone, feedback or
+      done. The default value is weighted. The weighted modes give each shot the
+      part of its work time that is in the period. The other modes count each
+      shot on its end date. The feedback modes end a shot at its first feedback.
+      The done modes end a shot when it is done.'
   - in: query
     name: studio_id
-    required: False
-    type: string
-    format: uuid
+    required: false
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Get only the persons of this studio
 responses:
-    200:
-        description: Quotas statistics for shots
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties:
-                type: object
-                properties:
-                  count:
-                    type: number
-                    description: >-
-                      Shots counted. In weighted modes a shot is split over
-                      the days it was worked on, so counts are fractions
-                      rounded to 2 decimals.
-                    example: 15
-                  frames:
-                    type: integer
-                    example: 360
-    400:
-        description: Invalid count_mode or parameter
+  200:
+    description: The quota statistics
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: number
+                description: >-
+                  Shots counted. In weighted modes a shot is split over
+                  the days it was worked on, so counts are fractions
+                  rounded to 2 decimals.
+                example: 15
+              frames:
+                type: integer
+                example: 360
+  400:
+    description: count_mode is not valid
+  403:
+    description: You cannot read the quotas of this person, or you are a
+      client

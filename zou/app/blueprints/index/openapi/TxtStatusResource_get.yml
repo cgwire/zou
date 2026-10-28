@@ -1,20 +1,16 @@
-Get status of the API services as text
+Get the status of the services as text
 ---
-description: Get status of the database, key value store, event stream, job queue, the indexer as a text.
+description: Get the status of the services of the API as plain text. Each
+  line gives one service and the value up or down. You do not need a token
+  for this route.
 tags:
   - Index
+security: []
 responses:
-  '200':
-    description: API name, version and status as txt
+  200:
+    description: The status as text
     content:
       text/plain:
         schema:
           type: string
-          example: |
-            name: Zou
-            version: 0.20.0
-            database-up: up
-            event-stream-up: up
-            key-value-store-up: up
-            job-queue-up: up
-            indexer-up: up
+          example: "name: Zou\nversion: 1.0.0\ndatabase-up: up\n"

@@ -1,6 +1,7 @@
-Remove person from department
+Remove a person from a department
 ---
-description: Remove a user from given department.
+description: Remove a person from a department. You must be an
+  administrator.
 tags:
   - Persons
 parameters:
@@ -22,4 +23,8 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: User removed from given department
+    description: The person is removed from the department
+  400:
+    description: The department does not exist
+  403:
+    description: You are not an administrator

@@ -1,15 +1,16 @@
-SAML SSO login
+Receive the SAML SSO response
 ---
-description: Handle SAML SSO login response. Processes authentication
-  response from SAML identity provider and creates a new user if they
-  don't exist. With SAML_SUBJECT_ATTRIBUTE set, the person bound to the
-  assertion issuer and subject is logged in, the email only finds the
-  account on first login.
+description: Receive the authentication response of the SAML identity
+  provider. If SAML_SUBJECT_ATTRIBUTE is set, this route logs in the person
+  linked to the issuer and the subject of the assertion. The email finds the
+  account at the first login only. If no person has this email, a new person
+  is created.
 tags:
-    - Authentication
+  - Authentication
+security: []
 responses:
   302:
-    description: Login successful, redirect to home page
+    description: The login is successful. Redirect to the home page.
   400:
-    description: SAML not enabled, wrong parameter or account bound to
-      another identity
+    description: SAML is not enabled, a parameter is wrong, or the account
+      is linked to a different identity

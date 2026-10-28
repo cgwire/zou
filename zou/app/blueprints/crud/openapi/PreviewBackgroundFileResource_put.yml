@@ -1,10 +1,10 @@
-Update preview background file
+Update a preview background file
 ---
 tags:
   - Crud
-description: Update a preview background file with data provided
-  in the request body. JSON format is expected. Names must be
-  unique. If is_default is set to true, resets other defaults.
+description: Update the fields of a preview background file. Send only the
+  fields to change. You cannot change id, created_at, updated_at. Dates use
+  the ISO 8601 format. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -13,6 +13,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the preview background file
 requestBody:
   required: true
   content:
@@ -27,30 +28,35 @@ requestBody:
             type: boolean
             example: true
 responses:
-    200:
-      description: Preview background file updated successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              name:
-                type: string
-                example: updated_background_file_name
-              is_default:
-                type: boolean
-                example: true
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T11:00:00Z"
-    400:
-      description: Invalid data format or name already exists
+  200:
+    description: The updated preview background file
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: updated_background_file_name
+            is_default:
+              type: boolean
+              example: true
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T11:00:00Z'
+  400:
+    description: The body is not valid, a date is not valid, or a field
+      breaks a database constraint
+  403:
+    description: You cannot update this preview background file
+  404:
+    description: The preview background file does not exist

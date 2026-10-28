@@ -1,6 +1,7 @@
-Get production status automations
+Get the status automations of a project
 ---
-description: Get status automations linked to a production.
+description: Get the status automations of a project. You must be a manager
+  of the project.
 tags:
   - Projects
 parameters:
@@ -14,10 +15,12 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Status automations linked to production
+    description: The list of status automations
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  403:
+    description: You are not a manager of the project

@@ -1,6 +1,8 @@
-Create the preview account of a production
+Create the preview account of a project
 ---
-description: Create the preview account of the production, or reset its password and close its access window. The clear password is returned only here. Fails with 400 when the authentication strategy is not local. Restricted to managers of the production.
+description: Create the preview account of a project. If the account exists,
+  the route sets a new password and closes the access. Only this response
+  gives the password. You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -14,7 +16,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   201:
-    description: Preview account with its clear password
+    description: The preview account with its password
     content:
       application/json:
         schema:
@@ -38,4 +40,7 @@ responses:
               type: string
               example: 3kT9dQvE1xZb7mLw
   400:
-    description: Preview accounts are not available with this authentication strategy
+    description: The authentication strategy does not support preview
+      accounts
+  403:
+    description: You are not a manager of the project

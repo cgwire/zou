@@ -1,10 +1,8 @@
-Create day off
+Create a day off
 ---
 tags:
   - Crud
-description: Create a new day off with data provided in the
-  request body. JSON format is expected. Deletes overlapping
-  time spent entries.
+description: Create a day off. Send the fields of the new row in JSON.
 requestBody:
   required: true
   content:
@@ -19,46 +17,49 @@ requestBody:
           date:
             type: string
             format: date
-            example: "2024-01-15"
+            example: '2024-01-15'
           end_date:
             type: string
             format: date
-            example: "2024-01-20"
+            example: '2024-01-20'
           person_id:
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
-    201:
-      description: Day off created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              date:
-                type: string
-                format: date
-                example: "2024-01-15"
-              end_date:
-                type: string
-                format: date
-                example: "2024-01-20"
-              person_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid data format or day off already exists
+  201:
+    description: The new day off
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            date:
+              type: string
+              format: date
+              example: '2024-01-15'
+            end_date:
+              type: string
+              format: date
+              example: '2024-01-20'
+            person_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The body is not valid, or a field breaks a database
+      constraint
+  403:
+    description: You cannot create a day off

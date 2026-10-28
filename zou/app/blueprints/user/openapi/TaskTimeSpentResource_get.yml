@@ -1,9 +1,8 @@
-Get task time spent
+Get my time spent on a task for a date
 ---
-description: Retrieve time spent entries for the current user on a
-  specific task and date. Returns detailed time tracking information.
+description: Get your time spent on a task for a date.
 tags:
-- User
+  - User
 parameters:
   - in: path
     name: task_id
@@ -11,7 +10,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Task unique identifier
+    description: Unique identifier of the task
     example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: path
     name: date
@@ -19,47 +18,49 @@ parameters:
     schema:
       type: string
       format: date
-    description: Date to get time spent for
-    example: "2023-01-01"
+    description: Date in the YYYY-MM-DD format
+    example: '2023-01-01'
 responses:
-    200:
-      description: Time spent entry for the current user on given task and date
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                description: Time spent unique identifier
-                example: b35b7fb5-df86-5776-b181-68564193d360
-              person_id:
-                type: string
-                format: uuid
-                description: Person identifier
-                example: c46c80c6-e097-6887-c292-79675204e470
-              task_id:
-                type: string
-                format: uuid
-                description: Task identifier
-                example: d57d91d7-f108-7998-d403-80786315f580
-              date:
-                type: string
-                format: date
-                description: Date of time spent
-                example: "2023-01-01"
-              duration:
-                type: number
-                description: Duration in seconds
-                example: 3600
-              created_at:
-                type: string
-                format: date-time
-                description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
+  200:
+    description: The time spent
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Time spent unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            person_id:
+              type: string
+              format: uuid
+              description: Person identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            task_id:
+              type: string
+              format: uuid
+              description: Task identifier
+              example: d57d91d7-f108-7998-d403-80786315f580
+            date:
+              type: string
+              format: date
+              description: Date of time spent
+              example: '2023-01-01'
+            duration:
+              type: number
+              description: Duration in seconds
+              example: 3600
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: '2023-01-01T12:00:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The date is not valid

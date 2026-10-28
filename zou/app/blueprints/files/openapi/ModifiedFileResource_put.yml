@@ -1,9 +1,9 @@
-Update working file modification date
+Mark a working file as modified
 ---
-description: Update the modification date of a working file to the
-  current timestamp. Used to track when the file was last modified.
+description: Set the modification date of a working file to the current
+  date.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: working_file_id
@@ -15,7 +15,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Working file modification date updated successfully
+    description: The updated working file
     content:
       application/json:
         schema:
@@ -30,4 +30,8 @@ responses:
               type: string
               format: date-time
               description: Updated modification timestamp
-              example: "2023-01-01T12:30:00Z"
+              example: '2023-01-01T12:30:00Z'
+  403:
+    description: You cannot do actions on this task
+  404:
+    description: The working file does not exist

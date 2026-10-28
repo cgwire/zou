@@ -1,23 +1,29 @@
-Remove shot asset instance
+Remove an asset instance from a shot
 ---
-description: Remove an asset instance from a specific shot.
+description: Remove an asset instance from a shot.
 tags:
   - Breakdown
 parameters:
   - in: path
     name: shot_id
     required: true
-    type: string
-    format: uuid
     example: e68e02e8-0219-8009-e514-918974260690
     description: Unique identifier of the shot
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: asset_instance_id
     required: true
-    type: string
-    format: uuid
     example: 19113511-3542-1332-1847-241207593920
     description: Unique identifier of the asset instance
+    schema:
+      type: string
+      format: uuid
 responses:
   204:
-    description: Asset instance successfully removed from shot
+    description: The asset instance is removed from the shot
+  403:
+    description: You do not have access to this project
+  404:
+    description: The shot does not exist

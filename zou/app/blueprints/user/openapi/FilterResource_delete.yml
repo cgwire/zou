@@ -1,9 +1,9 @@
-Delete filter
+Delete a filter
 ---
-description: Delete a specific filter if it is owned by the current
-  user.
+description: Delete a filter. The filter must be yours. An administrator can
+  use the filters of all the users.
 tags:
-- User
+  - User
 parameters:
   - in: path
     name: filter_id
@@ -11,8 +11,10 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Filter unique identifier
+    description: Unique identifier of the filter
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
-    204:
-      description: Filter deleted successfully
+  204:
+    description: The filter is deleted
+  404:
+    description: You have no filter with this identifier

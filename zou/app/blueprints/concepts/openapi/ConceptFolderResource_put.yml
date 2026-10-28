@@ -1,17 +1,18 @@
-Rename concept folder
+Rename a concept folder
 ---
-description: Rename a concept folder. Reserved to the managers and the
-  supervisors of the project. Two folders of a project cannot share a name.
+description: Rename a concept folder. Two folders of a project cannot have
+  the same name. You must be a manager or a supervisor of the project.
 tags:
   - Concepts
 parameters:
   - in: path
     name: concept_folder_id
     required: true
-    type: string
-    format: uuid
     example: e68e02e8-a219-8009-e514-91897426a691
     description: Unique identifier of the concept folder
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: true
   content:
@@ -24,10 +25,10 @@ requestBody:
           name:
             type: string
             description: Concept folder name
-            example: "Characters"
+            example: Characters
 responses:
   200:
-    description: Concept folder successfully renamed
+    description: The renamed concept folder
     content:
       application/json:
         schema:
@@ -41,7 +42,7 @@ responses:
             name:
               type: string
               description: Concept folder name
-              example: "Characters"
+              example: Characters
             project_id:
               type: string
               format: uuid
@@ -56,11 +57,16 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
   400:
-    description: Another folder of the project already carries this name
+    description: An other folder of the project has this name, or the name
+      is not valid
+  403:
+    description: You are not a manager or a supervisor of the project
+  404:
+    description: The concept folder does not exist

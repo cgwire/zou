@@ -1,44 +1,46 @@
-Get shot previews
+Get the previews of a shot
 ---
 tags:
-- Shots
-description: Return previews for a shot as a dict keyed by task type id.
-  Each value is an array of previews for that task type.
+  - Shots
+description: Get the preview files of a shot. The response is a map of task
+  type identifiers to lists of previews.
 parameters:
   - in: path
     name: shot_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the shot
 responses:
-    200:
-        description: All previews related to given shot
-        content:
-          application/json:
-            schema:
+  200:
+    description: A map of task type identifiers to lists of previews
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties:
+            type: array
+            items:
               type: object
-              additionalProperties:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      example: b24a6ea4-ce75-4665-a070-57453082c250
-                    revision:
-                      type: integer
-                      example: 3
-                    file_id:
-                      type: string
-                      format: uuid
-                      example: c24a6ea4-ce75-4665-a070-57453082c250
-            example:
-              "a24a6ea4-ce75-4665-a070-57453082c250": [
-                {
-                  "id": "b24a6ea4-ce75-4665-a070-57453082c250",
-                  "revision": 3,
-                  "file_id": "c24a6ea4-ce75-4665-a070-57453082c250"
-                }
-              ]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                revision:
+                  type: integer
+                  example: 3
+                file_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+        example:
+          a24a6ea4-ce75-4665-a070-57453082c250: [{id:
+                  b24a6ea4-ce75-4665-a070-57453082c250, revision: 3, file_id:
+                  c24a6ea4-ce75-4665-a070-57453082c250}]
+  403:
+    description: You do not have access to this project
+  404:
+    description: The shot does not exist

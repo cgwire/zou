@@ -1,7 +1,7 @@
-Add time spent
+Add time to a time spent
 ---
 tags:
-- Tasks
+  - Tasks
 parameters:
   - in: path
     name: task_id
@@ -10,13 +10,15 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
   - in: path
     name: date
     required: true
     schema:
       type: string
       format: date
-    example: "2022-07-12"
+    example: '2022-07-12'
+    description: Date in the YYYY-MM-DD format
   - in: path
     name: person_id
     required: true
@@ -24,6 +26,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the person
 requestBody:
   required: true
   content:
@@ -35,35 +38,43 @@ requestBody:
             type: number
             example: 30
 responses:
-    201:
-        description: Timeframe added to time spent
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                task_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                person_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                date:
-                  type: string
-                  format: date
-                  example: "2022-07-12"
-                duration:
-                  type: number
-                  example: 150
-                created_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T10:30:00Z"
-    400:
-        description: Invalid parameters
+  201:
+    description: The updated time spent
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            date:
+              type: string
+              format: date
+              example: '2022-07-12'
+            duration:
+              type: number
+              example: 150
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The date or the duration is not valid
+  403:
+    description: The person is not an assignee of the task, you cannot add
+      time for this person, or the person is a bot
+description: Add a duration to the time spent of a person on a task for a
+  date. If the time spent does not exist, the route creates it. The person
+  must be an assignee of the task. The person can add time for themselves.
+  An administrator or a manager of the project can add time for the
+  assignees. You cannot add time for a bot.

@@ -1,16 +1,24 @@
-Delete sequence
+Delete a sequence
 ---
 tags:
-- Shots
-description: Delete a sequence by id. Requires manager access or
-  ownership.
+  - Shots
+description: Delete a sequence. The creator of the sequence can delete it if
+  the creator is in the project team. Other users must be managers of the
+  project. If the sequence has tasks, the sequence is only marked as
+  canceled. Use force=true to delete the sequence and all its related data.
 parameters:
   - in: path
     name: sequence_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the sequence
 responses:
-    204:
-        description: Sequence deleted
+  204:
+    description: The sequence is deleted
+  403:
+    description: You cannot delete this sequence
+  404:
+    description: The sequence does not exist

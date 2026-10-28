@@ -1,7 +1,7 @@
-Get open projects
+Get the open projects
 ---
-description: Return the list of projects currently running. Most of the
-  time, past projects are not needed.
+description: Get the open projects. An administrator gets all of them. Other
+  users get the projects of their teams.
 tags:
   - Projects
 parameters:
@@ -10,11 +10,11 @@ parameters:
     required: false
     schema:
       type: string
-    description: Filter projects by name
-    example: "My Project"
+    description: Get only the projects with this name
+    example: My Project
 responses:
   200:
-    description: All running projects
+    description: The list of open projects
     content:
       application/json:
         schema:
@@ -30,7 +30,7 @@ responses:
               name:
                 type: string
                 description: Project name
-                example: "My Project"
+                example: My Project
               project_status_id:
                 type: string
                 format: uuid

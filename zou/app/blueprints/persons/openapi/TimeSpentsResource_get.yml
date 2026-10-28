@@ -1,9 +1,11 @@
-Get time spents
+Get the time spents of a person
 ---
-description: Get all time spents for the given person. Optionally can
-  accept date range parameters. Admins and the person themselves get every
-  entry. Managers only get the entries of their projects and supervisors only
-  those of their projects and departments. Other users get a 403.
+description: Get the time spent entries of a person. To get the entries of a
+  period, give start_date and end_date. An administrator and the person get
+  all the entries. A manager gets the entries of their projects. A
+  supervisor gets the entries of their projects and departments. Other users
+  cannot read the time spents of other persons. You cannot read the time
+  spents of a bot.
 tags:
   - Persons
 parameters:
@@ -21,19 +23,19 @@ parameters:
     schema:
       type: string
       format: date
-    description: Start date for date range filter
-    example: "2022-07-01"
+    description: First date of the period, in the YYYY-MM-DD format
+    example: '2022-07-01'
   - in: query
     name: end_date
     required: false
     schema:
       type: string
       format: date
-    description: End date for date range filter
-    example: "2022-07-31"
+    description: Last date of the period, in the YYYY-MM-DD format
+    example: '2022-07-31'
 responses:
   200:
-    description: All time spents for the given person
+    description: The list of time spent entries
     content:
       application/json:
         schema:
@@ -70,6 +72,10 @@ responses:
                 type: string
                 format: date
                 description: Date of time spent entry
-                example: "2022-07-12"
+                example: '2022-07-12'
   400:
-    description: Invalid date range parameters
+    description: Only one date of the period is given, or a date is not
+      valid
+  403:
+    description: You cannot read the time spents of this person, or the
+      person is a bot

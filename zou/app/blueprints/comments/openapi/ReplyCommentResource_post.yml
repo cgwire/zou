@@ -1,34 +1,30 @@
-Reply to comment
+Reply to a comment
 ---
-description: Add a reply to a specific comment. The reply will be added
-  to the comment's replies list. In a thread the client sees (comment
-  flagged for the client, or written by a client), only the
-  production managers and the clients can reply.
+description: 'Add a reply to a comment. A client can see some threads: comments
+  for the client, and comments of a client. In these threads, only the managers
+  and the clients can reply.'
 tags:
   - Comments
 parameters:
   - in: path
     name: task_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the task
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: comment_id
     required: true
-    type: string
-    format: uuid
     example: b35b7fb5-df86-5776-b181-68564193d360
     description: Unique identifier of the comment
-  - in: formData
-    name: text
-    type: string
-    example: "Thanks for the feedback!"
-    description: Reply text content
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Reply successfully added to comment
+    description: The new reply
     content:
       application/json:
         schema:
@@ -47,7 +43,7 @@ responses:
             text:
               type: string
               description: Reply text content
-              example: "Thanks for the feedback!"
+              example: Thanks for the feedback!
             person_id:
               type: string
               format: uuid
@@ -57,4 +53,19 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
+  403:
+    description: You cannot reply to this comment
+  404:
+    description: The comment does not exist
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          text:
+            type: string
+            description: Reply text content
+            example: Thanks for the feedback!

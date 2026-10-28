@@ -1,11 +1,10 @@
-Set main preview from several tasks
+Use the last preview of tasks as the entity pictures
 ---
 tags:
   - Tasks
-description: For each task in the id list, set its last preview as
-  the main preview of the related entity. Useful to set thumbnails
-  for a selection in one request. Tasks without a preview are
-  skipped. Returns the updated entities.
+description: For each task of the list, use its last preview as the picture
+  of its entity. The tasks without preview are skipped. Clients cannot use
+  this route.
 requestBody:
   required: true
   content:
@@ -21,11 +20,15 @@ requestBody:
               type: string
               format: uuid
 responses:
-    200:
-        description: Entities whose main preview was updated
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: object
+  200:
+    description: The updated entities
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+  400:
+    description: The body is not valid
+  403:
+    description: You do not have access to this project, or you are a client

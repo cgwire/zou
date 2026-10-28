@@ -1,18 +1,17 @@
-        Export csv
-        ---
-        tags:
-          - Export
-        description: Export data as CSV file. Returns a CSV file with
-          formatted data based on the resource type.
-        produces:
-          - text/csv
-        responses:
-            200:
-              description: CSV file exported successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Header1,Header2
-Value1,Value2"
-        
+Export to CSV
+---
+tags:
+  - Export
+description: Get a CSV file. The rows are sent one by one. You must be a
+  manager.
+responses:
+  200:
+    description: The CSV file
+    content:
+      text/csv:
+        schema:
+          type: string
+        example: Header1,Header2 Value1,Value2
+
+  403:
+    description: You are not a manager

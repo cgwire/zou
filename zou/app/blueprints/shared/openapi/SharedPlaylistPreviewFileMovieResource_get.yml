@@ -1,10 +1,12 @@
-Get shared original movie preview
+Get the movie of a shared preview
 ---
-description: Stream the original movie file for a preview, authorized by
-  the share token. Same role as the authenticated original movie
-  preview route, without JWT.
+description: Get the movie of a preview of the shared playlist. The preview
+  must be in the playlist. You do not need an account. The token of the link
+  is the credential. This route does not read the password. For a link with
+  a password, the route returns 404.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -28,9 +30,10 @@ responses:
           type: string
           format: binary
   403:
-    description: Preview file is not part of this shared playlist
+    description: The preview is not in the shared playlist
   404:
-    description: Preview file not on disk
+    description: The link is not valid, has expired, or has a password, or
+      the file does not exist
     content:
       application/json:
         schema:

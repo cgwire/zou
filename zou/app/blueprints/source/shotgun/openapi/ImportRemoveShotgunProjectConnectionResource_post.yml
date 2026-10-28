@@ -1,7 +1,9 @@
-Remove shotgun project connection
+Remove a Shotgun team member
 ---
-description: Remove a Shotgun project-user connection from the
-  database. Provide the Shotgun entry ID in the JSON body.
+description: Remove a person from the team of a project that was imported
+  from Shotgun. Send the Shotgun identifier of the row in the body. If no
+  row has this identifier, the response is a success. You must be an
+  administrator.
 tags:
   - Import
 requestBody:
@@ -21,7 +23,7 @@ requestBody:
         id: 12345
 responses:
   200:
-    description: Removal result returned
+    description: The result of the removal
     content:
       application/json:
         schema:
@@ -32,4 +34,6 @@ responses:
               description: Whether the removal was successful
               example: true
   400:
-    description: Invalid request body or instance not found
+    description: The body is not valid
+  403:
+    description: You are not an administrator

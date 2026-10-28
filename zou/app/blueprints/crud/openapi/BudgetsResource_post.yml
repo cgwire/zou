@@ -1,9 +1,9 @@
-Create budget
+Create a budget
 ---
 tags:
   - Crud
-description: Create a new budget with data provided in the request
-  body. JSON format is expected.
+description: Create a budget. Send the fields of the new row in JSON. You
+  must be an administrator.
 requestBody:
   required: true
   content:
@@ -24,34 +24,37 @@ requestBody:
             type: integer
             example: 1
 responses:
-    201:
-      description: Budget created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              project_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              name:
-                type: string
-                example: Budget Q1
-              revision:
-                type: integer
-                example: 1
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid data format or validation error
+  201:
+    description: The new budget
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: Budget Q1
+            revision:
+              type: integer
+              example: 1
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The body is not valid, or a field breaks a database
+      constraint
+  403:
+    description: You cannot create a budget

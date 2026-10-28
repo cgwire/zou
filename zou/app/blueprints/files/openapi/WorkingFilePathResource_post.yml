@@ -1,10 +1,10 @@
-Generate working file path
+Get the path of a working file
 ---
-description: Generate a working file path from file tree template based
-  on task parameters. Revision can be computed automatically if not
-  provided.
+description: Get the folder path and the file name of a working file of a
+  task. The route uses the file tree of the project to make the path. If
+  revision is 0, the route uses the next revision.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: task_id
@@ -25,12 +25,12 @@ requestBody:
             type: string
             description: File name
             default: main
-            example: "main"
+            example: main
           mode:
             type: string
             description: File mode
             default: working
-            example: "working"
+            example: working
           software_id:
             type: string
             format: uuid
@@ -39,19 +39,19 @@ requestBody:
           comment:
             type: string
             description: File comment
-            example: "Updated lighting"
+            example: Updated lighting
           revision:
             type: integer
             description: File revision number
             example: 1
-          separator:
+          sep:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   200:
-    description: Working file path generated successfully
+    description: The path and the file name
     content:
       application/json:
         schema:
@@ -60,10 +60,14 @@ responses:
             path:
               type: string
               description: Generated file path
-              example: "/project/asset/working/main_v001.blend"
+              example: /project/asset/working/main_v001.blend
             name:
               type: string
               description: Generated file name
-              example: "main_v001.blend"
+              example: main_v001.blend
   400:
-    description: Malformed file tree
+    description: The body is not valid, or the file tree is not valid
+  403:
+    description: You do not have access to this project
+  404:
+    description: The task does not exist

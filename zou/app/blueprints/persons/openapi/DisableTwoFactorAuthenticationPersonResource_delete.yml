@@ -1,8 +1,8 @@
-Disable two factor authentication
+Disable the two-factor authentication of a person
 ---
-description: Allow admin to disable two factor authentication for given
-  user. An admin can't disable two factor authentication for other
-  admins.
+description: Disable the two-factor authentication of a person. You cannot
+  disable it for an other administrator. The person gets an email about the
+  change. You must be an administrator.
 tags:
   - Persons
 parameters:
@@ -16,7 +16,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Two factor authentication disabled successfully
+    description: The two-factor authentication is disabled
     content:
       application/json:
         schema:
@@ -27,7 +27,8 @@ responses:
               description: Success flag
               example: true
   400:
-    description: Inactive user or two factor authentication not enabled
+    description: The person is inactive, the person is an other
+      administrator, or the two-factor authentication is not enabled
     content:
       application/json:
         schema:
@@ -40,4 +41,6 @@ responses:
             message:
               type: string
               description: Error message
-              example: "User is unactive."
+              example: User is unactive.
+  403:
+    description: You are not an administrator, or the person is a bot

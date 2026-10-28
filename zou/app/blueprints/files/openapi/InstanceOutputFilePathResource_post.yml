@@ -1,10 +1,12 @@
-Generate instance output file path
+Get the path of an instance output file
 ---
-description: Generate an output file path from file tree template
-  based on asset instance parameters. Revision can be computed
-  automatically if not provided.
+description: Get the folder path and the file name of an output file of an
+  asset instance. An asset instance is a copy of an asset in a shot or a
+  scene. The temporal entity is this shot or this scene. The route uses the
+  file tree of the project to make the path. The route uses the revision of
+  the body as it is.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: asset_instance_id
@@ -36,12 +38,12 @@ requestBody:
             type: string
             description: File name
             default: main
-            example: "main"
+            example: main
           mode:
             type: string
             description: File mode
             default: output
-            example: "output"
+            example: output
           output_type_id:
             type: string
             format: uuid
@@ -55,11 +57,11 @@ requestBody:
           extension:
             type: string
             description: File extension
-            example: ".mp4"
+            example: .mp4
           representation:
             type: string
             description: File representation
-            example: "mp4"
+            example: mp4
           revision:
             type: integer
             description: File revision number
@@ -68,10 +70,10 @@ requestBody:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   200:
-    description: Output file path generated successfully
+    description: The folder path and the file name
     content:
       application/json:
         schema:
@@ -80,8 +82,14 @@ responses:
             folder_path:
               type: string
               description: Generated folder path
-              example: "/project/asset/instance/output"
+              example: /project/asset/instance/output
             file_name:
               type: string
               description: Generated file name
-              example: "main_v001.mp4"
+              example: main_v001.mp4
+  400:
+    description: The body is not valid, or the file tree is not valid
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset instance or the temporal entity does not exist

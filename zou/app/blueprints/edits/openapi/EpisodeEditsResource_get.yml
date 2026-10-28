@@ -1,25 +1,28 @@
-Get episode edits
+Get the edits of an episode
 ---
-description: Retrieve all edits that are related to a specific episode.
+description: Get the edits of an episode. A vendor does not get the metadata
+  columns that are hidden from vendors.
 tags:
   - Edits
 parameters:
   - in: path
     name: episode_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the episode
+    schema:
+      type: string
+      format: uuid
   - in: query
     name: relations
-    type: boolean
     required: false
-    description: Include related entity information
+    description: Add the related data to each row
     example: true
+    schema:
+      type: boolean
 responses:
   200:
-    description: List of episode edits successfully retrieved
+    description: The list of edits
     content:
       application/json:
         schema:
@@ -35,11 +38,11 @@ responses:
               name:
                 type: string
                 description: Edit name
-                example: "Episode Edit"
+                example: Episode Edit
               description:
                 type: string
                 description: Edit description
-                example: "Main episode edit"
+                example: Main episode edit
               project_id:
                 type: string
                 format: uuid
@@ -54,9 +57,13 @@ responses:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
+                example: '2023-01-01T12:30:00Z'
+  403:
+    description: You do not have access to this project
+  404:
+    description: The episode does not exist

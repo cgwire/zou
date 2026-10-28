@@ -1,19 +1,50 @@
-Attach a task status to a project template.
+Add a task status to a project template
 ---
+description: Add a task status to a project template. You must be an
+  administrator.
 tags:
   - Project Templates
 parameters:
-  - in: body
-    name: body
+  - in: path
+    name: project_template_id
     required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
     schema:
-      type: object
-      required: [task_status_id]
-      properties:
-        task_status_id: {type: string, format: uuid}
-        priority: {type: integer}
-        roles_for_board: {type: array, items: {type: string}}
-        is_client_allowed:
-          type: boolean
-          nullable: true
-          description: Whether clients can use this status. null resets to the studio value, omitted keeps the current value of an existing link.
+      type: string
+      format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - task_status_id
+        properties:
+          task_status_id:
+            type: string
+            format: uuid
+            description: Task status to add
+          priority:
+            type: integer
+            description: Priority of the task status in the template
+          roles_for_board:
+            type: array
+            items:
+              type: string
+            description: Roles that see the task status on the board
+          is_client_allowed:
+            type: boolean
+            nullable: true
+            description: Let the clients use the task status. Null uses the
+              value of the studio.
+responses:
+  201:
+    description: The new link
+  400:
+    description: The body is not valid, or an identifier does not exist
+  403:
+    description: You are not an administrator
+  404:
+    description: The project template does not exist

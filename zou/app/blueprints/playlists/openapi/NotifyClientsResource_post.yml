@@ -1,6 +1,9 @@
-Notify clients playlist ready
+Notify the clients about a playlist
 ---
-description: Notify clients that given playlist is ready for review.
+description: Send a notification to the clients of the project. The
+  notification tells that the playlist is ready for review. Give studio_id
+  or department_id to notify fewer clients. You must be a manager of the
+  project.
 tags:
   - Playlists
 parameters:
@@ -31,7 +34,7 @@ requestBody:
             example: c46c80c6-e097-6887-c292-79675204e470
 responses:
   200:
-    description: Clients notified successfully
+    description: The clients get the notification
     content:
       application/json:
         schema:
@@ -40,4 +43,8 @@ responses:
             status:
               type: string
               description: Notification status
-              example: "success"
+              example: success
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The playlist does not exist

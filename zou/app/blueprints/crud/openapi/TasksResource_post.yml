@@ -1,10 +1,11 @@
-Create task
+Create a task
 ---
 tags:
   - Crud
-description: Create a task with data provided in the request
-  body. JSON format is expected. The task type must match the
-  entity type.
+description: Create a task for an entity. Give task_type_id and entity_id.
+  The task type must be for the type of the entity. The default name is
+  main. You can give assignees, a list of person identifiers. A bot made for
+  previews cannot be an assignee.
 requestBody:
   required: true
   content:
@@ -28,32 +29,33 @@ requestBody:
             items:
               type: string
               format: uuid
-            example: ["c24a6ea4-ce75-4665-a070-57453082c250"]
+            example: [c24a6ea4-ce75-4665-a070-57453082c250]
 responses:
-    201:
-      description: Task created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
+  201:
+    description: The new task, with its related data
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            entity_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            assignees:
+              type: array
+              items:
                 type: string
                 format: uuid
-                example: d24a6ea4-ce75-4665-a070-57453082c250
-              task_type_id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              entity_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              assignees:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-                example: ["c24a6ea4-ce75-4665-a070-57453082c250"]
-    400:
-      description: Task type does not match entity type or task already exists
+              example: [c24a6ea4-ce75-4665-a070-57453082c250]
+  400:
+    description: An identifier is missing or not valid, assignees is not a
+      list, the task type is not for this entity, or the task already exists

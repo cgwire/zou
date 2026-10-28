@@ -1,10 +1,9 @@
-Get file information
+Get a file
 ---
-description: Retrieve information about a file that could be either
-  a working file or an output file. Returns detailed file metadata
-  and properties.
+description: Get a working file or an output file. Give the identifier of
+  one of the two types.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: file_id
@@ -16,7 +15,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: File information retrieved successfully
+    description: The working file or the output file
     content:
       application/json:
         schema:
@@ -30,11 +29,11 @@ responses:
             name:
               type: string
               description: File name
-              example: "main"
+              example: main
             path:
               type: string
               description: File path
-              example: "/project/asset/working/main_v001.blend"
+              example: /project/asset/working/main_v001.blend
             revision:
               type: integer
               description: File revision
@@ -43,7 +42,7 @@ responses:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             task_id:
               type: string
               format: uuid
@@ -54,3 +53,7 @@ responses:
               format: uuid
               description: Entity identifier (for output files)
               example: d57d91d7-f108-7998-d403-80786315f580
+  403:
+    description: You do not have access to this project
+  404:
+    description: No working file and no output file has this identifier

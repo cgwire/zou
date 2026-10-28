@@ -1,10 +1,10 @@
-Add software to production task type
+Add a software to a task type of a project
 ---
-description: Link a software to a task type of a production. The task type
-  must be a task type of the production and the software must not be
-  archived. An existing link is returned as is. Admins, managers of the
-  team and supervisors of the team for the task types of their departments
-  can add it.
+description: Add a software to a task type of a project. The project must
+  use the task type. The software must not be archived. If the link exists,
+  the route returns it. Administrators and managers of the project can use
+  this route. A supervisor of the project can use it for the task types of
+  their departments.
 tags:
   - Projects
 parameters:
@@ -40,7 +40,7 @@ requestBody:
             example: c46c8fc6-ef97-4887-a292-79675204e471
 responses:
   201:
-    description: Task type software link
+    description: The link between the task type and the software
     content:
       application/json:
         schema:
@@ -62,8 +62,9 @@ responses:
               description: Software unique identifier
               example: c46c8fc6-ef97-4887-a292-79675204e471
   400:
-    description: Task type not in the production, or archived software
+    description: The project does not use the task type, or the software is
+      archived
   403:
-    description: Not allowed to change the softwares of this task type
+    description: You cannot change the softwares of this task type
   404:
-    description: Software not found
+    description: The software does not exist

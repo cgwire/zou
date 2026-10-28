@@ -1,7 +1,8 @@
-Set main preview
+Set the main preview of an entity
 ---
-description: Set given preview as main preview of the related entity.
-  This preview will be used to illustrate the entity.
+description: Use a preview as the picture of its entity. For a movie, give
+  frame_number to use this frame as the picture. Clients cannot use this
+  route.
 tags:
   - Previews
 parameters:
@@ -11,18 +12,18 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Preview file unique identifier
+    description: Unique identifier of the preview file
     example: a24a6ea4-ce75-4665-a070-57453082c250
   - in: query
     name: frame_number
     required: false
     schema:
       type: integer
-    description: Frame number for movie previews
+    description: Frame of the movie to use as the picture
     example: 120
 responses:
   200:
-    description: Preview set as main preview
+    description: The entity
     content:
       application/json:
         schema:
@@ -41,8 +42,12 @@ responses:
             preview_file_status:
               type: string
               enum: [processing, ready, broken, missing]
-              description: Status of the preview file. Its pictures can
-                be read once it is ready.
+              description: Status of the preview file. Its pictures can be
+                read once it is ready.
               example: processing
   400:
-    description: Cannot use frame number on non-movie preview
+    description: frame_number is given for a preview that is not a movie
+  403:
+    description: You do not have access to this entity, or you are a client
+  404:
+    description: The preview file does not exist

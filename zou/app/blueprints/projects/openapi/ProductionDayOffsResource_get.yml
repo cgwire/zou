@@ -1,6 +1,9 @@
-Get production day offs
+Get the day offs of a project team
 ---
-description: Retrieve all day offs for a production.
+description: Get the day offs of the team of a project. Give start_date and
+  end_date to get the day offs of a period. A manager gets the description
+  of each day off. Other users get the description of their own day offs
+  only. Clients and vendors cannot use this route.
 tags:
   - Projects
 parameters:
@@ -18,23 +21,23 @@ parameters:
     schema:
       type: string
       format: date
-    description: Start date for filtering day offs
-    example: "2022-07-01"
+    description: First date of the period, in the YYYY-MM-DD format
+    example: '2022-07-01'
   - in: query
     name: end_date
     required: false
     schema:
       type: string
       format: date
-    description: End date for filtering day offs
-    example: "2022-07-31"
+    description: Last date of the period, in the YYYY-MM-DD format
+    example: '2022-07-31'
 responses:
   200:
-    description: All day offs for given project
+    description: The list of day offs
     content:
       application/json:
         schema:
-          type: dict
+          type: object
           items:
             type: object
             properties:
@@ -51,16 +54,19 @@ responses:
               description:
                 type: string
                 description: Day off description
-                example: "Vacation"
+                example: Vacation
               date:
                 type: string
                 format: date
                 description: Day off start date
-                example: "2022-07-15"
+                example: '2022-07-15'
               end_date:
                 type: string
                 format: date
                 description: Day off end date
-                example: "2022-07-22"
+                example: '2022-07-22'
   400:
-    description: Invalid date range parameters
+    description: A date is not valid
+  403:
+    description: You do not have access to this project, or you are a client
+      or a vendor

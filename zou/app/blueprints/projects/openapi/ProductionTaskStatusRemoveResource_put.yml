@@ -1,7 +1,7 @@
-Set production task status client permission
+Let the clients use a task status
 ---
-description: Override, for a production, whether its clients may set a
-  task status. A null value reverts to the studio value of the task status.
+description: Set if the clients of a project can use a task status. A null
+  value uses the value of the studio. You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -38,10 +38,10 @@ requestBody:
             example: false
 responses:
   200:
-    description: Updated task status link
+    description: The updated link
   400:
-    description: Missing is_client_allowed field
+    description: is_client_allowed is missing
   403:
-    description: Caller is not a manager of the production
+    description: You are not a manager of the project
   404:
-    description: Task status not linked to the production
+    description: The project does not use this task status

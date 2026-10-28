@@ -1,10 +1,9 @@
-Get entity working files
+Get the working files of an entity
 ---
-description: Retrieve all working files for a given entity with
-  optional filtering by task and name. Returns complete list of
-  working files with their revisions.
+description: Get the working files of the tasks of an entity, with all their
+  revisions.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: entity_id
@@ -20,18 +19,18 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Filter by task
+    description: Get only the working files of this task
     example: b35b7fb5-df86-5776-b181-68564193d360
   - in: query
     name: name
     required: false
     schema:
       type: string
-    description: Filter by file name
-    example: "main"
+    description: Get only the working files with this name
+    example: main
 responses:
   200:
-    description: All working files for the entity
+    description: The list of working files
     content:
       application/json:
         schema:
@@ -47,7 +46,7 @@ responses:
               name:
                 type: string
                 description: Working file name
-                example: "main"
+                example: main
               revision:
                 type: integer
                 description: Working file revision
@@ -55,12 +54,12 @@ responses:
               path:
                 type: string
                 description: Working file path
-                example: "/project/asset/working/main_v001.blend"
+                example: /project/asset/working/main_v001.blend
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               task_id:
                 type: string
                 format: uuid
@@ -71,3 +70,7 @@ responses:
                 format: uuid
                 description: Entity identifier
                 example: e68e02e8-0219-8009-e514-918974260690
+  403:
+    description: You do not have access to this project
+  404:
+    description: The entity does not exist

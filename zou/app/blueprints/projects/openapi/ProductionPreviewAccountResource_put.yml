@@ -1,6 +1,8 @@
 Open or close the preview account
 ---
-description: Open the access window of the preview account for one hour, or close it, which ends its sessions. Restricted to managers of the production.
+description: Open the access of the preview account for one hour, or close
+  it. When you close it, its sessions end. You must be a manager of the
+  project.
 tags:
   - Projects
 parameters:
@@ -26,7 +28,7 @@ requestBody:
             example: true
 responses:
   200:
-    description: Updated preview account
+    description: The updated preview account
     content:
       application/json:
         schema:
@@ -46,5 +48,9 @@ responses:
               format: date-time
               nullable: true
               description: End of the access window, null when closed
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project
   404:
-    description: The production has no preview account
+    description: The project has no preview account

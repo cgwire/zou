@@ -1,7 +1,7 @@
-Get presence logs
+Get the presence logs of a month
 ---
-description: Return a CSV file containing the presence logs based on a
-  daily basis for the given month.
+description: Get a CSV file with the presence of each person for each day of
+  a month. You must be an administrator.
 tags:
   - Persons
 parameters:
@@ -11,15 +11,17 @@ parameters:
     schema:
       type: string
       format: date
-    description: Month in YYYY-MM format
-    example: "2022-07"
+    description: Month in the YYYY-MM format
+    example: 2022-07
 responses:
   200:
-    description: CSV file containing the presence logs based on daily basis
+    description: The CSV file
     content:
       text/csv:
         schema:
           type: string
           format: binary
   400:
-    description: Invalid date format
+    description: The month is not valid
+  403:
+    description: You are not an administrator

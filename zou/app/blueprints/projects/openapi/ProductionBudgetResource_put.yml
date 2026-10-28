@@ -1,6 +1,7 @@
-Update budget
+Update a budget
 ---
-description: Update a budget for given production.
+description: Change the name or the currency of a budget. You must be a
+  manager of the project.
 tags:
   - Projects
 parameters:
@@ -18,7 +19,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Budget unique identifier
+    description: Unique identifier of the budget
     example: b35b7fb5-df86-5776-b181-68564193d360
 requestBody:
   required: true
@@ -30,15 +31,21 @@ requestBody:
           name:
             type: string
             description: Budget name
-            example: "New Budget"
+            example: New Budget
           currency:
             type: string
             description: Budget currency code
-            example: "USD"
+            example: USD
 responses:
   200:
-    description: Budget updated
+    description: The updated budget
     content:
       application/json:
         schema:
           type: object
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The budget does not exist in this project

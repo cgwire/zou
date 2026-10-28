@@ -1,7 +1,10 @@
-Get time spent month table
+Get the time spent table of a month
 ---
-description: Return a table giving time spent by user and by day for
-  given year and month.
+description: Get a table of the time spent of each person for each day of a
+  month. Add project_id, department_id or studio_id to filter the table. An
+  administrator gets all the persons. A manager gets the persons of their
+  projects. A supervisor gets the persons of their projects and departments.
+  Other users get their own row only.
 tags:
   - Persons
 parameters:
@@ -10,21 +13,48 @@ parameters:
     required: true
     schema:
       type: integer
-    description: Year to get time spent table for
+    description: Year, for example 2026
     example: 2022
   - in: path
     name: month
     required: true
     schema:
       type: integer
-    description: Month to get time spent table for
+      minimum: 1
+      maximum: 12
+    description: Month, from 1 to 12
     example: 7
-    minimum: 1
-    maximum: 12
+  - in: query
+    name: project_id
+    required: false
+    description: Get only the time spents of this project
+    schema:
+      type: string
+      format: uuid
+  - in: query
+    name: department_id
+    required: false
+    description: Get only the persons of this department
+    schema:
+      type: string
+      format: uuid
+  - in: query
+    name: studio_id
+    required: false
+    description: Get only the persons of this studio
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Table giving time spent by user and by day for given year and month
+    description: A map of person identifiers to the time spent of each
+      period
     content:
       application/json:
         schema:
           type: object
+  400:
+    description: The date is not valid, or a supervisor asks for an other
+      department
+  403:
+    description: You cannot access this project

@@ -1,10 +1,10 @@
-Get next entity output file revision
+Get the next revision of an output file
 ---
-description: Get the next revision number for an output file based
-  on entity, output type, task type, and name. Used for automatic
-  revision numbering.
+description: Get the next revision number of an output file of an entity.
+  The route finds the last revision for the name, the output type and the
+  task type of the body.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: entity_id
@@ -28,7 +28,7 @@ requestBody:
             type: string
             description: File name
             default: main
-            example: "main"
+            example: main
           output_type_id:
             type: string
             format: uuid
@@ -41,7 +41,7 @@ requestBody:
             example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Next revision number for the output file
+    description: The next revision number
     content:
       application/json:
         schema:
@@ -51,3 +51,9 @@ responses:
               type: integer
               description: Next available revision number
               example: 3
+  400:
+    description: The body is not valid
+  403:
+    description: You do not have access to this project
+  404:
+    description: The entity does not exist

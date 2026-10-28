@@ -1,9 +1,9 @@
-Set main preview from task
+Use the last preview of a task as the entity picture
 ---
 tags:
   - Tasks
-description: Set the last preview of a task as the main preview of the
-  related entity.
+description: Use the last preview of a task as the picture of its entity.
+  Clients cannot use this route.
 parameters:
   - in: path
     name: task_id
@@ -12,40 +12,43 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
 responses:
-    200:
-        description: Preview set as main preview
-    400:
-        description: The task has no preview file
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: SH010
-                project_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                preview_file_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                entity_type_id:
-                  type: string
-                  format: uuid
-                  example: d24a6ea4-ce75-4665-a070-57453082c250
-                created_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T10:30:00Z"
-                updated_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T11:00:00Z"
+  200:
+    description: The entity
+  400:
+    description: The task has no preview
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: SH010
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            preview_file_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            entity_type_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T11:00:00Z'
+  403:
+    description: You do not have access to this project, or you are a client

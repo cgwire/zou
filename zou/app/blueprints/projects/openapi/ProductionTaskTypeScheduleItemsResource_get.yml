@@ -1,6 +1,9 @@
-Get production task type schedule items
+Get the schedule items of the task types
 ---
-description: Retrieve the schedule items of the task types with tasks in given production. When the production has task type settings, the other task types are left out.
+description: Get the schedule items of the task types that have tasks in a
+  project. A schedule item gives the start date and the end date of a part
+  of the production in the schedule. If the project has task type settings,
+  the route skips the other task types. Vendors cannot use this route.
 tags:
   - Projects
 parameters:
@@ -14,10 +17,12 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Task type schedule items of given production
+    description: The list of schedule items
     content:
       application/json:
         schema:
           type: array
           items:
             type: object
+  403:
+    description: You do not have access to this project, or you are a vendor

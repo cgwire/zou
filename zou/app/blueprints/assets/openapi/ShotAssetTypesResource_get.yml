@@ -1,19 +1,20 @@
-Get shot asset types
+Get the asset types of a shot
 ---
-description: Retrieve all asset types of assets that are casted in a specific shot
+description: Get the asset types of the assets that are cast in a shot.
 tags:
   - Assets
 parameters:
   - in: path
     name: shot_id
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     required: true
     description: Unique identifier of the shot
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of shot asset types successfully retrieved
+    description: The list of asset types
     content:
       application/json:
         schema:
@@ -29,9 +30,13 @@ responses:
               name:
                 type: string
                 description: Asset type name
-                example: "Character"
+                example: Character
               shot_id:
                 type: string
                 format: uuid
                 description: Shot identifier
                 example: d57d91d7-f108-7998-d403-80786315f580
+  403:
+    description: You do not have access to this project
+  404:
+    description: The shot does not exist

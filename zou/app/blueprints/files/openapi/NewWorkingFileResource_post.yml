@@ -1,11 +1,11 @@
-Create new working file
+Create a working file
 ---
-description: Create a new working file for a task. Working files are
-  versioned files used by artists to produce output files. Each
-  file requires a comment and generates a path based on file tree
-  template.
+description: Create a working file for a task. A working file is a revision
+  of a file that an artist uses to make output files. The route uses the
+  file tree of the project to make the path. If revision is 0, the route
+  uses the next revision. The task is assigned to the current user.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: task_id
@@ -27,20 +27,20 @@ requestBody:
           name:
             type: string
             description: Working file name
-            example: "main"
+            example: main
           mode:
             type: string
             description: Working file mode
             default: working
-            example: "working"
+            example: working
           description:
             type: string
             description: Working file description
-            example: "Main character model"
+            example: Main character model
           comment:
             type: string
             description: Working file comment
-            example: "Updated lighting and materials"
+            example: Updated lighting and materials
           person_id:
             type: string
             format: uuid
@@ -59,10 +59,10 @@ requestBody:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   201:
-    description: New working file created successfully
+    description: The new working file
     content:
       application/json:
         schema:
@@ -76,11 +76,11 @@ responses:
             name:
               type: string
               description: Working file name
-              example: "main"
+              example: main
             path:
               type: string
               description: Working file path
-              example: "/project/asset/working/main_v001.blend"
+              example: /project/asset/working/main_v001.blend
             revision:
               type: integer
               description: Working file revision
@@ -94,9 +94,15 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:30:00Z"
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The body is not valid, or the working file already exists
+  403:
+    description: You do not have access to this project
+  404:
+    description: The task does not exist

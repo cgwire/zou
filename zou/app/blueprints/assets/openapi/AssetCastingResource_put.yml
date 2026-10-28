@@ -1,41 +1,47 @@
-Update asset casting
+Replace the casting of an asset
 ---
-description: Modify the casting relationships for a specific asset by updating which shots or sequences use this asset.
+description: Replace the casting of an asset. Send the full list of assets
+  that the asset contains. The assets that are not in the list are removed
+  from the casting. You must be a manager of the project.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: true
   content:
     application/json:
       schema:
-        type: object
-        description: Casting data to update
-        properties:
-          casting:
-            type: array
-            items:
-              type: object
-              properties:
-                entity_id:
-                  type: string
-                  format: uuid
-                  description: Entity identifier to cast
-                  example: d57d91d7-f108-7998-d403-80786315f580
-                entity_type:
-                  type: string
-                  description: Entity type (shot/sequence)
-                  example: "shot"
+        type: array
+        items:
+          type: object
+          required:
+            - asset_id
+          properties:
+            asset_id:
+              type: string
+              format: uuid
+              description: Asset to cast
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            nb_occurences:
+              type: integer
+              minimum: 0
+              default: 1
+              description: Number of occurrences of the asset
+            label:
+              type: string
+              default: ''
+              description: Label of the link
 responses:
   200:
-    description: Asset casting successfully updated
+    description: The new casting of the asset
     content:
       application/json:
         schema:
@@ -64,4 +70,10 @@ responses:
                   entity_name:
                     type: string
                     description: Entity name
-                    example: "SH001"
+                    example: SH001
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The asset does not exist

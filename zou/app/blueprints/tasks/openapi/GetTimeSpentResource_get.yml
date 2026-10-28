@@ -1,45 +1,50 @@
-Get task time spent
+Get the time spent on a task
 ---
 tags:
-- Tasks
+  - Tasks
 parameters:
   - in: path
     name: task_id
     required: true
     schema:
       type: string
-    format: uuid
+      format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
 responses:
-    200:
-        description: Time spent on the task
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c250
-                  task_id:
-                    type: string
-                    format: uuid
-                    example: b24a6ea4-ce75-4665-a070-57453082c250
-                  person_id:
-                    type: string
-                    format: uuid
-                    example: c24a6ea4-ce75-4665-a070-57453082c250
-                  date:
-                    type: string
-                    format: date
-                    example: "2022-07-12"
-                  duration:
-                    type: number
-                    example: 120
-                  created_at:
-                    type: string
-                    format: date-time
-                    example: "2024-01-15T10:30:00Z"
+  200:
+    description: The time spent entries
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2022-07-12'
+              duration:
+                type: number
+                example: 120
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+  403:
+    description: You are a client, or you do not have access to this task
+description: Get all the time spent entries of a task, for all the
+  persons. Clients cannot use this route.

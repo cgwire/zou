@@ -1,9 +1,8 @@
-Delete news
+Delete a news
 ---
 tags:
   - Crud
-description: Delete a news entry by its ID. Returns empty
-  response on success.
+description: Delete a news. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,8 +11,13 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the news
 responses:
-    204:
-      description: News entry deleted successfully
-    400:
-      description: Integrity error or cannot delete
+  204:
+    description: The news is deleted
+  400:
+    description: Other data uses this row
+  403:
+    description: You cannot delete this news
+  404:
+    description: The news does not exist

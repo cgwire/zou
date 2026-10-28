@@ -1,16 +1,18 @@
-Create project sequence
+Create a sequence
 ---
 tags:
-- Shots
-description: Create a sequence in a project. Provide name and optional
-  episode_id.
+  - Shots
+description: Create a sequence in a project. Give episode_id to put the
+  sequence in an episode. You must be a manager of the project.
 parameters:
   - in: path
     name: project_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the project
 requestBody:
   required: true
   content:
@@ -22,36 +24,41 @@ requestBody:
         properties:
           name:
             type: string
-            required: true
             example: SQ01
           episode_id:
             type: string
             format: uuid
-            required: false
             example: a24a6ea4-ce75-4665-a070-57453082c250
+          data:
+            type: object
+            description: Values of the metadata columns
 responses:
-    201:
-        description: Sequence created
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: SQ01
-                project_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                episode_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                description:
-                  type: string
-                  example: A sequence description
+  201:
+    description: The new sequence
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: SQ01
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            episode_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            description:
+              type: string
+              example: A sequence description
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

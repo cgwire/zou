@@ -1,16 +1,19 @@
-Update shot
+Update a shot
 ---
 tags:
-- Shots
-description: Update a shot by id. Only mutable fields are allowed. Send a
-  JSON body with the fields to change.
+  - Shots
+description: Update the name, the description, the number of frames, the
+  metadata, the sequence or the canceled flag of a shot. Send only the
+  fields to change. You must be a manager of the project.
 parameters:
   - in: path
     name: shot_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the shot
 requestBody:
   required: true
   content:
@@ -30,35 +33,46 @@ requestBody:
             example: 24
           data:
             type: object
-            example: {"camera": "camA", "cut_in": 1001}
+            example: {camera: camA, cut_in: 1001}
+          parent_id:
+            type: string
+            format: uuid
+            description: New sequence of the shot
+          canceled:
+            type: boolean
+            description: Mark the shot as canceled
 responses:
-    200:
-        description: Shot updated
-        content:
-          application/json:
-            schema:
+  200:
+    description: The updated shot
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: SH010
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            parent_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            nb_frames:
+              type: integer
+              example: 120
+            data:
               type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: SH010
-                project_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                parent_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                nb_frames:
-                  type: integer
-                  example: 120
-                data:
-                  type: object
-                  example: {"camera": "camA", "cut_in": 1001}
-    400:
-        description: Invalid body or unsupported fields
+              example: {camera: camA, cut_in: 1001}
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The shot does not exist

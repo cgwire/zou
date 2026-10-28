@@ -1,9 +1,9 @@
-Create filter
+Create a filter
 ---
-description: Create a new filter for the current user limited to open
-  projects only.
+description: Create a filter. A filter keeps a search query for a list. Set
+  is_shared to true to share it with the team of the project.
 tags:
-- User
+  - User
 requestBody:
   required: true
   content:
@@ -13,13 +13,11 @@ requestBody:
         required:
           - name
           - query
-          - list_type
-          - project_id
         properties:
           name:
             type: string
             description: Filter name
-            example: "My Custom Filter"
+            example: My Custom Filter
           query:
             type: string
             description: Filter query as JSON string
@@ -27,11 +25,11 @@ requestBody:
           list_type:
             type: string
             description: Type of list this filter applies to
-            example: "todo"
+            example: todo
           entity_type:
             type: string
             description: Entity type this filter applies to
-            example: "Asset"
+            example: Asset
           project_id:
             type: string
             format: uuid
@@ -53,52 +51,52 @@ requestBody:
             description: Department identifier
             example: c46c80c6-e097-6887-c292-79675204e470
 responses:
-    201:
-      description: Filter created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                description: Filter unique identifier
-                example: d57d91d7-f108-7998-d403-80786315f580
-              name:
-                type: string
-                description: Filter name
-                example: "My Custom Filter"
-              query:
-                type: string
-                description: Filter query JSON
-                example: '{"project_id": "uuid"}'
-              list_type:
-                type: string
-                description: List type
-                example: "todo"
-              entity_type:
-                type: string
-                description: Entity type
-                example: "Asset"
-              project_id:
-                type: string
-                format: uuid
-                description: Project identifier
-                example: e68e02e8-0219-8009-e514-918974260690
-              is_shared:
-                type: boolean
-                description: Whether filter is shared
-                example: false
-              created_at:
-                type: string
-                format: date-time
-                description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
-    400:
-      description: Bad request
+  201:
+    description: The new filter
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Filter unique identifier
+              example: d57d91d7-f108-7998-d403-80786315f580
+            name:
+              type: string
+              description: Filter name
+              example: My Custom Filter
+            query:
+              type: string
+              description: Filter query JSON
+              example: '{"project_id": "uuid"}'
+            list_type:
+              type: string
+              description: List type
+              example: todo
+            entity_type:
+              type: string
+              description: Entity type
+              example: Asset
+            project_id:
+              type: string
+              format: uuid
+              description: Project identifier
+              example: e68e02e8-0219-8009-e514-918974260690
+            is_shared:
+              type: boolean
+              description: Whether filter is shared
+              example: false
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: '2023-01-01T12:00:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The body is not valid

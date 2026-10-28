@@ -1,16 +1,18 @@
-Create asset instance
+Add an asset instance to an asset
 ---
-description: Create a new asset instance inside a specific asset by instantiating another asset.
+description: Make an instance of an asset and put it in the asset of the
+  path.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Unique identifier of the parent asset
+    description: Unique identifier of the asset that receives the instance
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: true
   content:
@@ -28,10 +30,10 @@ requestBody:
           description:
             type: string
             description: Description for the asset instance
-            example: "Asset instance description"
+            example: Asset instance description
 responses:
   201:
-    description: Asset instance successfully created
+    description: The new asset instance
     content:
       application/json:
         schema:
@@ -55,13 +57,17 @@ responses:
             number:
               type: string
               description: Instance number
-              example: "001"
+              example: '001'
             description:
               type: string
               description: Instance description
-              example: "Main character instance"
+              example: Main character instance
             created_at:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset does not exist

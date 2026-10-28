@@ -1,6 +1,7 @@
-Delete budget entry
+Delete a budget entry
 ---
-description: Delete a budget entry for given production and budget.
+description: Delete an entry of a budget. You must be a manager of the
+  project.
 tags:
   - Projects
 parameters:
@@ -18,7 +19,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Budget unique identifier
+    description: Unique identifier of the budget
     example: b35b7fb5-df86-5776-b181-68564193d360
   - in: path
     name: entry_id
@@ -26,8 +27,14 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Budget entry unique identifier
+    description: Unique identifier of the budget entry
     example: c46c80c6-e097-6887-c292-79675204e470
 responses:
   204:
-    description: Budget entry deleted
+    description: The budget entry is deleted
+  400:
+    description: An identifier is not a valid UUID
+  403:
+    description: You are not a manager of the project
+  404:
+    description: The budget entry does not exist in this budget

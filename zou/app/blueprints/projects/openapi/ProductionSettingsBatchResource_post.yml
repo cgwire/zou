@@ -1,10 +1,9 @@
-Add settings to production batch
+Add settings to a project
 ---
-description: Add several task types (with their priority), task
-  statuses and asset types to a production in a single request,
-  replacing one link request per item. Unknown ids are skipped.
-  When replace_task_types is set, the task type list is the full
-  wanted set and existing links absent from it are removed.
+description: Add task types with their priority, task statuses and asset
+  types to a project in one request. The unknown identifiers are skipped. If
+  replace_task_types is true, the task types of the project are replaced.
+  You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -48,4 +47,8 @@ requestBody:
             default: false
 responses:
   200:
-    description: Updated project
+    description: The updated project
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

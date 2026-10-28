@@ -1,7 +1,8 @@
-Get desktop login logs
+Get the desktop logins of a person
 ---
-description: Retrieve desktop login logs for a person. Desktop login
-  logs can only be created by current user.
+description: Get the login logs of the desktop tools of a person. A manager
+  can read the logs of all persons. Other users can read their own logs
+  only.
 tags:
   - Persons
 parameters:
@@ -15,7 +16,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Desktop login logs for the person
+    description: The list of desktop login logs
     content:
       application/json:
         schema:
@@ -37,4 +38,8 @@ responses:
                 type: string
                 format: date-time
                 description: Login date and time
-                example: "2022-07-12T10:30:00Z"
+                example: '2022-07-12T10:30:00Z'
+  403:
+    description: You cannot read the logs of this person
+  404:
+    description: The person does not exist

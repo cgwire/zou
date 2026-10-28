@@ -1,11 +1,11 @@
-Trade a browser login code for tokens
+Change a browser login code into tokens
 ---
-description: Exchange a one-time code minted through the browser for a new
-  access and refresh token pair. The code can be used once, and only with
-  the PKCE code verifier matching its challenge. The response has the same
-  shape as a successful login and never sets cookies.
+description: Change a one-time browser login code into a new pair of access
+  and refresh tokens. You can use a code one time only. The code verifier
+  must agree with the PKCE challenge of the code. The response has the same
+  shape as the response of a login. This route does not set cookies.
 tags:
-    - Authentication
+  - Authentication
 requestBody:
   required: true
   content:
@@ -15,9 +15,12 @@ requestBody:
         properties:
           code:
             type: string
+            minLength: 1
+            maxLength: 128
             description: One-time login code
           code_verifier:
             type: string
+            pattern: "^[A-Za-z0-9._~-]{43,128}$"
             example: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
             description: PKCE code verifier (43 to 128 characters)
         required:
@@ -25,7 +28,23 @@ requestBody:
           - code_verifier
 responses:
   200:
-    description: Login successful
+    description: The user, the organisation and the two tokens
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            login:
+              type: boolean
+              example: true
+            user:
+              type: object
+            organisation:
+              type: object
+            access_token:
+              type: string
+            refresh_token:
+              type: string
   400:
-    description: Unknown, expired or already used code, wrong verifier
-      or inactive user
+    description: The code is unknown, expired or used, or the verifier is
+      not correct

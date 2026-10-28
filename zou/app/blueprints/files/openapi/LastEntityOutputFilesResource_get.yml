@@ -1,10 +1,9 @@
-Get last entity output files
+Get the last output files of an entity
 ---
-description: Retrieve the last revisions of output files for a given
-  entity grouped by output type and file name. Returns the most
-  recent version of each output file.
+description: Get the last revision of each output file of an entity. The
+  response groups the files by output type and by name.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: entity_id
@@ -20,7 +19,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Filter by output type
+    description: Get only the files of this output type
     example: b35b7fb5-df86-5776-b181-68564193d360
   - in: query
     name: task_type_id
@@ -28,33 +27,34 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Filter by task type
+    description: Get only the files of this task type
     example: c46c80c6-e097-6887-c292-79675204e470
   - in: query
     name: representation
     required: false
     schema:
       type: string
-    description: Filter by representation
-    example: "mp4"
+    description: Get only the files with this representation, for example
+      abc or fbx
+    example: mp4
   - in: query
     name: file_status_id
     required: false
     schema:
       type: string
       format: uuid
-    description: Filter by file status
+    description: Get only the files with this file status
     example: d57d91d7-f108-7998-d403-80786315f580
   - in: query
     name: name
     required: false
     schema:
       type: string
-    description: Filter by file name
-    example: "main"
+    description: Get only the files with this name
+    example: main
 responses:
   200:
-    description: Last revisions of output files grouped by output type and file name
+    description: The last revisions, by output type and by name
     content:
       application/json:
         schema:
@@ -70,7 +70,7 @@ responses:
               name:
                 type: string
                 description: Output file name
-                example: "main"
+                example: main
               revision:
                 type: integer
                 description: Output file revision
@@ -78,9 +78,13 @@ responses:
               path:
                 type: string
                 description: Output file path
-                example: "/project/asset/output/main_v002.mp4"
+                example: /project/asset/output/main_v002.mp4
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
+  403:
+    description: You do not have access to this project
+  404:
+    description: The entity does not exist

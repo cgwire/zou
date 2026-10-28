@@ -1,11 +1,11 @@
-Pre-enable email OTP
+Prepare the email OTP
 ---
-description: Prepare email OTP (One-Time Password) for enabling.
-  It sets up email-based two-factor authentication.
+description: Send a one-time password (OTP) by email to the current user.
+  Use this code to enable the email OTP.
 tags:
-    - Authentication
+  - Authentication
 responses:
   200:
-    description: Email OTP pre-enabled
+    description: The code is sent
   400:
-    description: Email OTP already enabled
+    description: The email OTP is already enabled

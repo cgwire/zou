@@ -1,47 +1,54 @@
-Get login logs
+Get the last login logs
 ---
-description: Retrieve last login logs with filtering support. Filters can
-  be specified in the query string to narrow down results by date range
-  or cursor-based pagination.
+description: Get the last login logs, the newest first. To get the next
+  page, give the identifier of the last log in cursor_login_log_id. You must
+  be an administrator.
 tags:
   - Events
 parameters:
   - in: query
     name: after
-    type: string
-    format: date
-    example: "2022-07-12"
-    description: Filter logs after this date
+    example: '2022-07-12'
+    description: Get the logs after this date. Date in the ISO 8601 format,
+      for example 2026-10-28T10:00:00
+    schema:
+      type: string
+      format: date
   - in: query
     name: before
-    type: string
-    format: date
-    example: "2022-07-12"
-    description: Filter logs before this date
+    example: '2022-07-12'
+    description: Get the logs before this date. Date in the ISO 8601 format,
+      for example 2026-10-28T10:00:00
+    schema:
+      type: string
+      format: date
   - in: query
     name: cursor_login_log_id
-    required: False
-    type: string
-    format: uuid
+    required: false
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: ID of the last login log from previous page for cursor-based pagination
-  - in: query
-    name: limit
-    type: integer
-    default: 100
-    example: 100
-    description: Maximum number of login logs to return
-  - in: query
-    name: person_ids
-    type: array
-    items:
+    description: Get the logs that are older than this log
+    schema:
       type: string
       format: uuid
-    description: Filter login logs by person. Repeat the parameter for
-      each value.
+  - in: query
+    name: limit
+    example: 100
+    description: Maximum number of logs. The maximum value is 1000.
+    schema:
+      type: integer
+      default: 100
+  - in: query
+    name: person_ids
+    description: Filter login logs by person. Repeat the parameter for each
+      value.
+    schema:
+      type: array
+      items:
+        type: string
+        format: uuid
 responses:
   200:
-    description: List of login logs successfully retrieved
+    description: The list of login logs
     content:
       application/json:
         schema:
@@ -58,11 +65,11 @@ responses:
                 type: string
                 format: date-time
                 description: Login timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               ip_address:
                 type: string
                 description: IP address of the login
-                example: "192.168.1.100"
+                example: 192.168.1.100
               person_id:
                 type: string
                 format: uuid
@@ -71,5 +78,9 @@ responses:
               origin:
                 type: string
                 description: Login origin
-                example: "web"
-                enum: ["web", "script"]
+                example: web
+                enum: [web, script]
+  400:
+    description: A date or an identifier is not valid
+  403:
+    description: You are not an administrator

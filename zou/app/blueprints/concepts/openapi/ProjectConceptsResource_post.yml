@@ -1,17 +1,18 @@
-Create concept
+Create a concept
 ---
-description: Create a new concept for a specific project with name,
-  description, and optional entity concept links.
+description: Create a concept in a project. You can put the concept in a
+  concept folder with parent_id.
 tags:
   - Concepts
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
 requestBody:
   required: true
   content:
@@ -24,30 +25,32 @@ requestBody:
           name:
             type: string
             description: Concept name
-            example: "Character Design"
+            example: Character Design
           description:
             type: string
             description: Concept description
-            example: "Main character concept art"
+            example: Main character concept art
           data:
             type: object
             description: Additional concept data
-            example: {"style": "realistic", "mood": "heroic"}
+            example: {style: realistic, mood: heroic}
           entity_concept_links:
             type: array
             items:
               type: string
               format: uuid
             description: List of entity concept link identifiers
-            example: ["b35b7fb5-df86-5776-b181-68564193d360", "c46c80c6-e097-6887-c292-79675204e470"]
+            example: [b35b7fb5-df86-5776-b181-68564193d360,
+                  c46c80c6-e097-6887-c292-79675204e470]
           parent_id:
             type: string
             format: uuid
-            description: Concept folder of the project to create the concept in
+            description: Concept folder of the project to create the concept
+              in
             example: e68e02e8-a219-8009-e514-91897426a691
 responses:
   201:
-    description: Concept successfully created
+    description: The new concept
     content:
       application/json:
         schema:
@@ -61,11 +64,11 @@ responses:
             name:
               type: string
               description: Concept name
-              example: "Character Design"
+              example: Character Design
             description:
               type: string
               description: Concept description
-              example: "Main character concept art"
+              example: Main character concept art
             project_id:
               type: string
               format: uuid
@@ -74,7 +77,7 @@ responses:
             data:
               type: object
               description: Additional concept data
-              example: {"style": "realistic", "mood": "heroic"}
+              example: {style: realistic, mood: heroic}
             created_by:
               type: string
               format: uuid
@@ -84,9 +87,14 @@ responses:
               type: string
               format: date-time
               description: Creation timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
             updated_at:
               type: string
               format: date-time
               description: Last update timestamp
-              example: "2023-01-01T12:00:00Z"
+              example: '2023-01-01T12:00:00Z'
+  400:
+    description: The body is not valid
+  403:
+    description: You do not have access to this project, or you are a client
+      or a vendor

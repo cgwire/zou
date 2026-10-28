@@ -1,8 +1,9 @@
-Create desktop login log
+Add a desktop login
 ---
-description: Create a desktop login log entry for the current user.
+description: Add a login log of a desktop tool for you. Without date, the
+  log uses the current date.
 tags:
-- User
+  - User
 requestBody:
   required: true
   content:
@@ -14,39 +15,39 @@ requestBody:
             type: string
             format: date
             description: Login date
-            example: "2023-01-01"
+            example: '2023-01-01'
 responses:
-    201:
-      description: Desktop login log created successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                description: Login log unique identifier
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              person_id:
-                type: string
-                format: uuid
-                description: Person identifier
-                example: b35b7fb5-df86-5776-b181-68564193d360
-              date:
-                type: string
-                format: date
-                description: Login date
-                example: "2023-01-01"
-              created_at:
-                type: string
-                format: date-time
-                description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
-    400:
-      description: Bad request
+  201:
+    description: The new desktop login log
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Login log unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              description: Person identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            date:
+              type: string
+              format: date
+              description: Login date
+              example: '2023-01-01'
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+              example: '2023-01-01T12:00:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
+              example: '2023-01-01T12:30:00Z'
+  400:
+    description: The date is not valid

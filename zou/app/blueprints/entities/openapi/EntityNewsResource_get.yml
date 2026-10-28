@@ -1,20 +1,21 @@
-Get entity news
+Get the news of an entity
 ---
-description: Retrieve all news entries that are linked to a specific
-  entity.
+description: Get the news of the tasks of an entity. A news is made when a
+  comment is posted on a task. Clients cannot use this route.
 tags:
   - Entities
 parameters:
   - in: path
     name: entity_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the entity
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of entity news successfully retrieved
+    description: The list of news
     content:
       application/json:
         schema:
@@ -55,9 +56,14 @@ responses:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
+                example: '2023-01-01T12:30:00Z'
+  403:
+    description: You are a client, or you do not have access to this
+      entity
+  404:
+    description: The entity does not exist

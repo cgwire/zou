@@ -1,32 +1,30 @@
-Get edits and tasks
+Get edits with their tasks
 ---
-description: Retrieve all edits with project name and all related tasks.
+description: Get the edits with the tasks of each edit. Add a query
+  parameter for each column to filter on. If you are not an administrator,
+  you must give project_id. A vendor gets only the edits of their assigned
+  tasks.
 tags:
   - Edits
 parameters:
   - in: query
     name: project_id
     required: false
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter edits by specific project
+    description: Get only the edits of this project
+    schema:
+      type: string
+      format: uuid
   - in: query
     name: name
     required: false
-    type: string
-    example: "Opening Sequence"
-    description: Filter edits by name
-  - in: query
-    name: force
-    required: false
-    type: boolean
-    default: false
-    description: Force parameter for additional filtering
-    example: false
+    example: Opening Sequence
+    description: Get only the edits with this name
+    schema:
+      type: string
 responses:
   200:
-    description: Edits with tasks successfully retrieved
+    description: The list of edits with their tasks
     content:
       application/json:
         schema:
@@ -42,11 +40,11 @@ responses:
               name:
                 type: string
                 description: Edit name
-                example: "Opening Sequence"
+                example: Opening Sequence
               description:
                 type: string
                 description: Edit description
-                example: "Main opening sequence edit"
+                example: Main opening sequence edit
               project_id:
                 type: string
                 format: uuid
@@ -55,7 +53,7 @@ responses:
               project_name:
                 type: string
                 description: Project name
-                example: "My Animation Project"
+                example: My Animation Project
               episode_id:
                 type: string
                 format: uuid
@@ -74,7 +72,7 @@ responses:
                     name:
                       type: string
                       description: Task name
-                      example: "Edit Task"
+                      example: Edit Task
                     task_type_id:
                       type: string
                       format: uuid
@@ -84,9 +82,13 @@ responses:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
+                example: '2023-01-01T12:30:00Z'
+  400:
+    description: An identifier is not a valid UUID
+  403:
+    description: You do not have access to this project

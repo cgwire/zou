@@ -1,6 +1,9 @@
-Delete build job
+Delete a build job
 ---
-description: Remove given build job related to given playlist.
+description: Delete a build job of a playlist. A manager of the project can
+  use this route. A supervisor can use it for the playlists that the
+  supervisor can see. A client can use it for the playlists for clients.
+  Artists and vendors cannot use it.
 tags:
   - Playlists
 parameters:
@@ -22,4 +25,8 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: Build job removed successfully
+    description: The build job is deleted
+  403:
+    description: You cannot access this playlist
+  404:
+    description: The playlist or the build job does not exist

@@ -1,4 +1,23 @@
-List status automations attached to a project template.
+Get the status automations of a project template
 ---
+description: Get the status automations of a project template. A project
+  template keeps a production configuration. You can apply it to a project.
+  You must have the manager role or a higher role.
 tags:
   - Project Templates
+parameters:
+  - in: path
+    name: project_template_id
+    required: true
+    description: Unique identifier of the project template
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+responses:
+  200:
+    description: The list of status automations
+  403:
+    description: You do not have the manager role
+  404:
+    description: The project template does not exist

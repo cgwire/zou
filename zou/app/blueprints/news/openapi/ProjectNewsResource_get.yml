@@ -1,6 +1,7 @@
-Get project latest news
+Get the news of a project
 ---
-description: Get the 50 latest news object (activity feed) for a project
+description: Get the last news of a project, the newest first. A news is
+  made when a comment is posted on a task. Clients cannot use this route.
 tags:
   - News
 parameters:
@@ -18,16 +19,18 @@ parameters:
     schema:
       type: string
       format: date
-    example: "2022-07-12"
-    description: Filter news before this date
+    example: '2022-07-12'
+    description: Get the news before this date. Date in the ISO 8601 format,
+      for example 2026-10-28T10:00:00
   - in: query
     name: after
     required: false
     schema:
       type: string
       format: date
-    example: "2022-07-12"
-    description: Filter news after this date
+    example: '2022-07-12'
+    description: Get the news after this date. Date in the ISO 8601 format,
+      for example 2026-10-28T10:00:00
   - in: query
     name: page
     required: false
@@ -35,7 +38,7 @@ parameters:
       type: integer
       default: 1
     example: 1
-    description: Page number for pagination
+    description: Page to get
   - in: query
     name: limit
     required: false
@@ -43,7 +46,7 @@ parameters:
       type: integer
       default: 50
     example: 50
-    description: Number of news items per page
+    description: Number of news in a page
   - in: query
     name: person_id
     required: false
@@ -51,7 +54,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by specific team member
+    description: Get only the news of this author
   - in: query
     name: task_type_id
     required: false
@@ -59,7 +62,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by task type
+    description: Get only the news of this task type
   - in: query
     name: task_status_id
     required: false
@@ -67,7 +70,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by task status
+    description: Get only the news of this task status
   - in: query
     name: episode_id
     required: false
@@ -75,7 +78,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
-    description: Filter news by specific episode
+    description: Get only the news of this episode
   - in: query
     name: only_preview
     required: false
@@ -83,10 +86,10 @@ parameters:
       type: boolean
       default: false
     example: false
-    description: Show only news related to preview uploads
+    description: Get only the news with a preview
 responses:
-  '200':
-    description: All news related to given project
+  200:
+    description: A page of news, with the statistics of the news
     content:
       application/json:
         schema:
@@ -96,26 +99,22 @@ responses:
               type: array
               items:
                 type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                    description: Unique news item identifier
-                  title:
-                    type: string
-                    description: News item title
-                  content:
-                    type: string
-                  created_at:
-                    type: string
-                    format: date-time
-                  author_id:
-                    type: string
-                    format: uuid
             stats:
               type: object
-              properties:
-                total:
-                  type: integer
-  '404':
-    description: Project not found
+              description: Number of news for each task status
+            total:
+              type: integer
+            nb_pages:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            page:
+              type: integer
+  400:
+    description: A date is not valid
+  403:
+    description: You do not have access to this project, or you are a client
+  404:
+    description: The project does not exist

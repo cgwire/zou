@@ -1,41 +1,40 @@
-Get filter values for tasks requiring feedback
+Get the filter values of my tasks to check
 ---
-description: Return the distinct project, task type, task status,
-  episode and assignee ids present in the tasks requiring feedback
-  for the current user. Aimed at filling filter combo boxes without
-  loading the full task list.
+description: Get the projects, task types, task statuses, episodes and
+  assignees of the tasks that you must check. The filters of the list use
+  these values.
 tags:
-- User
+  - User
 responses:
-    200:
-      description: Distinct filter values for tasks requiring feedback
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              project_ids:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-              task_type_ids:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-              task_status_ids:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-              episode_ids:
-                type: array
-                items:
-                  type: string
-                  format: uuid
-              person_ids:
-                type: array
-                items:
-                  type: string
-                  format: uuid
+  200:
+    description: The filter values
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            project_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            task_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            task_status_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            episode_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            person_ids:
+              type: array
+              items:
+                type: string
+                format: uuid

@@ -1,18 +1,20 @@
-Get FIDO challenge
+Get a FIDO challenge
 ---
-description: Get a challenge for FIDO device authentication.
-  It is used for WebAuthn authentication flow.
+description: Get a challenge for the FIDO devices of the user. You do not
+  need a token for this route. Use the challenge to log in with WebAuthn.
 tags:
-    - Authentication
+  - Authentication
+security: []
 parameters:
   - in: query
     name: email
-    required: True
-    type: string
-    format: email
-    description: User email address
+    required: true
+    schema:
+      type: string
+    example: admin@example.com
+    description: Email address or desktop login of the user
 responses:
   200:
-    description: FIDO challenge generated
+    description: The FIDO challenge
   400:
-    description: No FIDO challenge available for this address
+    description: No FIDO challenge is available for this user

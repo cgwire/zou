@@ -1,8 +1,9 @@
-Reorder metadata descriptors on all accessible projects
+Reorder the metadata descriptors in all projects
 ---
-description: Apply the same column order, given as a list of field
-  names, on every open project the user can access. Replaces one
-  reorder request per project.
+description: Set the same order of columns in your projects, in one request.
+  Give the field names in the new order. The route changes the open projects
+  where you are a manager. An administrator changes all the open projects.
+  You must have the manager role or a higher role.
 tags:
   - Projects
 requestBody:
@@ -23,6 +24,8 @@ requestBody:
               type: string
 responses:
   200:
-    description: Updated descriptors
+    description: The updated descriptors
   400:
-    description: Invalid parameters
+    description: The body is not valid
+  403:
+    description: You do not have the manager role

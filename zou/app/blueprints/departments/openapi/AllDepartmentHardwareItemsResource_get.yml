@@ -1,13 +1,13 @@
-Get all department hardware items
+Get the hardware items of all departments
 ---
-description: Retrieve all hardware items organized by department.
-  Returns a dictionary where each department contains its associated
-  hardware items.
+description: Get the hardware items of each department. The response is a
+  map of department identifiers to lists of hardware items. You must be an
+  administrator.
 tags:
   - Departments
 responses:
   200:
-    description: Department hardware items successfully retrieved
+    description: A map of department identifiers to lists of hardware items
     content:
       application/json:
         schema:
@@ -25,11 +25,11 @@ responses:
                 name:
                   type: string
                   description: Hardware item name
-                  example: "Workstation"
+                  example: Workstation
                 description:
                   type: string
                   description: Hardware item description
-                  example: "High-performance workstation"
+                  example: High-performance workstation
                 department_id:
                   type: string
                   format: uuid
@@ -39,9 +39,11 @@ responses:
                   type: string
                   format: date-time
                   description: Creation timestamp
-                  example: "2023-01-01T12:00:00Z"
+                  example: '2023-01-01T12:00:00Z'
                 updated_at:
                   type: string
                   format: date-time
                   description: Last update timestamp
-                  example: "2023-01-01T12:30:00Z"
+                  example: '2023-01-01T12:30:00Z'
+  403:
+    description: You are not an administrator

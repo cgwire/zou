@@ -1,9 +1,8 @@
-Delete budget entry
+Delete a budget entry
 ---
 tags:
   - Crud
-description: Delete a budget entry by its ID. Returns empty
-  response on success.
+description: Delete a budget entry. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,8 +11,13 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the budget entry
 responses:
-    204:
-      description: Budget entry deleted successfully
-    400:
-      description: Integrity error or cannot delete
+  204:
+    description: The budget entry is deleted
+  400:
+    description: Other data uses this row
+  403:
+    description: You cannot delete this budget entry
+  404:
+    description: The budget entry does not exist

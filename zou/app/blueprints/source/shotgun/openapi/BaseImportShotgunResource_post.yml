@@ -1,9 +1,11 @@
-Import shotgun resource
+Import Shotgun rows
 ---
 tags:
   - Import
-description: Import Shotgun resources. Send a list of Shotgun entries
-  in the JSON body. Returns created or updated resources.
+description: Import rows from Shotgun. Send a JSON list of Shotgun rows. A
+  row that exists in Kitsu, with the same Shotgun identifier, is updated.
+  Else, it is created. A row with a wrong format is skipped. You must be an
+  administrator.
 requestBody:
   required: true
   content:
@@ -28,29 +30,33 @@ requestBody:
           code: SH010
           name: Shot name
 responses:
-    200:
-      description: Resources imported successfully
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: Imported resource
-                created_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T10:30:00Z"
-                updated_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T11:00:00Z"
-    400:
-      description: Invalid request body or data format error
+  200:
+    description: The created and updated rows
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Imported resource
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+  400:
+    description: The body is not valid
+  403:
+    description: You are not an administrator
+  500:
+    description: A row breaks a database constraint

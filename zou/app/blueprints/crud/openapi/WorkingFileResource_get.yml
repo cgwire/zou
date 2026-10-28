@@ -1,9 +1,9 @@
-Get working file
+Get a working file
 ---
 tags:
   - Crud
-description: Retrieve a working file instance by its ID and return
-  it as a JSON object.
+description: Get a working file. You must have access to the task of the
+  file.
 parameters:
   - in: path
     name: instance_id
@@ -12,32 +12,37 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the working file
 responses:
-    200:
-      description: Working file retrieved successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              name:
-                type: string
-                example: work_file_v001
-              task_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-    400:
-      description: Invalid ID format or query error
+  200:
+    description: The working file
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: work_file_v001
+            task_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+  400:
+    description: The identifier is not valid
+  403:
+    description: You cannot read this working file
+  404:
+    description: The working file does not exist

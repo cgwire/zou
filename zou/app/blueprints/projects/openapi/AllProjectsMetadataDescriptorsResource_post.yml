@@ -1,8 +1,11 @@
-Create a metadata descriptor on all accessible projects
+Create a metadata descriptor in all projects
 ---
-description: Create the same metadata descriptor in every open
-  project the user can access that does not already own one with the
-  same field name. Replaces one create request per project.
+description: Create the same metadata descriptor in your projects, in one
+  request. A project that already has a descriptor with this field name is
+  skipped. A metadata descriptor describes an extra column. The values of
+  the column are in the data field of the entities. The route changes the
+  open projects where you are a manager. An administrator changes all the
+  open projects. You must have the manager role or a higher role.
 tags:
   - Projects
 requestBody:
@@ -17,13 +20,16 @@ requestBody:
         properties:
           entity_type:
             type: string
-            default: "Project"
+            default: Project
           name:
             type: string
           data_type:
             type: string
 responses:
   201:
-    description: Created descriptors
+    description: The new descriptors
   400:
-    description: Invalid parameters, or a name taken by a built-in field
+    description: A value is not valid, or the name is used by a built-in
+      field
+  403:
+    description: You do not have the manager role

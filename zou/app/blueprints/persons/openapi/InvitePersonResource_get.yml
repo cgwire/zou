@@ -1,7 +1,8 @@
-Invite person
+Invite a person
 ---
-description: Sends an email to given person to invite him or her to
-  connect to Kitsu.
+description: Send an email that invites a person to log in to Kitsu. The
+  email has a link to set the password. The link is valid for 7 days. You
+  must be an administrator.
 tags:
   - Persons
 parameters:
@@ -15,7 +16,7 @@ parameters:
     example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
   200:
-    description: Email sent successfully
+    description: The email is sent
     content:
       application/json:
         schema:
@@ -28,4 +29,8 @@ responses:
             message:
               type: string
               description: Success message
-              example: "Email sent"
+              example: Email sent
+  403:
+    description: You are not an administrator, or the person is a bot
+  404:
+    description: The person does not exist

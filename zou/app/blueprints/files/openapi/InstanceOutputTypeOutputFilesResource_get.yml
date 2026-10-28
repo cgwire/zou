@@ -1,10 +1,10 @@
-Get instance output type files
+Get the instance output files of an output type
 ---
-description: Retrieve all output files for a given asset instance,
-  temporal entity, and output type. Optionally filter by
-  representation.
+description: Get the output files of an asset instance that have an output
+  type. An asset instance is a copy of an asset in a shot or a scene. The
+  temporal entity is this shot or this scene.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: asset_instance_id
@@ -20,7 +20,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Temporal entity unique identifier
+    description: Get only the files of this shot or scene
     example: b35b7fb5-df86-5776-b181-68564193d360
   - in: path
     name: output_type_id
@@ -28,18 +28,19 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Output type unique identifier
+    description: Get only the files of this output type
     example: c46c80c6-e097-6887-c292-79675204e470
   - in: query
     name: representation
     required: false
     schema:
       type: string
-    description: Filter by representation
-    example: "mp4"
+    description: Get only the files with this representation, for example
+      abc or fbx
+    example: mp4
 responses:
   200:
-    description: All output files for the asset instance and output type
+    description: The list of output files
     content:
       application/json:
         schema:
@@ -55,7 +56,7 @@ responses:
               name:
                 type: string
                 description: Output file name
-                example: "main"
+                example: main
               revision:
                 type: integer
                 description: Output file revision
@@ -63,12 +64,12 @@ responses:
               path:
                 type: string
                 description: Output file path
-                example: "/project/asset/instance/output/main_v001.mp4"
+                example: /project/asset/instance/output/main_v001.mp4
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               asset_instance_id:
                 type: string
                 format: uuid
@@ -79,3 +80,7 @@ responses:
                 format: uuid
                 description: Temporal entity identifier
                 example: f79f13f9-1320-9010-f625-a09008537180
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset instance does not exist

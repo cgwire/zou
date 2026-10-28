@@ -1,6 +1,7 @@
-Remove task type from production
+Remove a task type from a project
 ---
-description: Remove a task type from a production.
+description: Remove a task type from the settings of a project. The task
+  type is not deleted. You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -22,4 +23,6 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   204:
-    description: Task type removed from production
+    description: The task type is removed from the project
+  403:
+    description: You are not a manager of the project

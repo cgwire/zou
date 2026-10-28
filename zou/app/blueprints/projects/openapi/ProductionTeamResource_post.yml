@@ -1,6 +1,7 @@
-Add person to production team
+Add a person to a project team
 ---
-description: Add a person to a production team.
+description: Add a person to the team of a project. You can give the role of
+  the person in this project. You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -29,12 +30,12 @@ requestBody:
           role:
             type: string
             nullable: true
-            description: Role of the person on this project only.
-              Null means the person's global role applies.
+            description: Role of the person on this project only. Null means
+              the person's global role applies.
             enum: [user, supervisor, manager, client, vendor, null]
 responses:
   201:
-    description: Person added to the production team
+    description: The updated project
     content:
       application/json:
         schema:
@@ -48,6 +49,8 @@ responses:
             name:
               type: string
               description: Project name
-              example: "My Project"
+              example: My Project
   400:
-    description: Invalid parameters
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

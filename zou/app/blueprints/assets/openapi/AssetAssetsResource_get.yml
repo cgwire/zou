@@ -1,19 +1,21 @@
-Get linked assets
+Get the assets cast in an asset
 ---
-description: Retrieve all assets that are linked to a specific asset through casting relationships
+description: Get the assets that are cast in an asset. An asset can contain
+  other assets. For example, a set contains props.
 tags:
   - Assets
 parameters:
   - in: path
     name: asset_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the asset
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: List of linked assets successfully retrieved
+    description: The list of assets cast in the asset
     content:
       application/json:
         schema:
@@ -29,7 +31,7 @@ responses:
               name:
                 type: string
                 description: Linked asset name
-                example: "Character Name"
+                example: Character Name
               project_id:
                 type: string
                 format: uuid
@@ -40,3 +42,7 @@ responses:
                 format: uuid
                 description: Asset type identifier
                 example: c46c80c6-e097-6887-c292-79675204e470
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset does not exist

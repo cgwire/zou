@@ -1,9 +1,9 @@
-Enable TOTP
+Enable the TOTP
 ---
-description: Enable TOTP (Time-based One-Time Password) authentication.
-  It requires verification code from authenticator app.
+description: Enable the authentication with a time-based one-time password
+  (TOTP). Give a code from the authenticator app to confirm this operation.
 tags:
-    - Authentication
+  - Authentication
 requestBody:
   required: true
   content:
@@ -13,11 +13,12 @@ requestBody:
         properties:
           totp:
             type: string
-            description: TOTP verification code from authenticator app
+            minLength: 1
+            description: TOTP code from the authenticator app
         required:
           - totp
 responses:
   200:
-    description: TOTP enabled
+    description: The TOTP is enabled. The body has the recovery codes.
   400:
-    description: TOTP already enabled or verification failed
+    description: The TOTP is already enabled, or the code is wrong

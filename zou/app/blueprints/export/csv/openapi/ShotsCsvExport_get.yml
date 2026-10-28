@@ -1,26 +1,34 @@
-        Export shots csv
-        ---
-        tags:
-          - Export
-        description: Export project shots as CSV file. Includes shot
-          information, frames, task statuses, assignments, and metadata.
-        produces:
-          - text/csv
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            schema:
-              type: string
-              format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c250
-        responses:
-            200:
-              description: Shots exported as CSV successfully
-              content:
-                text/csv:
-                  schema:
-                    type: string
-                  example: "Project,Episode,Sequence,Name,Description,Time Spent,Frames,Frame In,Frame Out,FPS
-Project A,EP01,SQ01,SH010,Description,5.25,120,1001,1120,24"
-        
+Export the shots of a project to CSV
+---
+tags:
+  - Export
+description: Get a CSV file with the shots of a project. Each row gives the
+  shot, its frames, its metadata, and the status and the assignees of each
+  task type. Add a query parameter for each column to filter on, for example
+  episode_id. Vendors cannot use this route.
+parameters:
+  - in: path
+    name: project_id
+    required: true
+    schema:
+      type: string
+      format: uuid
+    example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the project
+responses:
+  200:
+    description: The CSV file
+    content:
+      text/csv:
+        schema:
+          type: string
+        example: Project,Episode,Sequence,Name,Description,Time
+          Spent,Frames,Frame In,Frame Out,FPS Project
+          A,EP01,SQ01,SH010,Description,5.25,120,1001,1120,24
+
+  400:
+    description: An identifier is not a valid UUID
+  403:
+    description: You do not have access to this project, or you are a vendor
+  404:
+    description: The project does not exist

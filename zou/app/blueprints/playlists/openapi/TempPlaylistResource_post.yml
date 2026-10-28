@@ -1,7 +1,8 @@
-Generate temp playlist
+Make a temporary playlist
 ---
-description: Generate a temporary playlist from task IDs. It's mainly
-  used for synchronisation purpose.
+description: Make a temporary playlist from tasks or entities. The playlist
+  is not saved. For each entity, the route uses the task of the entity that
+  has a preview. You must have access to each task.
 tags:
   - Playlists
 parameters:
@@ -18,7 +19,7 @@ parameters:
     required: false
     schema:
       type: boolean
-    description: Whether to sort the playlist
+    description: Sort the entries of the playlist
     example: true
 requestBody:
   required: true
@@ -33,7 +34,7 @@ requestBody:
               type: string
               format: uuid
             description: List of task unique identifiers
-            example: ["a24a6ea4-ce75-4665-a070-57453082c250"]
+            example: [a24a6ea4-ce75-4665-a070-57453082c250]
           entity_ids:
             type: array
             items:
@@ -43,10 +44,10 @@ requestBody:
               List of entity unique identifiers, each contributing
               the task holding its current preview (or its first
               task with a preview)
-            example: ["a24a6ea4-ce75-4665-a070-57453082c250"]
+            example: [a24a6ea4-ce75-4665-a070-57453082c250]
 responses:
   200:
-    description: Temporary playlist generated
+    description: The entries of the temporary playlist
     content:
       application/json:
         schema:
@@ -62,6 +63,8 @@ responses:
               name:
                 type: string
                 description: Preview file name
-                example: "preview_v001.png"
+                example: preview_v001.png
   400:
-    description: Invalid task IDs
+    description: An identifier is not valid
+  403:
+    description: You do not have access to this project or to a task

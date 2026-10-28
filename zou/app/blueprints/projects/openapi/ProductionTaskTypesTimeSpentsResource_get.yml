@@ -1,6 +1,8 @@
-Get production task type time spents
+Get the time spents of a task type in a project
 ---
-description: Retrieve time spents for a task type in the production.
+description: Get the time spent entries of the tasks of a task type in a
+  project. Give start_date and end_date to get the entries of a period. You
+  must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -26,23 +28,23 @@ parameters:
     schema:
       type: string
       format: date
-    description: Start date for filtering time spents
-    example: "2022-07-01"
+    description: First date of the period, in the YYYY-MM-DD format
+    example: '2022-07-01'
   - in: query
     name: end_date
     required: false
     schema:
       type: string
       format: date
-    description: End date for filtering time spents
-    example: "2022-07-31"
+    description: Last date of the period, in the YYYY-MM-DD format
+    example: '2022-07-31'
 responses:
   200:
-    description: All time spents for given task type and project
+    description: The list of time spent entries
     content:
       application/json:
         schema:
-          type: dict
+          type: object
           items:
             type: object
             properties:
@@ -65,6 +67,9 @@ responses:
                 type: string
                 format: date
                 description: Date of time spent entry
-                example: "2022-07-15"
+                example: '2022-07-15'
   400:
-    description: Invalid date range parameters
+    description: An identifier or a date is not valid, or only one date of
+      the period is given
+  403:
+    description: You are not a manager of the project

@@ -1,9 +1,8 @@
-Delete entity type
+Delete a entity type
 ---
 tags:
   - Crud
-description: Delete an entity type by its ID. Returns empty
-  response on success.
+description: Delete a entity type. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,8 +11,13 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the entity type
 responses:
-    204:
-      description: Entity type deleted successfully
-    400:
-      description: Integrity error or cannot delete
+  204:
+    description: The entity type is deleted
+  400:
+    description: Other data uses this row
+  403:
+    description: You cannot delete this entity type
+  404:
+    description: The entity type does not exist

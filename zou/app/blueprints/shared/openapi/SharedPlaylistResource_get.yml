@@ -1,11 +1,12 @@
-Get shared playlist
+Get a shared playlist
 ---
-description: Retrieve a playlist for a secret share link, each shot
-  with the revision the playlist positions on it and no other. No
-  JWT; the path token (and optional query password) is the
-  credential.
+description: Get the playlist of a share link. Each shot has the revision
+  that the playlist uses, and no other revision. You do not need an account.
+  The token of the link is the credential. If the link has a password, give
+  it in the password query parameter.
 tags:
   - Playlists
+security: []
 parameters:
   - in: path
     name: token
@@ -21,9 +22,12 @@ parameters:
     description: Password when the link is protected
 responses:
   200:
-    description: Playlist with the positioned revision of each shot
-      and enriched shots
+    description: Playlist with the positioned revision of each shot and
+      enriched shots
     content:
       application/json:
         schema:
           type: object
+  404:
+    description: The link is not valid, has expired, or the password is
+      wrong

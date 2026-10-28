@@ -1,16 +1,18 @@
-Create project scene
+Create a scene
 ---
 tags:
-- Shots
-description: Create a new scene in a project. Provide a name and the
-  related sequence id.
+  - Shots
+description: Create a scene in a project. Give the sequence of the scene.
+  You must be a manager of the project.
 parameters:
   - in: path
     name: project_id
-    required: True
-    type: string
-    format: uuid
+    required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
+    description: Unique identifier of the project
 requestBody:
   required: true
   content:
@@ -23,33 +25,35 @@ requestBody:
         properties:
           name:
             type: string
-            required: true
-            example: "Name of scene"
+            example: Name of scene
           sequence_id:
             type: string
             format: uuid
-            required: true
             example: a24a6ea4-ce75-4665-a070-57453082c250
 responses:
-    201:
-        description: Scene created for given project
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  example: SC001
-                project_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                parent_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
+  201:
+    description: The new scene
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              example: SC001
+            project_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            parent_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+  400:
+    description: The body is not valid
+  403:
+    description: You are not a manager of the project

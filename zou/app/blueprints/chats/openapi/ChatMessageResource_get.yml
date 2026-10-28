@@ -1,27 +1,29 @@
-Get chat message
+Get a chat message
 ---
-description: Retrieve a specific chat message by its ID.
-  Returns detailed message information including content and metadata.
+description: Get a message of the chat of an entity. Clients cannot use
+  this route.
 tags:
   - Chat
 parameters:
   - in: path
     name: entity_id
-    description: ID of the entity related to the chat
-    type: string
-    format: uuid
+    description: Unique identifier of the entity that has the chat
     required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: chat_message_id
-    description: ID of the chat message
-    type: string
-    format: uuid
+    description: Unique identifier of the message
     required: true
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Chat message successfully retrieved
+    description: The message
     content:
       application/json:
         schema:
@@ -51,3 +53,9 @@ responses:
               items:
                 type: object
               description: Array of file attachments
+  403:
+    description: You are a client, or you do not have access to this
+      entity, or the message is
+      not in this chat
+  404:
+    description: The entity or the message does not exist

@@ -1,9 +1,10 @@
-Update notification
+Update a notification
 ---
 tags:
   - Crud
-description: Update a notification with data provided in the
-  request body. JSON format is expected.
+description: Update the fields of a notification. Send only the fields to
+  change. You cannot change id, created_at, updated_at. Dates use the ISO
+  8601 format. You must be an administrator.
 parameters:
   - in: path
     name: instance_id
@@ -12,6 +13,7 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the notification
 requestBody:
   required: true
   content:
@@ -23,35 +25,40 @@ requestBody:
             type: boolean
             example: true
 responses:
-    200:
-      description: Notification updated successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-                example: a24a6ea4-ce75-4665-a070-57453082c250
-              person_id:
-                type: string
-                format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              comment_id:
-                type: string
-                format: uuid
-                example: c24a6ea4-ce75-4665-a070-57453082c250
-              read:
-                type: boolean
-                example: true
-              created_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T10:30:00Z"
-              updated_at:
-                type: string
-                format: date-time
-                example: "2024-01-15T11:00:00Z"
-    400:
-      description: Invalid data format or validation error
+  200:
+    description: The updated notification
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            comment_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            read:
+              type: boolean
+              example: true
+            created_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T10:30:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2024-01-15T11:00:00Z'
+  400:
+    description: The body is not valid, a date is not valid, or a field
+      breaks a database constraint
+  403:
+    description: You cannot update this notification
+  404:
+    description: The notification does not exist

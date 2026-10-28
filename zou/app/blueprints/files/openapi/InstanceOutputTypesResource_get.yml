@@ -1,10 +1,10 @@
-Get instance output types
+Get the output types of an asset instance
 ---
-description: Retrieve all types of output files generated for a
-  given asset instance and temporal entity. Returns list of output
-  types available for the instance.
+description: Get the output types of the output files of an asset instance.
+  An asset instance is a copy of an asset in a shot or a scene. The temporal
+  entity is this shot or this scene.
 tags:
-- Files
+  - Files
 parameters:
   - in: path
     name: asset_instance_id
@@ -24,7 +24,7 @@ parameters:
     example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: All types of output files generated for the instance
+    description: The list of output types
     content:
       application/json:
         schema:
@@ -40,18 +40,22 @@ responses:
               name:
                 type: string
                 description: Output type name
-                example: "Render"
+                example: Render
               short_name:
                 type: string
                 description: Output type short name
-                example: "RENDER"
+                example: RENDER
               created_at:
                 type: string
                 format: date-time
                 description: Creation timestamp
-                example: "2023-01-01T12:00:00Z"
+                example: '2023-01-01T12:00:00Z'
               updated_at:
                 type: string
                 format: date-time
                 description: Last update timestamp
-                example: "2023-01-01T12:30:00Z"
+                example: '2023-01-01T12:30:00Z'
+  403:
+    description: You do not have access to this project
+  404:
+    description: The asset instance does not exist

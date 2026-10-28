@@ -1,7 +1,7 @@
-Set team member role
+Set the role of a team member
 ---
-description: Set the role of a person on this production only.
-             A null role restores the person's global role.
+description: Set the role of a person in one project. A null role gives back
+  the global role of the person. You must be a manager of the project.
 tags:
   - Projects
 parameters:
@@ -11,12 +11,14 @@ parameters:
     schema:
       type: string
       format: uuid
+    description: Unique identifier of the project
   - in: path
     name: person_id
     required: true
     schema:
       type: string
       format: uuid
+    description: Unique identifier of the person
 requestBody:
   required: true
   content:
@@ -30,6 +32,8 @@ requestBody:
             enum: [user, supervisor, manager, client, vendor, null]
 responses:
   200:
-    description: Role updated
+    description: The updated team link
   400:
-    description: Person is not a member of the project team
+    description: The person is not in the team, or the role is not valid
+  403:
+    description: You are not a manager of the project

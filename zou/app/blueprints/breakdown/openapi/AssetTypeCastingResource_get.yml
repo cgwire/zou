@@ -1,26 +1,30 @@
-Get asset type casting
+Get the casting of an asset type
 ---
-description: Retrieve the casting information for all assets of a specific asset type in a project.
+description: Get the casting of each asset of an asset type in a project.
+  The casting of an entity is the list of assets in the entity, with the
+  number of occurrences of each asset.
 tags:
   - Breakdown
 parameters:
   - in: path
     name: project_id
     required: true
-    type: string
-    format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
     description: Unique identifier of the project
+    schema:
+      type: string
+      format: uuid
   - in: path
     name: asset_type_id
     required: true
-    type: string
-    format: uuid
     example: 08002400-2431-0221-0736-130196482810
     description: Unique identifier of the asset type
+    schema:
+      type: string
+      format: uuid
 responses:
   200:
-    description: Asset type casting information successfully retrieved
+    description: A map of asset identifiers to castings
     content:
       application/json:
         schema:
@@ -36,7 +40,7 @@ responses:
               asset_name:
                 type: string
                 description: Asset name
-                example: "Main Character"
+                example: Main Character
               asset_type_id:
                 type: string
                 format: uuid
@@ -55,8 +59,12 @@ responses:
                     entity_name:
                       type: string
                       description: Entity name
-                      example: "SH001"
+                      example: SH001
                     entity_type:
                       type: string
                       description: Entity type (shot/sequence)
-                      example: "shot"
+                      example: shot
+  403:
+    description: You do not have access to this project, or you are a vendor
+  404:
+    description: The asset type does not exist

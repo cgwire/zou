@@ -1,7 +1,9 @@
-Set task links from production schedule version
+Copy the task dates of an other schedule version
 ---
-description: Set task links for given production schedule version from
-  another production schedule version.
+description: Copy the task dates of an other production schedule version
+  into this version. A production schedule version is a copy of the
+  schedule. You can change it, and then apply it to the tasks. You must be a
+  manager of the project.
 tags:
   - Projects
 parameters:
@@ -11,7 +13,7 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Production schedule version unique identifier
+    description: Unique identifier of the production schedule version
     example: a24a6ea4-ce75-4665-a070-57453082c250
 requestBody:
   required: true
@@ -30,7 +32,7 @@ requestBody:
             example: b35b7fb5-df86-5776-b181-68564193d360
 responses:
   200:
-    description: Task links created
+    description: The task links of the version
     content:
       application/json:
         schema:
@@ -42,4 +44,9 @@ responses:
               type: integer
               description: Number of task links copied
   400:
-    description: Wrong ID format
+    description: The body is not valid, or the two versions are not in the
+      same project
+  403:
+    description: You are not a manager of the project
+  404:
+    description: A production schedule version does not exist

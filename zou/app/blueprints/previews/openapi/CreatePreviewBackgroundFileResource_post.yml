@@ -1,7 +1,8 @@
-Create preview background file
+Upload a preview background file
 ---
-description: Main resource to add a preview background file. It stores
-  the preview background file and generates a rectangle thumbnail.
+description: Upload the file of a preview background. The route also makes a
+  thumbnail. Send the file in a multipart form. You must be an
+  administrator.
 tags:
   - Previews
 parameters:
@@ -11,16 +12,11 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Preview background file unique identifier
+    description: Unique identifier of the preview background file
     example: a24a6ea4-ce75-4665-a070-57453082c250
-  - in: formData
-    name: file
-    required: true
-    type: file
-    description: HDR file to upload
 responses:
   201:
-    description: Preview background file added successfully
+    description: The preview background file
     content:
       application/json:
         schema:
@@ -34,10 +30,25 @@ responses:
             extension:
               type: string
               description: File extension
-              example: "hdr"
+              example: hdr
             file_size:
               type: integer
               description: File size in bytes
               example: 2048000
   400:
-    description: Wrong file format or error saving file
+    description: The file is missing, or its format is not valid
+  403:
+    description: You are not an administrator
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        properties:
+          file:
+            type: string
+            description: HDR file to upload
+            format: binary
+        required:
+          - file

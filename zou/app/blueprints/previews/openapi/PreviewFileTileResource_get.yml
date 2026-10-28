@@ -1,8 +1,8 @@
 Get the tile sheet of a movie preview
 ---
-description: Download the tile sheet of a movie preview file. A
-             ready movie without one gets it built in the
-             background for the next request.
+description: Get the tile sheet of a movie preview. If a ready movie has no
+  tile sheet, the route starts to make it for the next request. You must
+  have access to the task.
 tags:
   - Previews
 parameters:
@@ -12,14 +12,16 @@ parameters:
     schema:
       type: string
       format: uuid
-    description: Preview file unique identifier
+    description: Unique identifier of the preview file
 responses:
   200:
-    description: Tile sheet downloaded
+    description: The PNG tile sheet
     content:
       image/png:
         schema:
           type: string
           format: binary
+  403:
+    description: You do not have access to the task of this preview
   404:
-    description: No tile sheet stored for this preview file
+    description: The preview has no tile sheet

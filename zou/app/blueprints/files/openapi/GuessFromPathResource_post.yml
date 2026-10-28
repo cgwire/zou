@@ -1,9 +1,10 @@
-Guess file tree template
+Guess the entity from a file path
 ---
-description: Get list of possible project file tree templates matching
-  a file path and data ids corresponding to template tokens.
+description: Find the templates of the file tree of a project that match a
+  file path. For each template, the response gives the identifiers that
+  match the tokens of the template.
 tags:
-- Files
+  - Files
 requestBody:
   required: true
   content:
@@ -22,15 +23,15 @@ requestBody:
           file_path:
             type: string
             description: File path to analyze
-            example: "/project/asset/working/main_v001.blend"
+            example: /project/asset/working/main_v001.blend
           sep:
             type: string
             description: Path separator
             default: /
-            example: "/"
+            example: /
 responses:
   200:
-    description: List of possible project file tree templates matching the file path
+    description: The list of the matching templates
     content:
       application/json:
         schema:
@@ -44,7 +45,7 @@ responses:
                   template:
                     type: string
                     description: Template name
-                    example: "default"
+                    example: default
                   confidence:
                     type: number
                     description: Confidence score
@@ -64,4 +65,6 @@ responses:
                         description: Entity identifier
                         example: b35b7fb5-df86-5776-b181-68564193d360
   400:
-    description: Invalid project ID or file path
+    description: The body is not valid
+  403:
+    description: You do not have access to this project

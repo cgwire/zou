@@ -1,12 +1,25 @@
-Check authentication status
+Get the authentication status
 ---
-description: Returns information if the user is authenticated.
-  It can be used by third party tools, especially browser frontend,
-  to know if current user is still logged in.
+description: Get the current user and the organisation if the token is
+  valid. A browser frontend or a third-party tool uses this route to know if
+  the user is still logged in.
 tags:
-    - Authentication
+  - Authentication
 responses:
   200:
-    description: User authenticated
+    description: The user is authenticated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            authenticated:
+              type: boolean
+              example: true
+            user:
+              type: object
+              description: Current user, with relations and FIDO devices
+            organisation:
+              type: object
   401:
-    description: Person not found
+    description: The token is missing, not valid or expired

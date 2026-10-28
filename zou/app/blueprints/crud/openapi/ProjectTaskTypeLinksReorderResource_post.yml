@@ -1,10 +1,10 @@
-Reorder project task type links
+Reorder the task types of a project
 ---
 tags:
   - Crud
-description: Set the priority of the project's task type links from
-  the given ordered id list in a single request, replacing one link
-  request per task type.
+description: Set the priority of the task types of a project in one request.
+  The order of the list gives the priority. You must be a manager of the
+  project.
 parameters:
   - in: path
     name: project_id
@@ -12,6 +12,7 @@ parameters:
     schema:
       type: string
       format: uuid
+    description: Unique identifier of the project
 requestBody:
   required: true
   content:
@@ -26,6 +27,11 @@ requestBody:
             items:
               type: string
               format: uuid
+            description: Task types of the project in the new order
 responses:
-    200:
-      description: Updated task type links
+  200:
+    description: The updated links
+  400:
+    description: The body does not have a valid task_type_ids list
+  403:
+    description: You are not a manager of the project

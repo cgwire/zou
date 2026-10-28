@@ -1,18 +1,23 @@
-Delete concept folder
+Delete a concept folder
 ---
-description: Delete a concept folder. Reserved to the managers and the
-  supervisors of the project. Its concepts are kept, they go back to the
-  root of the project.
+description: Delete a concept folder. The concepts of the folder are not
+  deleted. They go back to the root of the project. You must be a manager or
+  a supervisor of the project.
 tags:
   - Concepts
 parameters:
   - in: path
     name: concept_folder_id
     required: true
-    type: string
-    format: uuid
     example: e68e02e8-a219-8009-e514-91897426a691
     description: Unique identifier of the concept folder
+    schema:
+      type: string
+      format: uuid
 responses:
   204:
-    description: Concept folder successfully deleted
+    description: The concept folder is deleted
+  403:
+    description: You are not a manager or a supervisor of the project
+  404:
+    description: The concept folder does not exist

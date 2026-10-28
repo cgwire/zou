@@ -1,4 +1,52 @@
-Delete an attachment from a guest-owned comment
+Delete an attachment of a guest comment
 ---
+description: Delete a file attached to a comment. Only the guest who wrote
+  the comment can delete it. You do not need an account. The token of the
+  link is the credential. This route does not read the password. For a link
+  with a password, the route returns 404.
 tags:
   - Playlists
+security: []
+parameters:
+  - in: path
+    name: token
+    required: true
+    description: Token of the share link
+    schema:
+      type: string
+  - in: path
+    name: comment_id
+    required: true
+    description: Unique identifier of the comment
+    schema:
+      type: string
+      format: uuid
+  - in: path
+    name: attachment_file_id
+    required: true
+    description: Unique identifier of the attachment
+    schema:
+      type: string
+      format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - guest_id
+        properties:
+          guest_id:
+            type: string
+            format: uuid
+            description: Identifier of the guest who wrote the comment
+responses:
+  204:
+    description: The attachment is deleted
+  403:
+    description: Comments are disabled for this link, or an other guest
+      wrote the comment
+  404:
+    description: The link is not valid, has expired, or has a password, or
+      the comment does not exist, or the attachment does not exist

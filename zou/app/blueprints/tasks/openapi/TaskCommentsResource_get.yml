@@ -1,8 +1,14 @@
-Get task comments
+Get the comments of a task
 ---
 tags:
-- Tasks
-description: Return comments linked to a task.
+  - Tasks
+description: Get the comments of a task, the newest first. Managers and
+  supervisors get all the comments. Other users, except clients, do not get
+  the comments that clients wrote. A client gets the comments for clients
+  and the comments of clients. If the project isolates the clients, a client
+  gets only their own comments of clients. A client also gets the other
+  comments that have a preview, without their text, attachments, checklist
+  and replies.
 parameters:
   - in: path
     name: task_id
@@ -11,36 +17,39 @@ parameters:
       type: string
       format: uuid
     example: a24a6ea4-ce75-4665-a070-57453082c250
+    description: Unique identifier of the task
 responses:
-    200:
-      description: Comments linked to task
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                object_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                person_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                text:
-                  type: string
-                  example: This task is progressing well
-                created_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T10:30:00Z"
-                updated_at:
-                  type: string
-                  format: date-time
-                  example: "2024-01-15T11:00:00Z"
+  200:
+    description: The list of comments
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: This task is progressing well
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+  403:
+    description: You do not have access to this task
