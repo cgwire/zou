@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.models.task import Task
-from zou.app.services import projects_service
+from zou.app.services import projects_service, tasks_service
 from zou.app.utils import fields
 
 
@@ -36,6 +36,21 @@ class TaskTestCase(ApiDBTestCase):
         task_again = self.get(f"data/tasks/{task['id']}")
         self.assertEqual(task, task_again)
         self.get_404(f"data/tasks/{fields.gen_uuid()}")
+
+    def test_get_tasks_follows_the_role_held_on_the_project(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "vendor")
+        self.log_in_cg_artist()
+        self.assertEqual(self.get("data/tasks"), [])
+        tasks_service.assign_task(self.tasks[0].id, artist_id)
+        self.assertEqual(len(self.get("data/tasks")), 1)
+
+        projects_service.update_team_member_role(
+            self.project.id, artist_id, "client"
+        )
+        tasks = self.get("data/tasks")
+        self.assertEqual(len(tasks), 3)
+        self.assertEqual({task["assigner_id"] for task in tasks}, {None})
 
     def test_create_task(self):
         data = {
