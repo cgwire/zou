@@ -129,6 +129,27 @@ class NewsWritingTestCase(ApiDBTestCase):
             [(news["id"], self.task_dict["project_id"])],
         )
 
+    def test_the_single_news_carries_its_preview_files(self):
+        """
+        The feed plays the preview files of a news it loads on its own, as it
+        does for the news of its pages in previews mode.
+        """
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        preview_file = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+
+        single_news = news_service.get_news(
+            self.task_dict["project_id"], news["id"]
+        )["data"][0]
+
+        self.assertEqual(
+            [entry["id"] for entry in single_news["preview_files"]],
+            [preview_file["id"]],
+        )
+
 
 # Frozen mid-day: the date filters below are built from now(), which flakes
 # around midnight otherwise.

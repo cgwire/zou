@@ -287,7 +287,8 @@ def get_last_news_for_project(
     for news in result:
         news["person"] = author_map.get(news["author_id"])
 
-    if filters.only_preview:
+    # The feed plays the preview files of a news it loads on its own too.
+    if filters.only_preview or news_id is not None:
         task_ids = [
             news["task_id"] for news in result if news["task_id"] is not None
         ]
