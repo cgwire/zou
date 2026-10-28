@@ -287,7 +287,8 @@ CommentsResource_post:
   tags:
     - Crud
   description: Create a comment. Send the fields of the new row in JSON. You
-    must be an administrator.
+    must be an administrator. object_type is the type of the object, for
+    example Task. task_status_id is optional.
   requestBody:
     required: true
     content:
@@ -296,13 +297,16 @@ CommentsResource_post:
           type: object
           required:
             - object_id
+            - object_type
             - person_id
-            - task_status_id
           properties:
             object_id:
               type: string
               format: uuid
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            object_type:
+              type: string
+              example: Task
             person_id:
               type: string
               format: uuid

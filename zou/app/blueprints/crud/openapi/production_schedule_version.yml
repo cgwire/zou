@@ -445,6 +445,8 @@ ProductionScheduleVersionTaskLinksResource_post:
         constraint
     403:
       description: You are not a manager in the team of the project
+    404:
+      description: The production schedule version or the task does not exist
 
 ProductionScheduleVersionsResource_get:
   summary: Get production schedule version rows

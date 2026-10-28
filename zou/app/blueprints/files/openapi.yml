@@ -58,7 +58,8 @@ EntityOutputFilePathResource_post:
   summary: Get the path of an output file
   description: Get the folder path and the file name of an output file of an
     entity. The route uses the file tree of the project to make the path. If
-    revision is 0, the route uses the next revision.
+    revision is 0, the route uses the next revision. A vendor must have a
+    task on the entity.
   tags:
     - Files
   parameters:
@@ -136,7 +137,8 @@ EntityOutputFilePathResource_post:
     400:
       description: The body is not valid, or the file tree is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The entity does not exist
 
@@ -389,6 +391,13 @@ EntityWorkingFilesResource_get:
         type: string
       description: Get only the working files with this name
       example: main
+    - in: query
+      name: relations
+      required: false
+      description: Add the related objects to each working file
+      schema:
+        type: boolean
+        default: false
   responses:
     200:
       description: The list of working files
@@ -554,7 +563,7 @@ GetNextEntityOutputFileRevisionResource_post:
     403:
       description: You do not have access to this project
     404:
-      description: The entity does not exist
+      description: The entity, the output type or the task type does not exist
 
 GetNextInstanceOutputFileRevisionResource_post:
   summary: Get the next revision of an instance output file
@@ -622,7 +631,8 @@ GetNextInstanceOutputFileRevisionResource_post:
     403:
       description: You do not have access to this project
     404:
-      description: The asset instance does not exist
+      description: The asset instance, the output type or the task type does
+        not exist
 
 GuessFromPathResource_post:
   summary: Guess the entity from a file path
@@ -701,7 +711,8 @@ InstanceOutputFilePathResource_post:
     asset instance. An asset instance is a copy of an asset in a shot or a
     scene. The temporal entity is this shot or this scene. The route uses the
     file tree of the project to make the path. The route uses the revision of
-    the body as it is.
+    the body as it is. A vendor must have a task on the asset of the
+    instance.
   tags:
     - Files
   parameters:
@@ -787,9 +798,11 @@ InstanceOutputFilePathResource_post:
     400:
       description: The body is not valid, or the file tree is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
-      description: The asset instance or the temporal entity does not exist
+      description: The asset instance, the temporal entity, the asset, the
+        output type or the task type does not exist
 
 InstanceOutputFilesResource_get:
   summary: Get the output files of an asset instance
@@ -1332,7 +1345,8 @@ NewEntityOutputFileResource_post:
   description: Create an output file for an entity. An artist makes an output
     file from a working file. Give the output type, for example textures or
     caches. Give the task type to give the department of the file. If revision
-    is 0, the route uses the next revision.
+    is 0, the route uses the next revision. An unknown working_file_id is
+    ignored.
   tags:
     - Files
   parameters:
@@ -1456,11 +1470,12 @@ NewEntityOutputFileResource_post:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The body is not valid, the output type or the person does
-        not exist, or the output file already exists
+        not exist, the output file already exists, or the file tree of the
+        project is not valid
     403:
       description: You do not have access to this project
     404:
-      description: The entity does not exist
+      description: The entity or the task type does not exist
 
 NewInstanceOutputFileResource_post:
   summary: Create an instance output file
@@ -1608,14 +1623,18 @@ NewInstanceOutputFileResource_post:
     403:
       description: You do not have access to this project
     404:
-      description: The asset instance does not exist
+      description: The asset instance, the temporal entity, the asset or the
+        task type does not exist
 
 NewWorkingFileResource_post:
   summary: Create a working file
   description: Create a working file for a task. A working file is a revision
     of a file that an artist uses to make output files. The route uses the
     file tree of the project to make the path. If revision is 0, the route
-    uses the next revision. The task is assigned to the current user.
+    uses the next revision. The task is assigned to the current user. A
+    vendor must have a task on the entity of the task. If software_id is not
+    given, the route uses the Blender software and creates it if it does not
+    exist. If person_id is not given, the author is the current user.
   tags:
     - Files
   parameters:
@@ -1715,9 +1734,10 @@ NewWorkingFileResource_post:
     400:
       description: The body is not valid, or the working file already exists
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
-      description: The task does not exist
+      description: The task or the software does not exist
 
 ProjectOutputFilesResource_get:
   summary: Get the output files of a project
@@ -1812,6 +1832,8 @@ ProjectOutputFilesResource_get:
                   example: f79f13f9-1320-9010-f625-a09008537180
     403:
       description: You are not a manager of the project
+    404:
+      description: The project does not exist
 
 TaskWorkingFilesResource_get:
   summary: Get the working files of a task
@@ -1992,7 +2014,9 @@ WorkingFilePathResource_post:
   summary: Get the path of a working file
   description: Get the folder path and the file name of a working file of a
     task. The route uses the file tree of the project to make the path. If
-    revision is 0, the route uses the next revision.
+    revision is 0, the route uses the next revision. A vendor must have a
+    task on the entity of the task. If software_id is not given, the route
+    uses the 3ds Max software and creates it if it does not exist.
   tags:
     - Files
   parameters:
@@ -2058,6 +2082,7 @@ WorkingFilePathResource_post:
     400:
       description: The body is not valid, or the file tree is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
-      description: The task does not exist
+      description: The task or the software does not exist

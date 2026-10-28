@@ -59,9 +59,21 @@ EntityTypeResource_get:
               name:
                 type: string
                 example: Character
-              color:
+              short_name:
                 type: string
-                example: '#FF5733'
+                example: char
+              description:
+                type: string
+                example: Characters of the show
+              archived:
+                type: boolean
+                example: false
+              task_types:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
               created_at:
                 type: string
                 format: date-time
@@ -103,6 +115,21 @@ EntityTypeResource_put:
             name:
               type: string
               example: Updated Character
+            short_name:
+              type: string
+              example: char
+            description:
+              type: string
+              example: Characters of the show
+            archived:
+              type: boolean
+              example: false
+            task_types:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task types of the entity type
   responses:
     200:
       description: The updated entity type
@@ -118,9 +145,21 @@ EntityTypeResource_put:
               name:
                 type: string
                 example: Updated Character
-              color:
+              short_name:
                 type: string
-                example: '#FF5734'
+                example: char
+              description:
+                type: string
+                example: Characters of the show
+              archived:
+                type: boolean
+                example: false
+              task_types:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
               created_at:
                 type: string
                 format: date-time
@@ -235,6 +274,21 @@ EntityTypesResource_post:
             name:
               type: string
               example: Character
+            short_name:
+              type: string
+              example: char
+            description:
+              type: string
+              example: Characters of the show
+            archived:
+              type: boolean
+              example: false
+            task_types:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task types of the entity type
   responses:
     201:
       description: The new entity type
@@ -250,9 +304,21 @@ EntityTypesResource_post:
               name:
                 type: string
                 example: Character
-              color:
+              short_name:
                 type: string
-                example: '#FF5733'
+                example: char
+              description:
+                type: string
+                example: Characters of the show
+              archived:
+                type: boolean
+                example: false
+              task_types:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
               created_at:
                 type: string
                 format: date-time

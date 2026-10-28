@@ -274,8 +274,9 @@ PlaylistsResource_post:
   description: Create a playlist. Send the fields of the new row in JSON. You
     must be an administrator, or a manager or a supervisor in the team of the
     project. The route sets created_by to you. for_entity must be a valid
-    value. An episode_id of all or main gives no episode. In shots, the route
-    removes a preview that does not belong to its entity.
+    value. An episode_id of all or main gives no episode. A task_type_id that
+    is not a valid UUID gives no task type. In shots, the route removes a
+    preview that does not belong to its entity.
   requestBody:
     required: true
     content:
@@ -301,6 +302,18 @@ PlaylistsResource_post:
               type: string
               format: uuid
               example: c24a6ea4-ce75-4665-a070-57453082c250
+            shots:
+              type: array
+              description: Shots of the playlist with their previews
+              items:
+                type: object
+                properties:
+                  entity_id:
+                    type: string
+                    format: uuid
+                  preview_file_id:
+                    type: string
+                    format: uuid
   responses:
     201:
       description: The new playlist

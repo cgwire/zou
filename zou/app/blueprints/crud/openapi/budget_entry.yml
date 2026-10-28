@@ -91,14 +91,42 @@ BudgetEntriesResource_post:
           type: object
           required:
             - budget_id
+            - department_id
+            - start_date
+            - months_duration
+            - daily_salary
           properties:
             budget_id:
               type: string
               format: uuid
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            department_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            start_date:
+              type: string
+              format: date
+              example: '2024-01-15'
+            months_duration:
+              type: integer
+              example: 3
             daily_salary:
               type: number
               description: Daily salary of the entry
+            position:
+              type: string
+              example: artist
+            seniority:
+              type: string
+              example: mid
+            exceptions:
+              type: object
+              description: Exceptions of the entry, as a JSON object
   responses:
     201:
       description: The new budget entry
@@ -115,9 +143,34 @@ BudgetEntriesResource_post:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
-              amount:
+              department_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                nullable: true
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              start_date:
+                type: string
+                format: date
+                example: '2024-01-15'
+              months_duration:
+                type: integer
+                example: 3
+              daily_salary:
                 type: number
                 example: 1000.0
+              position:
+                type: string
+                example: artist
+              seniority:
+                type: string
+                example: mid
+              exceptions:
+                type: object
+                nullable: true
               created_at:
                 type: string
                 format: date-time
@@ -194,9 +247,34 @@ BudgetEntryResource_get:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
-              amount:
+              department_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                nullable: true
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              start_date:
+                type: string
+                format: date
+                example: '2024-01-15'
+              months_duration:
+                type: integer
+                example: 3
+              daily_salary:
                 type: number
                 example: 1000.0
+              position:
+                type: string
+                example: artist
+              seniority:
+                type: string
+                example: mid
+              exceptions:
+                type: object
+                nullable: true
               created_at:
                 type: string
                 format: date-time
@@ -235,9 +313,33 @@ BudgetEntryResource_put:
         schema:
           type: object
           properties:
+            department_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            start_date:
+              type: string
+              format: date
+              example: '2024-01-15'
+            months_duration:
+              type: integer
+              example: 3
             daily_salary:
               type: number
               description: Daily salary of the entry
+            position:
+              type: string
+              example: artist
+            seniority:
+              type: string
+              example: mid
+            exceptions:
+              type: object
+              description: Exceptions of the entry, as a JSON object
   responses:
     200:
       description: The updated budget entry
@@ -254,9 +356,34 @@ BudgetEntryResource_put:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
-              amount:
+              department_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                nullable: true
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              start_date:
+                type: string
+                format: date
+                example: '2024-01-15'
+              months_duration:
+                type: integer
+                example: 3
+              daily_salary:
                 type: number
                 example: 1500.0
+              position:
+                type: string
+                example: artist
+              seniority:
+                type: string
+                example: mid
+              exceptions:
+                type: object
+                nullable: true
               created_at:
                 type: string
                 format: date-time

@@ -57,20 +57,34 @@ StatusAutomationResource_get:
                 type: string
                 format: uuid
                 example: a24a6ea4-ce75-4665-a070-57453082c250
-              source_task_status_id:
+              entity_type:
+                type: string
+                example: asset
+              in_task_type_id:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
-              target_task_status_id:
+              in_task_status_id:
                 type: string
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
-              field_name:
+              out_field_type:
                 type: string
-                example: ready_for
-              field_value:
+                example: status
+              out_task_type_id:
                 type: string
-                example: production
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              out_task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              import_last_revision:
+                type: boolean
+                example: false
+              archived:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time
@@ -155,20 +169,34 @@ StatusAutomationResource_put:
                 type: string
                 format: uuid
                 example: a24a6ea4-ce75-4665-a070-57453082c250
-              source_task_status_id:
+              entity_type:
+                type: string
+                example: asset
+              in_task_type_id:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
-              target_task_status_id:
+              in_task_status_id:
                 type: string
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
-              field_name:
+              out_field_type:
                 type: string
-                example: ready_for
-              field_value:
+                example: status
+              out_task_type_id:
                 type: string
-                example: approved
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              out_task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              import_last_revision:
+                type: boolean
+                example: false
+              archived:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time
@@ -323,20 +351,34 @@ StatusAutomationsResource_post:
                 type: string
                 format: uuid
                 example: a24a6ea4-ce75-4665-a070-57453082c250
-              source_task_status_id:
+              entity_type:
+                type: string
+                example: asset
+              in_task_type_id:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
-              target_task_status_id:
+              in_task_status_id:
                 type: string
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
-              field_name:
+              out_field_type:
                 type: string
-                example: ready_for
-              field_value:
+                example: status
+              out_task_type_id:
                 type: string
-                example: production
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              out_task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              import_last_revision:
+                type: boolean
+                example: false
+              archived:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time

@@ -246,13 +246,20 @@ CommentManyTasksResource_post:
       description: The body is not valid
     403:
       description: You cannot use this task status
+    404:
+      description: The project does not exist, or a task of the list does not
+        exist
 
 CommentTaskResource_post:
   summary: Comment a task
   description: Add a comment to a task and set the status of the task. Thus,
     the comments keep the history of the status changes. Send JSON, or send a
-    multipart form to attach files. A user who is mentioned on the task, but
-    cannot do actions on it, can comment without a status change.
+    multipart form to attach files. You must be able to do actions on the
+    task. Managers and clients of the project, the assignees, the supervisors
+    of the department of the task and the creator of the entity can do
+    actions. A user who is mentioned on the task, but cannot do actions on
+    it, can comment with the current status only. Vendors cannot use the
+    mention rule.
   tags:
     - Comments
   parameters:
@@ -393,8 +400,10 @@ CommentTaskResource_post:
     400:
       description: The body is not valid
     403:
-      description: You do not have access to this task, or you cannot use this
+      description: You cannot do actions on this task, or you cannot use this
         task status
+    404:
+      description: The task does not exist
 
 CopyClientCommentsResource_post:
   summary: Copy the client comments to the artists
@@ -516,7 +525,8 @@ DownloadAttachmentResource_get:
   summary: Download an attachment
   description: Download a file attached to a comment or to a chat message.
     The browser shows JPEG, PNG, GIF, WebP, BMP and AVIF images. Other files
-    are sent as downloads. Clients cannot get the files of a chat.
+    are sent as downloads. Clients cannot get the files of a chat. A vendor
+    must have a task on the entity.
   tags:
     - Comments
   parameters:
@@ -545,7 +555,9 @@ DownloadAttachmentResource_get:
             format: binary
             description: File content
     403:
-      description: You do not have access to the comment or to the chat
+      description: You do not have access to the task of the comment or to the
+        chat, you are a client and the file is in a chat, or the file is linked
+        to nothing
     404:
       description: The attachment or its file does not exist
 
@@ -556,7 +568,9 @@ MoveCommentResource_post:
     keeps its text, attachments, mentions, creation date and status change.
     The notifications and the news of the comment move to the new task. Thus,
     the watchers of the new task get a notification. You cannot move a comment
-    that is linked to a preview revision. You must be a manager.
+    that is linked to a preview revision. You must have the manager role as
+    your studio role. A manager role given on the project only is not
+    enough. You must have access to the two tasks.
   tags:
     - Comments
   parameters:
@@ -595,10 +609,14 @@ MoveCommentResource_post:
     200:
       description: The moved comment, with its new object_id
     400:
-      description: The tasks are on different entities, the two tasks are the
-        same, or the comment is linked to a preview revision
+      description: The comment is not on this task, the tasks are on different
+        entities, the two tasks are the same, or the comment is linked to a
+        preview revision
     403:
-      description: You are not a manager
+      description: You are not a studio manager, or you do not have access to
+        one of the tasks
+    404:
+      description: The task, the target task or the comment does not exist
 
 ProjectAttachmentFiles_get:
   summary: Get the attachments of a project
@@ -657,9 +675,12 @@ ProjectAttachmentFiles_get:
 
 ReplyCommentResource_post:
   summary: Reply to a comment
-  description: 'Add a reply to a comment. A client can see some threads: comments
-    for the client, and comments of a client. In these threads, only the managers
-    and the clients can reply.'
+  description: Add a reply to a comment. The author of the comment can reply.
+    Other users must be able to do actions on the task, or be mentioned on
+    it. A client cannot reply to a client of another studio. A client can see
+    some threads. These are the comments for the client and the comments of
+    a client. In these threads, only the managers and the clients can reply.
+    Send multipart form data to attach files.
   tags:
     - Comments
   parameters:
@@ -712,7 +733,9 @@ ReplyCommentResource_post:
                 description: Creation timestamp
                 example: '2023-01-01T12:00:00Z'
     403:
-      description: You cannot reply to this comment
+      description: The comment is not on this task, you cannot do actions on
+        the task and you are not mentioned on it, or you cannot reply in this
+        thread
     404:
       description: The comment does not exist
   requestBody:
@@ -726,6 +749,20 @@ ReplyCommentResource_post:
               type: string
               description: Reply text content
               example: Thanks for the feedback!
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            text:
+              type: string
+              description: Reply text content
+              example: Thanks for the feedback!
+            files:
+              type: array
+              description: Files to attach to the reply
+              items:
+                type: string
+                format: binary
 
 TaskAttachmentFiles_get:
   summary: Get the attachments of a task

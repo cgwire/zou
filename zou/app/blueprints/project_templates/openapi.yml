@@ -504,6 +504,8 @@ ProjectTemplateTaskStatusesReorderResource_post:
       description: The body is not valid
     403:
       description: You are not an administrator
+    404:
+      description: The project template does not exist
 
 ProjectTemplateTaskStatusesResource_get:
   summary: Get the task statuses of a project template
@@ -568,8 +570,9 @@ ProjectTemplateTaskStatusesResource_post:
             is_client_allowed:
               type: boolean
               nullable: true
-              description: Let the clients use the task status. Null uses the
-                value of the studio.
+              description: Let the clients use the task status. Send null to
+                use the value of the studio. If the field is not in the body,
+                an existing link keeps its value.
   responses:
     201:
       description: The new link
@@ -649,6 +652,8 @@ ProjectTemplateTaskTypesReorderResource_post:
       description: The body is not valid
     403:
       description: You are not an administrator
+    404:
+      description: The project template does not exist
 
 ProjectTemplateTaskTypesResource_get:
   summary: Get the task types of a project template
@@ -716,7 +721,8 @@ ProjectTemplateTaskTypesResource_post:
               description: Bitrate of the low definition movies
             is_client_visible:
               type: boolean
-              description: Show the task type to the clients
+              description: Show the task type to the clients. If the field is
+                not in the body, an existing link keeps its value.
   responses:
     201:
       description: The new link

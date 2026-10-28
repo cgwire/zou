@@ -64,6 +64,29 @@ NotificationResource_get:
                 type: string
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
+              type:
+                type: string
+                enum: [comment, mention, assignation, reply, reply-mention, playlist-ready]
+                example: comment
+              author_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              playlist_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              reply_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              change:
+                type: boolean
+                example: false
               read:
                 type: boolean
                 example: false
@@ -128,6 +151,29 @@ NotificationResource_put:
                 type: string
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
+              type:
+                type: string
+                enum: [comment, mention, assignation, reply, reply-mention, playlist-ready]
+                example: comment
+              author_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              playlist_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              reply_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              change:
+                type: boolean
+                example: false
               read:
                 type: boolean
                 example: true
@@ -240,16 +286,40 @@ NotificationsResource_post:
           type: object
           required:
             - person_id
-            - comment_id
+            - author_id
+            - type
           properties:
             person_id:
               type: string
               format: uuid
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            type:
+              type: string
+              enum: [comment, mention, assignation, reply, reply-mention, playlist-ready]
+              example: comment
+            author_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
             comment_id:
               type: string
               format: uuid
               example: b24a6ea4-ce75-4665-a070-57453082c250
+            task_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            playlist_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            reply_id:
+              type: string
+              format: uuid
+              example: d24a6ea4-ce75-4665-a070-57453082c250
+            change:
+              type: boolean
+              example: false
             read:
               type: boolean
               default: false
@@ -274,6 +344,29 @@ NotificationsResource_post:
                 type: string
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
+              type:
+                type: string
+                enum: [comment, mention, assignation, reply, reply-mention, playlist-ready]
+                example: comment
+              author_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              playlist_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              reply_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              change:
+                type: boolean
+                example: false
               read:
                 type: boolean
                 example: false

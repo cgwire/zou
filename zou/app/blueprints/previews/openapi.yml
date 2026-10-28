@@ -1,11 +1,13 @@
 AddTaskBatchCommentResource_post:
   summary: Comment a task several times
   description: Add several comments to a task in one request. Send a multipart
-    form. Each comments field is a JSON object with task_status_id, comment,
-    and optional checklist and links. Each comment sets the status of its
-    task. Files in the form are added as previews or attachments. Only a
-    manager can set person_id and created_at. You must be able to do actions
-    on each task.
+    form. Each entry of comments is a JSON object with task_status_id and
+    text, and optional checklist, links, person_id and created_at. You can
+    also send a JSON body with a comments list. Each comment sets the status
+    of its task. To attach files to the comment at index i, name the form
+    fields attachment_file-i for attachments and preview_file-i for previews.
+    Only a manager can set person_id and created_at. You must be able to do
+    actions on each task.
   tags:
     - Comments
   parameters:
@@ -30,6 +32,17 @@ AddTaskBatchCommentResource_post:
               type: string
               description: JSON string containing array of comments
               example: '[{"text": "Good work", "task_status_id": "uuid"}]'
+      application/json:
+        schema:
+          type: object
+          required:
+            - comments
+          properties:
+            comments:
+              type: array
+              description: List of comments
+              items:
+                type: object
   responses:
     201:
       description: The new comments
@@ -44,15 +57,19 @@ AddTaskBatchCommentResource_post:
     403:
       description: You cannot do actions on this task, or you cannot use a
         task status
+    404:
+      description: The task does not exist
 
 AddTasksBatchCommentResource_post:
   summary: Comment several tasks
-  description: Add comments to several tasks in one request. Each comment
-    gives its task_id. Send a multipart form. Each comments field is a JSON
-    object with task_status_id, comment, and optional checklist and links.
-    Each comment sets the status of its task. Files in the form are added as
-    previews or attachments. Only a manager can set person_id and created_at.
-    You must be able to do actions on each task.
+  description: Add comments to several tasks in one request. Send a multipart
+    form. Each entry of comments is a JSON object with task_id,
+    task_status_id and text, and optional checklist, links, person_id and
+    created_at. You can also send a JSON body with a comments list. Each
+    comment sets the status of its task. To attach files to the comment at
+    index i, name the form fields attachment_file-i and preview_file-i. Only
+    a manager can set person_id and created_at. You must be able to do
+    actions on each task.
   tags:
     - Comments
   requestBody:
@@ -69,6 +86,17 @@ AddTasksBatchCommentResource_post:
               description: JSON string containing array of comments
               example: '[{"task_id": "uuid", "text": "Good work", "task_status_id":
                 "uuid"}]'
+      application/json:
+        schema:
+          type: object
+          required:
+            - comments
+          properties:
+            comments:
+              type: array
+              description: List of comments
+              items:
+                type: object
   responses:
     201:
       description: The new comments
@@ -83,12 +111,14 @@ AddTasksBatchCommentResource_post:
     403:
       description: You cannot do actions on a task, or you cannot use a task
         status
+    404:
+      description: A task does not exist
 
 AttachmentThumbnailResource_get:
   summary: Get the thumbnail of an attachment
   description: Get the thumbnail of a file attached to a comment or to a
     chat message. You must have access to the task or to the chat. Clients
-    cannot get the files of a chat.
+    cannot get the files of a chat. A vendor must have a task on the entity.
   tags:
     - Previews
   parameters:
@@ -109,16 +139,20 @@ AttachmentThumbnailResource_get:
             type: string
             format: binary
     403:
-      description: You do not have access to the comment or to the chat
+      description: You do not have access to the task of the comment or to the
+        chat, you are a client and the file is in a chat, or the file is linked
+        to nothing
     404:
       description: The attachment or its thumbnail does not exist
 
 BasePreviewPictureResource_get:
   summary: Get a picture of a preview
-  description: 'Get a picture of a preview file: the thumbnail, the square thumbnail,
-    the original picture or the preview picture. Anybody can get the main thumbnail
-    of a shared asset, except vendors. For the other pictures, you must have access
-    to the task.'
+  description: Get a picture of a preview file. It can be the thumbnail, the
+    square thumbnail, the original picture or the preview picture. For the
+    thumbnail, the square thumbnail and the original picture, anybody who is
+    logged in can get the main preview of a shared entity, except vendors.
+    For the preview picture, and for the other previews, you must have access
+    to the task. A vendor must have a task on the entity.
   tags:
     - Previews
   parameters:
@@ -138,6 +172,22 @@ BasePreviewPictureResource_get:
           schema:
             type: string
             format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
     403:
       description: You do not have access to the task of this preview
     404:
@@ -207,6 +257,8 @@ BaseThumbnailResource_post:
       description: The file is missing or is not a picture
     403:
       description: You cannot change this thumbnail
+    404:
+      description: The person or the project does not exist
     405:
       description: This route is read only. Use the route without extension.
   requestBody:
@@ -304,6 +356,13 @@ CreatePreviewFilePictureResource_post:
       schema:
         type: boolean
         default: true
+    - in: query
+      name: no_job
+      required: false
+      description: Process the file in the request instead of the job queue
+      schema:
+        type: boolean
+        default: false
   responses:
     201:
       description: The preview file
@@ -330,6 +389,8 @@ CreatePreviewFilePictureResource_post:
         preview already has a file
     403:
       description: You cannot do actions on this task
+    404:
+      description: The preview file does not exist
     500:
       description: The processing of the movie failed
   requestBody:
@@ -572,6 +633,22 @@ PreviewFileDownloadResource_get:
           schema:
             type: string
             format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
     403:
       description: You do not have access to the task of this preview
     404:
@@ -601,6 +678,29 @@ PreviewFileLowMovieResource_get:
           schema:
             type: string
             format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    206:
+      description: A part of the movie, for a Range request
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
     403:
       description: You do not have access to the task of this preview
     404:
@@ -624,6 +724,29 @@ PreviewFileMovieDownloadResource_get:
   responses:
     200:
       description: The MP4 movie
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    206:
+      description: A part of the movie, for a Range request
       content:
         video/mp4:
           schema:
@@ -658,6 +781,29 @@ PreviewFileMovieResource_get:
           schema:
             type: string
             format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    206:
+      description: A part of the movie, for a Range request
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
     403:
       description: You do not have access to the task of this preview
     404:
@@ -665,8 +811,10 @@ PreviewFileMovieResource_get:
 
 PreviewFileResource_get:
   summary: Get the original file of a preview
-  description: Get the original file of a preview. The extension of the path
-    must be the extension of the preview. You must have access to the task.
+  description: Get the original file of a preview. Give the extension of the
+    preview. A picture, a PDF or a file extension of the allowed list is
+    accepted. Movie extensions are not accepted on this route. You must have
+    access to the task.
   tags:
     - Previews
   parameters:
@@ -693,12 +841,29 @@ PreviewFileResource_get:
           schema:
             type: string
             format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
     400:
-      description: The extension is not the extension of the preview
+      description: The extension is not in the list of allowed extensions
     403:
       description: You do not have access to the task of this preview
     404:
-      description: The preview file or its file does not exist
+      description: The preview file does not exist, or there is no file with
+        this extension
 
 PreviewFileSourceMovieResource_get:
   summary: Get the source movie of a preview
@@ -752,6 +917,22 @@ PreviewFileTileResource_get:
           schema:
             type: string
             format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
     403:
       description: You do not have access to the task of this preview
     404:
@@ -821,12 +1002,25 @@ SetMainPreviewResource_put:
       description: Unique identifier of the preview file
       example: a24a6ea4-ce75-4665-a070-57453082c250
     - in: query
-      name: frame_number
+      name: no_job
       required: false
       schema:
-        type: integer
-      description: Frame of the movie to use as the picture
-      example: 120
+        type: boolean
+        default: false
+      description: Extract the frame in the request instead of the job queue
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            frame_number:
+              type: integer
+              description: Frame of the movie to use as the picture. You can
+                also give it as a query parameter when the request has no
+                JSON body.
+              example: 120
   responses:
     200:
       description: The entity
@@ -921,6 +1115,8 @@ UpdateAnnotationsResource_put:
                 description: Updated annotations
                 items:
                   type: object
+    400:
+      description: additions, updates or deletions is not a list
     403:
       description: You cannot change the annotations of this preview
     404:
@@ -950,6 +1146,8 @@ UpdatePreviewPositionResource_put:
           properties:
             position:
               type: integer
+              minimum: 0
+              default: 0
               description: New position for the preview
               example: 2
   responses:
@@ -969,6 +1167,8 @@ UpdatePreviewPositionResource_put:
                 type: integer
                 description: Preview position
                 example: 2
+    400:
+      description: position is negative or is not an integer
     403:
       description: You cannot do actions on this task
     404:

@@ -1,7 +1,7 @@
 AssetTaskTypesResource_get:
   summary: Get my task types of an asset
   description: Get the task types of the tasks of an asset that are assigned
-    to you.
+    to you. Task types of closed projects are not listed.
   tags:
     - User
   parameters:
@@ -58,10 +58,15 @@ AssetTaskTypesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The asset does not exist
 
 AssetTasksResource_get:
   summary: Get my tasks of an asset
-  description: Get the tasks of an asset that are assigned to you.
+  description: Get the tasks of an asset that are assigned to you. Tasks of
+    closed projects are not listed.
   tags:
     - User
   parameters:
@@ -124,11 +129,16 @@ AssetTasksResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The asset does not exist
 
 AssetTypeAssetsResource_get:
   summary: Get my assets of an asset type
   description: Get the assets of an asset type in a project. The route uses
-    only the entities where you have an assigned task.
+    only the entities where you have an assigned task. If the project is
+    closed, the list is empty.
   tags:
     - User
   parameters:
@@ -191,11 +201,15 @@ AssetTypeAssetsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The project or the asset type does not exist
 
 ChatsResource_get:
   summary: Get my chats
-  description: Get the chats where you are a participant. A client gets an
-    empty list.
+  description: Get the chats where you are a participant, in the open projects
+    only. A client gets an empty list.
   tags:
     - User
   responses:
@@ -239,6 +253,8 @@ ChatsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
 
 ClearAvatarResource_delete:
   summary: Delete my avatar
@@ -248,12 +264,18 @@ ClearAvatarResource_delete:
   responses:
     204:
       description: The avatar is deleted
+    403:
+      description: You use a bot token
 
 ContextResource_get:
   summary: Get my context
-  description: 'Get the data that an application needs to start: your projects,
-    the task types, the task statuses, the asset types, the persons, the departments,
-    the studios and the settings.'
+  description: Get the data that an application needs to start. projects are
+    your open projects, or all the open projects for an administrator. persons
+    depends on your role. A client gets only the members of the teams of their
+    open projects, with a reduced set of fields. A manager or an administrator
+    gets all the persons with all their fields. Another role gets all the
+    persons with a minimal set of fields. An administrator also gets
+    user_limit.
   tags:
     - User
   responses:
@@ -264,10 +286,6 @@ ContextResource_get:
           schema:
             type: object
             properties:
-              user:
-                type: object
-                description: Current user information
-                example: {id: uuid, name: John Doe}
               projects:
                 type: array
                 items:
@@ -333,23 +351,40 @@ ContextResource_get:
                 description: Available project statuses
                 example: [{id: uuid, name: Active}]
               search_filters:
-                type: array
-                items:
-                  type: object
-                description: Available search filters
-                example: [{id: uuid, name: My Filter}]
+                type: object
+                description: Your filters by list type and by project, as in
+                  the filters route
+                example: {todo: {all: [{id: uuid, name: My Filter}]}}
               search_filter_groups:
-                type: array
-                items:
-                  type: object
-                description: Available search filter groups
-                example: [{id: uuid, name: Filter Group}]
+                type: object
+                description: Your filter groups by list type and by
+                  project, as in the filter groups route
+                example: {todo: {all: [{id: uuid, name: Filter Group}]}}
               preview_background_files:
                 type: array
                 items:
                   type: object
                 description: Available preview background files
                 example: [{id: uuid, name: background.jpg}]
+              project_roles:
+                type: object
+                additionalProperties:
+                  type: string
+                description: The role you hold on each project where your team
+                  link sets one, by project identifier
+                example: {a24a6ea4-ce75-4665-a070-57453082c250: supervisor}
+              plugins:
+                type: array
+                items:
+                  type: object
+                description: Installed plugins
+              user_limit:
+                type: integer
+                description: Maximum number of active users, for an
+                  administrator only
+                example: 50
+    403:
+      description: You use a bot token
 
 DateTimeSpentsResource_get:
   summary: Get my time spents for a date
@@ -367,47 +402,52 @@ DateTimeSpentsResource_get:
       example: '2023-01-01'
   responses:
     200:
-      description: The list of time spent entries
+      description: The list of your time spent entries for this date
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              date:
-                type: string
-                format: date
-                description: Date of time spent
-                example: '2023-01-01'
-              total_duration:
-                type: number
-                description: Total duration in seconds
-                example: 28800
-              entries:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Time spent unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c250
-                    task_id:
-                      type: string
-                      format: uuid
-                      description: Task identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d360
-                    duration:
-                      type: number
-                      description: Duration in seconds
-                      example: 3600
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Creation timestamp
-                      example: '2023-01-01T12:00:00Z'
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Time spent unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                date:
+                  type: string
+                  format: date
+                  description: Date of time spent
+                  example: '2023-01-01'
+                duration:
+                  type: number
+                  description: Duration in seconds
+                  example: 3600
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
     400:
       description: The date is not valid
+    403:
+      description: You use a bot token
 
 DayOffResource_get:
   summary: Get my day off for a date
@@ -459,6 +499,8 @@ DayOffResource_get:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The date is not valid
+    403:
+      description: You use a bot token
 
 DesktopLoginLogsResource_get:
   summary: Get my desktop logins
@@ -500,15 +542,18 @@ DesktopLoginLogsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
 
 DesktopLoginLogsResource_post:
   summary: Add a desktop login
-  description: Add a login log of a desktop tool for you. Without date, the
-    log uses the current date.
+  description: Add a login log of a desktop tool for you. Give date in the
+    body or in the query string. Without date, the log uses the current date
+    and time.
   tags:
     - User
   requestBody:
-    required: true
+    required: false
     content:
       application/json:
         schema:
@@ -516,9 +561,9 @@ DesktopLoginLogsResource_post:
           properties:
             date:
               type: string
-              format: date
-              description: Login date
-              example: '2023-01-01'
+              format: date-time
+              description: Login date and time
+              example: '2023-01-01T10:30:00'
   responses:
     201:
       description: The new desktop login log
@@ -552,12 +597,13 @@ DesktopLoginLogsResource_post:
                 format: date-time
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
-    400:
-      description: The date is not valid
+    403:
+      description: You use a bot token
 
 DoneResource_get:
   summary: Get my done tasks
-  description: Get your assigned tasks that are done, in the open projects.
+  description: Get your assigned tasks that are done, in the open projects of
+    your teams.
   tags:
     - User
   responses:
@@ -611,6 +657,8 @@ DoneResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
 
 FilterGroupResource_delete:
   summary: Delete a filter group
@@ -630,6 +678,8 @@ FilterGroupResource_delete:
   responses:
     204:
       description: The filter group is deleted
+    403:
+      description: You use a bot token
     404:
       description: You have no filter group with this identifier
 
@@ -696,14 +746,18 @@ FilterGroupResource_get:
                 format: date-time
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
     404:
       description: You have no filter group with this identifier
 
 FilterGroupResource_put:
   summary: Update a filter group
-  description: Update a filter group. The filter must be yours. An
-    administrator can use the filters of all the users. If you change
-    is_shared, the filters of the group change too.
+  description: Update a filter group. The group must be yours. An
+    administrator can update the groups of all the users. To set is_shared to
+    true, give project_id in the body too. You must be a manager of this
+    project, or an administrator. Otherwise is_shared is set to false. If you
+    change is_shared, the filters of the group take the same value.
   tags:
     - User
   parameters:
@@ -794,13 +848,18 @@ FilterGroupResource_put:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The body is not valid
+    403:
+      description: You use a bot token
     404:
       description: You have no filter group with this identifier
 
 FilterGroupsResource_get:
   summary: Get my filter groups
   description: Get your filter groups and the shared filter groups of your
-    open projects.
+    open projects. A filter group linked to a department is listed only if you
+    are in this department or if you are a manager or an administrator. The
+    response is an object. The first key is the list type. The second key is
+    the project identifier, or all for the groups without project.
   tags:
     - User
   responses:
@@ -809,55 +868,66 @@ FilterGroupsResource_get:
       content:
         application/json:
           schema:
-            type: array
-            items:
+            type: object
+            description: The first key is the list type. The second key is
+              the project identifier, or all for the filter groups without
+              project. The value is the list of filter groups.
+            additionalProperties:
               type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  description: Filter group unique identifier
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  description: Filter group name
-                  example: My Filter Group
-                color:
-                  type: string
-                  description: Filter group color
-                  example: '#FF0000'
-                list_type:
-                  type: string
-                  description: List type
-                  example: todo
-                entity_type:
-                  type: string
-                  description: Entity type
-                  example: Asset
-                project_id:
-                  type: string
-                  format: uuid
-                  description: Project identifier
-                  example: b35b7fb5-df86-5776-b181-68564193d360
-                is_shared:
-                  type: boolean
-                  description: Whether filter group is shared
-                  example: false
-                created_at:
-                  type: string
-                  format: date-time
-                  description: Creation timestamp
-                  example: '2023-01-01T12:00:00Z'
-                updated_at:
-                  type: string
-                  format: date-time
-                  description: Last update timestamp
-                  example: '2023-01-01T12:30:00Z'
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Filter group unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      description: Filter group name
+                      example: My Filter Group
+                    color:
+                      type: string
+                      description: Filter group color
+                      example: '#FF0000'
+                    list_type:
+                      type: string
+                      description: List type
+                      example: todo
+                    entity_type:
+                      type: string
+                      description: Entity type
+                      example: Asset
+                    project_id:
+                      type: string
+                      format: uuid
+                      description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d360
+                    is_shared:
+                      type: boolean
+                      description: Whether filter group is shared
+                      example: false
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: '2023-01-01T12:00:00Z'
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
 
 FilterGroupsResource_post:
   summary: Create a filter group
   description: Create a filter group. A filter group puts several filters
-    together. Set is_shared to true to share it with the team of the project.
+    together. To share it, give project_id and set is_shared to true. You must
+    be a manager of this project, or an administrator. Otherwise the group is
+    created with is_shared set to false.
   tags:
     - User
   requestBody:
@@ -950,6 +1020,10 @@ FilterGroupsResource_post:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The body is not valid
+    403:
+      description: You use a bot token
+    404:
+      description: The department does not exist
 
 FilterResource_delete:
   summary: Delete a filter
@@ -969,13 +1043,18 @@ FilterResource_delete:
   responses:
     204:
       description: The filter is deleted
+    403:
+      description: You use a bot token
     404:
       description: You have no filter with this identifier
 
 FilterResource_put:
   summary: Update a filter
   description: Update a filter. The filter must be yours. An administrator can
-    use the filters of all the users.
+    update the filters of all the users. To set is_shared to true, give
+    project_id in the body too. You must be a manager of this project, or an
+    administrator. Otherwise is_shared is set to false. If the filter is in a
+    group, is_shared must keep the value of the group.
   tags:
     - User
   parameters:
@@ -1070,14 +1149,21 @@ FilterResource_put:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     400:
-      description: The body is not valid
+      description: The body is not valid, or is_shared differs from the value
+        of the filter group
+    403:
+      description: You use a bot token
     404:
       description: You have no filter with this identifier, or the filter
-        group does not exist
+        group or the department does not exist
 
 FiltersResource_get:
   summary: Get my filters
   description: Get your filters and the shared filters of your open projects.
+    A filter linked to a department is listed only if you are in this
+    department or if you are a manager or an administrator. The response is an
+    object. The first key is the list type. The second key is the project
+    identifier, or all for the filters without project.
   tags:
     - User
   responses:
@@ -1086,55 +1172,67 @@ FiltersResource_get:
       content:
         application/json:
           schema:
-            type: array
-            items:
+            type: object
+            description: The first key is the list type. The second key is
+              the project identifier, or all for the filters without project.
+              The value is the list of filters.
+            additionalProperties:
               type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  description: Filter unique identifier
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                name:
-                  type: string
-                  description: Filter name
-                  example: My Filter
-                query:
-                  type: string
-                  description: Filter query JSON
-                  example: '{"project_id": "uuid"}'
-                list_type:
-                  type: string
-                  description: List type
-                  example: todo
-                entity_type:
-                  type: string
-                  description: Entity type
-                  example: Asset
-                project_id:
-                  type: string
-                  format: uuid
-                  description: Project identifier
-                  example: b35b7fb5-df86-5776-b181-68564193d360
-                is_shared:
-                  type: boolean
-                  description: Whether filter is shared
-                  example: false
-                created_at:
-                  type: string
-                  format: date-time
-                  description: Creation timestamp
-                  example: '2023-01-01T12:00:00Z'
-                updated_at:
-                  type: string
-                  format: date-time
-                  description: Last update timestamp
-                  example: '2023-01-01T12:30:00Z'
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Filter unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      description: Filter name
+                      example: My Filter
+                    query:
+                      type: string
+                      description: Filter query JSON
+                      example: '{"project_id": "uuid"}'
+                    list_type:
+                      type: string
+                      description: List type
+                      example: todo
+                    entity_type:
+                      type: string
+                      description: Entity type
+                      example: Asset
+                    project_id:
+                      type: string
+                      format: uuid
+                      description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d360
+                    is_shared:
+                      type: boolean
+                      description: Whether filter is shared
+                      example: false
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: '2023-01-01T12:00:00Z'
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
 
 FiltersResource_post:
   summary: Create a filter
-  description: Create a filter. A filter keeps a search query for a list. Set
-    is_shared to true to share it with the team of the project.
+  description: Create a filter. A filter keeps a search query for a list. To
+    share it, give project_id and set is_shared to true. You must be a manager
+    of this project, or an administrator. Otherwise the filter is created with
+    is_shared set to false. If you give search_filter_group_id, the filter
+    takes the same is_shared value as the group.
   tags:
     - User
   requestBody:
@@ -1232,7 +1330,12 @@ FiltersResource_post:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     400:
-      description: The body is not valid
+      description: The body is not valid, or is_shared differs from the value
+        of the filter group
+    403:
+      description: You use a bot token
+    404:
+      description: The filter group or the department does not exist
 
 HasSequenceSubscribedResource_get:
   summary: Check my subscription to a sequence
@@ -1265,6 +1368,8 @@ HasSequenceSubscribedResource_get:
           schema:
             type: boolean
             example: true
+    403:
+      description: You use a bot token
 
 HasTaskSubscribedResource_get:
   summary: Check my subscription to a task
@@ -1288,11 +1393,14 @@ HasTaskSubscribedResource_get:
           schema:
             type: boolean
             example: true
+    403:
+      description: You use a bot token
 
 JoinChatResource_delete:
   summary: Leave a chat
   description: Leave the chat of an entity. You do not get the messages of
-    this chat after.
+    this chat after. You must be in the team of the project. A vendor must
+    have an assigned task on the entity.
   tags:
     - User
   parameters:
@@ -1308,14 +1416,17 @@ JoinChatResource_delete:
     204:
       description: You left the chat
     403:
-      description: You do not have access to this entity
+      description: You are not in the team of the project, or you are a vendor
+        without a task on this entity, or you use a bot token
     404:
       description: The entity does not exist
 
 JoinChatResource_post:
   summary: Join a chat
-  description: Join the chat of an entity as a participant. Clients cannot
-    use this route.
+  description: Join the chat of an entity as a participant. If the entity has
+    no chat yet, the chat is created. You must be in the team of the project.
+    A client cannot use this route. A vendor must have an assigned task on the
+    entity.
   tags:
     - User
   parameters:
@@ -1328,7 +1439,7 @@ JoinChatResource_post:
       description: Unique identifier of the entity
       example: a24a6ea4-ce75-4665-a070-57453082c250
   responses:
-    201:
+    200:
       description: The chat
       content:
         application/json:
@@ -1367,7 +1478,9 @@ JoinChatResource_post:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     403:
-      description: You are a client, or you do not have access to this entity
+      description: You are not in the team of the project, you are a client on
+        this project, or you are a vendor without a task on this entity, or
+        you use a bot token
     404:
       description: The entity does not exist
 
@@ -1388,6 +1501,8 @@ MarkAllNotificationsAsReadResource_post:
                 type: boolean
                 description: Operation success status
                 example: true
+    403:
+      description: You use a bot token
 
 NotificationResource_get:
   summary: Get a notification
@@ -1449,6 +1564,10 @@ NotificationResource_get:
                 format: date-time
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
+    400:
+      description: The identifier is not a UUID
+    403:
+      description: You use a bot token
     404:
       description: You have no notification with this identifier
 
@@ -1525,6 +1644,8 @@ NotificationResource_put:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The body is not valid
+    403:
+      description: You use a bot token
     404:
       description: You have no notification with this identifier
 
@@ -1639,11 +1760,18 @@ NotificationsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    400:
+      description: task_type_id or task_status_id is not a UUID, or after or
+        before is not a date
+    403:
+      description: You use a bot token
 
 OpenProjectsResource_get:
   summary: Get my open projects
-  description: Get the open projects of your teams. Give name to get the
-    projects with this name.
+  description: Get the open projects of your teams. An administrator gets all
+    the open projects. Give name to get the project with exactly this name.
+    The case must match. The metadata descriptors of each project are reduced
+    to the ones your role on the project can read.
   tags:
     - User
   parameters:
@@ -1703,11 +1831,14 @@ OpenProjectsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
 
 ProjectAssetTypesResource_get:
   summary: Get my asset types of a project
   description: Get the asset types of a project. The route uses only the
-    entities where you have an assigned task.
+    entities where you have an assigned task. If the project is closed, the
+    list is empty.
   tags:
     - User
   parameters:
@@ -1761,11 +1892,16 @@ ProjectAssetTypesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The project does not exist
 
 ProjectEpisodesResource_get:
   summary: Get my episodes of a project
-  description: Get the episodes of a project. The route uses only the entities
-    where you have an assigned task.
+  description: Get the episodes of a project where you have an assigned task
+    on a shot of the episode. Tasks on assets, on sequences or on the episode
+    itself do not count. If the project is closed, the list is empty.
   tags:
     - User
   parameters:
@@ -1815,11 +1951,16 @@ ProjectEpisodesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The project does not exist
 
 ProjectSequencesResource_get:
   summary: Get my sequences of a project
-  description: Get the sequences of a project. The route uses only the
-    entities where you have an assigned task.
+  description: Get the sequences of a project where you have an assigned task
+    on a shot of the sequence. A task on the sequence itself does not count.
+    If the project is closed, the list is empty.
   tags:
     - User
   parameters:
@@ -1873,10 +2014,15 @@ ProjectSequencesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The project does not exist
 
 SceneTaskTypesResource_get:
   summary: Get my task types of a scene
   description: Get the task types of a scene where you have an assigned task.
+    Task types of closed projects are not listed.
   tags:
     - User
   parameters:
@@ -1933,10 +2079,15 @@ SceneTaskTypesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The scene does not exist
 
 SceneTasksResource_get:
   summary: Get my tasks of a scene
-  description: Get the tasks of a scene that are assigned to you.
+  description: Get the tasks of a scene that are assigned to you. Tasks of
+    closed projects are not listed.
   tags:
     - User
   parameters:
@@ -1999,11 +2150,16 @@ SceneTasksResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The scene does not exist
 
 SequenceScenesResource_get:
   summary: Get my scenes of a sequence
   description: Get the scenes of a sequence. The route uses only the entities
-    where you have an assigned task.
+    where you have an assigned task. If the project is closed, the list is
+    empty.
   tags:
     - User
   parameters:
@@ -2058,11 +2214,16 @@ SequenceScenesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The sequence does not exist
 
 SequenceShotsResource_get:
   summary: Get my shots of a sequence
   description: Get the shots of a sequence. The route uses only the entities
-    where you have an assigned task.
+    where you have an assigned task. If the project is closed, the list is
+    empty.
   tags:
     - User
   parameters:
@@ -2117,11 +2278,17 @@ SequenceShotsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The sequence does not exist
 
 SequenceSubscribeResource_post:
   summary: Subscribe to a sequence
   description: Subscribe to the tasks of a task type in a sequence. A
-    subscription sends you a notification for each comment on these tasks.
+    subscription sends you a notification for each comment on these tasks. You
+    must be in the team of the project of the sequence. If you are already
+    subscribed, the existing subscription is returned.
   tags:
     - User
   parameters:
@@ -2179,11 +2346,16 @@ SequenceSubscribeResource_post:
                 format: date-time
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
+    403:
+      description: You are not in the team of the project, or you use a bot
+        token
+    404:
+      description: The sequence does not exist
 
 SequenceTaskTypesResource_get:
   summary: Get my task types of a sequence
   description: Get the task types of a sequence where you have an assigned
-    task.
+    task. Task types of closed projects are not listed.
   tags:
     - User
   parameters:
@@ -2240,10 +2412,15 @@ SequenceTaskTypesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The sequence does not exist
 
 SequenceTasksResource_get:
   summary: Get my tasks of a sequence
-  description: Get the tasks of a sequence that are assigned to you.
+  description: Get the tasks of a sequence that are assigned to you. Tasks of
+    closed projects are not listed.
   tags:
     - User
   parameters:
@@ -2306,6 +2483,10 @@ SequenceTasksResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The sequence does not exist
 
 SequenceUnsubscribeResource_delete:
   summary: Unsubscribe from a sequence
@@ -2333,10 +2514,13 @@ SequenceUnsubscribeResource_delete:
   responses:
     204:
       description: The subscription is removed
+    403:
+      description: You use a bot token
 
 ShotTaskTypesResource_get:
   summary: Get my task types of a shot
   description: Get the task types of a shot where you have an assigned task.
+    Task types of closed projects are not listed.
   tags:
     - User
   parameters:
@@ -2393,10 +2577,15 @@ ShotTaskTypesResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The shot does not exist
 
 ShotTasksResource_get:
   summary: Get my tasks of a shot
-  description: Get the tasks of a shot that are assigned to you.
+  description: Get the tasks of a shot that are assigned to you. Tasks of
+    closed projects are not listed.
   tags:
     - User
   parameters:
@@ -2459,11 +2648,17 @@ ShotTasksResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token
+    404:
+      description: The shot does not exist
 
 TaskSubscribeResource_post:
   summary: Subscribe to a task
   description: Subscribe to a task. A subscription sends you a notification
-    for each comment on this task.
+    for each comment on this task. You must be in the team of the project of
+    the task. If you are already subscribed, the existing subscription is
+    returned.
   tags:
     - User
   parameters:
@@ -2509,7 +2704,10 @@ TaskSubscribeResource_post:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     403:
-      description: You do not have access to this task
+      description: You are not in the team of the project, or you use a bot
+        token
+    404:
+      description: The task does not exist
 
 TaskTimeSpentResource_get:
   summary: Get my time spent on a task for a date
@@ -2535,7 +2733,8 @@ TaskTimeSpentResource_get:
       example: '2023-01-01'
   responses:
     200:
-      description: The time spent
+      description: The time spent, or null if you have no entry on this task
+        for this date
       content:
         application/json:
           schema:
@@ -2577,6 +2776,8 @@ TaskTimeSpentResource_get:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The date is not valid
+    403:
+      description: You use a bot token
 
 TaskUnsubscribeResource_delete:
   summary: Unsubscribe from a task
@@ -2595,11 +2796,15 @@ TaskUnsubscribeResource_delete:
   responses:
     204:
       description: The subscription is removed
+    403:
+      description: You use a bot token
 
 TasksSubscribeResource_post:
   summary: Subscribe to tasks
   description: Subscribe to each task of the list in one request. A
-    subscription sends you a notification for each comment on these tasks.
+    subscription sends you a notification for each comment on these tasks. You
+    must be in the team of the project of each task. If one task does not
+    exist or is not allowed, nothing is created.
   tags:
     - User
   requestBody:
@@ -2627,6 +2832,11 @@ TasksSubscribeResource_post:
               type: object
     400:
       description: The body is not valid
+    403:
+      description: You are not in the team of the project of one task, or you
+        use a bot token
+    404:
+      description: One task does not exist
 
 TasksUnsubscribeResource_post:
   summary: Unsubscribe from tasks
@@ -2653,6 +2863,8 @@ TasksUnsubscribeResource_post:
       description: The identifiers of the tasks
     400:
       description: The body is not valid
+    403:
+      description: You use a bot token
 
 TimeSpentsResource_get:
   summary: Get my time spents
@@ -2734,12 +2946,16 @@ TimeSpentsResource_get:
     400:
       description: Only one date of the period is given, or a date is not
         valid
+    403:
+      description: You use a bot token
 
 ToChecksFilterValuesResource_get:
   summary: Get the filter values of my tasks to check
-  description: Get the projects, task types, task statuses, episodes and
-    assignees of the tasks that you must check. The filters of the list use
-    these values.
+  description: Get the distinct project, task type, task status, episode and
+    assignee identifiers of the tasks that wait for feedback in your scope.
+    The scope is the one of the tasks-to-check route. If you are a user, a
+    client or a vendor, each list is empty. The filters of the list use these
+    values.
   tags:
     - User
   responses:
@@ -2775,12 +2991,17 @@ ToChecksFilterValuesResource_get:
                 items:
                   type: string
                   format: uuid
+    403:
+      description: You use a bot token
 
 ToChecksResource_get:
   summary: Get my tasks to check
-  description: Get the tasks that wait for feedback in the departments that
-    you supervise. If you are not a supervisor, the list is empty. Without
-    page, the response is a list. With page, the response is a page of tasks.
+  description: Get the tasks that wait for feedback. An administrator gets the
+    tasks of all the open projects. A manager gets the tasks of the open
+    projects of their teams. A supervisor gets the tasks of the open projects
+    of their teams, in their departments only. A user, a client or a vendor
+    gets an empty list. Without page, the response is a list without order.
+    With page, the response is a page of tasks.
   tags:
     - User
   parameters:
@@ -2812,7 +3033,8 @@ ToChecksResource_get:
         type: string
         format: uuid
       description: Get only the tasks of these assignees. Give a
-        comma-separated list.
+        comma-separated list of person identifiers, or the value unassigned to
+        get the tasks without assignee.
     - in: query
       name: episode_id
       required: false
@@ -2842,14 +3064,16 @@ ToChecksResource_get:
       schema:
         type: string
         enum: [priority, due_date, entity_name, estimation]
-      description: Field to sort the tasks on
+      description: Sort order. One of priority, due_date, estimation or
+        entity_name. Another value sorts by project, episode, sequence, entity
+        type, entity and task type names.
     - in: query
       name: page
       required: false
       schema:
         type: integer
       example: 1
-      description: Page to get
+      description: Page to get. A value below 1 is read as 1.
     - in: query
       name: limit
       required: false
@@ -2857,7 +3081,8 @@ ToChecksResource_get:
         type: integer
         default: 100
       example: 100
-      description: Number of tasks in a page. The default value is 100.
+      description: Number of tasks in a page. The default value is 100. A
+        value below 1 is read as 1.
   responses:
     200:
       description: The list of tasks, or a page of tasks if you give page
@@ -2942,11 +3167,13 @@ ToChecksResource_get:
                     description: True if a later page holds more tasks
     400:
       description: A filter is not valid
+    403:
+      description: You use a bot token
 
 TodosResource_get:
   summary: Get my tasks
-  description: Get your assigned tasks that are not done, in the open
-    projects.
+  description: Get your assigned tasks that are not done, in the open projects
+    of your teams.
   tags:
     - User
   responses:
@@ -3000,3 +3227,5 @@ TodosResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    403:
+      description: You use a bot token

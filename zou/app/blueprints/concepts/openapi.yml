@@ -21,6 +21,13 @@ AllConceptsResource_get:
       schema:
         type: string
         format: uuid
+    - in: query
+      name: assigned_to
+      required: false
+      description: With any value, get only the concepts that have a task
+        assigned to you.
+      schema:
+        type: string
   responses:
     200:
       description: The list of concepts
@@ -64,6 +71,8 @@ AllConceptsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
     403:
       description: You do not have access to this project, or you are a client
         or a vendor
@@ -438,9 +447,9 @@ ConceptTasksResource_get:
 
 ConceptsAndTasksResource_get:
   summary: Get concepts with their tasks
-  description: Get the concepts with the tasks of each concept. Add a query
-    parameter for each column to filter on. If you are not an administrator,
-    you must give project_id.
+  description: Get the concepts with the tasks of each concept. Filter with
+    project_id or id. The other columns are not filters on this route. If you
+    are not an administrator, you must give project_id.
   tags:
     - Concepts
   parameters:
@@ -452,6 +461,13 @@ ConceptsAndTasksResource_get:
       schema:
         type: string
         format: uuid
+    - in: query
+      name: assigned_to
+      required: false
+      description: With any value, get only the concepts that have a task
+        assigned to you.
+      schema:
+        type: string
   responses:
     200:
       description: The list of concepts with their tasks
@@ -579,6 +595,8 @@ MoveConceptsResource_post:
       description: The body is not valid
     403:
       description: You are not a manager or a supervisor of the project
+    404:
+      description: The concept folder does not exist in this project
 
 ProjectConceptFoldersResource_get:
   summary: Get the concept folders of a project
@@ -768,7 +786,8 @@ ProjectConceptsResource_get:
 ProjectConceptsResource_post:
   summary: Create a concept
   description: Create a concept in a project. You can put the concept in a
-    concept folder with parent_id.
+    concept folder with parent_id. If a concept with this name exists in the
+    project, the route returns it.
   tags:
     - Concepts
   parameters:
@@ -865,3 +884,6 @@ ProjectConceptsResource_post:
     403:
       description: You do not have access to this project, or you are a client
         or a vendor
+    404:
+      description: The project or the concept folder does not exist in this
+        project

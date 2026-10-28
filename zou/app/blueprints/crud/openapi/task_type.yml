@@ -280,13 +280,14 @@ TaskTypesResource_post:
           type: object
           required:
             - name
-            - for_entity
           properties:
             name:
               type: string
               example: Animation
             for_entity:
               type: string
+              description: Kind of entity, Asset by default
+              default: Asset
               example: Shot
             color:
               type: string

@@ -65,6 +65,8 @@ AllEditsResource_get:
                   format: date-time
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
     403:
       description: You do not have access to this project
 
@@ -123,7 +125,8 @@ EditPreviewsResource_get:
                     description: Creation timestamp
                     example: '2023-01-01T12:00:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
     404:
       description: The edit does not exist
 
@@ -161,7 +164,8 @@ EditResource_delete:
 
 EditResource_get:
   summary: Get an edit
-  description: Get an edit with its project name, episode and tasks.
+  description: Get an edit with its project name, episode and tasks. A client
+    gets the tasks without the studio fields.
   tags:
     - Edits
   parameters:
@@ -215,7 +219,8 @@ EditResource_get:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
     404:
       description: The edit does not exist
 
@@ -265,7 +270,8 @@ EditTaskTypesResource_get:
                   description: Entity type this task type is for
                   example: Edit
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
     404:
       description: The edit does not exist
 
@@ -340,7 +346,8 @@ EditTasksResource_get:
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
     404:
       description: The edit does not exist
 
@@ -398,16 +405,18 @@ EditVersionsResource_get:
                   description: Creator person identifier
                   example: c46c80c6-e097-6887-c292-79675204e470
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
     404:
       description: The edit does not exist
 
 EditsAndTasksResource_get:
   summary: Get edits with their tasks
-  description: Get the edits with the tasks of each edit. Add a query
-    parameter for each column to filter on. If you are not an administrator,
-    you must give project_id. A vendor gets only the edits of their assigned
-    tasks.
+  description: Get the edits with the tasks of each edit. Filter with
+    project_id or episode_id. Use episode_id=main for the edits without
+    episode, episode_id=all for all the edits. A client gets the tasks without
+    the studio fields. If you are not an administrator, you must give
+    project_id. A vendor gets only the edits of their assigned tasks.
   tags:
     - Edits
   parameters:
@@ -420,10 +429,18 @@ EditsAndTasksResource_get:
         type: string
         format: uuid
     - in: query
-      name: name
+      name: episode_id
       required: false
-      example: Opening Sequence
-      description: Get only the edits with this name
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the edits of this episode. Use main for the edits
+        without episode, all for all the edits.
+      schema:
+        type: string
+    - in: query
+      name: assigned_to
+      required: false
+      description: With any value, get only the edits that have a task
+        assigned to you.
       schema:
         type: string
   responses:

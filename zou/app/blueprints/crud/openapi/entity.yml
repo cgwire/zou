@@ -266,9 +266,11 @@ EntityResource_put:
     instance_casting, entities_in, entities_out, shotgun_id and created_by. An
     administrator, a manager of the project or the creator of the entity can
     change the other fields. The creator must be in the team of the project. A
-    supervisor of the project can change only the data field. Each key must be
-    a metadata descriptor of one of their departments. A supervisor without a
-    department can change all the data keys. The data field is merged with the
+    supervisor of the project with a department can change only the data field
+    of an asset, a shot or an edit. Each key must be a metadata descriptor of
+    one of their departments. A key that is not a descriptor of their
+    departments refuses the whole update. A supervisor without a department
+    can change the data field of every entity. The data field is merged with the
     current data. The name must be unique for the project, the type and the
     parent. When the frames or the name of a shot change, a new version of the
     shot is saved. Changes of one person that are less than one minute apart

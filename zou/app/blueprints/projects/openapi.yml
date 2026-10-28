@@ -4,8 +4,8 @@ AllProjectsMetadataDescriptorResource_delete:
     projects, in one request. A metadata descriptor describes an extra column.
     The values of the column are in the data field of the entities. The route
     changes the open projects where you are a manager. An administrator
-    changes all the open projects. You must have the manager role or a higher
-    role.
+    changes all the open projects. Your global role must be manager or
+    administrator. The role set on a project does not open this route.
   tags:
     - Projects
   parameters:
@@ -20,15 +20,15 @@ AllProjectsMetadataDescriptorResource_delete:
       required: true
       schema:
         type: string
-      description: 'Entity type of the descriptor: Asset, Shot, Edit, Episode or
-        Sequence'
+      description: 'Entity type of the descriptor: Asset, Shot, Edit, Episode,
+        Sequence or Project'
   responses:
     200:
       description: The identifiers of the deleted descriptors
     400:
       description: The entity type is not valid
     403:
-      description: You do not have the manager role
+      description: Your global role is not manager or administrator
 
 AllProjectsMetadataDescriptorResource_put:
   summary: Update a metadata descriptor in all projects
@@ -36,8 +36,8 @@ AllProjectsMetadataDescriptorResource_put:
     projects, in one request. A metadata descriptor describes an extra column.
     The values of the column are in the data field of the entities. The route
     changes the open projects where you are a manager. An administrator
-    changes all the open projects. You must have the manager role or a higher
-    role.
+    changes all the open projects. Your global role must be manager or
+    administrator. The role set on a project does not open this route.
   tags:
     - Projects
   parameters:
@@ -54,7 +54,7 @@ AllProjectsMetadataDescriptorResource_put:
       description: A value is not valid, or the name is used by another
         column of the same type, by a built-in field, or is too long
     403:
-      description: You do not have the manager role
+      description: Your global role is not manager or administrator
   requestBody:
     required: true
     content:
@@ -66,8 +66,8 @@ AllProjectsMetadataDescriptorResource_put:
           properties:
             entity_type:
               type: string
-              description: 'Entity type of the descriptor: Asset, Shot, Edit, Episode
-                or Sequence'
+              description: 'Entity type of the descriptor: Asset, Shot, Edit,
+                Episode, Sequence or Project'
             name:
               type: string
               description: New name of the column
@@ -97,7 +97,8 @@ AllProjectsMetadataDescriptorsReorderResource_post:
   description: Set the same order of columns in your projects, in one request.
     Give the field names in the new order. The route changes the open projects
     where you are a manager. An administrator changes all the open projects.
-    You must have the manager role or a higher role.
+    Your global role must be manager or administrator. The role set on a
+    project does not open this route.
   tags:
     - Projects
   requestBody:
@@ -112,6 +113,8 @@ AllProjectsMetadataDescriptorsReorderResource_post:
           properties:
             entity_type:
               type: string
+              description: 'Entity type of the descriptors: Asset, Shot, Edit,
+                Episode, Sequence or Project'
             field_order:
               type: array
               items:
@@ -122,7 +125,7 @@ AllProjectsMetadataDescriptorsReorderResource_post:
     400:
       description: The body is not valid
     403:
-      description: You do not have the manager role
+      description: Your global role is not manager or administrator
 
 AllProjectsMetadataDescriptorsResource_post:
   summary: Create a metadata descriptor in all projects
@@ -131,7 +134,8 @@ AllProjectsMetadataDescriptorsResource_post:
     skipped. A metadata descriptor describes an extra column. The values of
     the column are in the data field of the entities. The route changes the
     open projects where you are a manager. An administrator changes all the
-    open projects. You must have the manager role or a higher role.
+    open projects. Your global role must be manager or
+    administrator. The role set on a project does not open this route.
   tags:
     - Projects
   requestBody:
@@ -142,15 +146,31 @@ AllProjectsMetadataDescriptorsResource_post:
           type: object
           required:
             - name
-            - data_type
           properties:
             entity_type:
               type: string
-              default: Project
+              default: Asset
+              enum: [Asset, Shot, Edit, Episode, Sequence, Project]
             name:
               type: string
             data_type:
               type: string
+              default: string
+            for_client:
+              type: boolean
+              default: false
+              description: Show the column to the clients
+            choices:
+              type: array
+              items:
+                type: string
+              description: Values of a list column
+            departments:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Departments that see the column
   responses:
     201:
       description: The new descriptors
@@ -158,12 +178,13 @@ AllProjectsMetadataDescriptorsResource_post:
       description: A value is not valid, or the name is used by a built-in
         field
     403:
-      description: You do not have the manager role
+      description: Your global role is not manager or administrator
 
 AllProjectsResource_get:
   summary: Get all the projects
-  description: Get all the projects, open and closed. You must be an
-    administrator.
+  description: Get all the projects, open and closed. An administrator gets
+    all of them. Other users get the projects of their teams, open and
+    closed. The name filter ignores the case.
   tags:
     - Projects
   parameters:
@@ -198,8 +219,8 @@ AllProjectsResource_get:
                   format: uuid
                   description: Project status unique identifier
                   example: b35b7fb5-df86-5776-b181-68564193d360
-    403:
-      description: You are not an administrator
+    404:
+      description: No project has this name. Only when you give name.
 
 OpenProjectsResource_get:
   summary: Get the open projects
@@ -1045,8 +1066,9 @@ ProductionMetadataDescriptorResource_delete:
   description: Delete a metadata descriptor of a project. A metadata
     descriptor describes an extra column. The values of the column are in the
     data field of the entities. Administrators and managers of the project can
-    use this route. A supervisor of the project can use it if the supervisor
-    has access to all the departments of the descriptor.
+    use this route. A supervisor of the project can delete it only when the
+    descriptor has at least one department and the departments of the
+    descriptor include every department of the supervisor.
   tags:
     - Projects
   parameters:
@@ -1116,9 +1138,12 @@ ProductionMetadataDescriptorResource_put:
   summary: Update a metadata descriptor
   description: Update a metadata descriptor of a project. A metadata
     descriptor describes an extra column. The values of the column are in the
-    data field of the entities. Administrators and managers of the project can
-    use this route. A supervisor of the project can use it if the supervisor
-    has access to all the departments of the descriptor.
+    data field of the entities. Send every field. A field you leave out goes
+    back to its default value, except the name. Administrators and managers
+    of the project can use this route. A supervisor of the project can use it
+    only when the descriptor, with the departments you send, has at least one
+    department and these departments include every department of the
+    supervisor.
   tags:
     - Projects
   parameters:
@@ -1154,6 +1179,11 @@ ProductionMetadataDescriptorResource_put:
               description: Whether the descriptor is for client
               default: 'False'
               example: 'True'
+            data_type:
+              type: string
+              default: string
+              description: Type of the values, for example string, number,
+                list or boolean
             choices:
               type: array
               description: List of choices for the descriptor
@@ -1180,7 +1210,8 @@ ProductionMetadataDescriptorResource_put:
     403:
       description: You cannot change this descriptor
     404:
-      description: The project has no descriptor with this identifier
+      description: The project has no descriptor with this identifier, or a
+        department does not exist
 
 ProductionMetadataDescriptorsReorderResource_post:
   summary: Reorder the metadata descriptors of a project
@@ -1218,6 +1249,7 @@ ProductionMetadataDescriptorsReorderResource_post:
                 - Episode
                 - Sequence
                 - Project
+                - Task
               example: Asset
             descriptor_ids:
               type: array
@@ -1295,8 +1327,10 @@ ProductionMetadataDescriptorsResource_post:
   description: Create a metadata descriptor in a project. A metadata
     descriptor describes an extra column. The values of the column are in the
     data field of the entities. Administrators and managers of the project can
-    use this route. A supervisor of the project can use it if the supervisor
-    has access to all the departments of the descriptor.
+    use this route. A supervisor of the project can use it only when the
+    descriptor has at least one department and the departments of the
+    descriptor include every department of the supervisor. A supervisor with
+    no department can use it for any descriptor that has departments.
   tags:
     - Projects
   parameters:
@@ -1316,7 +1350,6 @@ ProductionMetadataDescriptorsResource_post:
           type: object
           required:
             - name
-            - data_type
           properties:
             entity_type:
               type: string
@@ -1344,6 +1377,7 @@ ProductionMetadataDescriptorsResource_post:
             data_type:
               type: string
               description: Type of data (string, number, boolean, etc.)
+              default: string
               example: string
             for_client:
               type: string
@@ -1395,6 +1429,8 @@ ProductionMetadataDescriptorsResource_post:
         name is used by a built-in field
     403:
       description: You cannot create this descriptor
+    404:
+      description: A department does not exist
 
 ProductionMilestonesResource_get:
   summary: Get the milestones of a project
@@ -1782,12 +1818,11 @@ ProductionScheduleVersionApplyToProductionResource_post:
                 type: boolean
               task_count:
                 type: integer
-    400:
-      description: An identifier is not a valid UUID
     403:
       description: You are not a manager of the project
     404:
-      description: The production schedule version does not exist
+      description: The production schedule version does not exist, or the
+        identifier is not a valid UUID
 
 ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource_post:
   summary: Copy the task dates of another schedule version
@@ -1835,8 +1870,8 @@ ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource_post:
                 type: integer
                 description: Number of task links copied
     400:
-      description: The body is not valid, or the two versions are not in the
-        same project
+      description: The body is not valid, the two versions are not in the same
+        project, or the source version is the target version
     403:
       description: You are not a manager of the project
     404:
@@ -1872,12 +1907,11 @@ ProductionScheduleVersionSetTaskLinksFromTasksResource_post:
               task_link_count:
                 type: integer
                 description: Number of task links copied
-    400:
-      description: An identifier is not a valid UUID
     403:
       description: You are not a manager of the project
     404:
-      description: The production schedule version does not exist
+      description: The production schedule version does not exist, or the
+        identifier is not a valid UUID
 
 ProductionScheduleVersionTaskLinksResource_get:
   summary: Get the task dates of a schedule version
@@ -1904,6 +1938,13 @@ ProductionScheduleVersionTaskLinksResource_get:
         format: uuid
       description: Get only the links of the tasks of this task type
       example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: Add the related objects to each link
   responses:
     200:
       description: The list of task links
@@ -1913,13 +1954,12 @@ ProductionScheduleVersionTaskLinksResource_get:
             type: array
             items:
               type: object
-    400:
-      description: An identifier is not a valid UUID
     403:
       description: You do not have access to this project, or you are a client
         or a vendor
     404:
-      description: The production schedule version does not exist
+      description: The production schedule version does not exist, or the
+        identifier is not a valid UUID
 
 ProductionSequencesScheduleItemsResource_get:
   summary: Get the schedule items of the sequences for a task type
@@ -2001,6 +2041,10 @@ ProductionSettingsBatchResource_post:
                     format: uuid
                   priority:
                     type: integer
+                  is_client_visible:
+                    type: boolean
+                    description: Whether clients see this task type, left
+                      untouched when omitted
             task_status_ids:
               type: array
               items:
@@ -2343,9 +2387,10 @@ ProductionTaskTypeResource_post:
               description: Task type unique identifier
               example: b35b7fb5-df86-5776-b181-68564193d360
             priority:
-              type: string
+              type: integer
+              nullable: true
               description: Task type priority
-              example: None
+              example: 1
             hd_bitrate_compression:
               type: integer
               description: High definition movie bitrate in Mbit/s for this
@@ -2416,7 +2461,8 @@ ProductionTaskTypeSoftwareRemoveResource_delete:
   summary: Remove a software from a task type of a project
   description: Remove a software from a task type of a project. Administrators
     and managers of the project can use this route. A supervisor of the
-    project can use it for the task types of their departments.
+    project can use it for the task types of their departments. A supervisor
+    with no department can use it for every task type.
   tags:
     - Projects
   parameters:
@@ -2456,7 +2502,8 @@ ProductionTaskTypeSoftwareResource_post:
     use the task type. The software must not be archived. If the link exists,
     the route returns it. Administrators and managers of the project can use
     this route. A supervisor of the project can use it for the task types of
-    their departments.
+    their departments. A supervisor with no department can use it for every
+    task type.
   tags:
     - Projects
   parameters:
@@ -2661,8 +2708,8 @@ ProductionTaskTypesTimeSpentsResource_get:
                   description: Date of time spent entry
                   example: '2022-07-15'
     400:
-      description: An identifier or a date is not valid, or only one date of
-        the period is given
+      description: The task type identifier is not a valid UUID, or a date is
+        not valid
     403:
       description: You are not a manager of the project
 

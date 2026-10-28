@@ -3,7 +3,8 @@ EventNamesResource_get:
   description: >-
     Get the names of the events in the event log, sorted. The log screen uses these
     names to make its filters. The list is the same for all the productions. It
-    does not show production data. You must be a manager.
+    does not show production data. You must have the manager role as your
+    studio role. A manager role given on a project only is not enough.
   tags:
     - Events
   responses:
@@ -17,7 +18,7 @@ EventNamesResource_get:
               type: string
               example: task:update
     403:
-      description: You are not a manager
+      description: You are not a studio manager
 
 EventsResource_get:
   summary: Get the last events
@@ -25,7 +26,8 @@ EventsResource_get:
     query parameters to filter the events. To get the next page, give the
     identifier of the last event in cursor_event_id. An administrator gets the
     events of all projects. A manager gets the events of their projects only.
-    You must be a manager.
+    You must be a manager. A user who has the manager role on a project only
+    must give project_id.
   tags:
     - Events
   parameters:
@@ -148,7 +150,8 @@ EventsResource_get:
     400:
       description: A date or an identifier is not valid
     403:
-      description: You are not a manager, or you do not have access to this
+      description: You are not a manager, you are a manager of this project
+        only and did not give project_id, or you do not have access to this
         project
 
 LoginLogsResource_get:

@@ -66,9 +66,10 @@ SalaryScaleResource_get:
               seniority:
                 type: string
                 example: junior
-              rate:
-                type: number
-                example: 50.0
+              salary:
+                type: integer
+                description: Daily salary
+                example: 50
               created_at:
                 type: string
                 format: date-time
@@ -132,9 +133,10 @@ SalaryScaleResource_put:
               seniority:
                 type: string
                 example: junior
-              rate:
-                type: number
-                example: 55.0
+              salary:
+                type: integer
+                description: Daily salary
+                example: 55
               created_at:
                 type: string
                 format: date-time
@@ -183,9 +185,10 @@ SalaryScalesResource_get:
                 seniority:
                   type: string
                   example: junior
-                rate:
-                  type: number
-                  example: 50.0
+                salary:
+                  type: integer
+                  description: Daily salary
+                  example: 50
     400:
       description: Query error
     403:

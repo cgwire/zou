@@ -234,6 +234,7 @@ BudgetsResource_post:
           type: object
           required:
             - project_id
+            - name
           properties:
             project_id:
               type: string
@@ -245,6 +246,12 @@ BudgetsResource_post:
             revision:
               type: integer
               example: 1
+            currency:
+              type: string
+              minLength: 3
+              maxLength: 3
+              example: EUR
+              description: Code of the currency, with 3 letters
   responses:
     201:
       description: The new budget

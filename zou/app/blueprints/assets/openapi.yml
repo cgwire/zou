@@ -3,7 +3,9 @@ AllAssetsResource_get:
   description: Get the assets of the projects that you can access. An
     administrator gets the assets of all projects. Add a query parameter for
     each column to filter on. For example, use name=Chair to get the assets
-    with this name. The route /data/assets/all gives the same result.
+    with this name. The route /data/assets/all gives the same result. A vendor
+    gets only the assets of their assigned tasks, without the metadata columns
+    hidden from their departments.
   tags:
     - Assets
   parameters:
@@ -15,12 +17,26 @@ AllAssetsResource_get:
         type: string
         format: uuid
     - in: query
-      name: asset_type_id
+      name: entity_type_id
       description: Get only the assets of this asset type
       example: a24a6ea4-ce75-4665-a070-57453082c250
       schema:
         type: string
         format: uuid
+    - in: query
+      name: episode_id
+      description: Get the assets of this episode and the assets cast in this
+        episode. The project of the episode is used for the access check.
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: assigned_to
+      description: With any value, get only the assets that have a task
+        assigned to you.
+      schema:
+        type: string
   responses:
     200:
       description: The list of assets
@@ -233,13 +249,16 @@ AssetAssetsResource_get:
                   description: Asset type identifier
                   example: c46c80c6-e097-6887-c292-79675204e470
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
       description: The asset does not exist
 
 AssetCastInResource_get:
   summary: Get the shots where an asset is cast
-  description: Get the shots that have an asset in their casting.
+  description: Get the shots and the assets that have this asset in their
+    casting. A shot entry has shot_id, shot_name, sequence_name and
+    episode_id. An asset entry has asset_id, asset_name and asset_type_name.
   tags:
     - Assets
   parameters:
@@ -253,7 +272,7 @@ AssetCastInResource_get:
         format: uuid
   responses:
     200:
-      description: The list of shots
+      description: The list of shots and assets that cast the asset
       content:
         application/json:
           schema:
@@ -293,7 +312,8 @@ AssetCastInResource_get:
                   description: Shot duration in frames
                   example: 100
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
       description: The asset does not exist
 
@@ -349,7 +369,8 @@ AssetCastingResource_get:
                       description: Entity type (shot/sequence)
                       example: shot
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
       description: The asset does not exist
 
@@ -468,7 +489,8 @@ AssetResource_delete:
 AssetResource_get:
   summary: Get an asset
   description: Get an asset with its project name, asset type name, tasks and
-    other related data.
+    other related data. A vendor must have a task assigned on the asset. A
+    client gets the tasks without the studio fields.
   tags:
     - Assets
   parameters:
@@ -518,7 +540,8 @@ AssetResource_get:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
       description: The asset does not exist
 
@@ -672,7 +695,8 @@ AssetTaskTypesResource_get:
                   description: Entity type this task type is for
                   example: Asset
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
       description: The asset does not exist
 
@@ -747,7 +771,8 @@ AssetTasksResource_get:
                   description: Last update timestamp
                   example: '2023-01-01T12:30:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
     404:
       description: The asset does not exist
 
@@ -845,10 +870,12 @@ AssetsAndTasksResource_get:
   summary: Get assets with their tasks
   description: Get the assets of the projects that you can access, with the
     tasks of each asset. Each asset has its project name and asset type name.
-    Add a query parameter for each column to filter on. For example, use
-    name=Chair to get the assets with this name. The response can have an
-    ETag. Send it in If-None-Match to get a 304 response when the data did not
-    change.
+    Filter with project_id, episode_id or assigned_to. The other columns are
+    not filters on this route. A vendor gets only the assets of their assigned
+    tasks, without the metadata columns hidden from their departments. A
+    client gets the tasks without the studio fields (assignees, estimation,
+    dates, retake count). The response can have an ETag. Send it in
+    If-None-Match to get a 304 response when the data did not change.
   tags:
     - Assets
   parameters:
@@ -861,12 +888,12 @@ AssetsAndTasksResource_get:
         format: uuid
     - in: query
       name: episode_id
-      description: Get the assets of this episode and the assets that have no
-        episode
+      description: Get the assets of this episode and the assets cast in this
+        episode. Use main to get the assets that have no episode. Use all to
+        get the assets of all episodes.
       example: a24a6ea4-ce75-4665-a070-57453082c250
       schema:
         type: string
-        format: uuid
     - in: query
       name: compact
       description: Encode assets and tasks as positional value arrays (halves
@@ -885,12 +912,11 @@ AssetsAndTasksResource_get:
         type: boolean
         default: false
     - in: query
-      name: asset_type_id
-      description: Filter assets by asset type
-      example: a24a6ea4-ce75-4665-a070-57453082c250
+      name: assigned_to
+      description: With any value, get only the assets that have a task
+        assigned to you.
       schema:
         type: string
-        format: uuid
   responses:
     200:
       description: The list of assets with their tasks
@@ -1041,12 +1067,16 @@ NewAssetResource_post:
       description: The body is not valid
     403:
       description: You are not a manager of the project
+    404:
+      description: The project or the asset type does not exist
 
 ProjectAssetTypeAssetsResource_get:
   summary: Get the assets of an asset type in a project
   description: Get the assets of a project that have the asset type of the
     path. Add a query parameter for each column to filter on. For example, use
-    name=Chair to get the assets with this name.
+    name=Chair to get the assets with this name. A vendor gets only the assets
+    of their assigned tasks, without the metadata columns hidden from their
+    departments.
   tags:
     - Assets
   parameters:
@@ -1151,7 +1181,8 @@ ProjectAssetsResource_get:
   summary: Get the assets of a project
   description: Get the assets of a project. Add a query parameter for each
     column to filter on. For example, use name=Chair to get the assets with
-    this name.
+    this name. A vendor gets only the assets of their assigned tasks, without
+    the metadata columns hidden from their departments.
   tags:
     - Assets
   parameters:
@@ -1164,12 +1195,26 @@ ProjectAssetsResource_get:
         type: string
         format: uuid
     - in: query
-      name: asset_type_id
-      description: Filter assets by asset type
+      name: entity_type_id
+      description: Get only the assets of this asset type
       example: a24a6ea4-ce75-4665-a070-57453082c250
       schema:
         type: string
         format: uuid
+    - in: query
+      name: episode_id
+      description: Get the assets of this episode and the assets cast in this
+        episode. The project of the episode is used for the access check.
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: assigned_to
+      description: With any value, get only the assets that have a task
+        assigned to you.
+      schema:
+        type: string
   responses:
     200:
       description: The list of assets
@@ -1329,7 +1374,8 @@ SetSharedAssetsResource_post:
   summary: Share or unshare assets
   description: Share or unshare the assets of the list. A shared asset is
     available to the other projects of the studio. You must be a manager of
-    each project of the assets.
+    each project of the assets. Without asset_ids, no asset changes and the
+    response is an empty list.
   tags:
     - Assets
   requestBody:
@@ -1338,8 +1384,6 @@ SetSharedAssetsResource_post:
       application/json:
         schema:
           type: object
-          required:
-            - asset_ids
           properties:
             asset_ids:
               type: array

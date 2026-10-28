@@ -248,9 +248,9 @@ SearchFiltersResource_post:
         schema:
           type: object
           required:
-            - name
             - person_id
             - search_filter_group_id
+            - list_type
           properties:
             name:
               type: string

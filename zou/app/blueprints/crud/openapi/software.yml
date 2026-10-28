@@ -35,7 +35,5 @@ SoftwareResource_get:
                 type: string
                 format: date-time
                 example: '2024-01-15T10:30:00Z'
-    400:
-      description: The identifier is not valid
     404:
-      description: The software does not exist
+      description: The software does not exist, or the identifier is not valid

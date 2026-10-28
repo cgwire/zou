@@ -65,13 +65,12 @@ WorkingFileResource_get:
                 type: string
                 format: date-time
                 example: '2024-01-15T10:30:00Z'
-    400:
-      description: The identifier is not valid
     403:
       description: You are not in the project team, or you are a vendor without
         a task on this entity
     404:
-      description: The working file does not exist
+      description: The working file does not exist, or the identifier is not
+        valid
 
 WorkingFileResource_put:
   summary: Update a working file
@@ -80,10 +79,11 @@ WorkingFileResource_put:
   description: Update the fields of a working file. Send only the fields to
     change. You cannot change id, created_at, updated_at. Dates use the ISO 8601
     format. The validation_status must be validated, rejected or neutral. You
-    must be an administrator, or a manager or a client of the project. Other
+    must be an administrator, or a manager of the project. Other
     members of the project can change it if they are an assignee of the task or
-    the creator of the entity. A supervisor can also change it if the task type
-    is in their departments.
+    the creator of the entity. A supervisor of the project can also change it
+    if they have no department, or if the task type is in one of their
+    departments.
   parameters:
     - in: path
       name: instance_id

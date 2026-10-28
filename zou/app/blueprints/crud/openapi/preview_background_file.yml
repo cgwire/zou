@@ -74,8 +74,6 @@ PreviewBackgroundFileResource_get:
                 example: '2024-01-15T10:30:00Z'
     400:
       description: The identifier is not a valid UUID
-    403:
-      description: You cannot read this preview background file
     404:
       description: The preview background file does not exist
 
@@ -219,8 +217,6 @@ PreviewBackgroundFilesResource_get:
                     example: 1
     400:
       description: A filter is not valid
-    403:
-      description: You cannot read these rows
 
 PreviewBackgroundFilesResource_post:
   summary: Create a preview background file

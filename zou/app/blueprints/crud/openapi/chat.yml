@@ -63,9 +63,17 @@ ChatResource_get:
               object_type:
                 type: string
                 example: Asset
-              name:
+              last_message:
                 type: string
-                example: Chat Name
+                format: date-time
+                nullable: true
+                example: '2024-01-15T10:30:00Z'
+              participants:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
               created_at:
                 type: string
                 format: date-time
@@ -131,9 +139,17 @@ ChatResource_put:
               object_type:
                 type: string
                 example: Asset
-              name:
+              last_message:
                 type: string
-                example: Updated Chat Name
+                format: date-time
+                nullable: true
+                example: '2024-01-15T10:30:00Z'
+              participants:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
               created_at:
                 type: string
                 format: date-time
@@ -242,7 +258,6 @@ ChatsResource_post:
           type: object
           required:
             - object_id
-            - object_type
           properties:
             object_id:
               type: string
@@ -251,7 +266,8 @@ ChatsResource_post:
               example: a24a6ea4-ce75-4665-a070-57453082c250
             object_type:
               type: string
-              description: Type of the entity of the chat
+              description: Type of the entity of the chat. The default value
+                is entity.
   responses:
     201:
       description: The new chat
@@ -271,9 +287,17 @@ ChatsResource_post:
               object_type:
                 type: string
                 example: Asset
-              name:
+              last_message:
                 type: string
-                example: Chat Name
+                format: date-time
+                nullable: true
+                example: '2024-01-15T10:30:00Z'
+              participants:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
               created_at:
                 type: string
                 format: date-time

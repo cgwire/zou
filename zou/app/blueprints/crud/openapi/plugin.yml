@@ -59,7 +59,16 @@ PluginResource_get:
               name:
                 type: string
                 example: Plugin Name
-              active:
+              plugin_id:
+                type: string
+                example: my-plugin
+              version:
+                type: string
+                example: 1.0.0
+              frontend_project_enabled:
+                type: boolean
+                example: false
+              frontend_studio_enabled:
                 type: boolean
                 example: false
               created_at:
@@ -124,9 +133,18 @@ PluginResource_put:
               name:
                 type: string
                 example: Updated Plugin Name
-              active:
+              plugin_id:
+                type: string
+                example: my-plugin
+              version:
+                type: string
+                example: 1.0.0
+              frontend_project_enabled:
                 type: boolean
-                example: true
+                example: false
+              frontend_studio_enabled:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time
@@ -234,11 +252,45 @@ PluginsResource_post:
         schema:
           type: object
           required:
+            - plugin_id
             - name
+            - version
+            - maintainer_name
+            - license
           properties:
+            plugin_id:
+              type: string
+              example: my-plugin
             name:
               type: string
               example: Plugin Name
+            version:
+              type: string
+              example: 1.0.0
+            maintainer_name:
+              type: string
+              example: John Doe
+            maintainer_email:
+              type: string
+              format: email
+              example: john.doe@example.com
+            website:
+              type: string
+              format: uri
+              example: https://example.com
+            license:
+              type: string
+              example: MIT
+            revision:
+              type: string
+              example: a1b2c3d
+            description:
+              type: string
+              example: Adds a custom view
+            icon:
+              type: string
+              description: Name of a lucide icon
+              example: puzzle
             frontend_project_enabled:
               type: boolean
               description: Show the plugin in the project pages
@@ -260,7 +312,16 @@ PluginsResource_post:
               name:
                 type: string
                 example: Plugin Name
-              active:
+              plugin_id:
+                type: string
+                example: my-plugin
+              version:
+                type: string
+                example: 1.0.0
+              frontend_project_enabled:
+                type: boolean
+                example: false
+              frontend_studio_enabled:
                 type: boolean
                 example: false
               created_at:

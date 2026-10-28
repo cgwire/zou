@@ -26,11 +26,13 @@ ProjectResource_delete:
     204:
       description: The project is deleted
     400:
-      description: The project is open, or other data uses the project
+      description: The project is open
     403:
       description: You are not an administrator
     404:
       description: The project does not exist
+    500:
+      description: Other data uses the project and force is false
 
 ProjectResource_get:
   summary: Get a project
@@ -127,10 +129,11 @@ ProjectResource_put:
     You must be a manager in the team of the project, or an administrator. You
     cannot change id, created_at, updated_at and team. Use the team routes to
     change the team. The route checks production_style, resolution and the
-    movie bitrates. A null production_style gives 2d3d.
-    preview_background_file_id must be in the preview background files of the
-    project. A tvshow project gets a first episode if it has none. Dates use
-    the ISO 8601 format.
+    movie bitrates. A null production_style gives 2d3d. You can send
+    preview_background_files, a list of preview background file identifiers.
+    default_preview_background_file_id must be in the preview background files
+    of the project. A tvshow project gets a first episode if it has none.
+    Dates use the ISO 8601 format.
   parameters:
     - in: path
       name: instance_id
@@ -158,6 +161,12 @@ ProjectResource_put:
               format: uuid
               description: Default preview background file of the project
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            preview_background_files:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Preview background files of the project
   responses:
     200:
       description: The updated project
@@ -209,7 +218,9 @@ ProjectTaskStatusLinksReorderResource_post:
     - Crud
   description: Set the priority of the task statuses of a project in one
     request. The order of the list gives the priority. The board roles of each
-    link do not change. You must be a manager of the project.
+    link do not change. The identifiers that are not task statuses of the
+    project are skipped. The response has only the updated links. You must be
+    a manager of the project.
   parameters:
     - in: path
       name: project_id
@@ -240,13 +251,17 @@ ProjectTaskStatusLinksReorderResource_post:
       description: The body does not have a valid task_status_ids list
     403:
       description: You are not a manager of the project
+    404:
+      description: The project does not exist
 
 ProjectTaskStatusLinksResource_post:
   summary: Add a task status to a project
   tags:
     - Crud
   description: Add a task status to a project, with its priority and the roles
-    that see it on the board. You must be a manager of the project.
+    that see it on the board. If the task status is already in the project,
+    the route replaces its priority and its board roles. You must be a manager
+    of the project.
   requestBody:
     required: true
     content:
@@ -308,14 +323,17 @@ ProjectTaskStatusLinksResource_post:
       description: The project or the task status is missing
     403:
       description: You are not a manager of the project
+    404:
+      description: The project does not exist
 
 ProjectTaskTypeLinksReorderResource_post:
   summary: Reorder the task types of a project
   tags:
     - Crud
   description: Set the priority of the task types of a project in one request.
-    The order of the list gives the priority. You must be a manager of the
-    project.
+    The order of the list gives the priority. The identifiers that are not
+    task types of the project are skipped. The response has only the updated
+    links. You must be a manager of the project.
   parameters:
     - in: path
       name: project_id
@@ -346,13 +364,16 @@ ProjectTaskTypeLinksReorderResource_post:
       description: The body does not have a valid task_type_ids list
     403:
       description: You are not a manager of the project
+    404:
+      description: The project does not exist
 
 ProjectTaskTypeLinksResource_post:
   summary: Add a task type to a project
   tags:
     - Crud
   description: Add a task type to a project, with its priority in the project.
-    You must be a manager of the project.
+    If the task type is already in the project, the route updates its
+    priority. You must be a manager of the project.
   requestBody:
     required: true
     content:
@@ -400,9 +421,11 @@ ProjectTaskTypeLinksResource_post:
                 type: integer
                 example: 1
     400:
-      description: The project or the task type is missing
+      description: project_id or task_type_id is missing or not a valid UUID
     403:
       description: You are not a manager of the project
+    404:
+      description: The project does not exist
 
 ProjectsResource_get:
   summary: Get project rows
@@ -482,8 +505,6 @@ ProjectsResource_get:
                     example: 1
     400:
       description: A filter is not valid
-    403:
-      description: You cannot read these rows
 
 ProjectsResource_post:
   summary: Create a project

@@ -56,17 +56,22 @@ AllShotsResource_get:
                   type: string
                   format: uuid
                   example: c24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: An identifier is not a valid UUID
     403:
       description: You do not have access to this project
+    404:
+      description: The sequence does not exist
 
 EpisodeAndTasksResource_get:
   summary: Get episodes with their tasks
   tags:
     - Shots
-  description: Get the episodes with the tasks of each episode. Add a query
-    parameter for each column to filter on. If you are not an administrator,
-    you must give project_id. A vendor gets only the episodes and the tasks
-    that are assigned to the vendor.
+  description: Get the episodes with the tasks of each episode. Filter with
+    project_id or episode_id. Use episode_id=all to get all the episodes. A
+    client gets the tasks without the studio fields. If you are not an
+    administrator, you must give project_id. A vendor gets only the episodes
+    and the tasks that are assigned to the vendor.
   parameters:
     - in: query
       name: project_id
@@ -76,6 +81,14 @@ EpisodeAndTasksResource_get:
         type: string
         format: uuid
       description: Unique identifier of the project
+    - in: query
+      name: episode_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+      description: Get only the entities of this episode. Use all to get the
+        entities of all the episodes.
   responses:
     200:
       description: The list of episodes with their tasks
@@ -169,8 +182,10 @@ EpisodeResource_delete:
     - Shots
   description: Delete an episode. The creator of the episode can delete it if
     the creator is in the project team. Other users must be managers of the
-    project. If the episode has tasks, the episode is only marked as canceled.
-    Use force=true to delete the episode and all its related data.
+    project. Without force, the episode is deleted only if nothing is linked
+    to it. If sequences, assets or tasks are still linked, the route returns
+    400. With force=true, the sequences, the shots, the assets and the tasks
+    of the episode are deleted too.
   parameters:
     - in: path
       name: episode_id
@@ -180,9 +195,18 @@ EpisodeResource_delete:
         type: string
         format: uuid
       description: Unique identifier of the episode
+    - in: query
+      name: force
+      required: false
+      example: false
+      schema:
+        type: boolean
+      description: Delete the episode and all its related data
   responses:
     204:
       description: The episode is deleted
+    400:
+      description: Some data are still linked to this episode
     403:
       description: You cannot delete this episode
     404:
@@ -228,7 +252,8 @@ EpisodeResource_get:
                 type: string
                 example: running
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The episode does not exist
 
@@ -238,7 +263,8 @@ EpisodeSequencesResource_get:
     - Shots
   description: Get the sequences of an episode. Add a query parameter for each
     column to filter on. A vendor gets only the entities of their tasks,
-    without the hidden metadata columns.
+    without the hidden metadata columns. The query filters do not apply to
+    vendors. If episode_id is not a valid UUID, the response is an empty list.
   parameters:
     - in: path
       name: episode_id
@@ -350,6 +376,13 @@ EpisodeShotsResource_get:
         type: string
         format: uuid
       description: Unique identifier of the episode
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: Add the related data to each shot
   responses:
     200:
       description: The list of shots
@@ -376,7 +409,8 @@ EpisodeShotsResource_get:
                   format: uuid
                   example: c24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The episode does not exist
 
@@ -411,7 +445,8 @@ EpisodeTaskTypesResource_get:
                   type: string
                   example: Animation
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The episode does not exist
   description: Get the task types of the tasks of an episode.
@@ -470,9 +505,11 @@ EpisodeTasksResource_get:
                   example: [f24a6ea4-ce75-4665-a070-57453082c250]
     403:
       description: You do not have access to this project, or you are a vendor
+        without a task on this episode
     404:
       description: The episode does not exist
-  description: Get the tasks of an episode. Vendors cannot use this route.
+  description: Get the tasks of an episode. A vendor gets only their assigned
+    tasks on the episode.
 
 EpisodesResource_get:
   summary: Get episodes
@@ -517,6 +554,8 @@ EpisodesResource_get:
                 status:
                   type: string
                   example: running
+    400:
+      description: An identifier is not a valid UUID
     403:
       description: You do not have access to this project
 
@@ -664,7 +703,8 @@ ProjectEpisodeStatsResource_get:
     - Shots
   description: Get the number of tasks of a project for each task status, each
     task type and each episode. A vendor gets the statistics of their tasks
-    only.
+    only. A client can use this route only if the project makes its statistics
+    visible to clients (is_client_stats_visible).
   parameters:
     - in: path
       name: project_id
@@ -715,7 +755,8 @@ ProjectEpisodeStatsResource_get:
                     frames: 2400
                     drawings: 600
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a client
+        and the project hides its statistics from clients
 
 ProjectEpisodesResource_get:
   summary: Get the episodes of a project
@@ -1024,8 +1065,8 @@ ProjectScenesResource_post:
   summary: Create a scene
   tags:
     - Shots
-  description: Create a scene in a project. Give the sequence of the scene.
-    You must be a manager of the project.
+  description: Create a scene in a project. You can give the sequence of the
+    scene. You must be a manager of the project.
   parameters:
     - in: path
       name: project_id
@@ -1043,7 +1084,6 @@ ProjectScenesResource_post:
           type: object
           required:
             - name
-            - sequence_id
           properties:
             name:
               type: string
@@ -1079,6 +1119,8 @@ ProjectScenesResource_post:
       description: The body is not valid
     403:
       description: You are not a manager of the project
+    404:
+      description: The sequence does not exist in this project
 
 ProjectSequencesResource_get:
   summary: Get the sequences of a project
@@ -1147,6 +1189,9 @@ ProjectSequencesResource_post:
           required:
             - name
           properties:
+            description:
+              type: string
+              description: Description of the sequence
             name:
               type: string
               example: SQ01
@@ -1187,6 +1232,8 @@ ProjectSequencesResource_post:
       description: The body is not valid
     403:
       description: You are not a manager of the project
+    404:
+      description: The episode does not exist in this project
 
 ProjectShotsResource_get:
   summary: Get the shots of a project
@@ -1305,6 +1352,8 @@ ProjectShotsResource_post:
       description: The body is not valid
     403:
       description: You are not a manager of the project
+    404:
+      description: The sequence does not exist
 
 RemoveShotFromSceneResource_delete:
   summary: Remove a shot from a scene
@@ -1340,10 +1389,11 @@ SceneAndTasksResource_get:
   summary: Get scenes with their tasks
   tags:
     - Shots
-  description: Get the scenes with the tasks of each scene. Add a query
-    parameter for each column to filter on. If you are not an administrator,
-    you must give project_id. A vendor gets only the scenes and the tasks that
-    are assigned to the vendor.
+  description: Get the scenes with the tasks of each scene. Filter with
+    project_id or episode_id. Use episode_id=all to get all the episodes. A
+    client gets the tasks without the studio fields. If you are not an
+    administrator, you must give project_id. A vendor gets only the scenes and
+    the tasks that are assigned to the vendor.
   parameters:
     - in: query
       name: project_id
@@ -1353,6 +1403,14 @@ SceneAndTasksResource_get:
         type: string
         format: uuid
       description: Unique identifier of the project
+    - in: query
+      name: episode_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+      description: Get only the entities of this episode. Use all to get the
+        entities of all the episodes.
   responses:
     200:
       description: The list of scenes with their tasks
@@ -1397,7 +1455,8 @@ SceneResource_delete:
     - Shots
   description: Delete a scene. The creator of the scene can delete it if the
     creator is in the project team. Other users must be managers of the
-    project.
+    project. If data is still linked to the scene, the scene is only marked as
+    canceled.
   parameters:
     - in: path
       name: scene_id
@@ -1449,7 +1508,8 @@ SceneResource_get:
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The scene does not exist
 
@@ -1489,7 +1549,8 @@ SceneShotsResource_get:
                   format: uuid
                   example: b24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The scene does not exist
 
@@ -1575,7 +1636,8 @@ SceneTaskTypesResource_get:
                   type: string
                   example: Animation
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The scene does not exist
 
@@ -1627,7 +1689,8 @@ SceneTasksResource_get:
                   format: uuid
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The scene does not exist
 
@@ -1636,8 +1699,8 @@ ScenesResource_get:
   tags:
     - Shots
   description: Get the scenes. Add a query parameter for each column to filter
-    on. If you are not an administrator, you must give project_id. A vendor
-    gets only the scenes of their tasks.
+    on. If you are not an administrator, you must give project_id. Vendors
+    cannot use this route.
   parameters:
     - in: query
       name: project_id
@@ -1668,17 +1731,20 @@ ScenesResource_get:
                   type: string
                   format: uuid
                   example: b24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: An identifier is not a valid UUID
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
 
 SequenceAndTasksResource_get:
   summary: Get sequences with their tasks
   tags:
     - Shots
-  description: Get the sequences with the tasks of each sequence. Add a query
-    parameter for each column to filter on. If you are not an administrator,
-    you must give project_id. A vendor gets only the entities of their tasks,
-    without the hidden metadata columns.
+  description: Get the sequences with the tasks of each sequence. Filter with
+    project_id or episode_id. Use episode_id=all to get all the episodes. A
+    client gets the tasks without the studio fields. If you are not an
+    administrator, you must give project_id. A vendor gets only the entities
+    of their tasks, without the hidden metadata columns.
   parameters:
     - in: query
       name: project_id
@@ -1688,6 +1754,14 @@ SequenceAndTasksResource_get:
         type: string
         format: uuid
       description: Get only the entities of this project
+    - in: query
+      name: episode_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+      description: Get only the entities of this episode. Use all to get the
+        entities of all the episodes.
   responses:
     200:
       description: The list of sequences with their tasks
@@ -1732,8 +1806,10 @@ SequenceResource_delete:
     - Shots
   description: Delete a sequence. The creator of the sequence can delete it if
     the creator is in the project team. Other users must be managers of the
-    project. If the sequence has tasks, the sequence is only marked as
-    canceled. Use force=true to delete the sequence and all its related data.
+    project. Without force, the sequence is deleted only if nothing is linked
+    to it. If shots, scenes or tasks are still linked, the route returns 400.
+    With force=true, the shots, the scenes and the tasks of the sequence are
+    deleted too.
   parameters:
     - in: path
       name: sequence_id
@@ -1743,9 +1819,18 @@ SequenceResource_delete:
         type: string
         format: uuid
       description: Unique identifier of the sequence
+    - in: query
+      name: force
+      required: false
+      example: false
+      schema:
+        type: boolean
+      description: Delete the sequence and all its related data
   responses:
     204:
       description: The sequence is deleted
+    400:
+      description: Some data are still linked to this sequence
     403:
       description: You cannot delete this sequence
     404:
@@ -1789,7 +1874,8 @@ SequenceResource_get:
                 format: uuid
                 example: c24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The sequence does not exist
 
@@ -1834,7 +1920,8 @@ SequenceScenesResource_get:
                   format: uuid
                   example: c24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The sequence does not exist
 
@@ -1980,7 +2067,8 @@ SequenceTaskTypesResource_get:
                   type: string
                   example: Animation
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The sequence does not exist
 
@@ -1989,7 +2077,7 @@ SequenceTasksResource_get:
   tags:
     - Shots
   description: Get the tasks of a sequence. A vendor gets only their assigned
-    tasks.
+    tasks. The relations parameter is ignored for a vendor.
   parameters:
     - in: path
       name: sequence_id
@@ -2040,7 +2128,8 @@ SequenceTasksResource_get:
                   format: uuid
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The sequence does not exist
 
@@ -2050,7 +2139,8 @@ SequencesResource_get:
     - Shots
   description: Get the sequences. Add a query parameter for each column to
     filter on. If you are not an administrator, you must give project_id. A
-    vendor gets only the sequences of their tasks.
+    vendor gets the sequences of their tasks in the whole project, even with
+    episode_id.
   parameters:
     - in: query
       name: episode_id
@@ -2060,6 +2150,15 @@ SequencesResource_get:
         type: string
         format: uuid
       description: Get only the entities of this episode
+    - in: query
+      name: project_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the project. Required if you are not
+        an administrator and do not give episode_id.
   responses:
     200:
       description: The list of sequences
@@ -2085,8 +2184,12 @@ SequencesResource_get:
                   type: string
                   format: uuid
                   example: c24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: An identifier is not a valid UUID
     403:
       description: You do not have access to this project
+    404:
+      description: The episode does not exist
 
 SetShotsFramesResource_post:
   summary: Set the frames of the shots from the previews
@@ -2169,7 +2272,8 @@ ShotAssetsResource_get:
                   format: uuid
                   example: b24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The shot does not exist
 
@@ -2216,7 +2320,8 @@ ShotPreviewsResource_get:
                     b24a6ea4-ce75-4665-a070-57453082c250, revision: 3, file_id:
                     c24a6ea4-ce75-4665-a070-57453082c250}]
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The shot does not exist
 
@@ -2237,6 +2342,13 @@ ShotResource_delete:
         type: string
         format: uuid
       description: Unique identifier of the shot
+    - in: query
+      name: force
+      required: false
+      example: false
+      schema:
+        type: boolean
+      description: Delete the shot and all its related data
   responses:
     204:
       description: The shot is deleted
@@ -2250,6 +2362,8 @@ ShotResource_get:
   tags:
     - Shots
   description: Get a shot with its project name, sequence, episode and tasks.
+    A vendor must have a task assigned on the shot. A client gets the tasks
+    without the studio fields.
   parameters:
     - in: path
       name: shot_id
@@ -2289,7 +2403,8 @@ ShotResource_get:
                 type: object
                 example: {camera: camA, cut_in: 1001}
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this shot
     404:
       description: The shot does not exist
 
@@ -2404,7 +2519,8 @@ ShotTaskTypesResource_get:
                   type: string
                   example: Animation
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The shot does not exist
 
@@ -2469,7 +2585,8 @@ ShotTasksResource_get:
                     format: uuid
                   example: [f24a6ea4-ce75-4665-a070-57453082c250]
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The shot does not exist
 
@@ -2507,7 +2624,8 @@ ShotVersionsResource_get:
                   format: date-time
                   example: '2024-01-15T10:30:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
     404:
       description: The shot does not exist
 
@@ -2515,11 +2633,13 @@ ShotsAndTasksResource_get:
   summary: Get shots with their tasks
   tags:
     - Shots
-  description: Get the shots with the tasks of each shot. Add a query
-    parameter for each column to filter on. If you are not an administrator,
-    you must give project_id. A vendor gets only the entities of their tasks,
-    without the hidden metadata columns. The response can have an ETag. Send
-    it in If-None-Match to get a 304 response when the data did not change.
+  description: Get the shots with the tasks of each shot. Filter with
+    project_id or episode_id. Use episode_id=all to get all the episodes. A
+    client gets the tasks without the studio fields. If you are not an
+    administrator, you must give project_id. A vendor gets only the entities
+    of their tasks, without the hidden metadata columns. The response can have
+    an ETag. Send it in If-None-Match to get a 304 response when the data did
+    not change.
   parameters:
     - in: query
       name: project_id
@@ -2546,6 +2666,21 @@ ShotsAndTasksResource_get:
       schema:
         type: boolean
         default: false
+    - in: query
+      name: episode_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+      description: Get only the entities of this episode. Use all to get the
+        entities of all the episodes.
+    - in: query
+      name: assigned_to
+      required: false
+      schema:
+        type: string
+      description: With any value, get only the shots that have a task
+        assigned to you.
   responses:
     200:
       description: The list of shots with their tasks

@@ -162,6 +162,15 @@ EventsResource_get:
         default: false
       example: false
       description: Whether to include relations
+    - in: query
+      name: fields
+      required: false
+      schema:
+        type: string
+      example: name,created_at
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
   responses:
     200:
       description: The list of events, or a page of events if you give page

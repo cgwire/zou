@@ -3,12 +3,12 @@ AddExtraPreviewResource_delete:
   tags:
     - Tasks
   description: Delete a preview of a comment of a task. The preview must be on
-    the comment, and the comment must be on the task. Administrators, and the
-    managers and clients of the project can use this route. Other users must
-    be assignees of the task, supervisors of its department, or creators of
+    the comment, and the comment must be on the task. Administrators and the
+    managers of the project can use this route. Other users must be
+    assignees of the task, supervisors of its department, or creators of
     its entity. You must also be able to read the comment. Use force=true to
     delete the files from the storage now. Else, the purge deletes them
-    later. Only a manager of the project can use force.
+    later. Only an administrator or a manager of the project can use force.
   parameters:
     - in: path
       name: task_id
@@ -57,9 +57,11 @@ AddExtraPreviewResource_post:
   summary: Upload an extra preview of a comment
   tags:
     - Tasks
-  description: Upload the file of another preview of a comment. A comment can
-    have several previews in the same revision. Send the file in a multipart
-    form.
+  description: Create another preview entry on a comment, in the same revision
+    as the preview preview_file_id. A comment can have several previews in the
+    same revision. The route creates the metadata only. Upload the file after,
+    with the preview file upload route. Administrators and the managers of the
+    project can use this route. Other users must be assignees of the task, supervisors of its department, or creators of its entity.
   parameters:
     - in: path
       name: task_id
@@ -85,17 +87,6 @@ AddExtraPreviewResource_post:
         format: uuid
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the preview file
-  requestBody:
-    required: true
-    content:
-      multipart/form-data:
-        schema:
-          type: object
-          properties:
-            file:
-              type: string
-              format: binary
-              description: Preview file to upload
   responses:
     201:
       description: The preview file
@@ -124,9 +115,12 @@ AddExtraPreviewResource_post:
                 format: uuid
                 example: d24a6ea4-ce75-4665-a070-57453082c250
     400:
-      description: The file is missing or is not valid
+      description: The project allows one preview per revision, or the
+        revision already exists
     403:
       description: You cannot do actions on this task
+    404:
+      description: The task, the comment or the preview file does not exist
 
 AddPreviewResource_post:
   summary: Add a preview to a comment
@@ -134,7 +128,9 @@ AddPreviewResource_post:
     - Tasks
   description: Create a preview file for a comment of a task. Upload the file
     of the preview after. If you do not give the revision, the route uses the
-    last revision plus 1.
+    last revision plus 1. Administrators and the managers of the project
+    can use this route. Other users must be assignees of the task,
+    supervisors of its department, or creators of its entity.
   parameters:
     - in: path
       name: task_id
@@ -195,7 +191,8 @@ AddPreviewResource_post:
                 format: date-time
                 example: '2024-01-15T10:30:00Z'
     400:
-      description: The body is not valid
+      description: The body is not valid, the revision already exists on this
+        task, or the project allows one preview per revision
     403:
       description: You cannot do actions on this task
     404:
@@ -276,11 +273,14 @@ AddTimeSpentResource_post:
     403:
       description: The person is not an assignee of the task, you cannot add
         time for this person, or the person is a bot
+    404:
+      description: The task or the person does not exist
   description: Add a duration to the time spent of a person on a task for a
     date. If the time spent does not exist, the route creates it. The person
     must be an assignee of the task. The person can add time for themselves.
     An administrator or a manager of the project can add time for the
-    assignees. You cannot add time for a bot.
+    assignees. You cannot add time for a bot, except when the project enables
+    bot collaboration.
 
 ClearAssignationResource_put:
   summary: Remove the assignees of tasks
@@ -319,19 +319,22 @@ ClearAssignationResource_put:
             example: [a24a6ea4-ce75-4665-a070-57453082c250]
     400:
       description: The body is not valid
-    403:
-      description: You cannot change these tasks
   description: Remove the assignees of the tasks of the list. Give person_id
-    to remove only this person. A manager of the project can change all the
-    tasks. A supervisor can change the tasks of their departments.
+    to remove only this person. The tasks that you cannot change, and the
+    unknown tasks, are skipped. An administrator or a manager of the project
+    can change all the tasks. A supervisor can change the tasks of their
+    departments. An assignee can remove themselves, with their own
+    person_id.
 
 CreateAssetTasksResource_post:
   summary: Create tasks for assets
   tags:
     - Tasks
   description: Create a task of the task type for each asset of the list. If
-    the body is empty, the route uses all the assets of the project. A task
-    that exists is skipped. You must be a manager of the project.
+    the body is empty, the route uses the assets of the project that match the
+    query parameters, for example asset_type_id. The identifiers of assets of
+    another project are skipped. A task that exists is skipped. You must be a
+    manager of the project.
   parameters:
     - in: path
       name: project_id
@@ -350,7 +353,7 @@ CreateAssetTasksResource_post:
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the task type
   requestBody:
-    required: true
+    required: false
     content:
       application/json:
         schema:
@@ -395,6 +398,8 @@ CreateAssetTasksResource_post:
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     400:
       description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
     403:
       description: You are not a manager of the project
 
@@ -403,8 +408,10 @@ CreateConceptTasksResource_post:
   tags:
     - Tasks
   description: Create a task of the task type for each concept of the list. If
-    the body is empty, the route uses all the concepts of the project. A task
-    that exists is skipped. Clients and vendors cannot use this route.
+    the body is empty, the route uses the concepts of the project that match
+    the query parameters. The identifiers of concepts of another project are
+    skipped. A task that exists is skipped. Clients and vendors cannot use
+    this route.
   parameters:
     - in: path
       name: project_id
@@ -423,7 +430,7 @@ CreateConceptTasksResource_post:
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the task type
   requestBody:
-    required: true
+    required: false
     content:
       application/json:
         schema:
@@ -468,6 +475,8 @@ CreateConceptTasksResource_post:
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     400:
       description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
     403:
       description: You do not have access to this project, or you are a client
         or a vendor
@@ -477,8 +486,9 @@ CreateEditTasksResource_post:
   tags:
     - Tasks
   description: Create a task of the task type for each edit of the list. If
-    the body is empty, the route uses all the edits of the project. A task
-    that exists is skipped. You must be a manager of the project.
+    the body is empty, the route uses the edits of the project that match the
+    query parameters. The identifiers of edits of another project are skipped.
+    A task that exists is skipped. You must be a manager of the project.
   parameters:
     - in: path
       name: project_id
@@ -497,7 +507,7 @@ CreateEditTasksResource_post:
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the task type
   requestBody:
-    required: true
+    required: false
     content:
       application/json:
         schema:
@@ -542,6 +552,8 @@ CreateEditTasksResource_post:
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     400:
       description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
     403:
       description: You are not a manager of the project
 
@@ -551,7 +563,8 @@ CreateEntityTasksResource_post:
     - Tasks
   description: Create a task of the task type for each entity of the list. If
     the body is empty, the route uses all the entities of this type in the
-    project. A task that exists is skipped. You must be a manager of the
+    project, or of the episode episode_id. The entity type name is not case
+    sensitive. A task that exists is skipped. You must be a manager of the
     project.
   parameters:
     - in: path
@@ -577,8 +590,16 @@ CreateEntityTasksResource_post:
         format: uuid
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the task type
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Use only the entities of this episode, when the body is
+        empty
   requestBody:
-    required: true
+    required: false
     content:
       application/json:
         schema:
@@ -623,6 +644,9 @@ CreateEntityTasksResource_post:
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     400:
       description: The body is not a list of valid identifiers
+    404:
+      description: The project, the task type or the entity type does
+        not exist
     403:
       description: You are not a manager of the project
 
@@ -631,8 +655,10 @@ CreateShotTasksResource_post:
   tags:
     - Tasks
   description: Create a task of the task type for each shot of the list. If
-    the body is empty, the route uses all the shots of the project. A task
-    that exists is skipped. You must be a manager of the project.
+    the body is empty, the route uses the shots of the project that match the
+    query parameters, for example sequence_id. The identifiers of shots of
+    another project are skipped. A task that exists is skipped. You must be a
+    manager of the project.
   parameters:
     - in: path
       name: project_id
@@ -651,7 +677,7 @@ CreateShotTasksResource_post:
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the task type
   requestBody:
-    required: true
+    required: false
     content:
       application/json:
         schema:
@@ -696,6 +722,8 @@ CreateShotTasksResource_post:
                   example: e24a6ea4-ce75-4665-a070-57453082c250
     400:
       description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
     403:
       description: You are not a manager of the project
 
@@ -728,6 +756,8 @@ DeleteAllTasksForTaskTypeResource_delete:
       description: The tasks are deleted
     403:
       description: You are not an administrator
+    404:
+      description: The project does not exist
 
 DeleteTasksResource_post:
   summary: Delete tasks
@@ -744,9 +774,20 @@ DeleteTasksResource_post:
         format: uuid
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the project
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of task identifiers to delete
   responses:
     200:
-      description: The identifiers of the deleted tasks
+      description: The identifiers you sent. The tasks of another project are
+        not deleted but stay in the list.
       content:
         application/json:
           schema:
@@ -783,37 +824,46 @@ GetTimeSpentDateResource_get:
       description: Date in the YYYY-MM-DD format
   responses:
     200:
-      description: The time spent entries, by person
+      description: An object. Each key is a person identifier, with the list
+        of their time spent entries. The key total gives the sum of the
+        durations.
       content:
         application/json:
           schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                task_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                person_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                date:
-                  type: string
-                  format: date
-                  example: '2022-07-12'
-                duration:
-                  type: number
-                  example: 120
-                created_at:
-                  type: string
-                  format: date-time
-                  example: '2024-01-15T10:30:00Z'
+            type: object
+            properties:
+              total:
+                type: number
+                description: Sum of the durations
+            additionalProperties:
+              type: array
+              description: Time spent entries of the person
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  task_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
+                  date:
+                    type: string
+                    format: date
+                    example: '2022-07-12'
+                  duration:
+                    type: number
+                    example: 120
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: '2024-01-15T10:30:00Z'
     400:
       description: The date is not valid
     403:
@@ -836,37 +886,46 @@ GetTimeSpentResource_get:
       description: Unique identifier of the task
   responses:
     200:
-      description: The time spent entries
+      description: An object. Each key is a person identifier, with the list
+        of their time spent entries. The key total gives the sum of the
+        durations.
       content:
         application/json:
           schema:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c250
-                task_id:
-                  type: string
-                  format: uuid
-                  example: b24a6ea4-ce75-4665-a070-57453082c250
-                person_id:
-                  type: string
-                  format: uuid
-                  example: c24a6ea4-ce75-4665-a070-57453082c250
-                date:
-                  type: string
-                  format: date
-                  example: '2022-07-12'
-                duration:
-                  type: number
-                  example: 120
-                created_at:
-                  type: string
-                  format: date-time
-                  example: '2024-01-15T10:30:00Z'
+            type: object
+            properties:
+              total:
+                type: number
+                description: Sum of the durations
+            additionalProperties:
+              type: array
+              description: Time spent entries of the person
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  task_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
+                  date:
+                    type: string
+                    format: date
+                    example: '2022-07-12'
+                  duration:
+                    type: number
+                    example: 120
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: '2024-01-15T10:30:00Z'
     403:
       description: You are a client, or you do not have access to this task
   description: Get all the time spent entries of a task, for all the
@@ -1166,10 +1225,11 @@ PersonDoneTasksResource_get:
   summary: Get the done tasks of a person
   tags:
     - Tasks
-  description: Get the done tasks of a person in the open projects. A vendor
-    cannot read the tasks of other persons, and gets an empty list for their
-    own tasks. A client gets an empty list. You cannot read the tasks of a
-    bot.
+  description: Get the done tasks of a person. An administrator gets the
+    tasks of all the open projects. Other users get only the tasks in the
+    open projects of their own teams. A vendor cannot read the tasks of other
+    persons, and gets an empty list for their own tasks. A client gets an
+    empty list. You cannot read the tasks of a bot.
   parameters:
     - in: path
       name: person_id
@@ -1221,6 +1281,8 @@ PersonDoneTasksResource_get:
     403:
       description: You cannot read the tasks of this person, or the person is
         a bot
+    404:
+      description: The person does not exist
 
 PersonRelatedTasksResource_get:
   summary: Get the tasks of a type on the entities of a person
@@ -1228,7 +1290,8 @@ PersonRelatedTasksResource_get:
     - Tasks
   description: Get the tasks of a task type on the entities where a person
     has assigned tasks. An administrator gets the tasks of all the open
-    projects. Other users get the tasks of their open projects. Clients and
+    projects. Other users get only the tasks in the open projects of their
+    own teams. Clients and
     vendors get an empty list. A vendor can ask only for their own tasks.
     You cannot read the tasks of a bot.
   parameters:
@@ -1295,10 +1358,11 @@ PersonTasksResource_get:
   summary: Get the open tasks of a person
   tags:
     - Tasks
-  description: Get the tasks of a person that are not done, in the open
-    projects. A vendor cannot read the tasks of other persons, and gets an
-    empty list for their own tasks. A client gets an empty list. You cannot
-    read the tasks of a bot.
+  description: Get the tasks of a person that are not done. An administrator
+    gets the tasks of all the open projects. Other users get only the tasks in
+    the open projects of their own teams. A vendor cannot read the tasks of
+    other persons, and gets an empty list for their own tasks. A client gets
+    an empty list. You cannot read the tasks of a bot.
   parameters:
     - in: path
       name: person_id
@@ -1350,6 +1414,8 @@ PersonTasksResource_get:
     403:
       description: You cannot read the tasks of this person, or the person is
         a bot
+    404:
+      description: The person does not exist
 
 PersonsTasksDatesResource_get:
   summary: Get the task dates of the persons
@@ -1359,7 +1425,9 @@ PersonsTasksDatesResource_get:
     end date of their tasks. The schedule of the team uses it. An
     administrator gets all the projects. A manager or a supervisor gets the
     projects of their teams. The other open projects come as busy periods,
-    without the project or the task.
+    without the project or the task. Without project_id, the route uses your
+    global role. You must be a supervisor, a manager or an administrator in
+    the studio. With project_id, the route uses your role on this project.
   parameters:
     - in: query
       name: project_id
@@ -1436,9 +1504,17 @@ ProjectCommentsResource_get:
         type: integer
         default: 100
       description: Number of rows in a page
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Without page, the route returns all the comments
+        in a list and ignores limit.
   responses:
     200:
-      description: The list of comments
+      description: Without page, the list of comments. With page, an object
+        with data, total, nb_pages, limit, offset and page.
       content:
         application/json:
           schema:
@@ -1472,6 +1548,8 @@ ProjectCommentsResource_get:
     403:
       description: You do not have access to this project, or you are a client
         or a vendor
+    404:
+      description: The project does not exist
 
 ProjectNotificationsResource_get:
   summary: Get the notifications of a project
@@ -1488,9 +1566,17 @@ ProjectNotificationsResource_get:
         format: uuid
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the project
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Without page, the route returns the full
+        list.
   responses:
     200:
-      description: The list of notifications
+      description: Without page, the list of notifications. With page, an object
+        with data, total, nb_pages, limit, offset and page.
       content:
         application/json:
           schema:
@@ -1534,9 +1620,12 @@ ProjectNotificationsResource_get:
               page:
                 type: integer
                 example: 1
-              is_more:
-                type: boolean
-                example: true
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              offset:
+                type: integer
     403:
       description: You are not an administrator
     404:
@@ -1557,9 +1646,17 @@ ProjectPreviewFilesResource_get:
         format: uuid
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the project
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Without page, the route returns the full
+        list.
   responses:
     200:
-      description: The list of preview files
+      description: Without page, the list of preview files. With page, an object
+        with data, total, nb_pages, limit, offset and page.
       content:
         application/json:
           schema:
@@ -1599,9 +1696,12 @@ ProjectPreviewFilesResource_get:
               page:
                 type: integer
                 example: 1
-              is_more:
-                type: boolean
-                example: true
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              offset:
+                type: integer
     403:
       description: You are not an administrator
     404:
@@ -1694,7 +1794,8 @@ ProjectTasksResource_get:
       description: Get only the tasks of this episode
   responses:
     200:
-      description: The list of tasks
+      description: Without page, the list of tasks. With page, an object
+        with data, total, nb_pages, limit, offset and page.
       content:
         application/json:
           schema:
@@ -1740,11 +1841,19 @@ ProjectTasksResource_get:
               page:
                 type: integer
                 example: 1
-              is_more:
-                type: boolean
-                example: true
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              offset:
+                type: integer
+    304:
+      description: Not modified. The response carries an ETag. Send it in
+        If-None-Match to get a 304 when nothing changed.
     403:
       description: You do not have access to this project
+    404:
+      description: The project does not exist
 
 SetTaskMainPreviewResource_put:
   summary: Use the last preview of a task as the entity picture
@@ -1764,8 +1873,6 @@ SetTaskMainPreviewResource_put:
   responses:
     200:
       description: The entity
-    400:
-      description: The task has no preview
       content:
         application/json:
           schema:
@@ -1798,16 +1905,23 @@ SetTaskMainPreviewResource_put:
                 type: string
                 format: date-time
                 example: '2024-01-15T11:00:00Z'
+    400:
+      description: The task has no preview
     403:
-      description: You do not have access to this project, or you are a client
+      description: You do not have access to this project or to this entity,
+        or you are a client
+    404:
+      description: The task does not exist
 
 SetTasksMainPreviewResource_put:
   summary: Use the last preview of tasks as the entity pictures
   tags:
     - Tasks
   description: For each task of the list, use its last preview as the picture
-    of its entity. The tasks without preview are skipped. Clients cannot use
-    this route.
+    of its entity. The tasks without preview are skipped. If a task does not
+    exist or if you cannot change it, the route stops with an error. The
+    entities changed before the error stay changed. Clients cannot use this
+    route.
   requestBody:
     required: true
     content:
@@ -1835,6 +1949,8 @@ SetTasksMainPreviewResource_put:
       description: The body is not valid
     403:
       description: You do not have access to this project, or you are a client
+    404:
+      description: A task does not exist
 
 SetTasksPriorityResource_put:
   summary: Set the priority of tasks
@@ -1940,6 +2056,8 @@ SetTimeSpentResource_delete:
     403:
       description: You cannot change the time of this person, or the person is
         a bot
+    404:
+      description: The task, the person or the time spent does not exist
   description: Delete the time spent of a person on a task for a date. The
     person must be an assignee of the task. The person can change their own
     time. An administrator or a manager of the project can change the time of
@@ -2020,11 +2138,14 @@ SetTimeSpentResource_post:
     403:
       description: You cannot change the time of this person, or the person is
         a bot
+    404:
+      description: The task or the person does not exist
   description: Set the time spent of a person on a task for a date. The
     duration replaces the current duration. The person must be an assignee of
     the task. The person can change their own time. An administrator or a
     manager of the project can change the time of the assignees. You cannot
-    change the time of a bot.
+    change the time of a bot, except when the project enables bot
+    collaboration.
 
 TaskAssignResource_put:
   summary: Assign a task to a person
@@ -2093,9 +2214,15 @@ TaskAssignResource_put:
       description: The person does not exist
     403:
       description: You cannot assign this task, or the person is a bot
-  description: Add a person to the assignees of a task. A manager of the
-    project can assign all the tasks. A supervisor can assign the tasks of
-    their departments. You cannot assign a bot.
+    404:
+      description: The task does not exist
+  description: Add a person to the assignees of a task. The route also adds
+    the person to the team of the project. An administrator or a manager of the
+    project can assign all the tasks. A supervisor without department can
+    assign all the tasks. A supervisor with departments can assign the tasks
+    of their departments, to a person of one of their departments. Other
+    users can assign themselves to the tasks of their departments. You cannot
+    assign a bot, except when the project enables bot collaboration.
 
 TaskCommentResource_delete:
   summary: Delete a comment of a task
@@ -2132,8 +2259,12 @@ TaskCommentResource_get:
   summary: Get a comment of a task
   tags:
     - Tasks
-  description: Get a comment of a task. A client can read only the comments
-    for clients and the comments of clients.
+  description: Get a comment of a task. Managers and supervisors of the
+    project can read all the comments. Other users, except clients, cannot
+    read the comments that clients wrote. A client can read the comments for
+    clients and the comments of clients. If the project isolates the
+    clients, a client reads only the comments for clients and their own
+    comments.
   parameters:
     - in: path
       name: task_id
@@ -2185,7 +2316,7 @@ TaskCommentResource_get:
     403:
       description: You cannot read this comment
     404:
-      description: The comment does not exist
+      description: The comment does not exist, or it is not on this task
 
 TaskCommentsResource_get:
   summary: Get the comments of a task
@@ -2454,9 +2585,14 @@ TasksAssignResource_put:
   tags:
     - Tasks
   description: Add a person to the assignees of each task of the list. The
-    unknown task identifiers are skipped. A manager of the project can assign
-    all the tasks. A supervisor can assign the tasks of their departments. You
-    cannot assign a bot.
+    unknown task identifiers are skipped. The tasks that you cannot assign are
+    skipped. If a task was assigned, the route also adds the person to the
+    team of its project. An administrator or a manager of the
+    project can assign all the tasks. A supervisor without department can
+    assign all the tasks. A supervisor with departments can assign the tasks
+    of their departments, to a person of one of their departments. Other
+    users can assign themselves to the tasks of their departments. You cannot
+    assign a bot, except when the project enables bot collaboration.
   parameters:
     - in: path
       name: person_id
@@ -2523,5 +2659,3 @@ TasksAssignResource_put:
                   example: [f24a6ea4-ce75-4665-a070-57453082c250]
     400:
       description: The person does not exist
-    403:
-      description: You cannot assign these tasks, or the person is a bot

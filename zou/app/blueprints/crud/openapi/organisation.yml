@@ -74,8 +74,6 @@ OrganisationResource_get:
                 example: '2024-01-15T10:30:00Z'
     400:
       description: The identifier is not a valid UUID
-    403:
-      description: You cannot read this organisation
     404:
       description: The organisation does not exist
 
@@ -221,8 +219,6 @@ OrganisationsResource_get:
                     example: 1
     400:
       description: A filter is not valid
-    403:
-      description: You cannot read these rows
 
 OrganisationsResource_post:
   summary: Create an organisation

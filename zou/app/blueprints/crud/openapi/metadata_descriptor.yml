@@ -198,10 +198,11 @@ MetadataDescriptorsResource_get:
     - in: query
       name: relations
       required: false
-      description: Add the related data to each row
+      description: Add the departments of each descriptor. Without any query
+        parameter, the response includes the departments of each descriptor.
+        With a query parameter, give relations=true to get them.
       schema:
         type: boolean
-        default: false
     - in: query
       name: fields
       required: false

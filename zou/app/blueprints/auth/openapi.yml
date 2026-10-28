@@ -3,7 +3,8 @@ AppLoginCodeResource_post:
   description: Make a one-time code for the current user. A desktop app or a
     script on the same computer uses this code to get its own tokens. The code
     is linked to the PKCE challenge in the body. The code expires after 60
-    seconds. A bot cannot make a code.
+    seconds. A bot cannot make a code. A user who must set up two-factor
+    authentication first cannot make a code.
   tags:
     - Authentication
   requestBody:
@@ -35,14 +36,16 @@ AppLoginCodeResource_post:
     400:
       description: The code challenge is not correct
     403:
-      description: The token belongs to a bot
+      description: The token belongs to a bot, or the user must set up
+        two-factor authentication first
 
 AppLoginTokenResource_post:
   summary: Change a browser login code into tokens
   description: Change a one-time browser login code into a new pair of access
     and refresh tokens. You can use a code one time only. The code verifier
     must agree with the PKCE challenge of the code. The response has the same
-    shape as the response of a login. This route does not set cookies.
+    shape as the response of a login. This route does not set cookies. The
+    organisation has the chat tokens only for an administrator.
   tags:
     - Authentication
   requestBody:
@@ -85,14 +88,15 @@ AppLoginTokenResource_post:
               refresh_token:
                 type: string
     400:
-      description: The code is unknown, expired or used, or the verifier is
-        not correct
+      description: The code is unknown, expired or used, the verifier is not
+        correct, or the user is inactive
 
 AuthenticatedResource_get:
   summary: Get the authentication status
   description: Get the current user and the organisation if the token is
     valid. A browser frontend or a third-party tool uses this route to know if
-    the user is still logged in.
+    the user is still logged in. The organisation has the chat tokens only
+    for an administrator.
   tags:
     - Authentication
   responses:
@@ -151,7 +155,10 @@ ChangePasswordResource_post:
       description: The password is changed
     400:
       description: The current password is wrong, the two new passwords are
-        different, the new password is too short or the user is inactive
+        different, the new password is too short, the user is inactive, or
+        too many login attempts failed recently
+    403:
+      description: The token belongs to a bot
 
 EmailOTPResource_delete:
   summary: Disable the email OTP
@@ -184,6 +191,8 @@ EmailOTPResource_delete:
       description: The email OTP is disabled
     400:
       description: The email OTP is not enabled, or the second factor is wrong
+    403:
+      description: The token belongs to a bot
 
 EmailOTPResource_get:
   summary: Send an email OTP
@@ -212,6 +221,8 @@ EmailOTPResource_get:
               success:
                 type: boolean
                 example: true
+    400:
+      description: email is missing
 
 EmailOTPResource_post:
   summary: Enable the email OTP
@@ -238,6 +249,8 @@ EmailOTPResource_post:
       description: The email OTP is enabled
     400:
       description: The email OTP is already enabled, or the code is wrong
+    403:
+      description: The token belongs to a bot
 
 EmailOTPResource_put:
   summary: Prepare the email OTP
@@ -250,6 +263,8 @@ EmailOTPResource_put:
       description: The code is sent
     400:
       description: The email OTP is already enabled
+    403:
+      description: The token belongs to a bot
 
 FIDOResource_delete:
   summary: Remove a FIDO device
@@ -287,6 +302,8 @@ FIDOResource_delete:
       description: The FIDO device is removed
     400:
       description: FIDO is not enabled, or the second factor is wrong
+    403:
+      description: The token belongs to a bot
 
 FIDOResource_get:
   summary: Get a FIDO challenge
@@ -307,7 +324,8 @@ FIDOResource_get:
     200:
       description: The FIDO challenge
     400:
-      description: No FIDO challenge is available for this user
+      description: email is missing, or no FIDO challenge is available for
+        this user
 
 FIDOResource_post:
   summary: Register a FIDO device
@@ -338,6 +356,8 @@ FIDOResource_post:
     400:
       description: The registration failed, or the registration is not
         prepared
+    403:
+      description: The token belongs to a bot
 
 FIDOResource_put:
   summary: Prepare a FIDO registration
@@ -348,13 +368,16 @@ FIDOResource_put:
   responses:
     200:
       description: The WebAuthn registration options
+    403:
+      description: The token belongs to a bot
 
 LoginResource_post:
   summary: Log in
   description: Log in a user and get authentication tokens. The email field
     accepts the email address or the desktop login of the user. Desktop tools
     that do not know the email address use the desktop login. If the user has
-    two-factor authentication, give one second factor.
+    two-factor authentication, give one second factor. The organisation has
+    the chat tokens only for an administrator.
   tags:
     - Authentication
   security: []
@@ -394,11 +417,15 @@ LoginResource_post:
             - email
   responses:
     200:
-      description: The login is successful
+      description: The login is successful. If the instance enforces
+        two-factor authentication and the user has not set it up, the body
+        has two_factor_authentication_required and the tokens only give
+        access to the authentication routes until the setup is done.
     400:
       description: The login failed. The body tells the cause with the flags
         default_password, missing_OTP, wrong_OTP or
-        too_many_failed_login_attemps.
+        too_many_failed_login_attemps. A wrong email and a wrong password
+        give the same answer.
     401:
       description: The user is inactive. The body has the flag unactive.
     409:
@@ -424,6 +451,8 @@ LogoutResource_get:
               logout:
                 type: boolean
                 example: true
+    403:
+      description: The token belongs to a bot
 
 OIDCCallbackResource_get:
   summary: Receive the OIDC SSO callback
@@ -441,7 +470,8 @@ OIDCCallbackResource_get:
       description: The login is successful. Redirect to the home page.
     400:
       description: OIDC is not enabled, the authentication failed, the email
-        is not verified, or the account is linked to a different identity
+        is not verified, the provider gives no email, or the account is linked
+        to a different identity
 
 OIDCLoginResource_get:
   summary: Start the OIDC SSO login
@@ -498,6 +528,8 @@ RecoveryCodesResource_put:
     400:
       description: Two-factor authentication is not enabled, or the second
         factor is wrong
+    403:
+      description: The token belongs to a bot
 
 RefreshTokenResource_get:
   summary: Refresh the access token
@@ -518,6 +550,8 @@ RefreshTokenResource_get:
                 type: string
               refresh:
                 type: boolean
+    403:
+      description: The token belongs to a bot
 
 ResetPasswordResource_post:
   summary: Ask for a password reset
@@ -616,6 +650,19 @@ SAMLSSOResource_post:
   tags:
     - Authentication
   security: []
+  requestBody:
+    required: true
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          required:
+            - SAMLResponse
+          properties:
+            SAMLResponse:
+              type: string
+              description: SAML response of the identity provider, base64
+                encoded
   responses:
     302:
       description: The login is successful. Redirect to the home page.
@@ -654,6 +701,8 @@ TOTPResource_delete:
       description: The TOTP is disabled
     400:
       description: The TOTP is not enabled, or the second factor is wrong
+    403:
+      description: The token belongs to a bot
 
 TOTPResource_post:
   summary: Enable the TOTP
@@ -679,6 +728,8 @@ TOTPResource_post:
       description: The TOTP is enabled. The body has the recovery codes.
     400:
       description: The TOTP is already enabled, or the code is wrong
+    403:
+      description: The token belongs to a bot
 
 TOTPResource_put:
   summary: Prepare the TOTP
@@ -700,3 +751,5 @@ TOTPResource_put:
                 type: string
     400:
       description: The TOTP is already enabled
+    403:
+      description: The token belongs to a bot

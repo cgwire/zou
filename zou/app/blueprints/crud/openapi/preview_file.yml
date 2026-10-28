@@ -4,9 +4,11 @@ PreviewFileResource_delete:
     - Crud
   description: Delete a preview file. Its files in the storage are marked as
     deleted. The files are removed from the storage if REMOVE_FILES is set, or
-    if you give force=true. If the entity showed this preview, the entity gets
-    the newest preview of its other tasks. You must be a manager of the
-    project.
+    if you give force=true. If the task showed this preview, the task gets
+    its previous preview. If the entity showed this preview and the project
+    sets the entity preview automatically, the entity gets the newest preview
+    of its tasks. Otherwise the entity has no preview. You must be an
+    administrator, or a manager in the team of the project.
   parameters:
     - in: path
       name: instance_id
@@ -32,7 +34,8 @@ PreviewFileResource_delete:
       description: The identifier is not valid, or other data uses the preview
         file
     403:
-      description: You are not a manager of the project
+      description: You are not an administrator or a manager in the team of
+        the project
     404:
       description: The preview file does not exist
 
@@ -105,7 +108,8 @@ PreviewFileResource_put:
   description: Update the fields of a preview file. Send only the fields to
     change. You must be in the team of the project of its task, or an
     administrator. If you are not a manager, the task must be assigned to you,
-    or you must be a supervisor of the task type. You cannot change id,
+    or you must be a supervisor in the team with the department of the task
+    type, or with no department. You cannot change id,
     created_at, updated_at. For a main preview (position 1), the new revision
     must be unique for the task. The extra previews of the same revision get
     the new revision too. Dates use the ISO 8601 format.
@@ -217,6 +221,14 @@ PreviewFilesResource_get:
       example: id,name
       schema:
         type: string
+    - in: query
+      name: project_id
+      required: false
+      description: Keep only the preview files of the tasks of this project.
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
   responses:
     200:
       description: The list of preview file rows, or a page of rows if you
@@ -251,9 +263,7 @@ PreviewFilesResource_get:
                     type: integer
                     example: 1
     400:
-      description: A filter is not valid
-    403:
-      description: You cannot read these rows
+      description: A filter is not valid, or project_id is not a valid UUID
 
 PreviewFilesResource_post:
   summary: Create a preview file

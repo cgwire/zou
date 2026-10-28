@@ -564,7 +564,8 @@ OTIOImportEpisodeResource_post:
         type: string
         default: ${project_name}_${episode_name}-${sequence_name}-${shot_name}
       example: ${project_name}_${episode_name}-${sequence_name}-${shot_name}
-      description: Template of the shot names in the file
+      description: Template of the shot names in the file. You can also send
+        it as a form field.
     - in: query
       name: match_case
       required: false
@@ -573,7 +574,7 @@ OTIOImportEpisodeResource_post:
         default: true
       example: true
       description: Make a difference between upper case and lower case in the
-        names
+        names. You can also send it as a form field.
   responses:
     201:
       description: The updated shots
@@ -639,10 +640,12 @@ OTIOImportEpisodeResource_post:
                           type: integer
                           example: 2096
     400:
-      description: The file is not valid, or a name does not match the naming
-        convention
+      description: The file is missing or not valid, or a name does not match
+        the naming convention
     403:
       description: You are not a manager of the project
+    404:
+      description: The project or the episode does not exist
   requestBody:
     required: true
     content:
@@ -682,7 +685,8 @@ OTIOImportResource_post:
         type: string
         default: ${project_name}_${sequence_name}-${shot_name}
       example: ${project_name}_${sequence_name}-${shot_name}
-      description: Template of the shot names in the file
+      description: Template of the shot names in the file. You can also send
+        it as a form field.
     - in: query
       name: match_case
       required: false
@@ -691,7 +695,7 @@ OTIOImportResource_post:
         default: true
       example: true
       description: Make a difference between upper case and lower case in the
-        names
+        names. You can also send it as a form field.
   responses:
     201:
       description: The updated shots
@@ -757,10 +761,12 @@ OTIOImportResource_post:
                           type: integer
                           example: 2096
     400:
-      description: The file is not valid, or a name does not match the naming
-        convention
+      description: The file is missing or not valid, or a name does not match
+        the naming convention
     403:
       description: You are not a manager of the project
+    404:
+      description: The project does not exist
   requestBody:
     required: true
     content:

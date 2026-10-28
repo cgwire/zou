@@ -60,10 +60,20 @@ SubscriptionResource_get:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
               entity_id:
                 type: string
                 format: uuid
+                description: Deprecated
                 example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                description: Deprecated
+                example: e24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time
@@ -106,10 +116,21 @@ SubscriptionResource_put:
               type: string
               format: uuid
               example: b24a6ea4-ce75-4665-a070-57453082c250
+            task_id:
+              type: string
+              format: uuid
+              description: Task to follow
+              example: d24a6ea4-ce75-4665-a070-57453082c250
             entity_id:
               type: string
               format: uuid
+              description: Deprecated
               example: c24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Deprecated
+              example: e24a6ea4-ce75-4665-a070-57453082c250
   responses:
     200:
       description: The updated subscription
@@ -126,10 +147,20 @@ SubscriptionResource_put:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
               entity_id:
                 type: string
                 format: uuid
+                description: Deprecated
                 example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                description: Deprecated
+                example: e24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time
@@ -230,7 +261,7 @@ SubscriptionsResource_post:
   tags:
     - Crud
   description: Create a subscription. Send the fields of the new row in JSON.
-    You must be an administrator.
+    A person follows a task once. You must be an administrator.
   requestBody:
     required: true
     content:
@@ -239,16 +270,26 @@ SubscriptionsResource_post:
           type: object
           required:
             - person_id
-            - entity_id
           properties:
             person_id:
               type: string
               format: uuid
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_id:
+              type: string
+              format: uuid
+              description: Task to follow
+              example: d24a6ea4-ce75-4665-a070-57453082c250
             entity_id:
               type: string
               format: uuid
+              description: Deprecated
               example: b24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Deprecated
+              example: e24a6ea4-ce75-4665-a070-57453082c250
   responses:
     201:
       description: The new subscription
@@ -265,10 +306,20 @@ SubscriptionsResource_post:
                 type: string
                 format: uuid
                 example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
               entity_id:
                 type: string
                 format: uuid
+                description: Deprecated
                 example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                description: Deprecated
+                example: e24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time

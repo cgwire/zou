@@ -128,13 +128,17 @@ CastingResource_get:
     403:
       description: You do not have access to this project, or you are a
         vendor, or the entity is not in the project
+    404:
+      description: The entity does not exist
 
 CastingResource_put:
   summary: Replace the casting of an entity
   description: Replace the casting of a shot, an asset or an episode. Send the
     full list of assets. The assets that are not in the list are removed from
     the casting. To change one asset only, use the route that casts one asset
-    in entities. You must be a manager of the project.
+    in entities. You must be a manager of the project. Each entry must have
+    asset_id and nb_occurences. An entry without nb_occurences is skipped and
+    its asset is removed from the casting.
   tags:
     - Breakdown
   parameters:
@@ -164,6 +168,7 @@ CastingResource_put:
             type: object
             required:
               - asset_id
+              - nb_occurences
             properties:
               asset_id:
                 type: string
@@ -173,7 +178,6 @@ CastingResource_put:
               nb_occurences:
                 type: integer
                 minimum: 0
-                default: 1
                 description: Number of occurrences of the asset
               label:
                 type: string
@@ -216,6 +220,8 @@ CastingResource_put:
     403:
       description: You are not a manager of the project, or the entity is not
         in the project
+    404:
+      description: The entity does not exist
 
 EntitiesAssetCastingResource_put:
   summary: Cast one asset in entities
@@ -278,14 +284,16 @@ EntitiesAssetCastingResource_put:
       description: You are not a manager of the project, or an entity is not
         in the project
     404:
-      description: The asset does not exist
+      description: The asset or an entity does not exist
 
 EntitiesCastingResource_put:
   summary: Replace the casting of entities
   description: Replace the casting of entities of a project in one request.
     The body is a map of entity identifiers to casting lists. Each list has
     the format of the route that replaces the casting of one entity. You must
-    be a manager of the project.
+    be a manager of the project. Each entry must have asset_id and
+    nb_occurences. An entry without nb_occurences is skipped and its asset is
+    removed from the casting.
   tags:
     - Breakdown
   parameters:
@@ -309,6 +317,7 @@ EntitiesCastingResource_put:
               type: object
               required:
                 - asset_id
+                - nb_occurences
               properties:
                 asset_id:
                   type: string
@@ -318,7 +327,6 @@ EntitiesCastingResource_put:
                 nb_occurences:
                   type: integer
                   minimum: 0
-                  default: 1
                   description: Number of occurrences of the asset
                 label:
                   type: string
@@ -340,6 +348,8 @@ EntitiesCastingResource_put:
     403:
       description: You are not a manager of the project, or an entity is not
         in the project
+    404:
+      description: The entity does not exist
 
 EpisodeSequenceAllCastingResource_get:
   summary: Get the casting of the shots of an episode
@@ -492,7 +502,10 @@ ProjectEntityLinksResource_get:
     in the casting of an entity. Use page and limit to get the links page by
     page. For a more stable pagination, give the created_at value of the last
     link in cursor_created_at to get the next page. Synchronization tools use
-    this route. You must be a manager of the project.
+    this route. You must be a manager of the project. With page, the response
+    is a pagination envelope with data, total, nb_pages, limit, offset and
+    page. Without page, the response is a list. cursor_created_at is ignored
+    when page is given.
   tags:
     - Breakdown
   parameters:
@@ -589,7 +602,7 @@ RemoveShotAssetInstanceResource_delete:
     403:
       description: You do not have access to this project
     404:
-      description: The shot does not exist
+      description: The shot or the asset instance does not exist
 
 SceneAssetInstancesResource_get:
   summary: Get the asset instances of a scene
@@ -1011,4 +1024,4 @@ ShotAssetInstancesResource_post:
     403:
       description: You do not have access to this project
     404:
-      description: The shot does not exist
+      description: The shot or the asset instance does not exist

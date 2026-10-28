@@ -59,9 +59,18 @@ HardwareItemResource_get:
               name:
                 type: string
                 example: Workstation 01
-              serial_number:
+              short_name:
                 type: string
-                example: SN123456
+                example: WS01
+              archived:
+                type: boolean
+                example: false
+              monthly_cost:
+                type: integer
+                example: 50
+              inventory_amount:
+                type: integer
+                example: 3
               created_at:
                 type: string
                 format: date-time
@@ -103,6 +112,12 @@ HardwareItemResource_put:
             name:
               type: string
               example: Updated Workstation 01
+            short_name:
+              type: string
+              example: WS01
+            archived:
+              type: boolean
+              example: false
             monthly_cost:
               type: integer
               description: Monthly cost of the item
@@ -124,9 +139,18 @@ HardwareItemResource_put:
               name:
                 type: string
                 example: Updated Workstation 01
-              serial_number:
+              short_name:
                 type: string
-                example: SN123457
+                example: WS01
+              archived:
+                type: boolean
+                example: false
+              monthly_cost:
+                type: integer
+                example: 50
+              inventory_amount:
+                type: integer
+                example: 3
               created_at:
                 type: string
                 format: date-time
@@ -236,10 +260,14 @@ HardwareItemsResource_post:
           type: object
           required:
             - name
+            - short_name
           properties:
             name:
               type: string
               example: Workstation 01
+            short_name:
+              type: string
+              example: WS01
             monthly_cost:
               type: integer
               description: Monthly cost of the item
@@ -261,9 +289,18 @@ HardwareItemsResource_post:
               name:
                 type: string
                 example: Workstation 01
-              serial_number:
+              short_name:
                 type: string
-                example: SN123456
+                example: WS01
+              archived:
+                type: boolean
+                example: false
+              monthly_cost:
+                type: integer
+                example: 50
+              inventory_amount:
+                type: integer
+                example: 3
               created_at:
                 type: string
                 format: date-time

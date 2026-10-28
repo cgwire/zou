@@ -59,9 +59,15 @@ CustomActionResource_get:
               name:
                 type: string
                 example: Custom Action Name
-              url_pattern:
+              url:
                 type: string
-                example: /api/actions/{id}
+                example: https://example.com/hook
+              entity_type:
+                type: string
+                example: all
+              is_ajax:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time
@@ -108,6 +114,16 @@ CustomActionResource_put:
               type: string
               description: URL that the action calls
               example: https://example.com/hook
+            entity_type:
+              type: string
+              description: Type of the entities that show the action. The
+                default value is all.
+              example: all
+            is_ajax:
+              type: boolean
+              description: True if the action sends an AJAX request. The
+                default value is false.
+              example: false
   responses:
     200:
       description: The updated custom action
@@ -123,9 +139,15 @@ CustomActionResource_put:
               name:
                 type: string
                 example: Updated Custom Action Name
-              url_pattern:
+              url:
                 type: string
-                example: /api/actions/{id}
+                example: https://example.com/hook
+              entity_type:
+                type: string
+                example: all
+              is_ajax:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time
@@ -244,6 +266,16 @@ CustomActionsResource_post:
               type: string
               description: URL that the action calls
               example: https://example.com/hook
+            entity_type:
+              type: string
+              description: Type of the entities that show the action. The
+                default value is all.
+              example: all
+            is_ajax:
+              type: boolean
+              description: True if the action sends an AJAX request. The
+                default value is false.
+              example: false
   responses:
     201:
       description: The new custom action
@@ -259,9 +291,15 @@ CustomActionsResource_post:
               name:
                 type: string
                 example: Custom Action Name
-              url_pattern:
+              url:
                 type: string
-                example: /api/actions/{id}
+                example: https://example.com/hook
+              entity_type:
+                type: string
+                example: all
+              is_ajax:
+                type: boolean
+                example: false
               created_at:
                 type: string
                 format: date-time

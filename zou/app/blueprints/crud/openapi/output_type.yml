@@ -37,7 +37,5 @@ OutputTypeResource_get:
                 example: '2024-01-15T10:30:00Z'
     400:
       description: The identifier is not valid
-    403:
-      description: You cannot read this output type
     404:
       description: The output type does not exist

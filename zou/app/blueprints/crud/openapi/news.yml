@@ -56,16 +56,25 @@ NewsResource_get:
                 type: string
                 format: uuid
                 example: a24a6ea4-ce75-4665-a070-57453082c250
-              title:
-                type: string
-                example: Project Update
-              project_id:
+              change:
+                type: boolean
+                example: false
+              author_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              content:
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
                 type: string
-                example: News content text
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time
@@ -139,16 +148,25 @@ NewsResource_put:
                 type: string
                 format: uuid
                 example: a24a6ea4-ce75-4665-a070-57453082c250
-              title:
-                type: string
-                example: Updated Project Update
-              project_id:
+              change:
+                type: boolean
+                example: false
+              author_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              content:
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
                 type: string
-                example: Updated news content text
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time
@@ -255,6 +273,9 @@ NewssResource_post:
       application/json:
         schema:
           type: object
+          required:
+            - author_id
+            - task_id
           properties:
             change:
               type: boolean
@@ -291,16 +312,25 @@ NewssResource_post:
                 type: string
                 format: uuid
                 example: a24a6ea4-ce75-4665-a070-57453082c250
-              title:
-                type: string
-                example: Project Update
-              project_id:
+              change:
+                type: boolean
+                example: false
+              author_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
-              content:
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
                 type: string
-                example: News content text
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
               created_at:
                 type: string
                 format: date-time

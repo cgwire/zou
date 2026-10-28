@@ -3,7 +3,8 @@ BaseModelResource_delete:
   tags:
     - Crud
   description: Delete a model instance by its ID. Returns empty
-    response on success.
+    response on success. Unless the model says otherwise, you must be an
+    administrator.
   parameters:
     - in: path
       name: instance_id
@@ -17,13 +18,18 @@ BaseModelResource_delete:
         description: Model deleted successfully
       400:
         description: Integrity error or cannot delete
+      403:
+        description: You are not an administrator
+      404:
+        description: The row does not exist
 
 BaseModelResource_get:
   summary: Get model
   tags:
     - Crud
   description: Retrieve a model instance by its ID and return it as a JSON
-    object. Supports including relations.
+    object. Supports including relations. Unless the model says otherwise,
+    you must be an administrator.
   parameters:
     - in: path
       name: instance_id
@@ -65,6 +71,10 @@ BaseModelResource_get:
                 example: "2024-01-15T10:30:00Z"
     400:
       description: Invalid ID format or query error
+    403:
+      description: You are not an administrator
+    404:
+      description: The row does not exist
 
 BaseModelResource_put:
   summary: Update model
@@ -72,7 +82,8 @@ BaseModelResource_put:
     - Crud
   description: Update a model instance with data provided in the
     request body. JSON format is expected. Model performs validation
-    automatically when fields are modified.
+    automatically when fields are modified. Unless the model says otherwise,
+    you must be an administrator.
   parameters:
     - in: path
       name: instance_id
@@ -116,13 +127,18 @@ BaseModelResource_put:
                   example: "2024-01-15T11:00:00Z"
       400:
         description: Invalid data format or validation error
+      403:
+        description: You are not an administrator
+      404:
+        description: The row does not exist
 
 BaseModelsResource_get:
   summary: Get models
   tags:
     - Crud
   description: Retrieve all entries for the given model. Supports filtering
-    via query parameters and pagination.
+    via query parameters and pagination. Unless the model says otherwise,
+    you must be an administrator.
   parameters:
     - in: query
       name: page
@@ -188,6 +204,8 @@ BaseModelsResource_get:
                     example: 1
     400:
       description: Invalid filter format or query error
+    403:
+      description: You are not an administrator
 
 BaseModelsResource_post:
   summary: Create model
@@ -195,7 +213,8 @@ BaseModelsResource_post:
     - Crud
   description: Create a new model instance with data provided in the
     request body. JSON format is expected. The model performs validation
-    automatically when instantiated.
+    automatically when instantiated. Unless the model says otherwise, you
+    must be an administrator.
   requestBody:
     required: true
     content:
@@ -231,3 +250,5 @@ BaseModelsResource_post:
                   example: "2024-01-15T10:30:00Z"
       400:
         description: Invalid data format or validation error
+      403:
+        description: You are not an administrator

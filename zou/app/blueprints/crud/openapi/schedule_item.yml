@@ -311,4 +311,7 @@ ScheduleItemsResource_post:
       description: The body is not valid, a similar schedule item already
         exists, or a field breaks a database constraint
     403:
-      description: You are not a manager of the project
+      description: You are not a manager of the project, or project_id is
+        missing
+    404:
+      description: The project does not exist

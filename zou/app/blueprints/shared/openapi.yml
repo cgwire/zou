@@ -2,9 +2,10 @@ SharedPlaylistAnnotationsResource_put:
   summary: Change the annotations of a shared preview
   description: Change the annotations of a preview of the shared playlist. The
     body uses the same additions, updates and deletions as the route for
-    users. A guest can change only the annotations of this guest. You do not
-    need an account. The token of the link is the credential. This route does
-    not read the password. For a link with a password, the route returns 404.
+    users. A guest can change only the annotations of this guest. The guest
+    must be a guest of this link. You do not need an account. The token of the
+    link is the credential. This route does not read the password. For a link
+    with a password, the route returns 404.
   tags:
     - Playlists
   security: []
@@ -54,10 +55,11 @@ SharedPlaylistAnnotationsResource_put:
     400:
       description: Missing required body fields
     403:
-      description: Annotations disabled for this share link, or the preview
-        file is not part of the shared playlist
+      description: Annotations are disabled for this link, the guest is not a
+        guest of this link, or the preview is not in the shared playlist
     404:
-      description: The link is not valid, has expired, or has a password
+      description: The link is not valid, has expired, or has a password, or
+        the preview file does not exist
 
 SharedPlaylistAttachmentFileResource_get:
   summary: Download an attachment of a shared comment
@@ -85,7 +87,8 @@ SharedPlaylistAttachmentFileResource_get:
     - in: path
       name: file_name
       required: true
-      description: Name of the file
+      description: Any value. The route ignores it. The response uses the
+        name stored on the attachment.
       schema:
         type: string
   responses:
@@ -141,9 +144,12 @@ SharedPlaylistCommentAttachmentResource_delete:
   responses:
     204:
       description: The attachment is deleted
+    400:
+      description: The body has no guest_id, or guest_id is not a UUID
     403:
-      description: Comments are disabled for this link, or another guest
-        wrote the comment
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, another guest wrote the comment, or the comment
+        is not on a task of the shared playlist
     404:
       description: The link is not valid, has expired, or has a password, or
         the comment does not exist, or the attachment does not exist
@@ -151,10 +157,11 @@ SharedPlaylistCommentAttachmentResource_delete:
 SharedPlaylistCommentAttachmentsResource_post:
   summary: Attach files to a guest comment
   description: Attach files to a comment. Only the guest who wrote the comment
-    can attach files. Send the files and guest_id in a multipart form. You do
-    not need an account. The token of the link is the credential. This route
-    does not read the password. For a link with a password, the route returns
-    404.
+    can attach files. Send the files in a multipart form. The route attaches
+    every file of the form, whatever the name of its field. Give guest_id in
+    the form or in the query string. You do not need an account. The token of
+    the link is the credential. This route does not read the password. For a
+    link with a password, the route returns 404.
   tags:
     - Playlists
   security: []
@@ -172,15 +179,19 @@ SharedPlaylistCommentAttachmentsResource_post:
       schema:
         type: string
         format: uuid
+    - in: query
+      name: guest_id
+      required: false
+      description: Same as the form field
+      schema:
+        type: string
+        format: uuid
   requestBody:
     required: true
     content:
       multipart/form-data:
         schema:
           type: object
-          required:
-            - guest_id
-            - files
           properties:
             guest_id:
               type: string
@@ -196,8 +207,9 @@ SharedPlaylistCommentAttachmentsResource_post:
     201:
       description: The comment with its attachments
     403:
-      description: Comments are disabled for this link, or another guest
-        wrote the comment
+      description: Comments are disabled for this link, guest_id is missing,
+        the guest is not a guest of this link, another guest wrote the
+        comment, or the comment is not on a task of the shared playlist
     404:
       description: The link is not valid, has expired, or has a password, or
         the comment does not exist
@@ -241,9 +253,12 @@ SharedPlaylistCommentResource_delete:
   responses:
     204:
       description: The comment is deleted
+    400:
+      description: The body has no guest_id, or guest_id is not a UUID
     403:
-      description: Comments are disabled for this link, or another guest
-        wrote the comment
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, another guest wrote the comment, or the comment
+        is not on a task of the shared playlist
     404:
       description: The link is not valid, has expired, or has a password, or
         the comment does not exist
@@ -295,23 +310,28 @@ SharedPlaylistCommentResource_put:
             task_status_id:
               type: string
               format: uuid
-              description: New task status
+              description: New task status. The status must allow clients
+                on the project.
   responses:
     200:
       description: The updated comment
     400:
       description: The body is not valid
     403:
-      description: Comments are disabled for this link, or another guest
-        wrote the comment
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, another guest wrote the comment, the comment is
+        not on a task of the shared playlist, or the new task status does not
+        allow clients
     404:
       description: The link is not valid, has expired, or has a password, or
         the comment does not exist
 
 SharedPlaylistCommentsResource_get:
   summary: Get the comments of a shared playlist
-  description: Get the comments of the tasks of the shared playlist that the
-    link shows. You do not need an account. The token of the link is the
+  description: Get the comments of the tasks of the shared playlist. The
+    response has only the comments for the clients and the comments of the
+    guests. The internal comments of the team are not in the response. You
+    do not need an account. The token of the link is the
     credential. If the link has a password, give it in the password query
     parameter.
   tags:
@@ -410,8 +430,8 @@ SharedPlaylistCommentsResource_post:
               error:
                 type: string
     403:
-      description: Comments disabled for this share link, or the task is not
-        part of this shared playlist
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, or the task is not in the shared playlist
       content:
         application/json:
           schema:
@@ -532,10 +552,12 @@ SharedPlaylistContextResource_get:
 
 SharedPlaylistGuestResource_post:
   summary: Create a guest for a shared playlist
-  description: Create a guest identity for the shared playlist. If you give a
-    guest_id that is still valid, the route returns this guest. You do not
-    need an account. The token of the link is the credential. This route does
-    not read the password. For a link with a password, the route returns 404.
+  description: Create a guest identity for the shared playlist. If you give
+    the guest_id of a guest created from this link, the route returns this
+    guest with the code 200. Else the route returns a guest with the code 201.
+    You do not need an account. The token of the link is the credential. This
+    route does not read the password. For a link with a password, the route
+    returns 404.
   tags:
     - Playlists
   security: []
@@ -570,7 +592,7 @@ SharedPlaylistGuestResource_post:
           schema:
             type: object
     201:
-      description: The new guest
+      description: The guest
       content:
         application/json:
           schema:

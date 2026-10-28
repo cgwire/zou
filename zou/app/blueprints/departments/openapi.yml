@@ -291,8 +291,8 @@ DepartmentPersonsResource_get:
 HardwareItemDepartmentResource_delete:
   summary: Remove a hardware item from a department
   description: Remove a hardware item from a department. The hardware item is
-    not deleted. If the link does not exist, the route also returns 204. You
-    must be an administrator.
+    not deleted. If the department and the hardware item exist but are not
+    linked, the route also returns 204. You must be an administrator.
   tags:
     - Departments
   parameters:
@@ -319,6 +319,8 @@ HardwareItemDepartmentResource_delete:
       description: An identifier is not a valid UUID
     403:
       description: You are not an administrator
+    404:
+      description: The department or the hardware item does not exist
 
 HardwareItemDepartmentResource_get:
   summary: Get the hardware items of a department
@@ -390,8 +392,9 @@ HardwareItemDepartmentResource_get:
 SoftwareDepartmentResource_delete:
   summary: Remove a software license from a department
   description: Remove a software license from a department. The software
-    license is not deleted. If the link does not exist, the route also returns
-    204. You must be an administrator.
+    license is not deleted. If the department and the software license exist
+    but are not linked, the route also returns 204. You must be an
+    administrator.
   tags:
     - Departments
   parameters:
@@ -418,6 +421,8 @@ SoftwareDepartmentResource_delete:
       description: An identifier is not a valid UUID
     403:
       description: You are not an administrator
+    404:
+      description: The department or the software license does not exist
 
 SoftwareDepartmentResource_get:
   summary: Get a software license of a department
