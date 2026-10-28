@@ -128,6 +128,11 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
             task_type = task_types_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
+            permissions_service.check_manager_project_access(
+                entity["project_id"]
+            )
+            # The body project_id is not trusted: the task follows its entity.
+            data["project_id"] = entity["project_id"]
             if task_type["for_entity"] == "Asset":
                 if not entity_types_service.is_asset_dict(entity):
                     raise WrongTaskTypeForEntityException(

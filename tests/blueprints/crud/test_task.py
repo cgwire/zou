@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.models.task import Task
+from zou.app.services import projects_service
 from zou.app.utils import fields
 
 
@@ -83,6 +84,31 @@ class TaskTestCase(ApiDBTestCase):
         data["entity_id"] = self.asset.id
         data["assignees"] = str(self.person.id)
         self.post("data/tasks", data, 400)
+
+    def test_create_task_requires_a_manager_of_the_entity_project(self):
+        data = {
+            "task_type_id": self.task_type.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+        }
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.log_in_manager()
+        self.post("data/tasks", data, 403)
+        self.log_in_cg_artist()
+        self.post("data/tasks", data, 403)
+
+        projects_service.add_team_member(
+            self.project.id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+        project_id = str(self.project.id)
+        data["project_id"] = self.generate_fixture_project("Other").id
+        task = self.post("data/tasks", data)
+        self.assertEqual(task["project_id"], project_id)
 
     def test_update_task(self):
         task = self.get_first("data/tasks")
