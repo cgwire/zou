@@ -18,6 +18,7 @@ from zou.app.services import (
     comments_service,
     playlist_sharing_service,
     preview_file_states_service as states_service,
+    projects_service,
     tasks_service,
 )
 from zou.app.stores import file_store
@@ -130,6 +131,14 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
             self.share_path(link["token"]),
             403,
         )
+
+    def test_a_manager_of_this_project_only_handles_its_share_links(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "manager")
+        self.log_in_cg_artist()
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.assertEqual(len(self.get(self.share_path())), 1)
+        self.delete(self.share_path(link["token"]), 200)
 
     def test_revoke_share_link_rejects_mismatched_playlist(self):
         """
