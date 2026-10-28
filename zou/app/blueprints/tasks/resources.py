@@ -962,12 +962,14 @@ def check_open_tasks_filter_args(resource, args):
 
 def check_open_tasks_access(project_id):
     """
-    Refuse the open tasks pool to clients. When the call names a project,
-    its access check runs first, so the role read is the one held there.
+    Refuse the open tasks pool to clients and vendors. When the call names
+    a project, its access check runs first, so the role read is the one
+    held there.
     """
     if project_id is not None:
         permissions_service.check_project_access(project_id)
     permissions_service.block_access_to_client()
+    permissions_service.block_access_to_vendor()
 
 
 class OpenTasksResource(MethodView, ArgsMixin):

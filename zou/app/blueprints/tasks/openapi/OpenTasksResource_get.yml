@@ -3,7 +3,7 @@ Get open tasks
 tags:
 - Tasks
 description: Return tasks for open projects with optional filters and
-  pagination. Includes statistics. Clients get a 403.
+  pagination. Includes statistics. Clients and vendors get a 403.
 parameters:
   - in: query
     name: project_id
@@ -117,5 +117,5 @@ responses:
     400:
       description: Bad request
     403:
-      description: Client on the given project, or globally when no project
-        is given; or not in the team of the given project
+      description: Client or vendor on the given project, or globally when
+        no project is given; or not in the team of the given project

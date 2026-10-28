@@ -119,8 +119,9 @@ class FreshRequestsTestCase(ApiDBTestCase):
 
 class ClientOpenTasksTestCase(FreshRequestsTestCase):
     """
-    The open tasks pool and its burndown are planning views: clients are
-    refused, by the role they hold on the project when the call names one.
+    The open tasks pool and its burndown are planning views: clients and
+    vendors are refused, by the role they hold on the project when the call
+    names one.
     """
 
     def setUp(self):
@@ -144,6 +145,16 @@ class ClientOpenTasksTestCase(FreshRequestsTestCase):
             self.get(path, 403)
             self.get(f"{path}?project_id={self.project_id}", 403)
 
+    def test_vendors_are_refused(self):
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
+        )
+        self.log_in_vendor()
+        for path in self.paths:
+            self.get(path, 403)
+            self.get(f"{path}?project_id={self.project_id}", 403)
+
     def test_artists_keep_the_pool(self):
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
@@ -156,6 +167,14 @@ class ClientOpenTasksTestCase(FreshRequestsTestCase):
     def test_a_client_on_the_project_is_refused_its_pool(self):
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        for path in self.paths:
+            self.get(f"{path}?project_id={self.project_id}", 403)
+
+    def test_a_vendor_on_the_project_is_refused_its_pool(self):
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="vendor"
         )
         self.log_in_cg_artist()
         for path in self.paths:
