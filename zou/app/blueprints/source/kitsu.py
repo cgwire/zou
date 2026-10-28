@@ -3,6 +3,7 @@ from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError
 
+from zou.app.blueprints.crud.base import build_db_error_message
 from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
@@ -87,7 +88,7 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
                         else:
                             self.emit_event("new", entry)
                 except IntegrityError as exc:
-                    raise WrongParameterException(exc.orig)
+                    raise WrongParameterException(build_db_error_message(exc))
                 instances.append(instance)
         return fields.serialize_models(instances)
 
