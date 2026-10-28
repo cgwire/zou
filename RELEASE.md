@@ -9,7 +9,12 @@ follow this process:
 4. Tag the commit and push the changes to Github.
 5. Github Actions will build the package from the sources and publish the package on Pypi
 
-You can run a script to perform these commands at once, he is located in scripts/release.sh.
+You can run `scripts/release.sh` to perform these commands at once. It bumps the patch version
+by default (1.0.97 → 1.0.98); pass `minor` (→ 1.1.0) or `major` (→ 2.0.0) to bump another part:
+
+```bash
+scripts/release.sh minor
+```
 
 # Deployment
 
