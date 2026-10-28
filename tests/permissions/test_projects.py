@@ -6,6 +6,7 @@ from zou.app.services import (
     entities_service,
     metadata_descriptors_service,
     permissions_service,
+    projects_service,
 )
 from zou.app.utils import permissions
 
@@ -118,3 +119,22 @@ class AllDepartmentsAccessRoleTestCase(DemotedRoleTestCase):
             data,
             403,
         )
+
+
+class ProductionTimeSpentsRoleTestCase(DemotedRoleTestCase):
+    """
+    The time spents of a whole production are how the studio runs it: a
+    vendor, globally or on the production, is refused them.
+    """
+
+    def test_demoted_vendor_is_refused_the_production_time_spents(self):
+        self.demote_manager("vendor")
+        self.get(f"data/projects/{self.project.id}/time-spents", 403)
+
+    def test_vendor_is_refused_the_production_time_spents(self):
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_vendor["id"]
+        )
+        self.log_in_vendor()
+        self.get(f"data/projects/{self.project.id}/time-spents", 403)

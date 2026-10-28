@@ -1,6 +1,7 @@
 Get production time spents
 ---
-description: Retrieve time spents for given production.
+description: Retrieve time spents for given production. Clients and
+  vendors get a 403.
 tags:
   - Projects
 parameters:
