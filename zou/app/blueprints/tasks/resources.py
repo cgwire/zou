@@ -590,6 +590,7 @@ class TaskForEntityResource(MethodView):
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return tasks_service.get_tasks_for_entity_and_task_type(
             entity_id, task_type_id
         )

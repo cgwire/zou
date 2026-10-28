@@ -815,6 +815,18 @@ class TaskListingTestCase(TaskTestCase):
         page = self.get(f"{path}?page=1")["data"]
         self.assertEqual([task["id"] for task in page], [task_id])
 
+    def test_a_vendor_reads_the_tasks_by_type_of_their_entities_only(self):
+        self.generate_fixture_user_vendor()
+        vendor_id = self.user_vendor["id"]
+        self.generate_fixture_task()
+        shot_task = self.generate_fixture_shot_task()
+        projects_service.add_team_member(self.project_id, vendor_id)
+        tasks_service.assign_task(shot_task.id, vendor_id)
+        self.log_in_vendor()
+        path = "/data/entities/{}/task-types/{}/tasks"
+        self.get(path.format(self.shot.id, shot_task.task_type_id))
+        self.get(path.format(self.asset.id, self.task.task_type_id), 403)
+
     def test_a_client_reads_no_tasks_of_a_person(self):
         self.generate_fixture_task()
         done_task = self.generate_fixture_task(name="Done")
