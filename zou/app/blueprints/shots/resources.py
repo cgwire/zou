@@ -258,12 +258,13 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
-        permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
         return permissions_service.mask_metadata_for_vendor(
             "Shot",
-            shots_service.get_shots_for_episode(
-                episode_id, relations=relations
+            permissions_service.keep_entities_a_vendor_reaches(
+                shots_service.get_shots_for_episode(
+                    episode_id, relations=relations
+                )
             ),
         )
 
@@ -824,7 +825,10 @@ class SequenceScenesResource(MethodView):
         permissions_service.check_project_access(sequence["project_id"])
         permissions_service.check_entity_access(sequence_id)
         return permissions_service.mask_metadata_for_vendor(
-            "Scene", shots_service.get_scenes_for_sequence(sequence_id)
+            "Scene",
+            permissions_service.keep_entities_a_vendor_reaches(
+                shots_service.get_scenes_for_sequence(sequence_id)
+            ),
         )
 
 

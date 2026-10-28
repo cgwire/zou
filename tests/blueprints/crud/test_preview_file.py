@@ -172,6 +172,12 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.assertIn(self.user_vendor_id, assignees_ids)
         self.get(route2_1, code=403)
 
+        # Assigned but off the team: no more.
+        projects_service.remove_team_member(
+            self.project2.id, self.user_vendor_id
+        )
+        self.get(route2_2, code=403)
+
     def test_get_preview_file_for_admin(self):
         """
         Test route data/preview-files/<preview_file_id> for admin.
