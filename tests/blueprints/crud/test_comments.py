@@ -2,7 +2,7 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 from zou.app.models.comment import Comment
 from zou.app.models.event import ApiEvent
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import news_service, projects_service, tasks_service
 from zou.app.utils import fields
 
 
@@ -65,6 +65,29 @@ class CommentTestCase(ApiDBTestCase):
         comment_again = self.get(path)
         self.assertEqual(comment_again["object_id"], comment["object_id"])
         self.assertEqual(comment_again["text"], "Moved")
+
+    def test_a_status_edit_reaches_the_memoized_news(self):
+        """
+        The feeds reload a news on the task:update of a status edit, through
+        the memoized single-news route.
+        """
+        comment = self.comments[0]
+        news = news_service.create_news_for_task_and_comment(
+            self.task.serialize(), comment
+        )
+        project_id = str(self.task.project_id)
+        news_service.get_news(project_id, news["id"])
+        self.generate_fixture_task_status_wip()
+
+        self.put(
+            f"data/comments/{comment['id']}",
+            {"task_status_id": str(self.task_status_wip.id)},
+        )
+
+        single_news = news_service.get_news(project_id, news["id"])["data"][0]
+        self.assertEqual(
+            single_news["task_status_id"], str(self.task_status_wip.id)
+        )
 
     def test_update_comment_with_a_null_checklist(self):
         comment_id = self.comments[0]["id"]

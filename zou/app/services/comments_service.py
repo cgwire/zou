@@ -1259,6 +1259,7 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     clear_comment_cache(comment_id)
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
+        news_service.clear_news_cache([news], project_id)
     events.emit(
         "comment:update",
         {
@@ -1378,6 +1379,7 @@ def copy_preview_file_in_another_one(
     comment_id = None
     if comment is not None:
         comment_id = comment["id"]
+        news_service.clear_comment_news_cache(comment_id, task["project_id"])
         events.emit(
             "comment:update",
             {

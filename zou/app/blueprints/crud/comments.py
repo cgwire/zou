@@ -6,6 +6,7 @@ from zou.app.models.comment import Comment
 from zou.app.services import (
     comments_service,
     deletion_service,
+    news_service,
     notifications_service,
     permissions_service,
     persons_service,
@@ -139,6 +140,12 @@ class CommentResource(BaseModelResource):
         comment = comments_service.reset_mentions(instance_dict)
         task_id = comment["object_id"]
         if self.task_status_change:
+            # Before the task:update of reset_task_data: the feeds reload
+            # the news of the comment on it. The status is all the news
+            # shows of its comment.
+            news_service.clear_comment_news_cache(
+                comment["id"], tasks_service.get_task(task_id)["project_id"]
+            )
             task = tasks_service.reset_task_data(task_id)
             events.emit(
                 "task:status-changed",
