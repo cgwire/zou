@@ -2,7 +2,7 @@ Get linked entities
 ---
 description: Retrieve all entities that are linked to a specific entity
   along with their associated tasks. This includes related entities,
-  dependencies, and hierarchical relationships.
+  dependencies, and hierarchical relationships. Clients get a 403.
 tags:
   - Entities
 parameters:
