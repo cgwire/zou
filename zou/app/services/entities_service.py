@@ -439,6 +439,17 @@ def blank_tasks_for_current_user(tasks):
     return [blank_task_for_client(task) for task in tasks]
 
 
+def blank_entity_tasks_for_current_user(entity):
+    """
+    Return given entity dict with the studio fields of its tasks blank when
+    the current user is a client on the resolved project. The entity dict
+    may come from a memoized getter, so it is copied, never changed.
+    """
+    if not permissions.has_client_permissions():
+        return entity
+    return {**entity, "tasks": blank_tasks_for_current_user(entity["tasks"])}
+
+
 def _blank_builder(name):
     """
     Return a task field builder serving the blank value of given field to
@@ -453,6 +464,7 @@ def fetch_entity_task_map(
     task_fields,
     assigned_to=False,
     compact=False,
+    for_client=None,
 ):
     """
     Shared core of the get_*_and_tasks views: fetch the tasks and the
@@ -465,9 +477,11 @@ def fetch_entity_task_map(
     task_fields, so every view keeps its exact response shape; with
     compact=True the builder produces a list of values in the order of
     task_fields instead. With assigned_to=True only the tasks assigned to
-    the current user are fetched. A client gets the studio fields blank,
-    as CLIENT_BLANK_TASK_VALUES lists them: the role is read here, so the
-    caller resolves the project before.
+    the current user are fetched. With for_client=True the studio fields
+    come blank, as CLIENT_BLANK_TASK_VALUES lists them. Left to None, the
+    role is read here, so the caller resolves the project before; a
+    memoized caller passes False, and its route blanks after the access
+    check.
     """
     task_query = apply_filters(
         Task.query.join(Entity, Task.entity_id == Entity.id)
@@ -531,7 +545,9 @@ def fetch_entity_task_map(
         )
         for name in task_fields
     ]
-    if permissions.has_client_permissions():
+    if for_client is None:
+        for_client = permissions.has_client_permissions()
+    if for_client:
         client_builders = []
         for name, builder in builders:
             if name in CLIENT_BLANK_TASK_VALUES:

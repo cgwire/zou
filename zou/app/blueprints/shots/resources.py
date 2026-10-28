@@ -51,7 +51,7 @@ class ShotResource(MethodView, ArgsMixin):
         shot = shots_service.get_full_shot(shot_id)
         permissions_service.check_project_access(shot["project_id"])
         permissions_service.check_entity_access(shot["id"])
-        return shot
+        return entities_service.blank_entity_tasks_for_current_user(shot)
 
     @jwt_required()
     @swag_from("openapi/ShotResource_put.yml")

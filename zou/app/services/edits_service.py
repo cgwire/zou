@@ -85,7 +85,7 @@ def get_full_edit(edit_id):
     """
     Return given edit as a dictionary with extra data like project.
     """
-    edits = get_edits_and_tasks({"id": edit_id})
+    edits = get_edits_and_tasks({"id": edit_id}, for_client=False)
     if len(edits) == 0:
         raise EditNotFoundException
     return edits[0]
@@ -127,7 +127,7 @@ def get_edits(criterions=None):
     )
 
 
-def get_edits_and_tasks(criterions=None):
+def get_edits_and_tasks(criterions=None, for_client=None):
     """
     Get all edits for given criterions with related tasks for each edit,
     as a list of dicts. Flat narrow queries through
@@ -198,6 +198,7 @@ def get_edits_and_tasks(criterions=None):
         subscription_map,
         EDITS_AND_TASKS_TASK_FIELDS,
         assigned_to=assigned_to,
+        for_client=for_client,
     )
 
     not_allowed_map = None

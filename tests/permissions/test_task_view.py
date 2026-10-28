@@ -1,5 +1,9 @@
 from tests.base import ApiDBTestCase
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import (
+    concepts_service,
+    projects_service,
+    tasks_service,
+)
 from zou.app.utils import fields
 
 
@@ -117,6 +121,63 @@ class ClientTaskViewTestCase(ApiDBTestCase):
         self.assert_blank(full)
         self.assertEqual(full["persons"], [])
         self.assertNotIn("assigner", full)
+
+    def entity_detail_paths(self):
+        edit_task = self.generate_fixture_edit_task()
+        edit_task.update(
+            {
+                "estimation": 40,
+                "duration": 50,
+                "due_date": fields.get_date_object("2017-02-28"),
+            }
+        )
+        return [
+            f"data/shots/{self.shot.id}",
+            f"data/assets/{self.asset.id}",
+            f"data/edits/{self.edit.id}",
+        ]
+
+    def get_single_task(self, path):
+        tasks = self.get(path)["tasks"]
+        self.assertEqual(len(tasks), 1)
+        return tasks[0]
+
+    def test_entity_details_when_a_client_comes_first(self):
+        """
+        The shot, asset and edit payloads are cached the same for every
+        role: each caller gets their own shape, whoever filled the cache.
+        """
+        for path in self.entity_detail_paths():
+            with self.subTest(path):
+                self.log_in_client()
+                self.assert_blank(self.get_single_task(path))
+                self.log_in_admin()
+                self.assert_full(self.get_single_task(path))
+
+    def test_entity_details_when_the_studio_comes_first(self):
+        for path in self.entity_detail_paths():
+            with self.subTest(path):
+                self.log_in_admin()
+                self.assert_full(self.get_single_task(path))
+                self.log_in_client()
+                self.assert_blank(self.get_single_task(path))
+
+    def test_entity_detail_of_a_client_on_the_project(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        self.assert_blank(self.get_single_task(f"data/shots/{self.shot.id}"))
+
+    def test_concept_detail_after_a_refused_client(self):
+        concept = concepts_service.create_concept(self.project_id, "Concept")
+        self.generate_fixture_task(name="Concept", entity_id=concept["id"])
+        path = f"data/concepts/{concept['id']}"
+        self.log_in_client()
+        self.get(path, 403)
+        self.log_in_admin()
+        self.assert_full(self.get_single_task(path))
 
     def test_entity_tasks(self):
         for path in (

@@ -8,6 +8,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     cascade_deletion_service,
     edits_service,
+    entities_service,
     permissions_service,
     persons_service,
     playlists_service,
@@ -28,7 +29,7 @@ class EditResource(MethodView, ArgsMixin):
         edit = edits_service.get_full_edit(edit_id)
         permissions_service.check_project_access(edit["project_id"])
         permissions_service.check_entity_access(edit["id"])
-        return edit
+        return entities_service.blank_entity_tasks_for_current_user(edit)
 
     @jwt_required()
     @swag_from("openapi/EditResource_delete.yml")

@@ -62,7 +62,7 @@ class AssetResource(MethodView, ArgsMixin):
         asset = assets_service.get_full_asset(asset_id)
         permissions_service.check_project_access(asset["project_id"])
         permissions_service.check_entity_access(asset["id"])
-        return asset
+        return entities_service.blank_entity_tasks_for_current_user(asset)
 
     @jwt_required()
     @swag_from("openapi/AssetResource_delete.yml")
