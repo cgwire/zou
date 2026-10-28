@@ -44,6 +44,7 @@ from zou.app.exceptions import (
     PersonInProtectedAccounts,
     PersonNotFoundException,
     SSOIdentityMismatchException,
+    StudioNotFoundException,
     TooManyLoginFailedAttempts,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
@@ -59,6 +60,7 @@ from zou.app.services import (
     events_service,
     organisation_service,
     persons_service,
+    task_types_service,
     templates_service,
 )
 from zou.app.stores import auth_tokens_store
@@ -66,6 +68,7 @@ from zou.app.utils import (
     auth,
     date_helpers,
     emails,
+    fields,
     oidc,
     permissions,
     validation,
@@ -1044,6 +1047,21 @@ def link_sso_person(protocol, issuer, subject, email, create_info):
     return user
 
 
+def is_saml_person_info_new(person, person_info):
+    """
+    Tell whether the attributes of an assertion differ from what given
+    person holds. The departments are a list of ids, in any order.
+    """
+    return any(
+        (
+            sorted(person.get(key) or []) != sorted(value or [])
+            if key == "departments"
+            else person.get(key) != value
+        )
+        for key, value in person_info.items()
+    )
+
+
 class SAMLSSOResource(MethodView, ArgsMixin):
     @swag_from("openapi/SAMLSSOResource_post.yml")
     def post(self):
@@ -1063,7 +1081,8 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             k: (
                 " ".join(v)
                 if isinstance(v, list)
-                and k in ["first_name", "last_name", "country"]
+                and k
+                in ["first_name", "last_name", "country", "phone", "studio_id"]
                 else v
             )
             for k, v in authn_response.ava.items()
@@ -1088,6 +1107,22 @@ class SAMLSSOResource(MethodView, ArgsMixin):
                 person_info["country"] = normalized
             else:
                 del person_info["country"]
+        # The studio follows the country: an empty value clears it, a
+        # malformed one is dropped without a lookup, and an unknown one once
+        # the lookup fails.
+        if "studio_id" in person_info:
+            studio_id = person_info["studio_id"]
+            if not studio_id:
+                person_info["studio_id"] = None
+            elif not fields.is_valid_id(studio_id):
+                del person_info["studio_id"]
+            else:
+                try:
+                    person_info["studio_id"] = task_types_service.get_studio(
+                        studio_id
+                    )["id"]
+                except StudioNotFoundException:
+                    del person_info["studio_id"]
         try:
             user = self.get_person(authn_response, email, person_info)
         except (
@@ -1101,12 +1136,12 @@ class SAMLSSOResource(MethodView, ArgsMixin):
                 extra={"email": email},
             )
             return SSO_REFUSED, 400
-        for k, v in person_info.items():
-            if user.get(k) != v:
-                persons_service.update_person(
-                    user["id"], person_info, bypass_protected_accounts=True
-                )
-                break
+        if is_saml_person_info_new(
+            persons_service.get_person(user["id"]), person_info
+        ):
+            persons_service.update_person(
+                user["id"], person_info, bypass_protected_accounts=True
+            )
 
         response = make_response(
             redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")

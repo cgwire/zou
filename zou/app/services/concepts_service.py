@@ -87,7 +87,7 @@ def get_full_concept(concept_id):
     """
     Return given concept as a dictionary with extra data like project.
     """
-    concepts = get_concepts_and_tasks({"id": concept_id})
+    concepts = get_concepts_and_tasks({"id": concept_id}, for_client=False)
     if len(concepts) == 0:
         raise ConceptNotFoundException
     concept = concepts[0]
@@ -133,7 +133,7 @@ def get_concepts(criterions=None):
     return concepts
 
 
-def get_concepts_and_tasks(criterions=None):
+def get_concepts_and_tasks(criterions=None, for_client=None):
     """
     Get all concepts for given criterions with related tasks for each
     concept, as a list of dicts. Flat narrow queries through
@@ -203,6 +203,7 @@ def get_concepts_and_tasks(criterions=None):
         subscription_map,
         CONCEPTS_AND_TASKS_TASK_FIELDS,
         assigned_to=assigned_to,
+        for_client=for_client,
     )
 
     concept_links = apply_filters(

@@ -626,7 +626,7 @@ class PersonWriteTestCase(PersonsTestCase):
             persons_service.get_person(self.person_id)["has_avatar"]
         )
         # Setting an avatar goes through update_person and is announced;
-        # dropping one deletes the file, so the other clients have to hear
+        # dropping one deletes the file, so the other sessions have to hear
         # about it too.
         self.assertEqual(len(events), 1)
 
@@ -726,7 +726,7 @@ class PresenceTestCase(PersonsTestCase):
         self.assertEqual(self.stored_presence(), "2021-06-01")
 
     def test_update_person_last_presence_on_nothing_at_all(self):
-        # Once the time spents and logins are gone, so is the presence.
+        # With no time spent and no login left, the presence is cleared.
         Person.query.filter(Person.id == self.person_id).update(
             {"last_presence": datetime.date(2021, 6, 1)}
         )
@@ -775,7 +775,7 @@ class PresenceTestCase(PersonsTestCase):
 
     def test_a_presence_keeps_updated_at(self):
         """
-        Clients version the avatar URL with updated_at: while every new time
+        Kitsu versions the avatar URL with updated_at: while every new time
         spent changed it, the managers downloaded the avatar of its author
         again.
         """

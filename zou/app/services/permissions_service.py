@@ -291,6 +291,19 @@ def check_task_status_access(task_status_id, project_id):
     return True
 
 
+def check_chat_access(entity_id):
+    """
+    Return true if current user may use the chat of given entity, or the
+    files of its messages: the team of its project, but neither the vendors
+    without a task on it nor the clients, by the role held on the project.
+    """
+    entity = entities_service.get_entity(entity_id)
+    check_project_access(entity["project_id"])
+    check_entity_access(entity_id)
+    block_access_to_client()
+    return True
+
+
 def check_task_access(task_id):
     """
     Return true if current user can have access to a task.

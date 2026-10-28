@@ -2,6 +2,7 @@ Get chats
 ---
 description: Retrieve all chats where the current user is a
   participant. Returns list of chat conversations the user can access.
+  A client gets an empty list.
 tags:
 - User
 responses:

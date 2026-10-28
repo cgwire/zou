@@ -1,7 +1,9 @@
 Get task full
 ---
 description: Return a task with many information. Includes full details
-  for assignees, task type, and task status.
+  for task type and task status. The assignees (persons) and the
+  assigner come whole for managers and minimal for the other roles;
+  clients get neither.
 tags:
 - Tasks
 parameters:

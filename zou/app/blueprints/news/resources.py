@@ -114,7 +114,9 @@ class NewsResource(MethodView, NewsMixin, ArgsMixin):
 
         project_id = self.get_text_parameter("project_id")
         if project_id is not None and project_id in open_project_ids:
+            permissions_service.resolve_project_role(project_id)
             open_project_ids = [project_id]
+        permissions_service.block_access_to_client()
 
         return self.get_news(project_ids=open_project_ids)
 
@@ -130,6 +132,7 @@ class ProjectSingleNewsResource(MethodView):
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_vendor()
+        permissions_service.block_access_to_client()
         news = news_service.get_news(project_id, news_id)
         if len(news["data"]) > 0:
             return news["data"][0]

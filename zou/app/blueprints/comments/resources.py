@@ -20,7 +20,6 @@ from zou.app.services import (
     attachment_files_service,
     chats_service,
     comments_service,
-    entities_service,
     permissions_service,
     persons_service,
     task_types_service,
@@ -50,9 +49,7 @@ class DownloadAttachmentResource(MethodView):
                 attachment_file["chat_message_id"]
             )
             chat = chats_service.get_chat_by_id(message["chat_id"])
-            entity = entities_service.get_entity(chat["object_id"])
-            permissions_service.check_project_access(entity["project_id"])
-            permissions_service.check_entity_access(chat["object_id"])
+            permissions_service.check_chat_access(chat["object_id"])
         else:
             raise permissions.PermissionDenied()
         try:

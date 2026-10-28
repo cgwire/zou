@@ -395,7 +395,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "role": fields.serialize_value(self.role),
             "desktop_login": self.desktop_login,
             "is_bot": self.is_bot,
-            # Clients version the avatar URL with it.
+            # Kitsu versions the avatar URL with it.
             "updated_at": fields.serialize_value(
                 self.updated_at, milliseconds=milliseconds
             ),

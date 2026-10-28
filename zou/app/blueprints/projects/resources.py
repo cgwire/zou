@@ -868,6 +868,7 @@ class ProductionTimeSpentsResource(MethodView):
         """
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_client()
+        permissions_service.block_access_to_vendor()
         return time_spents_service.get_time_spents_for_project(project_id)
 
 

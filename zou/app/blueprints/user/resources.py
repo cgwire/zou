@@ -30,7 +30,7 @@ from zou.app.services import (
     todos_service,
     user_service,
 )
-from zou.app.utils import date_helpers, validation
+from zou.app.utils import date_helpers, permissions, validation
 
 
 class AssetTasksResource(MethodView):
@@ -689,6 +689,8 @@ class ChatsResource(MethodView):
         """
         Get chats
         """
+        if permissions.has_client_permissions():
+            return []
         user = persons_service.get_current_user()
         return chats_service.get_chats_for_person(user["id"])
 
@@ -700,9 +702,7 @@ class JoinChatResource(MethodView):
         """
         Join chat
         """
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
-        permissions_service.check_entity_access(entity["id"])
+        permissions_service.check_chat_access(entity_id)
         person = persons_service.get_current_user()
         return chats_service.join_chat(entity_id, person["id"])
 

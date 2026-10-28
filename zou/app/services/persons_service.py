@@ -168,26 +168,34 @@ def get_person_raw(person_id):
 
 
 @cache.memoize_function(120)
-def get_person(person_id, unsafe=False, relations=True):
+def get_person(person_id, unsafe=False, relations=True, minimal=False):
     """
     Return given person as a dictionary.
     """
     person = get_person_raw(person_id)
     if unsafe:
         return person.serialize(relations=relations)
+    elif minimal:
+        return person.present_minimal(relations=relations)
     else:
         return person.serialize_safe(relations=relations)
 
 
-def get_persons_by_ids(person_ids):
+def get_persons_by_ids(person_ids, minimal=False):
     """
-    Return persons matching given ids as a list of safe dictionaries.
-    Single query instead of one per person.
+    Return persons matching given ids as a list of safe dictionaries, or of
+    minimal ones. One query for the persons, plus one for the departments of
+    the minimal ones, instead of one per person.
     """
     if not person_ids:
         return []
-    persons = Person.query.filter(Person.id.in_(person_ids)).all()
-    return [person.serialize_safe() for person in persons]
+    query = Person.query.filter(Person.id.in_(person_ids))
+    if minimal:
+        query = query.options(selectinload(Person.departments))
+        return [
+            person.present_minimal(relations=True) for person in query.all()
+        ]
+    return [person.serialize_safe() for person in query.all()]
 
 
 def build_short_person(person):
@@ -650,7 +658,7 @@ def update_person_last_presence(person_id):
 
     It runs for every new time spent and desktop login, so it writes the
     field alone, and only when the day changes: no updated_at change
-    (clients put it in the avatar URL), no reindex, no person cache clear
+    (Kitsu puts it in the avatar URL), no reindex, no person cache clear
     for the whole instance, and no person:update that makes every connected
     client reload the person. Kitsu never reads the field, and the memoized
     persons catch up when they expire.

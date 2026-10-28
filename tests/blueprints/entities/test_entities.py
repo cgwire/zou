@@ -4,7 +4,7 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
     comments_service,
     news_service,
-    tasks_service,
+    projects_service,
 )
 from zou.app.utils import fields
 
@@ -77,6 +77,43 @@ class EntityRoutesTestCase(ApiDBTestCase):
             f"/data/entities/{self.asset.id}/entities-linked/with-tasks"
         )
         self.assertGreater(len(result), 0)
+
+    def test_linked_entities_with_tasks_are_closed_to_clients(self):
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
+        EntityConceptLink.create(
+            entity_in_id=self.shot.id,
+            entity_out_id=self.asset.id,
+        )
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_client["id"]
+        )
+        self.log_in_client()
+        self.get(
+            f"/data/entities/{self.asset.id}/entities-linked/with-tasks", 403
+        )
+
+    def test_linked_entities_with_tasks_stay_open_to_artists(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        self.get(
+            f"/data/entities/{self.asset.id}/entities-linked/with-tasks", 200
+        )
+
+    def test_linked_entities_with_tasks_are_closed_to_a_project_client(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            str(self.project.id), self.user_cg_artist["id"], role="client"
+        )
+        self.log_in_cg_artist()
+        self.get(
+            f"/data/entities/{self.asset.id}/entities-linked/with-tasks", 403
+        )
 
     def test_delete_entities(self):
         self.generate_fixture_sequence()

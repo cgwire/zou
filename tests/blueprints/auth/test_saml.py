@@ -10,7 +10,13 @@ from unittest import mock
 from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.person import Person
-from zou.app.services import auth_service, persons_service
+from zou.app.models.studio import Studio
+from zou.app.services import (
+    auth_service,
+    persons_service,
+    task_types_service,
+)
+from zou.app.utils import fields
 
 IDP = "https://idp.example.com/saml"
 JANE = {"first_name": ["Jane"], "last_name": ["Doe"]}
@@ -120,6 +126,117 @@ class SamlRoutesTestCase(ApiDBTestCase):
         person = Person.get_by(email="badcountry@example.com")
         self.assertIsNotNone(person)
         self.assertIn(person.country, (None, ""))
+
+    def test_sso_stores_one_phone_and_one_studio(self):
+        studio = Studio.create(name="Paris", color="#000000")
+        self._post_sso(
+            "phone@example.com",
+            {**JANE, "phone": ["+33 1 23"], "studio_id": [str(studio.id)]},
+        )
+        person = persons_service.get_person_by_email("phone@example.com")
+        self.assertEqual(person["phone"], "+33 1 23")
+        self.assertEqual(person["studio_id"], str(studio.id))
+
+    def test_sso_keeps_the_studio_on_a_malformed_value(self):
+        studio = Studio.create(name="Paris", color="#000000")
+        person_id = self._sign_in(
+            "malformed@example.com", {**JANE, "studio_id": [str(studio.id)]}
+        )
+        with mock.patch.object(
+            task_types_service,
+            "get_studio",
+            wraps=task_types_service.get_studio,
+        ) as get_studio:
+            self.assertEqual(
+                self._sign_in(
+                    "malformed@example.com", {**JANE, "studio_id": ["Paris"]}
+                ),
+                person_id,
+            )
+        get_studio.assert_not_called()
+        self.assertEqual(str(Person.get(person_id).studio_id), str(studio.id))
+
+    def test_sso_keeps_the_studio_on_an_unknown_value(self):
+        studio = Studio.create(name="Paris", color="#000000")
+        person_id = self._sign_in(
+            "unknown@example.com", {**JANE, "studio_id": [str(studio.id)]}
+        )
+        with mock.patch.object(
+            task_types_service,
+            "get_studio",
+            wraps=task_types_service.get_studio,
+        ) as get_studio:
+            self.assertEqual(
+                self._sign_in(
+                    "unknown@example.com",
+                    {**JANE, "studio_id": [str(fields.gen_uuid())]},
+                ),
+                person_id,
+            )
+        get_studio.assert_called_once()
+        self.assertEqual(str(Person.get(person_id).studio_id), str(studio.id))
+
+    def test_sso_leaves_an_unchanged_person_alone(self):
+        self.generate_fixture_department()
+        ava = {
+            **JANE,
+            "phone": ["+33 1 23"],
+            "departments": [str(self.department.id)],
+        }
+        self.assertIsNotNone(self._sign_in("same@example.com", ava))
+        with mock.patch.object(
+            persons_service,
+            "update_person",
+            wraps=persons_service.update_person,
+        ) as update_person:
+            self.assertIsNotNone(self._sign_in("same@example.com", ava))
+        update_person.assert_not_called()
+
+    def test_sso_clears_the_studio_on_an_empty_value(self):
+        studio = Studio.create(name="Paris", color="#000000")
+        person_id = self._sign_in(
+            "empty@example.com", {**JANE, "studio_id": [str(studio.id)]}
+        )
+        self.assertEqual(str(Person.get(person_id).studio_id), str(studio.id))
+        self.assertEqual(
+            self._sign_in("empty@example.com", {**JANE, "studio_id": [""]}),
+            person_id,
+        )
+        self.assertIsNone(Person.get(person_id).studio_id)
+
+    def test_sso_compares_the_departments_in_any_order(self):
+        self.generate_fixture_department()
+        departments = [
+            str(self.department.id),
+            str(self.department_animation.id),
+        ]
+        ava = {**JANE, "departments": departments}
+        self.assertIsNotNone(self._sign_in("order@example.com", ava))
+        with mock.patch.object(
+            persons_service,
+            "update_person",
+            wraps=persons_service.update_person,
+        ) as update_person:
+            for order in (departments, departments[::-1]):
+                ava = {**JANE, "departments": order}
+                self.assertIsNotNone(self._sign_in("order@example.com", ava))
+        update_person.assert_not_called()
+
+    def test_sso_stores_one_phone_and_one_studio_through_the_subject(self):
+        config.SAML_SUBJECT_ATTRIBUTE = "uid"
+        studio = Studio.create(name="Paris", color="#000000")
+        person_id = self._sign_in(
+            "subject@example.com",
+            {
+                **JANE,
+                "uid": ["jane"],
+                "phone": ["+33 1 23"],
+                "studio_id": [str(studio.id)],
+            },
+        )
+        person = persons_service.get_person(person_id)
+        self.assertEqual(person["phone"], "+33 1 23")
+        self.assertEqual(person["studio_id"], str(studio.id))
 
     def _sign_in(self, email, ava, issuer=IDP):
         """
