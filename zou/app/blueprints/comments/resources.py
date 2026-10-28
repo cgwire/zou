@@ -332,6 +332,9 @@ class ReplyCommentResource(MethodView, ArgsMixin):
         comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
+        # The author answers their own thread, as long as they are still on
+        # the project.
+        permissions_service.check_task_access(task_id)
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
             try:

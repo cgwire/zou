@@ -301,6 +301,22 @@ class CommentRoutesTestCase(CommentTestCase):
         self.post(f"{wrong}/ack", {}, 404)
         self.delete(f"{wrong}/reply/{reply['id']}", 404)
 
+    def test_an_author_out_of_the_team_replies_no_more(self):
+        self.generate_fixture_user_cg_artist()
+        comment = comments_service.new_comment(
+            self.task.id,
+            self.task_status.id,
+            self.user_cg_artist["id"],
+            "mine",
+        )
+        path = f"/data/tasks/{self.task.id}/comments/{comment['id']}/reply"
+        self.log_in_cg_artist()
+        self.post(path, {"text": "Still here"}, 403)
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.post(path, {"text": "Still here"}, 200)
+
 
 class ClientVisibleCommentTestCase(CommentTestCase):
     """
