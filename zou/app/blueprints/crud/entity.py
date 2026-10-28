@@ -103,9 +103,10 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
                 user_service.build_related_projects_filter()
             )
             if permissions.has_vendor_permissions():
-                query = query.join(Task).filter(
-                    persons_service.build_assignee_filter()
-                )
+                assigned_entity_ids = Task.query.with_entities(
+                    Task.entity_id
+                ).filter(persons_service.build_assignee_filter())
+                query = query.filter(Entity.id.in_(assigned_entity_ids))
 
         return query
 
