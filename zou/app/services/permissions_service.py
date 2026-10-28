@@ -547,6 +547,19 @@ def check_manager_project_access(project_id):
     return is_allowed
 
 
+def check_entity_delete_access(entity):
+    """
+    A member of the project team deletes the entities they created, a
+    manager of the project every one of them. Raise a PermissionDenied
+    exception otherwise.
+    """
+    if entity["created_by"] == persons_service.get_current_user()["id"]:
+        check_project_access(entity["project_id"])
+    else:
+        check_manager_project_access(entity["project_id"])
+    return True
+
+
 def check_time_spent_access(task_id, person_id):
     """
     Return true if current user is an admin, or if the person is assigned to
@@ -679,7 +692,7 @@ def check_metadata_department_access(entity, new_data=None):
                         if descriptor["entity_type"] == entity_type
                     ]
                     found_and_in_departments = False
-                    for descriptor_name in new_data["data"].keys():
+                    for descriptor_name in (new_data.get("data") or {}).keys():
                         found_and_in_departments = False
                         for descriptor in descriptors:
                             if descriptor["field_name"] == descriptor_name:

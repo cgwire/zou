@@ -75,12 +75,7 @@ class AssetResource(MethodView, ArgsMixin):
         force = self.get_force()
 
         asset = assets_service.get_full_asset(asset_id)
-        if asset["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(asset["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                asset["project_id"]
-            )
+        permissions_service.check_entity_delete_access(asset)
 
         cascade_deletion_service.remove_asset(asset_id, force=force)
         return "", 204

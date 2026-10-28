@@ -41,12 +41,7 @@ class EditResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         edit = edits_service.get_edit(edit_id)
-        if edit["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(edit["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                edit["project_id"]
-            )
+        permissions_service.check_entity_delete_access(edit)
         cascade_deletion_service.remove_edit(edit_id, force=force)
         return "", 204
 

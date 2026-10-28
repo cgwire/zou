@@ -9,7 +9,6 @@ from zou.app.services import (
     entities_service,
     news_service,
     permissions_service,
-    persons_service,
     preview_files_service,
     projects_service,
     task_types_service,
@@ -111,20 +110,14 @@ class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
         force = self.get_force()
         projects_service.get_project(project_id)
         entity_ids = validation.validate_id_list()
-        current_user_id = persons_service.get_current_user()["id"]
 
-        # Authorization stays in the resource: creators may delete their own
-        # entities, otherwise project-manager access is required.
         for entity_id in entity_ids:
             try:
                 entity = entities_service.get_entity(entity_id)
             except EntityNotFoundException:
                 # Nothing to authorize for an entity that is already gone.
                 continue
-            if entity["created_by"] == current_user_id:
-                permissions_service.check_belong_to_project(project_id)
-            else:
-                permissions_service.check_manager_project_access(project_id)
+            permissions_service.check_entity_delete_access(entity)
 
         return (
             cascade_deletion_service.remove_entities(
