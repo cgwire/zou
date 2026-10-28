@@ -310,7 +310,10 @@ class CommentResource(BaseModelResource):
         comment = comments_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
-        if permissions.has_manager_permissions():
+        is_author = (
+            comment["person_id"] == persons_service.get_current_user()["id"]
+        )
+        if permissions.has_manager_permissions() and not is_author:
             permissions_service.check_project_access(task["project_id"])
         else:
             permissions_service.check_person_access(comment["person_id"])

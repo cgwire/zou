@@ -203,3 +203,10 @@ class CommentTestCase(ApiDBTestCase):
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 2)
         self.delete_404(f"data/comments/{fields.gen_uuid()}")
+
+    def test_delete_own_comment_as_manager_out_of_the_team(self):
+        manager = self.generate_fixture_user_manager()
+        own_comment = self.generate_fixture_comment(person=manager)
+        self.log_in_manager()
+        self.delete(f"data/comments/{self.comments[0]['id']}", 403)
+        self.delete(f"data/comments/{own_comment['id']}")
