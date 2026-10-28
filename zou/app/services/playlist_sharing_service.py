@@ -130,11 +130,15 @@ def get_share_link_by_token_raw(token):
     return share_link
 
 
-def validate_share_token(token, password=None):
+def validate_share_token(token):
     """
     Validate that a share token is active and not expired.
     Returns the serialized share link on success.
     Raises appropriate exceptions on failure.
+
+    The password of a protected link is checked apart, by
+    check_share_link_password, once per request in the route decorator:
+    the service functions re-validating the token do not hold it.
     """
     share_link = get_share_link_by_token_raw(token)
     if not share_link.is_active:
@@ -148,7 +152,16 @@ def validate_share_token(token, password=None):
         if now > expiration:
             raise PlaylistShareLinkNotFoundException
 
-    if share_link.password is not None and share_link.password != "":
+    return share_link.serialize()
+
+
+def check_share_link_password(token, password):
+    """
+    Raise PlaylistShareLinkNotFoundException when the link is protected and
+    ``password`` is missing or wrong. A link without password accepts any.
+    """
+    share_link = get_share_link_by_token_raw(token)
+    if share_link.password:
         # Constant-time bcrypt verify; never a plain `!=`.
         if not password:
             raise PlaylistShareLinkNotFoundException
@@ -157,8 +170,6 @@ def validate_share_token(token, password=None):
                 raise PlaylistShareLinkNotFoundException
         except (ValueError, TypeError):
             raise PlaylistShareLinkNotFoundException
-
-    return share_link.serialize()
 
 
 def get_shared_playlist(token):

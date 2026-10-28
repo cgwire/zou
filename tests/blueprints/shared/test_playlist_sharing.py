@@ -658,6 +658,14 @@ class GuestTestCase(PlaylistSharingTestCase):
         )
         self.assertEqual(guest["id"], guest2["id"])
 
+    def test_a_protected_link_takes_its_password_on_every_route(self):
+        link = self.post(self.share_path(), {"password": "topsecret123"}, 201)
+        self.log_out()
+        path = self.shared_path(link["token"], "/guest")
+        self.post(path, {"first_name": "John"}, 404)
+        self.post(f"{path}?password=wrong", {"first_name": "John"}, 404)
+        self.post(f"{path}?password=topsecret123", {"first_name": "John"}, 201)
+
     def test_create_guest_same_name_different_link(self):
         """
         A guest created via link A must not be reused via link B even
