@@ -283,6 +283,7 @@ class ConfigResource(MethodView):
 
 
 class TestEventsResource(MethodView):
+    @jwt_required()
     @swag_from(SPECS["TestEventsResource_get"])
     def get(self):
         """
@@ -290,5 +291,6 @@ class TestEventsResource(MethodView):
         """
         from zou.app.utils import events
 
+        permissions.check_admin_permissions()
         events.emit("main:test", data={}, persist=False, project_id=None)
         return {"success": True}
