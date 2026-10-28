@@ -1,4 +1,5 @@
 from flask_jwt_extended import jwt_required
+from sqlalchemy import func
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
@@ -53,7 +54,7 @@ class EntityTypesResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         entity_type = EntityType.query.filter(
-            EntityType.name.ilike(data.get("name", ""))
+            func.lower(EntityType.name) == str(data.get("name", "")).lower()
         ).first()
         if entity_type is not None:
             raise WrongParameterException(
