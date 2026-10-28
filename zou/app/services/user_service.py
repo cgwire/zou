@@ -851,6 +851,19 @@ def get_team_project_roles():
     return project_roles
 
 
+def get_project_ids_with_roles(*roles):
+    """
+    Return the ids of the projects of the current user's teams where the
+    role they hold, read per project as get_team_project_roles does, is one
+    of given roles.
+    """
+    return [
+        project_id
+        for project_id, role in get_team_project_roles().items()
+        if role in roles
+    ]
+
+
 def get_context():
     """
     Build everything the client needs on login in one payload: projects,

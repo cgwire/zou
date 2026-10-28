@@ -25,6 +25,17 @@ class EntityTestCase(ApiDBTestCase):
         self.assertEqual(len(entities), 3)
         self.assertEqual(entities[0]["type"], "Asset")
 
+    def test_get_entities_as_a_vendor_of_this_project_only(self):
+        task = self.generate_fixture_task(entity_id=self.asset_1_id)
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "vendor")
+        tasks_service.assign_task(task.id, artist_id)
+        self.log_in_cg_artist()
+        entities = self.get("data/entities")
+        self.assertEqual(
+            [entity["id"] for entity in entities], [self.asset_1_id]
+        )
+
     def test_get_entities_vendor_with_two_tasks_on_an_entity(self):
         first_task = self.generate_fixture_task(entity_id=self.asset_1_id)
         second_task = self.generate_fixture_task(

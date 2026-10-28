@@ -3,6 +3,7 @@ import re
 
 from flask import current_app
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import (
@@ -102,11 +103,20 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
-            if permissions.has_vendor_permissions():
+            # Each entity follows the role held on its own project.
+            vendor_project_ids = user_service.get_project_ids_with_roles(
+                "vendor"
+            )
+            if vendor_project_ids:
                 assigned_entity_ids = Task.query.with_entities(
                     Task.entity_id
                 ).filter(persons_service.build_assignee_filter())
-                query = query.filter(Entity.id.in_(assigned_entity_ids))
+                query = query.filter(
+                    or_(
+                        Entity.project_id.not_in(vendor_project_ids),
+                        Entity.id.in_(assigned_entity_ids),
+                    )
+                )
 
         return query
 
