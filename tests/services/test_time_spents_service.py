@@ -333,6 +333,12 @@ class TimeSpentLookupTestCase(TimeSpentsTestCase):
             sorted(entry["duration"] for entry in time_spents), [300, 500]
         )
 
+    def test_get_time_spents_without_date(self):
+        time_spents = time_spents_service.get_time_spents(self.person_id)
+        dates = {entry["date"] for entry in time_spents}
+        self.assertIn("2018-06-04", dates)
+        self.assertGreater(len(dates), 1)
+
     def test_get_time_spents_scoped_to_a_department(self):
         time_spents = time_spents_service.get_time_spents(
             self.person_id,

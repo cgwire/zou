@@ -274,12 +274,12 @@ def get_time_spents(
     person_id, date=None, project_ids=None, department_ids=None
 ):
     """
-    Return time spents for given person and date.
+    Return time spents for given person and date, all dates if none given.
     """
     try:
-        query = TimeSpent.query.filter_by(
-            person_id=person_id, date=func.cast(date, TimeSpent.date.type)
-        )
+        query = TimeSpent.query.filter_by(person_id=person_id)
+        if date is not None:
+            query = query.filter_by(date=func.cast(date, TimeSpent.date.type))
 
         if project_ids is not None or department_ids is not None:
             query = query.join(Task)

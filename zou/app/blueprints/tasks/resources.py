@@ -637,7 +637,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
                 person_id,
                 datetime.datetime.strptime(date, "%Y-%m-%d"),
             )
-            return time_spent, 201
+            return time_spent, 200
         except ValueError:
             raise WrongParameterException("Invalid date format.")
         except WrongDateFormatException:
