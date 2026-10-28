@@ -694,6 +694,21 @@ class UserNotificationTestCase(UserContextTestCase):
         self.assertEqual(len(notifications), 1)
         self.assertEqual(notifications[0]["author_id"], person_id)
 
+    def test_a_client_of_this_project_only_has_its_comment_blanked(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        person_id = str(self.person.id)
+        projects_service.add_team_member(self.project_id, artist_id)
+        projects_service.add_team_member(self.project_id, person_id, "client")
+        tasks_service.assign_task(self.task.id, artist_id)
+        self.generate_fixture_comment()
+        notifications_service.create_notifications_for_task_and_comment(
+            self.task.serialize(relations=True), self.comment
+        )
+        self.log_in_cg_artist()
+        (notification,) = self.get("/data/user/notifications")
+        self.assertEqual(notification["author_id"], person_id)
+        self.assertEqual(notification["comment_text"], "")
+
     def test_get_notification(self):
         tasks_service.assign_task(self.task.id, self.user_id)
         self.generate_fixture_comment()
