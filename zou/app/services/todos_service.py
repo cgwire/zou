@@ -903,20 +903,29 @@ def _get_tasks_to_check_scope():
     """
     if permissions.has_admin_permissions():
         return True, None, None
-    if permissions.has_manager_permissions():
-        return (
-            True,
-            [project["id"] for project in user_service.related_projects()],
-            None,
-        )
-    if permissions.has_supervisor_permissions():
-        current_user = persons_service.get_current_user(relations=True)
-        return (
-            True,
-            [project["id"] for project in user_service.related_projects()],
-            current_user["departments"],
-        )
-    return False, None, None
+    # Read per project: the role held on each project of the team.
+    roles = user_service.get_team_project_roles()
+    project_ids = [
+        project_id
+        for project_id, role in roles.items()
+        if role in ("manager", "supervisor")
+    ]
+    # A global manager or supervisor on no team yet is allowed, and scoped
+    # to nothing.
+    if not project_ids and not (
+        permissions.has_manager_permissions()
+        or permissions.has_supervisor_permissions()
+    ):
+        return False, None, None
+    department_ids = None
+    if (
+        "supervisor" in roles.values()
+        or permissions.has_supervisor_permissions()
+    ):
+        department_ids = persons_service.get_current_user(relations=True)[
+            "departments"
+        ]
+    return True, project_ids, department_ids
 
 
 def get_tasks_to_check(

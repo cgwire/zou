@@ -357,6 +357,19 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.task_id))
 
+    def test_a_manager_of_this_project_only_gets_the_tasks_to_check(self):
+        feedback_status = task_types_service.get_or_create_task_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        tasks_service.update_task(
+            self.task_id, {"task_status_id": feedback_status["id"]}
+        )
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project_id, artist_id, "manager")
+        self.log_in_cg_artist()
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual([task["id"] for task in tasks], [str(self.task_id)])
+
     def test_get_tasks_to_check_paginated(self):
         feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
