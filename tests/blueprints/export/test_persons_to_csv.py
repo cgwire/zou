@@ -50,3 +50,14 @@ class PersonsCsvExportTestCase(ApiDBTestCase):
             "Test Studio;FR;open-ended;lead;senior;300;yes\r\n"
         )
         self.assertEqual(csv_persons, expected_result)
+
+    def test_the_salary_is_for_the_admins(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        csv_persons = self.get_raw("/export/csv/persons.csv")
+        self.assertNotIn("Daily Salary", csv_persons)
+        self.assertIn(
+            "John;Doe;john.doe@example.com;;user;Animation,Modeling;"
+            "Test Studio;FR;open-ended;lead;senior;yes\r\n",
+            csv_persons,
+        )
