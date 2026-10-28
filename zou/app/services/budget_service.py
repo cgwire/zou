@@ -35,11 +35,15 @@ def get_budget_raw(budget_id):
     )
 
 
-def get_budget(budget_id):
+def get_budget(budget_id, project_id=None):
     """
-    Return budget corresponding to given budget ID as a dictionary.
+    Return budget corresponding to given budget ID as a dictionary. With a
+    project ID, a budget of another project is not found.
     """
-    return get_budget_raw(budget_id).serialize(relations=True)
+    budget = get_budget_raw(budget_id).serialize(relations=True)
+    if project_id is not None and budget["project_id"] != str(project_id):
+        raise BudgetNotFoundException
+    return budget
 
 
 def get_budgets(project_id):
@@ -125,11 +129,15 @@ def get_budget_entry_raw(budget_entry_id):
     )
 
 
-def get_budget_entry(budget_entry_id):
+def get_budget_entry(budget_entry_id, budget_id=None):
     """
-    Return budget entry corresponding to given budget entry ID as a dictionary.
+    Return budget entry corresponding to given budget entry ID as a
+    dictionary. With a budget ID, an entry of another budget is not found.
     """
-    return get_budget_entry_raw(budget_entry_id).serialize()
+    entry = get_budget_entry_raw(budget_entry_id).serialize()
+    if budget_id is not None and entry["budget_id"] != str(budget_id):
+        raise BudgetEntryNotFoundException
+    return entry
 
 
 def create_budget_entry(
