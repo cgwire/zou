@@ -5,7 +5,10 @@ from zou.app.blueprints.departments.schemas import (
     AddHardwareToDepartmentSchema,
     AddSoftwareToDepartmentSchema,
 )
-from zou.app.exceptions import SoftwareNotFoundException
+from zou.app.exceptions import (
+    HardwareItemNotFoundException,
+    SoftwareNotFoundException,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     departments_service,
@@ -119,15 +122,19 @@ class HardwareItemDepartmentResource(MethodView, ArgsMixin):
     @jwt_required()
     @permissions.require_admin
     @swag_from(SPECS["HardwareItemDepartmentResource_get"])
-    def get(self, department_id):
+    def get(self, department_id, hardware_item_id):
         """
-        Get department hardware items
+        Get department hardware item
         """
         self.check_id_parameter(department_id)
+        self.check_id_parameter(hardware_item_id)
         hardware_items = departments_service.get_hardware_items_for_department(
             department_id
         )
-        return hardware_items, 200
+        for hardware_item in hardware_items:
+            if hardware_item["id"] == hardware_item_id:
+                return hardware_item, 200
+        raise HardwareItemNotFoundException
 
     @jwt_required()
     @permissions.require_admin
