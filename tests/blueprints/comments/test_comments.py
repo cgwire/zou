@@ -801,6 +801,18 @@ class CommentAttachmentTestCase(CommentTestCase):
             self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
         )[0]
 
+    def test_an_internal_attachment_stays_out_of_the_client_reach(self):
+        attachment = self.attach_a_file()
+        projects_service.add_team_member(
+            self.project.id, self.user_client["id"]
+        )
+        self.log_in_client()
+        path = f"/data/attachment-files/{attachment['id']}"
+        self.get(path, 403)
+        Comment.get(self.comment["id"]).update({"for_client": True})
+        comments_service.clear_comment_cache(self.comment["id"])
+        self.get(path, 200)
+
     def test_get_project_attachment_files(self):
         path = f"/data/projects/{self.project.id}/attachment-files"
         self.assertEqual(self.get(path), [])
