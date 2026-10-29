@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-from zou.app.models.entity import EntityConceptLink
+from zou.app.models.entity import Entity, EntityConceptLink
 from zou.app.services import (
     concepts_service,
     projects_service,
@@ -137,6 +137,14 @@ class EntityTestCase(ApiDBTestCase):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 2)
         self.delete_404(f"data/entities/{fields.gen_uuid()}")
+
+    def test_a_creator_out_of_the_team_deletes_no_entity(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        Entity.get(self.asset_1_id).update({"created_by": artist_id})
+        self.log_in_cg_artist()
+        self.delete(f"data/entities/{self.asset_1_id}", 403)
+        projects_service.add_team_member(self.project.id, artist_id)
+        self.delete(f"data/entities/{self.asset_1_id}", 204)
 
     def test_delete_entity_removes_its_links(self):
         """

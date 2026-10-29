@@ -241,11 +241,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return super().delete(instance_id)
 
     def check_delete_permissions(self, entity):
-        return entity["created_by"] == persons_service.get_current_user()[
-            "id"
-        ] or permissions_service.check_manager_project_access(
-            entity["project_id"]
-        )
+        return permissions_service.check_entity_delete_access(entity)
 
     def pre_delete(self, entity):
         """
