@@ -529,6 +529,30 @@ class WorkingFilesTestCase(ApiDBTestCase):
             f"/data/working-files/{other_working_file.id}/file", 403
         )
 
+    def test_entity_working_files_rejects_a_task_from_another_entity(self):
+        first_task_id = self.task_id
+        first_entity_id = self.asset.id
+        other_asset = self.generate_fixture_asset(name="Other entity")
+        other_task = self.generate_fixture_task(
+            name="Other entity task",
+            entity_id=other_asset.id,
+            project_id=self.project_id,
+        )
+
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(first_task_id, self.user_cg_artist["id"])
+        self.assign_task(other_task.id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
+
+        self.get(
+            f"/data/entities/{first_entity_id}/working-files"
+            f"?task_id={other_task.id}",
+            403,
+        )
+
     def test_generic_working_file_api_requires_task_assignment_scope(self):
         working_file = self.generate_fixture_working_file()
         self.generate_fixture_user_cg_artist()
