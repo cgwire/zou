@@ -568,13 +568,17 @@ def check_manager_project_access(project_id):
     return is_allowed
 
 
-def check_entity_delete_access(entity):
+def check_entity_delete_access(entity, force=False):
     """
     A member of the project team deletes the entities they created, a
-    manager of the project every one of them. Raise a PermissionDenied
-    exception otherwise.
+    manager of the project every one of them. Only a manager of the project
+    forces a deletion, as it removes the work of others below the entity.
+    Raise a PermissionDenied exception otherwise.
     """
-    if entity["created_by"] == persons_service.get_current_user()["id"]:
+    if (
+        not force
+        and entity["created_by"] == persons_service.get_current_user()["id"]
+    ):
         check_project_access(entity["project_id"])
     else:
         check_manager_project_access(entity["project_id"])

@@ -161,7 +161,8 @@ EntityResource_delete:
   tags:
     - Crud
   description: Delete an entity. An administrator, a manager of the project or
-    the creator of the entity can delete it. The links of the entity are
+    the creator of the entity can delete it. The creator must be in the
+    project team. The links of the entity are
     deleted too. You cannot delete an entity that has tasks, versions or child
     entities.
   parameters:

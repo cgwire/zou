@@ -90,7 +90,7 @@ class ShotResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         shot = shots_service.get_shot(shot_id)
-        permissions_service.check_entity_delete_access(shot)
+        permissions_service.check_entity_delete_access(shot, force=force)
         cascade_deletion_service.remove_shot(shot_id, force=force)
         return "", 204
 
@@ -626,7 +626,7 @@ class EpisodeResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
-        permissions_service.check_entity_delete_access(episode)
+        permissions_service.check_entity_delete_access(episode, force=force)
         cascade_deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
@@ -728,7 +728,7 @@ class SequenceResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
-        permissions_service.check_entity_delete_access(sequence)
+        permissions_service.check_entity_delete_access(sequence, force=force)
         cascade_deletion_service.remove_sequence(sequence_id, force=force)
         return "", 204
 
