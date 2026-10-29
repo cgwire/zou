@@ -1,0 +1,361 @@
+CommentResource_delete:
+  summary: Delete a comment
+  tags:
+    - Crud
+  description: Delete a comment. After the deletion, the task gets the status
+    and the data of its last comment. An administrator or a manager of the
+    project can delete all the comments of the project. You can always delete
+    your own comments, also if you are not in the team. Other users cannot
+    delete the comments of other persons.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+  responses:
+    204:
+      description: The comment is deleted
+    400:
+      description: Cannot delete comment or integrity error
+    403:
+      description: You are not a manager of the project, and the comment is
+        not yours
+    404:
+      description: The comment does not exist
+
+CommentResource_get:
+  summary: Get a comment
+  tags:
+    - Crud
+  description: Get a comment. The response gives the author in person, the
+    reply authors and the attachment files as objects. Set with_previews to
+    true to get the previews as objects. An administrator can read all the
+    comments. Other users must have access to the project of the task. A
+    vendor must also have a task on the entity. Managers and supervisors read
+    all the comments of the task. A client reads the comments of clients and
+    the comments for clients. If the project isolates the clients, a client
+    reads only their own comments and the comments for clients. Other users
+    cannot read the comments of clients.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+    - in: query
+      name: with_previews
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: true
+      description: Whether to expand preview IDs to full preview objects
+  responses:
+    200:
+      description: The comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: Comment text
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You do not have access to the project or the entity, or
+        your role cannot read this comment
+    404:
+      description: The comment does not exist
+
+CommentResource_put:
+  summary: Update a comment
+  tags:
+    - Crud
+  description: Update the fields of a comment. Send only the fields to change.
+    You cannot change id, created_at, updated_at, object_id, mentions and
+    department_mentions. Dates use the ISO 8601 format. The mentions are
+    computed again from the text. You become the editor of the comment. An
+    administrator can change all the fields. Other users must be in the team
+    of the project. A manager of the project can change all the fields. Other
+    users must be able to read the comment and cannot change for_client. Only
+    the author can change the fields other than pinned and checklist. Only a
+    supervisor of the department of the task type, or without a department,
+    can change pinned. Only the author, an assignee of the task or such a
+    supervisor can change checklist. You cannot give the comment to another
+    person or move it to another task. To change task_status_id, you must have
+    action access to the task and access to the status. A status change resets
+    the task data.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            text:
+              type: string
+              example: Updated comment text
+            task_status_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            pinned:
+              type: boolean
+              example: true
+            checklist:
+              type: array
+              items:
+                type: object
+              example: [{text: Item 1, checked: false}]
+  responses:
+    200:
+      description: The updated comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: Updated comment text
+              pinned:
+                type: boolean
+                example: true
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not in the team of the project, or your role cannot
+        change these fields
+    404:
+      description: The comment does not exist
+
+CommentsResource_get:
+  summary: Get comment rows
+  tags:
+    - Crud
+  description: Get the comment rows. Add a query parameter for each column to
+    filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. You must be an administrator.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of comment rows, or a page of rows if you give
+        page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are not an administrator
+
+CommentsResource_post:
+  summary: Create a comment
+  tags:
+    - Crud
+  description: Create a comment. Send the fields of the new row in JSON. You
+    must be an administrator. object_type is the type of the object, for
+    example Task. task_status_id is optional.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - object_id
+            - object_type
+            - person_id
+          properties:
+            object_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            object_type:
+              type: string
+              example: Task
+            person_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            task_status_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            text:
+              type: string
+              example: Comment text
+  responses:
+    201:
+      description: The new comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: Comment text
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

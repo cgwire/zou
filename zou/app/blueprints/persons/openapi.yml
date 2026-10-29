@@ -1,0 +1,1841 @@
+AddToDepartmentResource_post:
+  summary: Add a person to a department
+  description: Add a person to a department. You must be an administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - department_id
+          properties:
+            department_id:
+              type: string
+              format: uuid
+              description: Department unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The person, with its departments
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Person unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              departments:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: The departments of the person
+                example: [b35b7fb5-df86-5776-b181-68564193d360]
+    400:
+      description: The department does not exist, or the identifier is not
+        valid
+    403:
+      description: You are not an administrator
+    404:
+      description: The person does not exist
+
+ChangePasswordForPersonResource_post:
+  summary: Change the password of a person
+  description: Set a new password for a person. Give the new password two
+    times. You cannot change the password of a protected account. You cannot
+    change the password of another administrator who already has a password.
+    You can set the first password of a new administrator. The person gets an
+    email about the change. You must be an administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - password
+            - password_2
+          properties:
+            password:
+              type: string
+              format: password
+              description: New password
+              example: newSecurePassword123
+            password_2:
+              type: string
+              format: password
+              description: Password confirmation
+              example: newSecurePassword123
+  responses:
+    200:
+      description: The password is changed
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Success flag
+                example: true
+    400:
+      description: The two passwords are different, the password is too short,
+        the person is a protected account, or the person is another
+        administrator who already has a password
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+                description: Error flag
+                example: true
+              message:
+                type: string
+                description: Error message
+                example: Password is too short.
+    403:
+      description: You are not an administrator, or the person is a bot
+    404:
+      description: The person does not exist
+
+ClearAvatarPersonResource_delete:
+  summary: Delete the avatar of a person
+  description: Delete the avatar file of a person and set has_avatar to false.
+    You must be an administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    204:
+      description: The avatar is deleted
+    403:
+      description: You are not an administrator
+    404:
+      description: The person does not exist
+
+DateTimeSpentsResource_get:
+  summary: Get the time spents of a person for a date
+  description: Get the time spent entries of a person for one date. An
+    administrator and the person get all the entries. A manager gets the
+    entries of the projects they manage. A supervisor gets the entries of the
+    projects they supervise, for the task types of their departments. A
+    supervisor without department gets all the task types. Other users cannot
+    read the time spents of other persons. You cannot read the time spents of
+    a bot. The manager and supervisor roles are the roles held on the project
+    team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Date in the YYYY-MM-DD format
+      example: '2022-07-12'
+  responses:
+    200:
+      description: The list of time spent entries
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Time spent unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent duration in hours
+                  example: 8.5
+                date:
+                  type: string
+                  format: date
+                  description: Date of time spent entry
+                  example: '2022-07-12'
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot read the time spents of this person, or the
+        person is a bot
+    404:
+      description: The person does not exist
+
+DayOffForMonthResource_get:
+  summary: Get the day offs of a month
+  description: Get the day offs of a month. An administrator gets all the day
+    offs. A manager gets the day offs of the persons of their projects. A
+    supervisor gets the dates only, for the persons of their projects who
+    share one of their departments. A supervisor without department gets all
+    the persons of their projects. Other users get their own day offs.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The year or the month is not valid
+
+DayOffForYearResource_get:
+  summary: Get the day offs of a year
+  description: Get the day offs of a year. An administrator gets all the day
+    offs. A manager gets the day offs of the persons of their projects. A
+    supervisor gets the dates only, for the persons of their projects who
+    share one of their departments. A supervisor without department gets all
+    the persons of their projects. Other users get their own day offs.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The year is not valid
+
+DayOffResource_get:
+  summary: Get the day off of a person for a date
+  description: Get the day off of a person for one date. An administrator, the
+    person, and a manager of a project where the person is a team member get
+    the day off with its description. A supervisor of such a project who
+    shares a department with the person gets the day off without its
+    description. A supervisor without department gets it for all the persons
+    of their projects. The manager and supervisor roles are the roles held on
+    the project team. Other users cannot read it.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Date in the YYYY-MM-DD format
+      example: '2022-07-12'
+  responses:
+    200:
+      description: The day off, or an empty object if the person works on this
+        date
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Day off unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                description: Person unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              date:
+                type: string
+                format: date
+                description: Day off date
+                example: '2022-07-12'
+              end_date:
+                type: string
+                format: date
+                description: Last date of the day off
+                example: '2022-07-12'
+              description:
+                type: string
+                description: Day off description, absent for a supervisor
+                example: Holidays
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot read the day offs of this person, or the person
+        is a bot
+    404:
+      description: The person does not exist
+
+DesktopLoginsResource_get:
+  summary: Get the desktop logins of a person
+  description: Get the login logs of the desktop tools of a person. A manager
+    can read the logs of all persons. Other users can read their own logs
+    only.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of desktop login logs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Log entry unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                date:
+                  type: string
+                  format: date-time
+                  description: Login date and time
+                  example: '2022-07-12T10:30:00Z'
+    403:
+      description: You cannot read the logs of this person
+    404:
+      description: The person does not exist
+
+DesktopLoginsResource_post:
+  summary: Add a desktop login of a person
+  description: Add a login log of a desktop tool for a person. Without date,
+    the log uses the current date. You can add logs for yourself only. An
+    administrator can add logs for all persons.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+              description: Login date
+              example: '2022-07-12'
+  responses:
+    201:
+      description: The new desktop login log
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Log entry unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                description: Person unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              date:
+                type: string
+                format: date-time
+                description: Login date and time
+                example: '2022-07-12T10:30:00Z'
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot add logs for this person
+
+DisableTwoFactorAuthenticationPersonResource_delete:
+  summary: Disable the two-factor authentication of a person
+  description: Disable the two-factor authentication of a person. You cannot
+    disable it for another administrator. The person gets an email about the
+    change. You must be an administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The two-factor authentication is disabled
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Success flag
+                example: true
+    400:
+      description: The person is another administrator, or the two-factor
+        authentication is not enabled for this person
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+                description: Error flag
+                example: true
+              message:
+                type: string
+                description: Error message
+                example: Two factor authentication not enabled for this user.
+    403:
+      description: You are not an administrator, or the person is a bot
+    404:
+      description: The person does not exist
+
+InvitePersonResource_get:
+  summary: Invite a person
+  description: Send an email that invites a person to log in to Kitsu. The
+    email has a link to set the password. The link is valid for 7 days. You
+    must be an administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The email is sent
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Success flag
+                example: true
+              message:
+                type: string
+                description: Success message
+                example: Email sent
+    403:
+      description: You are not an administrator, or the person is a bot
+    404:
+      description: The person does not exist
+
+PersonDayOffResource_get:
+  summary: Get the day offs of a person
+  description: Get all the day offs of a person. An administrator, the person,
+    and a manager of a project where the person is a team member get the day
+    offs with their description. A supervisor of such a project who shares a
+    department with the person gets the day offs without their description. A
+    supervisor without department gets them for all the persons of their
+    projects. The manager and supervisor roles are the roles held on the
+    project team. Other users cannot read them.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You cannot read the day offs of this person, or the person
+        is a bot
+    404:
+      description: The person does not exist
+
+PersonDayQuotaShotsResource_get:
+  summary: Get the quota shots of a person for a day
+  description: Get the shots that count in the quota of a person for a day. A
+    quota shot is a shot that the person ended. An administrator reads the
+    quotas of all persons. The person reads their own quotas. Give project_id
+    to read the quotas of another person. You must then be a manager or a
+    supervisor in the team of this project. The role held on the project team
+    applies. A manager or a supervisor who gives a project_id of a project
+    they are not a team member of gets a 403, also for their own quotas.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+    - in: path
+      name: day
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 31
+      description: Day of the month
+      example: 12
+    - in: query
+      name: count_mode
+      required: false
+      schema:
+        type: string
+        enum: [weighted, weighteddone, feedback, done]
+      description: 'How to count the shots: weighted, weighteddone, feedback or
+        done. The default value is weighted. The weighted modes give each shot the
+        part of its work time that is in the period. The other modes count each
+        shot on its end date. The feedback modes end a shot at its first feedback.
+        The done modes end a shot when it is done.'
+      example: weighted
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Get only the shots of this project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Get only the shots of this task type
+      example: b35b7fb5-df86-5776-b181-68564193d361
+  responses:
+    200:
+      description: The list of quota shots
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              description: >-
+                A serialized shot, with its project_id, full_name and the
+                weight it carries in the period.
+    400:
+      description: The date or count_mode is not valid
+    403:
+      description: You cannot read the quotas of this person, or the person is
+        a bot
+    404:
+      description: The person does not exist
+
+PersonDayTimeSpentsResource_get:
+  summary: Get the time spent of a person for a day, by task
+  description: Get the time spent of a person for a day, with one entry per
+    task. Give project_id to keep the tasks of one project. An administrator
+    and the person get all the tasks. A manager gets the tasks of the projects
+    they manage. A supervisor gets the tasks of the projects they supervise,
+    for the task types of their departments. A supervisor without department
+    gets all the task types. A manager or a supervisor who gives a project_id
+    of another project gets a 403. Other users cannot read the time spents of
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+    - in: path
+      name: day
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 31
+      description: Day of the month
+      example: 12
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spent on this project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The time spent of each task for the day
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type of the task
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project of the task
+                project_name:
+                  type: string
+                  description: Project name
+                entity_name:
+                  type: string
+                  description: Name of the entity of the task
+                entity_type_name:
+                  type: string
+                  description: Name of the entity type of the task
+                sequence_name:
+                  type: string
+                  description: Sequence name, for a shot
+                episode_name:
+                  type: string
+                  description: Episode name, for a shot
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent on the task in hours
+                  example: 8.5
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot read the time spents of this person, or the
+        person is a bot, or you cannot access this project
+    404:
+      description: The person does not exist
+
+PersonMonthAllTimeSpentsResource_get:
+  summary: Get all the time spents of a person for a month
+  description: Get all the time spent entries of a person for a month. Only an
+    administrator and the person can use this route.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+  responses:
+    200:
+      description: The list of time spent entries
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The month or the year is not valid
+    403:
+      description: You are not an administrator or this person, or the person
+        is a bot
+    404:
+      description: The person does not exist
+
+PersonMonthDayOffResource_get:
+  summary: Get the day offs of a person for a month
+  description: Get the day offs of a person for a month. An administrator, the
+    person, and a manager of a project where the person is a team member get
+    the day offs with their description. A supervisor of such a project who
+    shares a department with the person gets the day offs without their
+    description. A supervisor without department gets them for all the persons
+    of their projects. The manager and supervisor roles are the roles held on
+    the project team. Other users cannot read them.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The year or the month is not valid
+    403:
+      description: You cannot read the day offs of this person, or the person
+        is a bot
+    404:
+      description: The person does not exist
+
+PersonMonthQuotaShotsResource_get:
+  summary: Get the quota shots of a person for a month
+  description: Get the shots that count in the quota of a person for a month.
+    A quota shot is a shot that the person ended. An administrator reads the
+    quotas of all persons. The person reads their own quotas. Give project_id
+    to read the quotas of another person. You must then be a manager or a
+    supervisor in the team of this project. The role held on the project team
+    applies. A manager or a supervisor who gives a project_id of a project
+    they are not a team member of gets a 403, also for their own quotas.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+    - in: query
+      name: count_mode
+      required: false
+      schema:
+        type: string
+        enum: [weighted, weighteddone, feedback, done]
+      description: 'How to count the shots: weighted, weighteddone, feedback or
+        done. The default value is weighted. The weighted modes give each shot the
+        part of its work time that is in the period. The other modes count each
+        shot on its end date. The feedback modes end a shot at its first feedback.
+        The done modes end a shot when it is done.'
+      example: weighted
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Get only the shots of this project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Get only the shots of this task type
+      example: b35b7fb5-df86-5776-b181-68564193d361
+  responses:
+    200:
+      description: The list of quota shots
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              description: >-
+                A serialized shot, with its project_id, full_name and the
+                weight it carries in the period.
+    400:
+      description: The date or count_mode is not valid
+    403:
+      description: You cannot read the quotas of this person, or the person is
+        a bot
+    404:
+      description: The person does not exist
+
+PersonMonthTimeSpentsResource_get:
+  summary: Get the time spent of a person for a month, by task
+  description: Get the time spent of a person for a month, with one entry per
+    task. Give project_id to keep the tasks of one project. An administrator
+    and the person get all the tasks. A manager gets the tasks of the projects
+    they manage. A supervisor gets the tasks of the projects they supervise,
+    for the task types of their departments. A supervisor without department
+    gets all the task types. A manager or a supervisor who gives a project_id
+    of another project gets a 403. Other users cannot read the time spents of
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spent on this project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The time spent of each task for the month
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type of the task
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project of the task
+                project_name:
+                  type: string
+                  description: Project name
+                entity_name:
+                  type: string
+                  description: Name of the entity of the task
+                entity_type_name:
+                  type: string
+                  description: Name of the entity type of the task
+                sequence_name:
+                  type: string
+                  description: Sequence name, for a shot
+                episode_name:
+                  type: string
+                  description: Episode name, for a shot
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent on the task in hours
+                  example: 8.5
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot read the time spents of this person, or the
+        person is a bot, or you cannot access this project
+    404:
+      description: The person does not exist
+
+PersonWeekDayOffResource_get:
+  summary: Get the day offs of a person for a week
+  description: Get the day offs of a person for a week. An administrator, the
+    person, and a manager of a project where the person is a team member get
+    the day offs with their description. A supervisor of such a project who
+    shares a department with the person gets the day offs without their
+    description. A supervisor without department gets them for all the persons
+    of their projects. The manager and supervisor roles are the roles held on
+    the project team. Other users cannot read them.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: week
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 52
+      description: Week number of the ISO year, from 1 to 53
+      example: 35
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The year or the week is not valid
+    403:
+      description: You cannot read the day offs of this person, or the person
+        is a bot
+    404:
+      description: The person does not exist
+
+PersonWeekQuotaShotsResource_get:
+  summary: Get the quota shots of a person for a week
+  description: Get the shots that count in the quota of a person for a week. A
+    quota shot is a shot that the person ended. An administrator reads the
+    quotas of all persons. The person reads their own quotas. Give project_id
+    to read the quotas of another person. You must then be a manager or a
+    supervisor in the team of this project. The role held on the project team
+    applies. A manager or a supervisor who gives a project_id of a project
+    they are not a team member of gets a 403, also for their own quotas.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: week
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 52
+      description: Week number of the ISO year, from 1 to 53
+      example: 35
+    - in: query
+      name: count_mode
+      required: false
+      schema:
+        type: string
+        enum: [weighted, weighteddone, feedback, done]
+      description: 'How to count the shots: weighted, weighteddone, feedback or
+        done. The default value is weighted. The weighted modes give each shot the
+        part of its work time that is in the period. The other modes count each
+        shot on its end date. The feedback modes end a shot at its first feedback.
+        The done modes end a shot when it is done.'
+      example: weighted
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Get only the shots of this project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: >-
+        Get only the shots of this task type
+      example: b35b7fb5-df86-5776-b181-68564193d361
+  responses:
+    200:
+      description: The list of quota shots
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              description: >-
+                A serialized shot, with its project_id, full_name and the
+                weight it carries in the period.
+    400:
+      description: The date or count_mode is not valid
+    403:
+      description: You cannot read the quotas of this person, or the person is
+        a bot
+    404:
+      description: The person does not exist
+
+PersonWeekTimeSpentsResource_get:
+  summary: Get the time spent of a person for a week, by task
+  description: Get the time spent of a person for a week, with one entry per
+    task. Give project_id to keep the tasks of one project. An administrator
+    and the person get all the tasks. A manager gets the tasks of the projects
+    they manage. A supervisor gets the tasks of the projects they supervise,
+    for the task types of their departments. A supervisor without department
+    gets all the task types. A manager or a supervisor who gives a project_id
+    of another project gets a 403. Other users cannot read the time spents of
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: week
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 52
+      description: Week number of the ISO year, from 1 to 53
+      example: 35
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spent on this project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The time spent of each task for the week
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type of the task
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project of the task
+                project_name:
+                  type: string
+                  description: Project name
+                entity_name:
+                  type: string
+                  description: Name of the entity of the task
+                entity_type_name:
+                  type: string
+                  description: Name of the entity type of the task
+                sequence_name:
+                  type: string
+                  description: Sequence name, for a shot
+                episode_name:
+                  type: string
+                  description: Episode name, for a shot
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent on the task in hours
+                  example: 8.5
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot read the time spents of this person, or the
+        person is a bot, or you cannot access this project
+    404:
+      description: The person does not exist
+
+PersonYearDayOffResource_get:
+  summary: Get the day offs of a person for a year
+  description: Get the day offs of a person for a year. An administrator, the
+    person, and a manager of a project where the person is a team member get
+    the day offs with their description. A supervisor of such a project who
+    shares a department with the person gets the day offs without their
+    description. A supervisor without department gets them for all the persons
+    of their projects. The manager and supervisor roles are the roles held on
+    the project team. Other users cannot read them.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The year is not valid
+    403:
+      description: You cannot read the day offs of this person, or the person
+        is a bot
+    404:
+      description: The person does not exist
+
+PersonYearTimeSpentsResource_get:
+  summary: Get the time spent of a person for a year, by task
+  description: Get the time spent of a person for a year, with one entry per
+    task. Give project_id to keep the tasks of one project. An administrator
+    and the person get all the tasks. A manager gets the tasks of the projects
+    they manage. A supervisor gets the tasks of the projects they supervise,
+    for the task types of their departments. A supervisor without department
+    gets all the task types. A manager or a supervisor who gives a project_id
+    of another project gets a 403. Other users cannot read the time spents of
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spent on this project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The time spent of each task for the year
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type of the task
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project of the task
+                project_name:
+                  type: string
+                  description: Project name
+                entity_name:
+                  type: string
+                  description: Name of the entity of the task
+                entity_type_name:
+                  type: string
+                  description: Name of the entity type of the task
+                sequence_name:
+                  type: string
+                  description: Sequence name, for a shot
+                episode_name:
+                  type: string
+                  description: Episode name, for a shot
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent on the task in hours
+                  example: 8.5
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot read the time spents of this person, or the
+        person is a bot, or you cannot access this project
+    404:
+      description: The person does not exist
+
+PresenceLogsResource_get:
+  summary: Get the presence logs of a month
+  description: Get a CSV file with the presence of each active person for each
+    day of a month. One row per person, one column per day. Inactive persons
+    and guests are not in the file. You must be an administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: month_date
+      required: true
+      schema:
+        type: string
+        format: date
+      description: Month in the YYYY-MM format
+      example: 2022-07
+  responses:
+    200:
+      description: The CSV file
+      content:
+        text/csv:
+          schema:
+            type: string
+            format: binary
+    400:
+      description: The month is not valid
+    403:
+      description: You are not an administrator
+
+RemoveFromDepartmentResource_delete:
+  summary: Remove a person from a department
+  description: Remove a person from a department. You must be an
+    administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: department_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Department unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The person is removed from the department
+    400:
+      description: The department does not exist
+    403:
+      description: You are not an administrator
+    404:
+      description: The person does not exist
+
+ResetPasswordLinkResource_post:
+  summary: Get a password reset link
+  description: Get the password reset link of a person. This link is the same
+    as the link in the password reset email. Thus, an administrator can send
+    it by another way, for example when the email server is not set. If a
+    reset token is valid, the route uses it again. Thus, a link that you sent
+    before stays valid. Else, the route makes a new token. You must be an
+    administrator.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The password reset link
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reset_password_link:
+                type: string
+                description: Link to follow to choose a new password
+    400:
+      description: The person is a protected account, or another
+        administrator who has a password
+    403:
+      description: You are not an administrator, or the person is a bot
+    404:
+      description: The person does not exist
+
+TimeSpentMonthResource_get:
+  summary: Get the time spent table of a month
+  description: Get a table of the time spent of each person for each day of a
+    month. Add project_id, department_id or studio_id to filter the table. An
+    administrator gets the time spent of all persons. A manager gets the time
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: path
+      name: month
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 12
+      description: Month, from 1 to 12
+      example: 7
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spents of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: department_id
+      required: false
+      description: Get only the persons of this department
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: studio_id
+      required: false
+      description: Get only the persons of this studio
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of each day of the month to a map of person
+        identifiers to the time spent in hours
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The date is not valid, or a supervisor asks for another
+        department
+    403:
+      description: You cannot access this project
+
+TimeSpentMonthsResource_get:
+  summary: Get the time spent table of a year by month
+  description: Get a table of the time spent of each person for each month of
+    a year. Add project_id, department_id or studio_id to filter the table. An
+    administrator gets the time spent of all persons. A manager gets the time
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spents of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: department_id
+      required: false
+      description: Get only the persons of this department
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: studio_id
+      required: false
+      description: Get only the persons of this studio
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of each month of the year to a map of person
+        identifiers to the time spent in hours
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The date is not valid, or a supervisor asks for another
+        department
+    403:
+      description: You cannot access this project
+
+TimeSpentWeekResource_get:
+  summary: Get the time spent table of a year by week
+  description: Get a table of the time spent of each person for each week of a
+    year. Add project_id, department_id or studio_id to filter the table. An
+    administrator gets the time spent of all persons. A manager gets the time
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: year
+      required: true
+      schema:
+        type: integer
+      description: Year, for example 2026
+      example: 2022
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spents of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: department_id
+      required: false
+      description: Get only the persons of this department
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: studio_id
+      required: false
+      description: Get only the persons of this studio
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of each ISO week of the year to a map of person
+        identifiers to the time spent in hours
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The date is not valid, or a supervisor asks for another
+        department
+    403:
+      description: You cannot access this project
+
+TimeSpentYearsResource_get:
+  summary: Get the time spent table by year
+  description: Get a table of the time spent of each person for each year. Add
+    project_id, department_id or studio_id to filter the table. An
+    administrator gets the time spent of all persons. A manager gets the time
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
+  tags:
+    - Persons
+  responses:
+    200:
+      description: A map of each year to a map of person identifiers to the
+        time spent in hours
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: A supervisor asks for another department
+    403:
+      description: You cannot access this project
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      description: Get only the time spents of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: department_id
+      required: false
+      description: Get only the persons of this department
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: studio_id
+      required: false
+      description: Get only the persons of this studio
+      schema:
+        type: string
+        format: uuid
+
+TimeSpentsResource_get:
+  summary: Get the time spents of a person
+  description: Get the time spent entries of a person for a period. Give both
+    start_date and end_date. Without them, the route returns all the entries.
+    An administrator and the person get all the entries. A manager gets the
+    entries of the projects they manage. A supervisor gets the entries of the
+    projects they supervise, for the task types of their departments. A
+    supervisor without department gets all the task types. Other users cannot
+    read the time spents of other persons. You cannot read the time spents of
+    a bot. The manager and supervisor roles are the roles held on the project
+    team.
+  tags:
+    - Persons
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: start_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: First date of the period, in the YYYY-MM-DD format
+      example: '2022-07-01'
+    - in: query
+      name: end_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Last date of the period, in the YYYY-MM-DD format
+      example: '2022-07-31'
+  responses:
+    200:
+      description: The list of time spent entries
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Time spent unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project of the task
+                  example: d57d91d7-f1a8-7998-d3a3-8a786315f581
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type of the task
+                  example: e68ea2e8-a2b9-8aa9-e4b4-9b897426a692
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent duration in hours
+                  example: 8.5
+                date:
+                  type: string
+                  format: date
+                  description: Date of time spent entry
+                  example: '2022-07-12'
+    400:
+      description: Only one date of the period is given, or a date is not
+        valid
+    403:
+      description: You cannot read the time spents of this person, or the
+        person is a bot
+    404:
+      description: The person does not exist

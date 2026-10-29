@@ -1,0 +1,823 @@
+AllEditsResource_get:
+  summary: Get edits
+  description: Get the edits. Add a query parameter for each column to filter
+    on. If you are not an administrator, you must give project_id. A vendor
+    gets only the edits of their assigned tasks. The route /data/edits/all
+    gives the same result.
+  tags:
+    - Edits
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the edits of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: name
+      required: false
+      example: Opening Sequence
+      description: Get only the edits with this name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of edits
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Edit unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Edit name
+                  example: Opening Sequence
+                description:
+                  type: string
+                  description: Edit description
+                  example: Main opening sequence edit
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                episode_id:
+                  type: string
+                  format: uuid
+                  description: Episode identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project
+
+EditPreviewsResource_get:
+  summary: Get the previews of an edit
+  description: Get the preview files of an edit. The response is a map of task
+    type identifiers to lists of previews.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: edit_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the edit
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of task type identifiers to lists of previews
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Preview unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d360
+                  name:
+                    type: string
+                    description: Preview name
+                    example: edit_preview_01
+                  original_name:
+                    type: string
+                    description: Original file name
+                    example: edit_sequence.mov
+                  file_path:
+                    type: string
+                    description: File path
+                    example: /previews/edit/edit_preview_01.mov
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    description: Task type identifier
+                    example: c46c80c6-e097-6887-c292-79675204e470
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                    example: '2023-01-01T12:00:00Z'
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
+    404:
+      description: The edit does not exist
+
+EditResource_delete:
+  summary: Delete an edit
+  description: Delete an edit. The creator of the edit can delete it if the
+    creator is in the project team. Other users must be managers of the
+    project. If the edit has tasks, the edit is only marked as canceled. Use
+    force=true to delete the edit and all its related data.
+    Only a manager of the project can use force=true.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: edit_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the edit to delete
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: force
+      required: false
+      description: Delete the edit and all its related data
+      example: false
+      schema:
+        type: boolean
+  responses:
+    204:
+      description: The edit is deleted
+    403:
+      description: You cannot delete this edit
+    404:
+      description: The edit does not exist
+
+EditResource_get:
+  summary: Get an edit
+  description: Get an edit with its project name, episode and tasks. A client
+    gets the tasks without the studio fields.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: edit_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the edit
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The edit
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Edit unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Edit name
+                example: Opening Sequence
+              description:
+                type: string
+                description: Edit description
+                example: Main opening sequence edit
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              episode_id:
+                type: string
+                format: uuid
+                description: Episode identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
+    404:
+      description: The edit does not exist
+
+EditTaskTypesResource_get:
+  summary: Get the task types of an edit
+  description: Get the task types of the tasks of an edit.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: edit_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the edit
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of task types
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task type unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Task type name
+                  example: Edit
+                short_name:
+                  type: string
+                  description: Task type short name
+                  example: EDT
+                color:
+                  type: string
+                  description: Task type color code
+                  example: '#FF5733'
+                for_entity:
+                  type: string
+                  description: Entity type this task type is for
+                  example: Edit
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
+    404:
+      description: The edit does not exist
+
+EditTasksResource_get:
+  summary: Get the tasks of an edit
+  description: Get the tasks of an edit.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: edit_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the edit
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      example: true
+      schema:
+        type: boolean
+  responses:
+    200:
+      description: The list of tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Task name
+                  example: Edit Task
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                task_status_id:
+                  type: string
+                  format: uuid
+                  description: Task status identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                assigned_to:
+                  type: string
+                  format: uuid
+                  description: Assigned person identifier
+                  example: f79f13f9-1320-9010-f625-029985371800
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
+    404:
+      description: The edit does not exist
+
+EditVersionsResource_get:
+  summary: Get the versions of an edit
+  description: Get the saved versions of the data of an edit. Each version
+    keeps the values of the edit at one time.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: edit_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the edit
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of versions
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Version unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                edit_id:
+                  type: string
+                  format: uuid
+                  description: Edit identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                version_number:
+                  type: integer
+                  description: Version number
+                  example: 1
+                data:
+                  type: object
+                  description: Version data content
+                  example: {duration: 120, fps: 24, changes: Added transitions}
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                created_by:
+                  type: string
+                  format: uuid
+                  description: Creator person identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this edit
+    404:
+      description: The edit does not exist
+
+EditsAndTasksResource_get:
+  summary: Get edits with their tasks
+  description: Get the edits with the tasks of each edit. Filter with
+    project_id or episode_id. Use episode_id=main for the edits without
+    episode, episode_id=all for all the edits. A client gets the tasks without
+    the studio fields. If you are not an administrator, you must give
+    project_id. A vendor gets only the edits of their assigned tasks.
+  tags:
+    - Edits
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the edits of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: episode_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the edits of this episode. Use main for the edits
+        without episode, all for all the edits.
+      schema:
+        type: string
+    - in: query
+      name: assigned_to
+      required: false
+      description: With any value, get only the edits that have a task
+        assigned to you.
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of edits with their tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Edit unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Edit name
+                  example: Opening Sequence
+                description:
+                  type: string
+                  description: Edit description
+                  example: Main opening sequence edit
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                project_name:
+                  type: string
+                  description: Project name
+                  example: My Animation Project
+                episode_id:
+                  type: string
+                  format: uuid
+                  description: Episode identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                tasks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task unique identifier
+                        example: d57d91d7-f108-7998-d403-80786315f580
+                      name:
+                        type: string
+                        description: Task name
+                        example: Edit Task
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        description: Task type identifier
+                        example: e68e02e8-0219-8009-e514-918974260690
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project
+
+EpisodeEditTasksResource_get:
+  summary: Get the edit tasks of an episode
+  description: Get the tasks of the edits of an episode. Vendors cannot use
+    this route.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: episode_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the episode
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      example: true
+      schema:
+        type: boolean
+  responses:
+    200:
+      description: The list of tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Task name
+                  example: Episode Edit Task
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                task_status_id:
+                  type: string
+                  format: uuid
+                  description: Task status identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                assigned_to:
+                  type: string
+                  format: uuid
+                  description: Assigned person identifier
+                  example: f79f13f9-1320-9010-f625-029985371800
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project, or you are a vendor
+    404:
+      description: The episode does not exist
+
+EpisodeEditsResource_get:
+  summary: Get the edits of an episode
+  description: Get the edits of an episode. A vendor does not get the metadata
+    columns that are hidden from vendors.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: episode_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the episode
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      example: true
+      schema:
+        type: boolean
+  responses:
+    200:
+      description: The list of edits
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Edit unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Edit name
+                  example: Episode Edit
+                description:
+                  type: string
+                  description: Edit description
+                  example: Main episode edit
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                episode_id:
+                  type: string
+                  format: uuid
+                  description: Episode identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project
+    404:
+      description: The episode does not exist
+
+ProjectEditsResource_get:
+  summary: Get the edits of a project
+  description: Get the edits of a project. A vendor gets only the edits of
+    their assigned tasks, without the hidden metadata columns.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of edits
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Edit unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Edit name
+                  example: Opening Sequence
+                description:
+                  type: string
+                  description: Edit description
+                  example: Main opening sequence edit
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                episode_id:
+                  type: string
+                  format: uuid
+                  description: Episode identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project
+    404:
+      description: The project does not exist
+
+ProjectEditsResource_post:
+  summary: Create an edit
+  description: Create an edit in a project. Give episode_id to put the edit in
+    an episode. You must be a manager of the project.
+  tags:
+    - Edits
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Edit name
+              example: Opening Sequence
+            description:
+              type: string
+              description: Edit description
+              example: Main opening sequence edit
+            data:
+              type: object
+              description: Additional edit data
+              example: {duration: 120, fps: 24}
+            episode_id:
+              type: string
+              format: uuid
+              description: Episode identifier (optional)
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The new edit
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Edit unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Edit name
+                example: Opening Sequence
+              description:
+                type: string
+                description: Edit description
+                example: Main opening sequence edit
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              episode_id:
+                type: string
+                format: uuid
+                description: Episode identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              data:
+                type: object
+                description: Additional edit data
+                example: {duration: 120, fps: 24}
+              created_by:
+                type: string
+                format: uuid
+                description: Creator person identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist

@@ -1,0 +1,218 @@
+OutputFileResource_get:
+  summary: Get an output file
+  tags:
+    - Crud
+  description: Get an output file. You must be in the team of the project of
+    its entity. A vendor must also be assigned to a task of the entity.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the output file
+  responses:
+    200:
+      description: The output file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: output_file_v001
+              entity_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not valid
+    403:
+      description: You are not in the team of the project, or you
+        are a vendor with no task on the entity
+    404:
+      description: The output file does not exist
+
+OutputFileResource_put:
+  summary: Update an output file
+  tags:
+    - Crud
+  description: Update the fields of an output file. Send only the fields to
+    change. You cannot change id, created_at, updated_at. You must be a manager
+    of the project of its entity, or work on a task of the entity.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the output file
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: output_file_v002
+            revision:
+              type: integer
+              example: 2
+            quality:
+              type: string
+              example: high
+            path:
+              type: string
+              example: /shots/sh010/lighting/output_file_v002.exr
+  responses:
+    200:
+      description: The updated output file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: output_file_v002
+              entity_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or the quality is unknown
+    403:
+      description: You are not a manager of the project and you do not work
+        on the entity
+    404:
+      description: The output file does not exist
+
+OutputFileResource_delete:
+  summary: Delete an output file
+  tags:
+    - Crud
+  description: Delete an output file. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the output file
+  responses:
+    204:
+      description: The output file is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The output file does not exist
+
+OutputFilesResource_get:
+  summary: Get output files
+  tags:
+    - Crud
+  description: Get the output files. Add a query parameter for each column to
+    filter on, for example entity_id=<id>. To get the rows that have one value
+    of a list, give the list in JSON, for example
+    output_type_id=["<id1>","<id2>"]. An administrator gets every output
+    file, anybody else the ones of the projects they belong to. You get no
+    output file of a project where you are a vendor. The role held on the
+    project team applies.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of output files, or a page of rows if you give
+        page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid

@@ -1,0 +1,247 @@
+ConfigResource_get:
+  summary: Get the configuration of the instance
+  description: 'Get the configuration that Kitsu needs before login: SSO, 2FA, indexer,
+    locale, timezone, theme and movie bitrates. If Sentry is enabled for Kitsu,
+    the response also gives the Sentry settings. You do not need a token for this
+    route.'
+  tags:
+    - Index
+  security: []
+  responses:
+    200:
+      description: The configuration
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              is_self_hosted:
+                type: boolean
+              dark_theme_by_default:
+                type: boolean
+              indexer_configured:
+                type: boolean
+              saml_enabled:
+                type: boolean
+              oidc_enabled:
+                type: boolean
+              enforce_2fa:
+                type: boolean
+              preview_accounts_enabled:
+                type: boolean
+              crisp_token:
+                type: string
+              saml_idp_name:
+                type: string
+              oidc_idp_name:
+                type: string
+              default_locale:
+                type: string
+              default_timezone:
+                type: string
+              movie_highdef_bitrate:
+                type: integer
+              movie_lowdef_bitrate:
+                type: integer
+              sentry:
+                type: object
+                properties:
+                  dsn:
+                    type: string
+                  sampleRate:
+                    type: number
+
+IndexResource_get:
+  summary: Get the API name and version
+  description: Get the name and the version of the API. You do not need a
+    token for this route.
+  tags:
+    - Index
+  security: []
+  responses:
+    200:
+      description: The name and the version of the API
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              api:
+                type: string
+              version:
+                type: string
+
+InfluxStatusResource_get:
+  summary: Get the status of the services for InfluxDB
+  description: Get the status of the services of the API in a format for
+    InfluxDB. The value is 1 when the service is up and 0 when the service is
+    down. You do not need a token for this route.
+  tags:
+    - Index
+  security: []
+  responses:
+    200:
+      description: The status of each service and the time
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              database-up:
+                type: integer
+                enum:
+                  - 0
+                  - 1
+              key-value-store-up:
+                type: integer
+                enum:
+                  - 0
+                  - 1
+              event-stream-up:
+                type: integer
+                enum:
+                  - 0
+                  - 1
+              job-queue-up:
+                type: integer
+                enum:
+                  - 0
+                  - 1
+              indexer-up:
+                type: integer
+                enum:
+                  - 0
+                  - 1
+              time:
+                type: number
+                description: UNIX timestamp
+
+StatsResource_get:
+  summary: Get the usage statistics
+  description: Get the number of projects, assets, shots, tasks and persons.
+    You must be an administrator.
+  tags:
+    - Index
+  responses:
+    200:
+      description: The usage statistics
+      content:
+        application/json:
+          schema:
+            type: object
+            properties: {}
+    403:
+      description: You are not an administrator
+
+StatusResource_get:
+  summary: Get the status of the services
+  description: 'Get the status of the services of the API: the database, the key
+    value store, the event stream, the job queue and the indexer. A service is up
+    if the API can connect to it. The job queue is up if one worker or more is available.
+    You do not need a token for this route.'
+  tags:
+    - Index
+  security: []
+  responses:
+    200:
+      description: The name, the version and the status of each service
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              version:
+                type: string
+              database-up:
+                type: boolean
+              key-value-store-up:
+                type: boolean
+              event-stream-up:
+                type: boolean
+              job-queue-up:
+                type: boolean
+              indexer-up:
+                type: boolean
+
+StatusResourcesResource_get:
+  summary: Get the resource usage
+  description: Get the CPU usage of each core, the load average, the memory
+    usage and the number of running jobs. The number of jobs is 0 if the job
+    queue is disabled. You do not need a token for this route.
+  tags:
+    - Index
+  security: []
+  responses:
+    200:
+      description: The CPU, memory and job statistics
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              date:
+                type: string
+              cpu:
+                type: object
+                properties:
+                  percent:
+                    type: array
+                    items:
+                      type: number
+                  loadavg:
+                    type: object
+              memory:
+                type: object
+                properties:
+                  total:
+                    type: number
+                  used:
+                    type: number
+                  available:
+                    type: number
+                  percent:
+                    type: number
+              jobs:
+                type: object
+                properties:
+                  running_jobs:
+                    type: integer
+
+TestEventsResource_get:
+  summary: Send a test event
+  description: Send a main:test event to the event stream. Use this route to
+    test an event listener, for example the Python client. You must be an
+    administrator.
+  tags:
+    - Index
+  responses:
+    200:
+      description: The event is sent
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+    403:
+      description: You are not an administrator
+
+TxtStatusResource_get:
+  summary: Get the status of the services as text
+  description: Get the status of the services of the API as plain text. Each
+    line gives one service and the value up or down. You do not need a token
+    for this route.
+  tags:
+    - Index
+  security: []
+  responses:
+    200:
+      description: The status as text
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "name: Zou\nversion: 1.0.0\ndatabase-up: up\n"

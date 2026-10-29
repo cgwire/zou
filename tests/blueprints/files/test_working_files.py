@@ -48,6 +48,18 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
         self.assertEqual(working_files["wip"], working_file_wip.serialize())
 
+    def test_an_artist_files_as_themselves(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        working_file = self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "theirs", "person_id": self.user["id"]},
+        )
+        self.assertEqual(working_file["person_id"], self.user_cg_artist["id"])
+
     def test_new_working_file(self):
         task = Task.get(self.task_id)
         self.assertEqual(len(task.assignees), 1)
@@ -242,7 +254,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
             os.path.join("thumbnails", "th01.png")
         )
 
-        self.upload_file(path, fixture)
+        self.assertIsNone(working_file.uploaded_at)
+        uploaded = self.upload_file(path, fixture)
+        self.assertIsNotNone(uploaded["uploaded_at"])
+        self.assertEqual(uploaded["size"], os.path.getsize(fixture))
+        stored = self.get(f"data/working-files/{working_file.id}")
+        self.assertEqual(stored["uploaded_at"], uploaded["uploaded_at"])
 
         response = self.app.get(path, headers=self.base_headers)
         self.assertEqual(response.status_code, 200)
@@ -262,3 +279,44 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(path, 403)
+
+    def download_as_artist(self, role=None, task_id=None, cast=False):
+        import os
+
+        from zou.app.services import breakdown_service, tasks_service
+
+        working_file = self.generate_fixture_working_file()
+        path = f"/data/working-files/{working_file.id}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        self.upload_file(path, fixture)
+        if cast:
+            breakdown_service.update_casting(
+                self.shot.id, [{"asset_id": self.asset.id, "nb_occurences": 1}]
+            )
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, role)
+        if task_id is not None:
+            tasks_service.assign_task(task_id, artist_id)
+        self.log_in_cg_artist()
+        return self.app.get(path, headers=self.base_headers).status_code
+
+    def test_an_artist_downloads_the_working_file_of_their_entity(self):
+        self.assertEqual(self.download_as_artist(task_id=self.task.id), 200)
+
+    def test_an_artist_downloads_the_working_file_of_an_asset_cast(self):
+        self.assertEqual(
+            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+        )
+
+    def test_an_artist_downloads_no_working_file_out_of_their_tasks(self):
+        self.assertEqual(
+            self.download_as_artist(task_id=self.shot_task.id), 403
+        )
+
+    def test_a_client_downloads_no_working_file(self):
+        self.assertEqual(self.download_as_artist("client"), 403)
+
+    def test_a_supervisor_of_the_project_downloads_any_working_file(self):
+        self.assertEqual(self.download_as_artist("supervisor"), 200)

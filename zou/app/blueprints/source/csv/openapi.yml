@@ -1,0 +1,643 @@
+AssetsCsvImportResource_post:
+  summary: Import assets from a CSV file
+  tags:
+    - Import
+  description: Create assets in a project from a CSV file. A line can also set
+    the metadata and the task statuses of an asset. Send the CSV file in a
+    multipart form. The route finds the separator of the file. Each line is
+    imported in order. If a line is not valid, the import stops. Without
+    update=true, an asset that exists is not changed, but the route creates
+    the tasks it misses. You must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: update
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Update the entities that exist
+  responses:
+    201:
+      description: The imported lines
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Character A
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                entity_type_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                description:
+                  type: string
+                  example: Main character asset
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with asset data
+              format: binary
+          required:
+            - file
+
+CastingCsvImportResource_post:
+  summary: Import a casting from a CSV file
+  tags:
+    - Import
+  description: Set the casting of the shots, the episodes or the assets of a
+    project from a CSV file. A link that exists is updated. Send the CSV file
+    in a multipart form. The route finds the separator of the file. Each line
+    is imported in order. If a line is not valid, the import stops. You must
+    be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+  responses:
+    201:
+      description: One null value per imported line
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              nullable: true
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with casting link data
+              format: binary
+          required:
+            - file
+
+EditsCsvImportResource_post:
+  summary: Import edits from a CSV file
+  tags:
+    - Import
+  description: Create edits in a project from a CSV file. A line can also set
+    the metadata and the task statuses of an edit. Send the CSV file in a
+    multipart form. The route finds the separator of the file. Each line is
+    imported in order. If a line is not valid, the import stops. Without
+    update=true, the lines of the entities that exist are skipped. You must be
+    a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: update
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Update the entities that exist
+  responses:
+    201:
+      description: The imported lines
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Edit_001
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                parent_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                description:
+                  type: string
+                  example: Edit description
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with edit data
+              format: binary
+          required:
+            - file
+
+PersonsCsvImportResource_post:
+  summary: Import persons from a CSV file
+  tags:
+    - Import
+  description: Create persons from a CSV file. A line gives the name, email,
+    phone, role, departments, studio, country, contract type, position,
+    seniority, daily salary and active status. Send the CSV file in a
+    multipart form. The route finds the separator of the file. Each line is
+    imported in order. If a line is not valid, the import stops. Without
+    update=true, the lines of the entities that exist are skipped. You must be
+    an administrator.
+  parameters:
+    - in: query
+      name: update
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Update the entities that exist
+  responses:
+    201:
+      description: The imported lines
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                first_name:
+                  type: string
+                  example: John
+                last_name:
+                  type: string
+                  example: Doe
+                email:
+                  type: string
+                  format: email
+                  example: john.doe@example.com
+                phone:
+                  type: string
+                  example: 1234567890
+                role:
+                  type: string
+                  example: user
+                departments:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: []
+                studio_id:
+                  type: string
+                  format: uuid
+                  example:
+                country:
+                  type: string
+                  description: ISO 3166-1 alpha-2 country code (nullable)
+                  example: FR
+                contract_type:
+                  type: string
+                  example: open-ended
+                position:
+                  type: string
+                  example: lead
+                seniority:
+                  type: string
+                  example: senior
+                daily_salary:
+                  type: integer
+                  example: 320
+                active:
+                  type: boolean
+                  example: true
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not an administrator
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with person data
+              format: binary
+          required:
+            - file
+
+ShotsCsvImportResource_post:
+  summary: Import shots from a CSV file
+  tags:
+    - Import
+  description: Create shots in a project from a CSV file. A line gives the
+    episode, the sequence, the frames, the metadata and the task statuses of a
+    shot. The route creates the missing episodes and sequences. Send the CSV
+    file in a multipart form. The route finds the separator of the file. Each
+    line is imported in order. If a line is not valid, the import stops.
+    Without update=true, the lines of the entities that exist are skipped. You
+    must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: update
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Update the entities that exist
+  responses:
+    201:
+      description: The imported lines
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                parent_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                nb_frames:
+                  type: integer
+                  example: 120
+                description:
+                  type: string
+                  example: Shot description
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with shot data
+              format: binary
+          required:
+            - file
+
+TaskTypeEstimationsCsvImportResource_post:
+  summary: Import task estimations from a CSV file
+  tags:
+    - Import
+  description: Set the estimations, the dates and the other values of the
+    tasks of a task type from a CSV file. Each line gives one entity. The
+    columns are Parent, Entity, Estimation, Drawings, Start date, Due date,
+    Difficulty and the names of the task metadata descriptors of the task
+    type. For an asset task type, Parent is the asset type and Entity is the
+    asset. For a shot task type, Parent is the sequence and Entity is the
+    shot. For a sequence or an edit task type, Parent is the name of its
+    episode, or empty to match any episode, and Entity is the sequence or the
+    edit. For an episode task type, Entity is the episode and the route
+    ignores Parent. When several entities match a line, the ones with the
+    exact name win, then the ones that are not canceled. If a line still
+    matches several entities, the route refuses it. The route does not support
+    concept task types. The Estimation column is in hours when the
+    organisation shows durations in hours, in days otherwise. Dates use the
+    YYYY-MM-DD format. If Due date is empty and Start date and Estimation are
+    set, the route computes the due date from them. Send the CSV file in a
+    multipart form. The route finds the separator of the file. Each line is
+    imported in order. If a line is not valid, the import stops. You must be
+    an administrator, a manager of the project, or a supervisor of the
+    project. A supervisor must have no department, or the department of the
+    task type must be one of their departments.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: b24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  responses:
+    201:
+      description: One null value per imported line
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              nullable: true
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You cannot change the tasks of this task type
+    404:
+      description: The project or the task type does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with task estimation data
+              format: binary
+          required:
+            - file
+
+TaskTypeEstimationsEpisodeCsvImportResource_post:
+  summary: Import task estimations of an episode from a CSV file
+  tags:
+    - Import
+  description: Set the estimations, the dates and the other values of the
+    tasks of a task type from a CSV file. Each line gives one entity. The
+    columns are Parent, Entity, Estimation, Drawings, Start date, Due date,
+    Difficulty and the names of the task metadata descriptors of the task
+    type. The route changes only the tasks of the episode. Use main for the
+    entities without episode and all for every entity of the project. For an
+    asset task type, Parent is the asset type and Entity is the asset, among
+    the assets of the episode and the ones cast into it. For a shot task type,
+    Parent is the sequence and Entity is the shot, among the shots of the
+    episode. For a sequence or an edit task type, Entity is the sequence or
+    the edit, among the ones of the episode. Parent is empty or the name of
+    the episode. With main, Parent is empty. With all, Parent names the
+    episode, or is empty to match any episode. For an episode task type,
+    Entity is the episode, and the route ignores Parent and the episode of the
+    route. When several entities match a line, the ones with the exact name
+    win, then the ones that are not canceled, then the assets of the episode
+    over the ones cast into it. If a line still matches several entities, the
+    route refuses it. The route does not support concept task types. The
+    Estimation column is in hours when the organisation shows durations in
+    hours, in days otherwise. Dates use the YYYY-MM-DD format. If Due date is
+    empty and Start date and Estimation are set, the route computes the due
+    date from them. Send the CSV file in a multipart form. The route finds the
+    separator of the file. Each line is imported in order. If a line is not
+    valid, the import stops. You must be an administrator, a manager of the
+    project, or a supervisor of the project. A supervisor must have no
+    department, or the department of the task type must be one of their
+    departments.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: b24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+    - in: path
+      name: episode_id
+      required: true
+      schema:
+        type: string
+      description: Unique identifier of the episode, or main, or all. Another
+        value gives a 400.
+      example: c24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: One null value per imported line
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              nullable: true
+    400:
+      description: A line of the file is not valid. The lines before this line
+        are imported.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You cannot change the tasks of this task type
+    404:
+      description: The project or the task type does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with task estimation data
+              format: binary
+          required:
+            - file

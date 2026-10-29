@@ -10,6 +10,7 @@ from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.services import (
     comments_service,
+    entities_service,
     permissions_service,
     persons_service,
     projects_service,
@@ -714,15 +715,26 @@ class TaskAccessTestCase(PermissionsTestCase):
                 )
 
     def test_time_spent_of_someone_not_assigned_is_refused(self):
-        # Even an admin cannot log time on a task for someone who is not on
-        # it.
         artist = self.join_team(self.a_user("artist"))
+        self.join_team(self.a_user("manager"))
 
-        with self.as_role("admin"):
+        with self.as_role("manager"):
             with self.denied():
                 permissions_service.check_time_spent_access(
                     self.task_id, artist["id"]
                 )
+
+    def test_an_admin_handles_time_of_someone_not_assigned(self):
+        # Assignees change: the time logged by a former assignee must stay
+        # editable by an admin.
+        artist = self.join_team(self.a_user("artist"))
+
+        with self.as_role("admin"):
+            self.assertTrue(
+                permissions_service.check_time_spent_access(
+                    self.task_id, artist["id"]
+                )
+            )
 
     def test_a_manager_of_the_team_logs_time_for_an_assignee(self):
         artist = self.join_team(self.a_user("artist"))
@@ -889,6 +901,16 @@ class DepartmentAccessTestCase(PermissionsTestCase):
             with self.denied():
                 permissions_service.check_supervisor_task_access(
                     self.task_dict, {"task_status_id": UNKNOWN}
+                )
+
+    def test_a_supervisor_with_departments_sends_no_metadata(self):
+        self.a_supervisor(department=self.own_department)
+        entity = entities_service.get_entity(str(self.asset.id))
+
+        with self.as_role("supervisor"):
+            with self.denied():
+                permissions_service.check_metadata_department_access(
+                    entity, {}
                 )
 
     def test_a_manager_of_the_team_writes_any_column(self):

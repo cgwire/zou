@@ -1,4 +1,5 @@
 # -*- coding: UTF-8 -*-
+import datetime
 import unittest
 from operator import itemgetter
 from unittest import mock
@@ -112,6 +113,29 @@ class PersonTestCase(PersonFixtureTestCase):
         person_dict = person_model.present_minimal(relations=True)
         self.assertEqual(person_dict["departments"], [])
 
+    def test_updated_at_in_present_minimal(self):
+        """
+        Kitsu versions the avatar URL with updated_at. Without it, a
+        non-manager kept the previous picture of a person for as long as
+        the browser cache held it, up to a week.
+        """
+        person = Person.get_by(email="ema.doe@example.com")
+        Person.query.filter(Person.id == person.id).update(
+            {"updated_at": datetime.datetime(2021, 1, 1, 12, 0)}
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        last_edit = "2021-01-01T12:00:00"
+        self.assertEqual(
+            self.get(f"data/persons/{person.id}")["updated_at"], last_edit
+        )
+        context = {
+            entry["id"]: entry
+            for entry in self.get("data/user/context")["persons"]
+        }
+        self.assertEqual(context[str(person.id)]["updated_at"], last_edit)
+
     def test_get_person(self):
         person = self.get_first("data/persons")
         person_again = self.get(f"data/persons/{person['id']}?relations=false")
@@ -146,6 +170,23 @@ class PersonTestCase(PersonFixtureTestCase):
         resp = self.post("data/persons", data, 400)
         self.assertEqual(resp["data"]["limit"], 4)
         config.USER_LIMIT = 100
+
+    def test_create_person_non_admin_at_user_limit(self):
+        from zou.app import config
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        config.USER_LIMIT = 1
+        try:
+            data = {
+                "first_name": "John3",
+                "last_name": "Doe",
+                "email": "john3.doe@example.com",
+            }
+            resp = self.post("data/persons", data, 403)
+            self.assertNotIn("data", resp)
+        finally:
+            config.USER_LIMIT = 100
 
     def test_create_person_with_no_data(self):
         data = {}

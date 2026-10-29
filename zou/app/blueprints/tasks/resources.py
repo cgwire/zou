@@ -1,6 +1,5 @@
 import datetime
 
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -54,19 +53,22 @@ from zou.app.utils import (
     query,
     validation,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class AddPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddPreviewResource_post.yml")
+    @swag_from(SPECS["AddPreviewResource_post"])
     def post(self, task_id, comment_id):
         """
         Add task preview
         """
         body = validation.validate_request_body(CommentPreviewSchema)
 
-        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_work_access(task_id)
 
         person = persons_service.get_current_user()
         preview_file = comments_service.add_preview_file_to_comment(
@@ -78,12 +80,12 @@ class AddPreviewResource(MethodView, ArgsMixin):
 class AddExtraPreviewResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddExtraPreviewResource_post.yml")
+    @swag_from(SPECS["AddExtraPreviewResource_post"])
     def post(self, task_id, comment_id, preview_file_id):
         """
         Add preview to comment
         """
-        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_work_access(task_id)
         comments_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
@@ -95,7 +97,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         return preview_file, 201
 
     @jwt_required()
-    @swag_from("openapi/AddExtraPreviewResource_delete.yml")
+    @swag_from(SPECS["AddExtraPreviewResource_delete"])
     def delete(self, task_id, comment_id, preview_file_id):
         """
         Delete preview from comment
@@ -104,7 +106,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         self.check_id_parameter(comment_id)
         self.check_id_parameter(preview_file_id)
         task = tasks_service.get_task(task_id)
-        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_work_access(task_id)
         comments_service.get_comment_preview_file(
             task_id, comment_id, preview_file_id
         )
@@ -127,7 +129,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
 class TaskPreviewsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskPreviewsResource_get.yml")
+    @swag_from(SPECS["TaskPreviewsResource_get"])
     def get(self, task_id):
         """
         Get task previews
@@ -144,7 +146,7 @@ class TaskPreviewsResource(MethodView):
 class TaskCommentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskCommentsResource_get.yml")
+    @swag_from(SPECS["TaskCommentsResource_get"])
     def get(self, task_id):
         """
         Get task comments
@@ -161,7 +163,7 @@ class TaskCommentsResource(MethodView):
 class TaskCommentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskCommentResource_get.yml")
+    @swag_from(SPECS["TaskCommentResource_get"])
     def get(self, task_id, comment_id):
         """
         Get comment
@@ -196,7 +198,7 @@ class TaskCommentResource(MethodView):
         return comment
 
     @jwt_required()
-    @swag_from("openapi/TaskCommentResource_delete.yml")
+    @swag_from(SPECS["TaskCommentResource_delete"])
     def delete(self, task_id, comment_id):
         """
         Delete comment
@@ -216,30 +218,41 @@ class TaskCommentResource(MethodView):
         return "", 204
 
 
+def get_person_tasks_projects(person_id):
+    """
+    Return the projects in which the current user may list the tasks of
+    given person: the open ones for an admin, the user's own open ones for
+    the other roles, and none for clients and vendors. A vendor may only
+    ask about themselves.
+    """
+    permissions_service.check_person_is_not_bot(person_id)
+    current_user = persons_service.get_current_user()
+    if (
+        person_id != current_user["id"]
+        and permissions.has_vendor_permissions()
+    ):
+        raise permissions.PermissionDenied
+    if permissions.has_vendor_permissions():
+        person = persons_service.get_person(person_id)
+        if person["role"] == "vendor":
+            return []
+    elif permissions.has_client_permissions():
+        return []
+    if permissions.has_admin_permissions():
+        return projects_service.open_projects()
+    return user_service.related_projects()
+
+
 class PersonTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonTasksResource_get.yml")
+    @swag_from(SPECS["PersonTasksResource_get"])
     def get(self, person_id):
         """
         Get person open tasks
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if (
-            person_id != current_user["id"]
-            and permissions.has_vendor_permissions()
-        ):
-            raise permissions.PermissionDenied
-        if not permissions.has_admin_permissions():
-            projects = user_service.related_projects()
-        else:
-            projects = projects_service.open_projects()
-        if permissions.has_vendor_permissions():
-            person = persons_service.get_person(person_id)
-            if person["role"] == "vendor":
-                return []
-        elif permissions.has_client_permissions():
+        projects = get_person_tasks_projects(person_id)
+        if not projects:
             return []
         return todos_service.get_person_tasks(person_id, projects)
 
@@ -247,45 +260,29 @@ class PersonTasksResource(MethodView):
 class PersonRelatedTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonRelatedTasksResource_get.yml")
+    @swag_from(SPECS["PersonRelatedTasksResource_get"])
     def get(self, person_id, task_type_id):
         """
         Get person tasks for type
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if (
-            person_id != current_user["id"]
-            and permissions.has_vendor_permissions()
-        ):
-            raise permissions.PermissionDenied
-        return todos_service.get_person_related_tasks(person_id, task_type_id)
+        projects = get_person_tasks_projects(person_id)
+        if not projects:
+            return []
+        return todos_service.get_person_related_tasks(
+            person_id, task_type_id, projects
+        )
 
 
 class PersonDoneTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonDoneTasksResource_get.yml")
+    @swag_from(SPECS["PersonDoneTasksResource_get"])
     def get(self, person_id):
         """
         Get person done tasks
         """
-        permissions_service.check_person_is_not_bot(person_id)
-        current_user = persons_service.get_current_user()
-        if (
-            person_id != current_user["id"]
-            and permissions.has_vendor_permissions()
-        ):
-            raise permissions.PermissionDenied
-        if not permissions.has_admin_permissions():
-            projects = user_service.related_projects()
-        else:
-            projects = projects_service.open_projects()
-        if permissions.has_vendor_permissions():
-            person = persons_service.get_person(person_id)
-            if person["role"] == "vendor":
-                return []
-        elif permissions.has_client_permissions():
+        projects = get_person_tasks_projects(person_id)
+        if not projects:
             return []
         return todos_service.get_person_done_tasks(person_id, projects)
 
@@ -293,7 +290,7 @@ class PersonDoneTasksResource(MethodView):
 class CreateShotTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateShotTasksResource_post.yml")
+    @swag_from(SPECS["CreateShotTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create shot tasks
@@ -320,7 +317,7 @@ class CreateShotTasksResource(MethodView):
 class CreateConceptTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateConceptTasksResource_post.yml")
+    @swag_from(SPECS["CreateConceptTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create concept tasks
@@ -355,7 +352,7 @@ class CreateConceptTasksResource(MethodView):
 class CreateEntityTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateEntityTasksResource_post.yml")
+    @swag_from(SPECS["CreateEntityTasksResource_post"])
     def post(self, project_id, entity_type, task_type_id):
         """
         Create entity tasks
@@ -389,7 +386,7 @@ class CreateEntityTasksResource(MethodView):
 class CreateAssetTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateAssetTasksResource_post.yml")
+    @swag_from(SPECS["CreateAssetTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create asset tasks
@@ -416,7 +413,7 @@ class CreateAssetTasksResource(MethodView):
 class CreateEditTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/CreateEditTasksResource_post.yml")
+    @swag_from(SPECS["CreateEditTasksResource_post"])
     def post(self, project_id, task_type_id):
         """
         Create edit tasks
@@ -443,7 +440,7 @@ class CreateEditTasksResource(MethodView):
 class ClearAssignationResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ClearAssignationResource_put.yml")
+    @swag_from(SPECS["ClearAssignationResource_put"])
     def put(self):
         """
         Clear task assignations
@@ -471,7 +468,7 @@ class ClearAssignationResource(MethodView, ArgsMixin):
 class SetTasksPriorityResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/SetTasksPriorityResource_put.yml")
+    @swag_from(SPECS["SetTasksPriorityResource_put"])
     def put(self):
         """
         Set tasks priority
@@ -496,7 +493,7 @@ class SetTasksPriorityResource(MethodView, ArgsMixin):
 class TasksAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/TasksAssignResource_put.yml")
+    @swag_from(SPECS["TasksAssignResource_put"])
     def put(self, person_id):
         """
         Assign tasks to person
@@ -536,7 +533,7 @@ class TasksAssignResource(MethodView, ArgsMixin):
 class TaskAssignResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/TaskAssignResource_put.yml")
+    @swag_from(SPECS["TaskAssignResource_put"])
     def put(self, task_id):
         """
         Assign task to person
@@ -566,16 +563,18 @@ class TaskAssignResource(MethodView, ArgsMixin):
 class TaskFullResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskFullResource_get.yml")
+    @swag_from(SPECS["TaskFullResource_get"])
     def get(self, task_id):
         """
         Get task full
         """
+        # Resolves the role on the project, which shapes the persons.
+        permissions_service.check_task_access(task_id)
         task = tasks_service.get_full_task(
-            task_id, persons_service.get_current_user()["id"]
+            task_id,
+            persons_service.get_current_user()["id"],
+            minimal_persons=not permissions.has_manager_permissions(),
         )
-        permissions_service.check_project_access(task["project_id"])
-        permissions_service.check_entity_access(task["entity_id"])
         if permissions.has_client_permissions():
             task = entities_service.blank_task_for_client(task)
             task["persons"] = []
@@ -586,13 +585,14 @@ class TaskFullResource(MethodView):
 class TaskForEntityResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/TaskForEntityResource_get.yml")
+    @swag_from(SPECS["TaskForEntityResource_get"])
     def get(self, entity_id, task_type_id):
         """
         Get tasks for entity and type
         """
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
+        permissions_service.check_entity_access(entity_id)
         return tasks_service.get_tasks_for_entity_and_task_type(
             entity_id, task_type_id
         )
@@ -601,7 +601,7 @@ class TaskForEntityResource(MethodView):
 class SetTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/SetTimeSpentResource_post.yml")
+    @swag_from(SPECS["SetTimeSpentResource_post"])
     def post(self, task_id, date, person_id):
         """
         Set time spent
@@ -624,7 +624,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
             raise WrongParameterException("Wrong date format.")
 
     @jwt_required()
-    @swag_from("openapi/SetTimeSpentResource_delete.yml")
+    @swag_from(SPECS["SetTimeSpentResource_delete"])
     def delete(self, task_id, date, person_id):
         """
         Delete time spent
@@ -637,7 +637,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
                 person_id,
                 datetime.datetime.strptime(date, "%Y-%m-%d"),
             )
-            return time_spent, 201
+            return time_spent, 200
         except ValueError:
             raise WrongParameterException("Invalid date format.")
         except WrongDateFormatException:
@@ -647,7 +647,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
 class AddTimeSpentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddTimeSpentResource_post.yml")
+    @swag_from(SPECS["AddTimeSpentResource_post"])
     def post(self, task_id, date, person_id):
         """
         Add time spent
@@ -674,25 +674,27 @@ class AddTimeSpentResource(MethodView, ArgsMixin):
 class GetTimeSpentResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/GetTimeSpentResource_get.yml")
+    @swag_from(SPECS["GetTimeSpentResource_get"])
     def get(self, task_id):
         """
         Get task time spent
         """
         permissions_service.check_task_access(task_id)
+        permissions_service.block_access_to_client()
         return time_spents_service.get_time_spents_for_task(task_id)
 
 
 class GetTimeSpentDateResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/GetTimeSpentDateResource_get.yml")
+    @swag_from(SPECS["GetTimeSpentDateResource_get"])
     def get(self, task_id, date):
         """
         Get task time spent for date
         """
         try:
             permissions_service.check_task_access(task_id)
+            permissions_service.block_access_to_client()
             return time_spents_service.get_time_spents_for_task(task_id, date)
         except WrongDateFormatException:
             raise WrongParameterException("Wrong date format.")
@@ -701,7 +703,7 @@ class GetTimeSpentDateResource(MethodView):
 class DeleteAllTasksForTaskTypeResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DeleteAllTasksForTaskTypeResource_delete.yml")
+    @swag_from(SPECS["DeleteAllTasksForTaskTypeResource_delete"])
     def delete(self, project_id, task_type_id):
         """
         Delete tasks for type
@@ -719,7 +721,7 @@ class DeleteAllTasksForTaskTypeResource(MethodView):
 class DeleteTasksResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DeleteTasksResource_post.yml")
+    @swag_from(SPECS["DeleteTasksResource_post"])
     def post(self, project_id):
         """
         Delete tasks batch
@@ -736,7 +738,7 @@ class ProjectSubscriptionsResource(MethodView):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/ProjectSubscriptionsResource_get.yml")
+    @swag_from(SPECS["ProjectSubscriptionsResource_get"])
     def get(self, project_id):
         """
         Get project subscriptions
@@ -749,7 +751,7 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/ProjectNotificationsResource_get.yml")
+    @swag_from(SPECS["ProjectNotificationsResource_get"])
     def get(self, project_id):
         """
         Get project notifications
@@ -764,7 +766,7 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
 class ProjectTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectTasksResource_get.yml")
+    @swag_from(SPECS["ProjectTasksResource_get"])
     def get(self, project_id):
         """
         Get project tasks
@@ -786,21 +788,26 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
-        return http_cache.json_response(
-            todos_service.get_tasks_for_project(
-                project_id,
-                page,
-                task_type_id=task_type_id,
-                episode_id=episode_id,
-            ),
-            etag,
+        tasks = todos_service.get_tasks_for_project(
+            project_id,
+            page,
+            task_type_id=task_type_id,
+            episode_id=episode_id,
+            only_assigned=permissions.has_vendor_permissions(),
         )
+        if isinstance(tasks, dict):
+            tasks["data"] = entities_service.blank_tasks_for_current_user(
+                tasks["data"]
+            )
+        else:
+            tasks = entities_service.blank_tasks_for_current_user(tasks)
+        return http_cache.json_response(tasks, etag)
 
 
 class ProjectCommentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ProjectCommentsResource_get.yml")
+    @swag_from(SPECS["ProjectCommentsResource_get"])
     def get(self, project_id):
         """
         Get project comments
@@ -823,7 +830,7 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @permissions.require_admin
-    @swag_from("openapi/ProjectPreviewFilesResource_get.yml")
+    @swag_from(SPECS["ProjectPreviewFilesResource_get"])
     def get(self, project_id):
         """
         Get project preview files
@@ -835,7 +842,7 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
 
 class SetTaskMainPreviewResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SetTaskMainPreviewResource_put.yml")
+    @swag_from(SPECS["SetTaskMainPreviewResource_put"])
     def put(self, task_id):
         """
         Set main preview from task
@@ -861,7 +868,7 @@ class SetTaskMainPreviewResource(MethodView):
 
 class SetTasksMainPreviewResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SetTasksMainPreviewResource_put.yml")
+    @swag_from(SPECS["SetTasksMainPreviewResource_put"])
     def put(self):
         """
         Set main preview from several tasks
@@ -894,7 +901,7 @@ class SetTasksMainPreviewResource(MethodView):
 class PersonsTasksDatesResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonsTasksDatesResource_get.yml")
+    @swag_from(SPECS["PersonsTasksDatesResource_get"])
     def get(self):
         """
         Get persons tasks dates
@@ -911,12 +918,14 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         busy_project_ids = None
         if not permissions.has_admin_permissions():
             # Supervisors reach the team schedule page too: like managers,
-            # they only see the projects of their own teams.
-            permissions.check_at_least_supervisor_permissions()
+            # they only see the projects of their own teams. A named
+            # project resolves the role held on it before the check.
             if project_id is not None:
                 if not permissions_service.check_belong_to_project(project_id):
                     raise permissions.PermissionDenied
+                permissions.check_at_least_supervisor_permissions()
             else:
+                permissions.check_at_least_supervisor_permissions()
                 project_ids = user_service.get_open_project_ids()
                 # The other open productions come back as anonymous busy
                 # periods: date pairs only, so the schedule can show a
@@ -956,10 +965,22 @@ def check_open_tasks_filter_args(resource, args):
     resource.parse_date_parameter(args["due_date"])
 
 
+def check_open_tasks_access(project_id):
+    """
+    Refuse the open tasks pool to clients and vendors. When the call names
+    a project, its access check runs first, so the role read is the one
+    held there.
+    """
+    if project_id is not None:
+        permissions_service.check_project_access(project_id)
+    permissions_service.block_access_to_client()
+    permissions_service.block_access_to_vendor()
+
+
 class OpenTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OpenTasksResource_get.yml")
+    @swag_from(SPECS["OpenTasksResource_get"])
     def get(self):
         """
         Get open tasks
@@ -981,6 +1002,7 @@ class OpenTasksResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
+        check_open_tasks_access(args["project_id"])
         return todos_service.get_open_tasks(
             tasks_service.OpenTasksFilters.from_args(args),
             page=args["page"],
@@ -991,7 +1013,7 @@ class OpenTasksResource(MethodView, ArgsMixin):
 class OpenTasksStatsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OpenTasksStatsResource_get.yml")
+    @swag_from(SPECS["OpenTasksStatsResource_get"])
     def get(self):
         """
         Get open tasks stats
@@ -1002,7 +1024,7 @@ class OpenTasksStatsResource(MethodView, ArgsMixin):
 class OpenTasksBurndownResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/OpenTasksBurndownResource_get.yml")
+    @swag_from(SPECS["OpenTasksBurndownResource_get"])
     def get(self):
         """
         Get open tasks burndown
@@ -1021,6 +1043,7 @@ class OpenTasksBurndownResource(MethodView, ArgsMixin):
             ]
         )
         check_open_tasks_filter_args(self, args)
+        check_open_tasks_access(args["project_id"])
         return todos_service.get_open_tasks_burndown(
             tasks_service.OpenTasksFilters.from_args(args)
         )

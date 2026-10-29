@@ -1,0 +1,370 @@
+EntitiesLinkedWithTasksResource_get:
+  summary: Get the entities linked to a concept
+  description: Get the entities that are linked to a concept, with the tasks
+    of each entity. Give the identifier of a concept. For another type of
+    entity, the list is empty. Clients cannot use this route.
+  tags:
+    - Entities
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the concept
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of linked entities with their tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Entity unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Entity name
+                  example: Character Model
+                entity_type_id:
+                  type: string
+                  format: uuid
+                  description: Entity type identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                parent_id:
+                  type: string
+                  format: uuid
+                  description: Parent entity identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                tasks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task unique identifier
+                        example: e68e02e8-0219-8009-e514-918974260690
+                      name:
+                        type: string
+                        description: Task name
+                        example: Modeling Task
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        description: Task type identifier
+                        example: f79f13f9-1320-9010-f625-029985371800
+    403:
+      description: You are a client, or you do not have access to this entity
+    404:
+      description: The entity does not exist
+
+EntityNewsResource_get:
+  summary: Get the news of an entity
+  description: Get the news of the tasks of an entity. A news is made when a
+    comment is posted on a task. Clients cannot use this route.
+  tags:
+    - Entities
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of news
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: News unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                change:
+                  type: boolean
+                  description: Whether this news represents a change
+                  example: true
+                author_id:
+                  type: string
+                  format: uuid
+                  description: Author person identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                comment_id:
+                  type: string
+                  format: uuid
+                  description: Comment identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                preview_file_id:
+                  type: string
+                  format: uuid
+                  description: Preview file identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You are a client, or you do not have access to this
+        entity
+    404:
+      description: The entity does not exist
+
+EntityPreviewFilesResource_get:
+  summary: Get the preview files of an entity
+  description: Get the preview files of the tasks of an entity.
+  tags:
+    - Entities
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of preview files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Preview file unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Preview file name
+                  example: preview_001.jpg
+                path:
+                  type: string
+                  description: File path
+                  example: /previews/entity/preview_001.jpg
+                revision:
+                  type: integer
+                  description: File revision number
+                  example: 1
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+    403:
+      description: You do not have access to this entity
+    404:
+      description: The entity does not exist
+
+EntityTaskCreationResource_post:
+  summary: Create tasks for an entity
+  description: Create one task for each task type of the list. The project
+    must use each task type. For an asset, the workflow of the asset type must
+    also have each task type. If the list is empty, the route uses all the
+    task types that are valid for the entity. If a task with the same task
+    type exists, it is skipped. Clients and vendors cannot use this route.
+  tags:
+    - Entities
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the entity
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            task_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Optional list of task type IDs to create. Omit or
+                pass an empty list to default to every task type valid for the
+                entity.
+          example:
+            task_type_ids:
+              - b24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The new tasks
+    400:
+      description: A task type is not used by the project, is not in the
+        workflow of the asset type, or is not for this type of entity
+    403:
+      description: You do not have access to this entity, or you are a client
+        or a vendor
+    404:
+      description: The entity or a task type does not exist
+
+EntityTimeSpentsResource_get:
+  summary: Get the time spent on an entity
+  description: Get the time spent entries of the tasks of an entity. Clients
+    cannot use this route.
+  tags:
+    - Entities
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of time spent entries
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Time spent unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                duration:
+                  type: number
+                  format: float
+                  description: Time duration in hours
+                  example: 2.5
+                date:
+                  type: string
+                  format: date
+                  description: Date when time was spent
+                  example: '2023-12-07'
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person identifier who spent the time
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+    403:
+      description: You are a client, or you do not have access to this
+        entity
+    404:
+      description: The entity does not exist
+
+ProjectDeleteEntitiesResource_post:
+  summary: Delete entities
+  description: Delete the assets, shots, edits and concepts of the list in one
+    request. The body is a list of entity identifiers. Without force, an
+    entity with tasks is marked as canceled. If the entity is already
+    canceled, it is deleted. A concept is always deleted. With force=true, all
+    the entities are deleted with their tasks. The creator of an entity can
+    delete it if the creator is in the project team. For the other entities,
+    you must be a manager of the project.
+    Only a manager of the project can use force=true.
+  tags:
+    - Entities
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: force
+      required: false
+      schema:
+        type: boolean
+      description: Delete the entities and their tasks, also when they are not
+        canceled
+      example: false
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Entity unique identifiers to delete
+  responses:
+    200:
+      description: The identifiers of the deleted entities. The entities of
+        other projects and the entities of other types are skipped.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+    400:
+      description: The body is not a list of valid identifiers
+    403:
+      description: You cannot delete one of the entities
+    404:
+      description: The project does not exist

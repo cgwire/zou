@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -7,6 +6,9 @@ from werkzeug.exceptions import NotFound
 
 from zou.app.models.data_import_error import DataImportError
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ShotgunImportErrorsResource(MethodView):
@@ -15,7 +17,7 @@ class ShotgunImportErrorsResource(MethodView):
         MethodView.__init__(self)
 
     @jwt_required()
-    @swag_from("openapi/ShotgunImportErrorsResource_get.yml")
+    @swag_from(SPECS["ShotgunImportErrorsResource_get"])
     def get(self):
         """
         Get shotgun import errors
@@ -26,7 +28,7 @@ class ShotgunImportErrorsResource(MethodView):
         return DataImportError.serialize_list(import_errors)
 
     @jwt_required()
-    @swag_from("openapi/ShotgunImportErrorsResource_post.yml")
+    @swag_from(SPECS["ShotgunImportErrorsResource_post"])
     def post(self):
         """
         Create shotgun import error
@@ -42,7 +44,7 @@ class ShotgunImportErrorResource(MethodView):
         MethodView.__init__(self)
 
     @jwt_required()
-    @swag_from("openapi/ShotgunImportErrorResource_delete.yml")
+    @swag_from(SPECS["ShotgunImportErrorResource_delete"])
     def delete(self, error_id):
         """
         Delete shotgun import error
@@ -57,4 +59,4 @@ class ShotgunImportErrorResource(MethodView):
             raise NotFound
         error.delete()
 
-        return {"deletion_success": True}, 204
+        return "", 204

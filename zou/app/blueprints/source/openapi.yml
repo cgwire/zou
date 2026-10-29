@@ -1,0 +1,790 @@
+BaseImportKitsuResource_post:
+  summary: Import rows from another Kitsu instance
+  tags:
+    - Import
+  description: 'Import rows, for example preview files, time spents,
+    playlists, milestones, notifications or attachment files, from another
+    Kitsu instance. Synchronization tools use this route to copy data from
+    another Kitsu instance. Send a JSON list of rows, with their identifiers.
+    A row that exists is updated. Else, it is created. You must be an
+    administrator.'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Resource name
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+        example:
+          - id: a24a6ea4-ce75-4665-a070-57453082c250
+            name: Example resource
+            project_id: b24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Imported resource
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not a list, or a row breaks a database
+        constraint
+    403:
+      description: You are not an administrator
+  parameters:
+    - in: query
+      name: silent
+      required: false
+      description: Do not send an event for each imported row. Use it for
+        large imports.
+      schema:
+        type: boolean
+        default: false
+
+ImportKitsuCommentsResource_post:
+  summary: Import comments from another Kitsu instance
+  description: 'Import comments from another Kitsu instance. Synchronization
+    tools use this route to copy data from another Kitsu instance. Send a JSON
+    list of rows, with their identifiers. A row that exists is updated. Else,
+    it is created. You must be an administrator.'
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Kitsu ID of the comment
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                description: Task ID the comment is linked to
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                description: Comment text
+                example: This is a comment
+              person_id:
+                type: string
+                format: uuid
+                description: Person who created the comment
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+        example:
+          - id: a24a6ea4-ce75-4665-a070-57453082c250
+            object_id: b24a6ea4-ce75-4665-a070-57453082c250
+            text: This is a comment
+            person_id: c24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Comment unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                text:
+                  type: string
+                  description: Comment text
+                  example: This is a comment
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not a list, or a row breaks a database
+        constraint
+    403:
+      description: You are not an administrator
+  parameters:
+    - in: query
+      name: silent
+      required: false
+      description: Do not send an event for each imported row. Use it for
+        large imports.
+      schema:
+        type: boolean
+        default: false
+
+ImportKitsuEntitiesResource_post:
+  summary: Import entities from another Kitsu instance
+  description: 'Import entities: assets, shots, sequences, episodes, edits and
+    concepts, from another Kitsu instance. Synchronization tools use this
+    route to copy data from another Kitsu instance. Send a JSON list of rows,
+    with their identifiers. A row that exists is updated. Else, it is created.
+    You must be an administrator.'
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Kitsu ID of the entity
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Entity name
+                example: Asset01
+              project_id:
+                type: string
+                format: uuid
+                description: Project ID
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_type_id:
+                type: string
+                format: uuid
+                description: Entity type ID
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+        example:
+          - id: a24a6ea4-ce75-4665-a070-57453082c250
+            name: Asset01
+            project_id: b24a6ea4-ce75-4665-a070-57453082c250
+            entity_type_id: c24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Entity unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Entity name
+                  example: Asset01
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not a list, or a row breaks a database
+        constraint
+    403:
+      description: You are not an administrator
+  parameters:
+    - in: query
+      name: silent
+      required: false
+      description: Do not send an event for each imported row. Use it for
+        large imports.
+      schema:
+        type: boolean
+        default: false
+
+ImportKitsuEntityLinksResource_post:
+  summary: Import casting links from another Kitsu instance
+  description: 'Import casting links from another Kitsu instance.
+    Synchronization tools use this route to copy data from another Kitsu
+    instance. Send a JSON list of rows, with their identifiers. A row that
+    exists is updated. Else, it is created. You must be an administrator.'
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Kitsu ID of the entity link
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              entity_in_id:
+                type: string
+                format: uuid
+                description: Source entity ID
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_out_id:
+                type: string
+                format: uuid
+                description: Target entity ID
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+        example:
+          - id: a24a6ea4-ce75-4665-a070-57453082c250
+            entity_in_id: b24a6ea4-ce75-4665-a070-57453082c250
+            entity_out_id: c24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Entity link unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                entity_in_id:
+                  type: string
+                  format: uuid
+                  description: Source entity ID
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                entity_out_id:
+                  type: string
+                  format: uuid
+                  description: Target entity ID
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not a list, or a row breaks a database
+        constraint
+    403:
+      description: You are not an administrator
+  parameters:
+    - in: query
+      name: silent
+      required: false
+      description: Do not send an event for each imported row. Use it for
+        large imports.
+      schema:
+        type: boolean
+        default: false
+
+ImportKitsuProjectsResource_post:
+  summary: Import projects from another Kitsu instance
+  description: 'Import projects from another Kitsu instance. Synchronization
+    tools use this route to copy data from another Kitsu instance. Send a JSON
+    list of rows, with their identifiers. A row that exists is updated. Else,
+    it is created. You must be an administrator.'
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Kitsu ID of the project
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+              production_type:
+                type: string
+                description: Production type
+                example: tvshow
+        example:
+          - id: a24a6ea4-ce75-4665-a070-57453082c250
+            name: My Project
+            production_type: tvshow
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Project name
+                  example: My Project
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not a list, or a row breaks a database
+        constraint
+    403:
+      description: You are not an administrator
+  parameters:
+    - in: query
+      name: silent
+      required: false
+      description: Do not send an event for each imported row. Use it for
+        large imports.
+      schema:
+        type: boolean
+        default: false
+
+ImportKitsuTasksResource_post:
+  summary: Import tasks from another Kitsu instance
+  description: 'Import tasks from another Kitsu instance. Synchronization
+    tools use this route to copy data from another Kitsu instance. Send a JSON
+    list of rows, with their identifiers. A row that exists is updated. Else,
+    it is created. You must be an administrator.'
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Kitsu ID of the task
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Task name
+                example: Modeling
+              project_id:
+                type: string
+                format: uuid
+                description: Project ID
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                description: Entity ID the task is linked to
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                description: Task type ID
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+        example:
+          - id: a24a6ea4-ce75-4665-a070-57453082c250
+            name: Modeling
+            project_id: b24a6ea4-ce75-4665-a070-57453082c250
+            entity_id: c24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Task name
+                  example: Modeling
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not a list, or a row breaks a database
+        constraint
+    403:
+      description: You are not an administrator
+  parameters:
+    - in: query
+      name: silent
+      required: false
+      description: Do not send an event for each imported row. Use it for
+        large imports.
+      schema:
+        type: boolean
+        default: false
+
+OTIOBaseResource_post:
+  summary: Import a timeline file
+  description: Set frame_in, frame_out and nb_frames of the shots from a
+    timeline file. Send the file in a multipart form. The route can read all
+    the formats of OpenTimelineIO, for example OTIO or EDL. The naming
+    convention gives the name of each shot of the file. The route creates the
+    missing shots. You must be a manager of the project.
+  tags:
+    - Import
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The updated shots
+    400:
+      description: The file is not valid, or a name does not match the naming
+        convention
+    403:
+      description: You are not a manager of the project
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: OTIO file to import (EDL, OTIO, etc.)
+              format: binary
+          required:
+            - file
+
+OTIOImportEpisodeResource_post:
+  summary: Import a timeline file into an episode
+  tags:
+    - Import
+  description: Set frame_in, frame_out and nb_frames of the shots of an
+    episode from a timeline file. The naming convention includes the episode
+    name. Send the file in a multipart form. The route can read all the
+    formats of OpenTimelineIO, for example OTIO or EDL. The naming convention
+    gives the name of each shot of the file. The route creates the missing
+    shots. You must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: episode_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: b24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the episode
+    - in: query
+      name: naming_convention
+      required: false
+      schema:
+        type: string
+        default: ${project_name}_${episode_name}-${sequence_name}-${shot_name}
+      example: ${project_name}_${episode_name}-${sequence_name}-${shot_name}
+      description: Template of the shot names in the file. You can also send
+        it as a form field.
+    - in: query
+      name: match_case
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Make a difference between upper case and lower case in the
+        names. You can also send it as a form field.
+  responses:
+    201:
+      description: The updated shots
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              updated_shots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: SH010
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    nb_frames:
+                      type: integer
+                      example: 120
+                    data:
+                      type: object
+                      properties:
+                        frame_in:
+                          type: integer
+                          example: 1001
+                        frame_out:
+                          type: integer
+                          example: 1120
+              created_shots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: d24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: SH020
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    nb_frames:
+                      type: integer
+                      example: 96
+                    data:
+                      type: object
+                      properties:
+                        frame_in:
+                          type: integer
+                          example: 2001
+                        frame_out:
+                          type: integer
+                          example: 2096
+    400:
+      description: The file is missing or not valid, or a name does not match
+        the naming convention
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project or the episode does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: OTIO file to import (EDL, OTIO, etc.)
+              format: binary
+          required:
+            - file
+
+OTIOImportResource_post:
+  summary: Import a timeline file into a project
+  tags:
+    - Import
+  description: Set frame_in, frame_out and nb_frames of the shots of a project
+    from a timeline file. Send the file in a multipart form. The route can
+    read all the formats of OpenTimelineIO, for example OTIO or EDL. The
+    naming convention gives the name of each shot of the file. The route
+    creates the missing shots. You must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: naming_convention
+      required: false
+      schema:
+        type: string
+        default: ${project_name}_${sequence_name}-${shot_name}
+      example: ${project_name}_${sequence_name}-${shot_name}
+      description: Template of the shot names in the file. You can also send
+        it as a form field.
+    - in: query
+      name: match_case
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Make a difference between upper case and lower case in the
+        names. You can also send it as a form field.
+  responses:
+    201:
+      description: The updated shots
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              updated_shots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: SH010
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    nb_frames:
+                      type: integer
+                      example: 120
+                    data:
+                      type: object
+                      properties:
+                        frame_in:
+                          type: integer
+                          example: 1001
+                        frame_out:
+                          type: integer
+                          example: 1120
+              created_shots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: SH020
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    nb_frames:
+                      type: integer
+                      example: 96
+                    data:
+                      type: object
+                      properties:
+                        frame_in:
+                          type: integer
+                          example: 2001
+                        frame_out:
+                          type: integer
+                          example: 2096
+    400:
+      description: The file is missing or not valid, or a name does not match
+        the naming convention
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: OTIO file to import (EDL, OTIO, etc.)
+              format: binary
+          required:
+            - file

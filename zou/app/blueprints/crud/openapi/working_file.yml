@@ -1,0 +1,307 @@
+WorkingFileResource_delete:
+  summary: Delete a working file
+  tags:
+    - Crud
+  description: Delete a working file. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the working file
+  responses:
+    204:
+      description: The working file is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The working file does not exist
+
+WorkingFileResource_get:
+  summary: Get a working file
+  tags:
+    - Crud
+  description: Get a working file. You must be an administrator or a member of
+    the project team of the task. A vendor must also have a task assigned on the
+    entity of the task.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the working file
+  responses:
+    200:
+      description: The working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: work_file_v001
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    403:
+      description: You are not in the project team, or you are a vendor without
+        a task on this entity
+    404:
+      description: The working file does not exist, or the identifier is not
+        valid
+
+WorkingFileResource_put:
+  summary: Update a working file
+  tags:
+    - Crud
+  description: Update the fields of a working file. Send only the fields to
+    change. You cannot change id, created_at, updated_at. Dates use the ISO
+    8601 format. The validation_status must be validated, rejected or neutral.
+    You must be an administrator, or a manager of the project. Other members
+    of the project can change it if they are an assignee of the task or the
+    creator of the entity. A supervisor of the project can also change it if
+    they have no department, or if the task type is in one of their
+    departments. A client of the project cannot use this route.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the working file
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: updated_work_file_v001
+            revision:
+              type: integer
+              example: 2
+            validation_status:
+              type: string
+              enum: [neutral, validated, rejected]
+              example: validated
+  responses:
+    200:
+      description: The updated working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: updated_work_file_v001
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 2
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You cannot act on the task of this working file
+    404:
+      description: The working file does not exist
+
+WorkingFilesResource_get:
+  summary: Get working file rows
+  tags:
+    - Crud
+  description: Get the working file rows. Add a query parameter for each column
+    to filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have one
+    value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. All users can read them, except vendors.
+    An administrator gets all the rows. Other users get the working files of the
+    projects of their team, open or closed.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of working file rows, or a page of rows if you
+        give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a vendor
+
+WorkingFilesResource_post:
+  summary: Create a working file
+  tags:
+    - Crud
+  description: Create a working file. Send the fields of the new row in JSON.
+    The validation_status must be validated, rejected or neutral. You must be an
+    administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - task_id
+            - entity_id
+          properties:
+            name:
+              type: string
+              example: work_file_v001
+            task_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            entity_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            revision:
+              type: integer
+              default: 1
+              example: 1
+  responses:
+    201:
+      description: The new working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: work_file_v001
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 1
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

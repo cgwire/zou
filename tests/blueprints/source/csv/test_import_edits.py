@@ -15,6 +15,7 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
 
     def write_csv(self, content):
         descriptor, file_path = tempfile.mkstemp(suffix=".csv")
+        self.addCleanup(os.remove, file_path)
         with os.fdopen(descriptor, "w", newline="", encoding="utf-8") as f:
             f.write(content)
         return file_path

@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import aliased, selectinload
 
@@ -508,9 +508,12 @@ def get_last_notifications(
         raise WrongParameterException("Wrong date format for after or before.")
 
     context = _load_notification_context(notifications)
+    project_roles = get_team_project_roles()
     for row in notifications:
         result.append(
-            _serialize_notification(row, is_current_user_artist, context)
+            _serialize_notification(
+                row, is_current_user_artist, project_roles, context
+            )
         )
 
     return result
@@ -616,12 +619,15 @@ def _filter_notifications(
     return query
 
 
-def _serialize_notification(row, is_current_user_artist, context):
+def _serialize_notification(
+    row, is_current_user_artist, project_roles, context
+):
     """
     Build the notification dict of one row of the listing query, with the
     entity or playlist it points at and the text of the comment or reply
     that raised it, read from the context _load_notification_context
-    built. A client comment is blanked for an artist.
+    built. A client comment is blanked for an artist, both roles read on
+    the project of the notification when it has one.
     """
     (
         notification,
@@ -688,6 +694,13 @@ def _serialize_notification(row, is_current_user_artist, context):
             reply_mentions = []
             reply_department_mentions = []
 
+    if project_id is not None:
+        role = permissions_service.get_project_role(
+            str(notification.author_id), str(project_id)
+        )
+        reader_role = project_roles.get(str(project_id))
+        if reader_role is not None:
+            is_current_user_artist = reader_role == "user"
     if role == "client" and is_current_user_artist:
         comment_text = ""
         reply_text = ""
@@ -849,6 +862,43 @@ def get_team_project_roles():
             role = current_user["role"]
         project_roles[str(link.project_id)] = role
     return project_roles
+
+
+def get_project_ids_with_roles(*roles):
+    """
+    Return the ids of the projects of the current user's teams where the
+    role they hold, read per project as get_team_project_roles does, is one
+    of given roles.
+    """
+    return [
+        project_id
+        for project_id, role in get_team_project_roles().items()
+        if role in roles
+    ]
+
+
+def build_supervision_scope_filter(roles, department_ids):
+    """
+    Return the task filter the manager and supervisor roles of given team
+    roles grant on other people's work: every task of a managed project,
+    the tasks of given departments on a supervised one. The department
+    restriction is read per project, so a supervisor of one project reads
+    every department of the projects they manage. A supervisor without
+    department reads every department of the projects they supervise.
+    """
+    supervised = Task.project_id.in_(
+        [pid for pid, role in roles.items() if role == "supervisor"]
+    )
+    if department_ids:
+        supervised = and_(
+            supervised, TaskType.department_id.in_(department_ids)
+        )
+    return or_(
+        Task.project_id.in_(
+            [pid for pid, role in roles.items() if role == "manager"]
+        ),
+        supervised,
+    )
 
 
 def get_context():

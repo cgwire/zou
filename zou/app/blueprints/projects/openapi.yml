@@ -1,0 +1,2925 @@
+AllProjectsMetadataDescriptorResource_delete:
+  summary: Delete a metadata descriptor in all projects
+  description: Delete the metadata descriptors with this field name in your
+    projects, in one request. A metadata descriptor describes an extra column.
+    The values of the column are in the data field of the entities. The route
+    changes the open projects where you are a manager. An administrator
+    changes all the open projects. Your global role must be manager or
+    administrator. The role set on a project does not open this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: field_name
+      required: true
+      schema:
+        type: string
+      description: Field name of the descriptor, the key in the data field
+    - in: query
+      name: entity_type
+      required: true
+      schema:
+        type: string
+      description: 'Entity type of the descriptor: Asset, Shot, Edit, Episode,
+        Sequence or Project'
+  responses:
+    200:
+      description: The identifiers of the deleted descriptors
+    400:
+      description: The entity type is not valid
+    403:
+      description: Your global role is not manager or administrator
+
+AllProjectsMetadataDescriptorResource_put:
+  summary: Update a metadata descriptor in all projects
+  description: Update the metadata descriptors with this field name in your
+    projects, in one request. A metadata descriptor describes an extra column.
+    The values of the column are in the data field of the entities. The route
+    changes the open projects where you are a manager. An administrator
+    changes all the open projects. Your global role must be manager or
+    administrator. The role set on a project does not open this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: field_name
+      required: true
+      schema:
+        type: string
+      description: Field name of the descriptor, the key in the data field
+  responses:
+    200:
+      description: The updated descriptors
+    400:
+      description: A value is not valid, or the name is used by another
+        column of the same type, by a built-in field, or is too long
+    403:
+      description: Your global role is not manager or administrator
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - entity_type
+          properties:
+            entity_type:
+              type: string
+              description: 'Entity type of the descriptor: Asset, Shot, Edit,
+                Episode, Sequence or Project'
+            name:
+              type: string
+              description: New name of the column
+            for_client:
+              type: boolean
+              default: false
+              description: Show the column to the clients
+            data_type:
+              type: string
+              default: string
+              description: Type of the values, for example string, number,
+                list or boolean
+            choices:
+              type: array
+              items:
+                type: string
+              description: Values of a list column
+            departments:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Departments that see the column
+
+AllProjectsMetadataDescriptorsReorderResource_post:
+  summary: Reorder the metadata descriptors in all projects
+  description: Set the same order of columns in your projects, in one request.
+    Give the field names in the new order. The route changes the open projects
+    where you are a manager. An administrator changes all the open projects.
+    Your global role must be manager or administrator. The role set on a
+    project does not open this route.
+  tags:
+    - Projects
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - entity_type
+            - field_order
+          properties:
+            entity_type:
+              type: string
+              description: 'Entity type of the descriptors: Asset, Shot, Edit,
+                Episode, Sequence or Project'
+            field_order:
+              type: array
+              items:
+                type: string
+  responses:
+    200:
+      description: The updated descriptors
+    400:
+      description: The body is not valid
+    403:
+      description: Your global role is not manager or administrator
+
+AllProjectsMetadataDescriptorsResource_post:
+  summary: Create a metadata descriptor in all projects
+  description: Create the same metadata descriptor in your projects, in one
+    request. A project that already has a descriptor with this field name is
+    skipped. A metadata descriptor describes an extra column. The values of
+    the column are in the data field of the entities. The route changes the
+    open projects where you are a manager. An administrator changes all the
+    open projects. Your global role must be manager or
+    administrator. The role set on a project does not open this route.
+  tags:
+    - Projects
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            entity_type:
+              type: string
+              default: Asset
+              enum: [Asset, Shot, Edit, Episode, Sequence, Project]
+            name:
+              type: string
+            data_type:
+              type: string
+              default: string
+            for_client:
+              type: boolean
+              default: false
+              description: Show the column to the clients
+            choices:
+              type: array
+              items:
+                type: string
+              description: Values of a list column
+            departments:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Departments that see the column
+  responses:
+    201:
+      description: The new descriptors
+    400:
+      description: A value is not valid, or the name is used by a built-in
+        field
+    403:
+      description: Your global role is not manager or administrator
+
+AllProjectsResource_get:
+  summary: Get all the projects
+  description: Get all the projects, open and closed. An administrator gets
+    all of them. Other users get the projects of their teams, open and
+    closed. The name filter ignores the case.
+  tags:
+    - Projects
+  parameters:
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the projects with this name
+      example: My Project
+  responses:
+    200:
+      description: The list of projects
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Project name
+                  example: My Project
+                project_status_id:
+                  type: string
+                  format: uuid
+                  description: Project status unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+    404:
+      description: No project has this name. Only when you give name.
+
+OpenProjectsResource_get:
+  summary: Get the open projects
+  description: Get the open projects. An administrator gets all of them. Other
+    users get the projects of their teams.
+  tags:
+    - Projects
+  parameters:
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the projects with this name
+      example: My Project
+  responses:
+    200:
+      description: The list of open projects
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Project name
+                  example: My Project
+                project_status_id:
+                  type: string
+                  format: uuid
+                  description: Project status unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+
+ProductionAssetTypeRemoveResource_delete:
+  summary: Remove an asset type from a project
+  description: Remove an asset type from the settings of a project. The asset
+    type is not deleted. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: asset_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The asset type is removed from the project
+    403:
+      description: You are not a manager of the project
+
+ProductionAssetTypeResource_post:
+  summary: Add an asset type to a project
+  description: Add an asset type to the settings of a project. You must be a
+    manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - asset_type_id
+          properties:
+            asset_type_id:
+              type: string
+              format: uuid
+              description: Asset type unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The updated project
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionAssetTypesScheduleItemsResource_get:
+  summary: Get the schedule items of the asset types for a task type
+  description: Get the schedule items of the asset types of a project, for a
+    task type. A schedule item gives the start date and the end date of a part
+    of the production in the schedule. Give episode_id to get the items of one
+    episode. Vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Restrict results to asset types of the given episode
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of schedule items
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+ProductionBudgetEntriesResource_get:
+  summary: Get the entries of a budget
+  description: Get the entries of a budget of a project. Each entry gives the
+    salary cost of a person or a position for a period. You must be a manager
+    of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of budget entries
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
+
+ProductionBudgetEntriesResource_post:
+  summary: Create a budget entry
+  description: Create an entry in a budget of a project. You must be a manager
+    of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - department_id
+          properties:
+            department_id:
+              type: string
+              format: uuid
+              description: Department unique identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            person_id:
+              type: string
+              format: uuid
+              description: Person unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            start_date:
+              type: string
+              format: date
+              description: Budget entry start date
+              example: '2025-01-01'
+            months_duration:
+              type: integer
+              description: Budget entry duration in months
+              example: 12
+            daily_salary:
+              type: number
+              format: float
+              description: Daily salary amount
+              example: 100.00
+            position:
+              type: string
+              description: Position name
+              example: Artist
+            seniority:
+              type: string
+              description: Seniority level
+              example: Mid
+  responses:
+    201:
+      description: The new budget entry
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Budget entry unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              department_id:
+                type: string
+                format: uuid
+                description: Department unique identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
+
+ProductionBudgetEntryResource_delete:
+  summary: Delete a budget entry
+  description: Delete an entry of a budget. You must be a manager of the
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: path
+      name: entry_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget entry
+      example: c46c80c6-e097-6887-c292-79675204e470
+  responses:
+    204:
+      description: The budget entry is deleted
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project, or the entry
+        does not exist in this budget
+
+ProductionBudgetEntryResource_get:
+  summary: Get a budget entry
+  description: Get an entry of a budget. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: path
+      name: entry_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget entry
+      example: c46c80c6-e097-6887-c292-79675204e470
+  responses:
+    200:
+      description: The budget entry
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project, or the entry
+        does not exist in this budget
+
+ProductionBudgetEntryResource_put:
+  summary: Update a budget entry
+  description: Update the fields of an entry of a budget. Send only the fields
+    to change. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: path
+      name: entry_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget entry
+      example: c46c80c6-e097-6887-c292-79675204e470
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            department_id:
+              type: string
+              format: uuid
+              description: Department unique identifier
+              example: c46c80c6-e097-6887-c292-79675204e470
+            person_id:
+              type: string
+              format: uuid
+              description: Person unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            start_date:
+              type: string
+              format: date
+              description: Budget entry start date
+              example: '2025-01-01'
+            months_duration:
+              type: integer
+              description: Budget entry duration in months
+              example: 12
+            daily_salary:
+              type: number
+              format: float
+              description: Daily salary amount
+              example: 100.00
+            position:
+              type: string
+              description: Position name
+              example: Artist
+            seniority:
+              type: string
+              description: Seniority level
+              example: Mid
+            exceptions:
+              type: object
+              description: Map of amount exceptions. Key is the date and value
+                is the amount
+              example: {'2025-01-01': 1000, '2025-02-01': 2000}
+  responses:
+    200:
+      description: The updated budget entry
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project, or the entry
+        does not exist in this budget
+
+ProductionBudgetResource_delete:
+  summary: Delete a budget
+  description: Delete a budget of a project and its entries. You must be a
+    manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The budget is deleted
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
+
+ProductionBudgetResource_get:
+  summary: Get a budget
+  description: Get a budget of a project. You must be a manager of the
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The budget
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
+
+ProductionBudgetResource_put:
+  summary: Update a budget
+  description: Change the name or the currency of a budget. You must be a
+    manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: budget_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the budget
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Budget name
+              example: New Budget
+            currency:
+              type: string
+              description: Budget currency code
+              example: USD
+  responses:
+    200:
+      description: The updated budget
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
+
+ProductionBudgetsResource_get:
+  summary: Get the budgets of a project
+  description: Get the budgets of a project. You must be a manager of the
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of budgets
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not a manager of the project
+
+ProductionBudgetsResource_post:
+  summary: Create a budget
+  description: Create a budget in a project. You must be a manager of the
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Budget name
+              example: New Budget
+            currency:
+              type: string
+              description: Budget currency code
+              default: USD
+              example: USD
+  responses:
+    201:
+      description: The new budget
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Budget unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Budget name
+                example: New Budget
+              currency:
+                type: string
+                description: Budget currency code
+                example: USD
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionDayOffsResource_get:
+  summary: Get the day offs of a project team
+  description: Get the day offs of the team of a project. Give start_date and
+    end_date to get the day offs of a period. A manager gets the description
+    of each day off. Other users get the description of their own day offs
+    only. Clients and vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: start_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: First date of the period, in the YYYY-MM-DD format
+      example: '2022-07-01'
+    - in: query
+      name: end_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Last date of the period, in the YYYY-MM-DD format
+      example: '2022-07-31'
+  responses:
+    200:
+      description: The list of day offs
+      content:
+        application/json:
+          schema:
+            type: object
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Day off unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                description:
+                  type: string
+                  description: Day off description
+                  example: Vacation
+                date:
+                  type: string
+                  format: date
+                  description: Day off start date
+                  example: '2022-07-15'
+                end_date:
+                  type: string
+                  format: date
+                  description: Day off end date
+                  example: '2022-07-22'
+    400:
+      description: A date is not valid
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+ProductionEditsScheduleItemsResource_get:
+  summary: Get the schedule items of the edits for a task type
+  description: Get the schedule items of the edits of a project, for a task
+    type. A schedule item gives the start date and the end date of a part of
+    the production in the schedule. Give episode_id to get the items of one
+    episode. Vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Restrict results to edits of the given episode
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of schedule items
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+ProductionEpisodesScheduleItemsResource_get:
+  summary: Get the schedule items of the episodes for a task type
+  description: Get the schedule items of the episodes of a project, for a task
+    type. A schedule item gives the start date and the end date of a part of
+    the production in the schedule. Give episode_id to get the items of one
+    episode. Vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Restrict results to the given episode
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of schedule items
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+ProductionMetadataDescriptorResource_delete:
+  summary: Delete a metadata descriptor
+  description: Delete a metadata descriptor of a project. A metadata
+    descriptor describes an extra column. The values of the column are in the
+    data field of the entities. Administrators and managers of the project can
+    use this route. A supervisor of the project can delete it only when the
+    descriptor has at least one department and the departments of the
+    descriptor include every department of the supervisor.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: metadata_descriptor_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Metadata descriptor unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The descriptor is deleted
+    403:
+      description: You cannot change this descriptor
+    404:
+      description: The project has no descriptor with this identifier
+
+ProductionMetadataDescriptorResource_get:
+  summary: Get a metadata descriptor
+  description: Get a metadata descriptor of a project. A metadata descriptor
+    describes an extra column. The values of the column are in the data field
+    of the entities. A client gets only the descriptors for clients. A vendor
+    gets only the descriptors of their departments and the descriptors without
+    department.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: metadata_descriptor_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Metadata descriptor unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The descriptor
+      content:
+        application/json:
+          schema:
+            type: object
+    403:
+      description: You cannot read this descriptor
+    404:
+      description: The project has no descriptor with this identifier
+
+ProductionMetadataDescriptorResource_put:
+  summary: Update a metadata descriptor
+  description: Update a metadata descriptor of a project. A metadata
+    descriptor describes an extra column. The values of the column are in the
+    data field of the entities. Send every field. A field you leave out goes
+    back to its default value, except the name. Administrators and managers
+    of the project can use this route. A supervisor of the project can use it
+    only when the descriptor, with the departments you send, has at least one
+    department and these departments include every department of the
+    supervisor.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: metadata_descriptor_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Metadata descriptor unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Name of the metadata descriptor, kept when left out
+              example: Custom Field
+            for_client:
+              type: string
+              description: Whether the descriptor is for client
+              default: 'False'
+              example: 'True'
+            data_type:
+              type: string
+              default: string
+              description: Type of the values, for example string, number,
+                list or boolean
+            choices:
+              type: array
+              description: List of choices for the descriptor
+              items:
+                type: string
+              example: [option1, option2]
+            departments:
+              type: array
+              description: List of departments for the descriptor
+              items:
+                type: string
+              example: [department1, department2]
+  responses:
+    200:
+      description: The updated descriptor
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The name is empty, the data type is not valid, or the name
+        is used by another column of the same type, by a built-in field, or
+        is too long
+    403:
+      description: You cannot change this descriptor
+    404:
+      description: The project has no descriptor with this identifier, or a
+        department does not exist
+
+ProductionMetadataDescriptorsReorderResource_post:
+  summary: Reorder the metadata descriptors of a project
+  description: Set the order of the metadata descriptors of an entity type.
+    Give the descriptor identifiers in the new order. You must be a manager of
+    the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - entity_type
+            - descriptor_ids
+          properties:
+            entity_type:
+              type: string
+              description: Entity type for the metadata descriptors
+              enum:
+                - Asset
+                - Shot
+                - Edit
+                - Episode
+                - Sequence
+                - Project
+                - Task
+              example: Asset
+            descriptor_ids:
+              type: array
+              description: List of metadata descriptor IDs in the desired
+                order
+              items:
+                type: string
+                format: uuid
+              example: [b35b7fb5-df86-5776-b181-68564193d360,
+                    c46c80c6-e097-6887-c292-79675204e470]
+  responses:
+    200:
+      description: The reordered descriptors
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Metadata descriptor unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Metadata descriptor name
+                  example: Custom Field
+                position:
+                  type: integer
+                  description: Position of the descriptor
+                  example: 1
+                entity_type:
+                  type: string
+                  description: Entity type
+                  example: Asset
+    400:
+      description: The body is not valid, or a descriptor does not exist
+    403:
+      description: You are not a manager of the project
+
+ProductionMetadataDescriptorsResource_get:
+  summary: Get the metadata descriptors of a project
+  description: Get the metadata descriptors of a project. A metadata
+    descriptor describes an extra column. The values of the column are in the
+    data field of the entities. A client gets only the descriptors for
+    clients. A vendor gets only the descriptors of their departments and the
+    descriptors without department.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of descriptors
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project
+
+ProductionMetadataDescriptorsResource_post:
+  summary: Create a metadata descriptor
+  description: Create a metadata descriptor in a project. A metadata
+    descriptor describes an extra column. The values of the column are in the
+    data field of the entities. Administrators and managers of the project can
+    use this route. A supervisor of the project can use it only when the
+    descriptor has at least one department and the departments of the
+    descriptor include every department of the supervisor. A supervisor with
+    no department can use it for any descriptor that has departments.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            entity_type:
+              type: string
+              description: Entity type for the metadata descriptor
+              enum:
+                - Asset
+                - Shot
+                - Edit
+                - Episode
+                - Sequence
+                - Project
+                - Task
+              default: Asset
+              example: Asset
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type the descriptor is scoped to. Required for
+                Task descriptors, forbidden otherwise.
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            name:
+              type: string
+              description: Name of the metadata descriptor
+              example: Custom Field
+            data_type:
+              type: string
+              description: Type of data (string, number, boolean, etc.)
+              default: string
+              example: string
+            for_client:
+              type: string
+              description: Whether the descriptor is for client
+              default: 'False'
+              example: 'True'
+            choices:
+              type: array
+              description: List of choices for the descriptor
+              items:
+                type: string
+              example: [option1, option2]
+            departments:
+              type: array
+              description: List of departments for the descriptor
+              items:
+                type: string
+              example: [department1, department2]
+  responses:
+    201:
+      description: The new descriptor
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Metadata descriptor unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Metadata descriptor name
+                example: Custom Field
+              data_type:
+                type: string
+                description: Metadata descriptor data type
+                example: string
+              departments:
+                type: array
+                description: Departments the descriptor is limited to
+                items:
+                  type: string
+                  format: uuid
+                example: [a24a6ea4-ce75-4665-a070-57453082c250]
+    400:
+      description: A value is not valid, the task type does not exist, or the
+        name is used by a built-in field
+    403:
+      description: You cannot create this descriptor
+    404:
+      description: A department does not exist
+
+ProductionMilestonesResource_get:
+  summary: Get the milestones of a project
+  description: Get the milestones of the schedule of a project. Clients cannot
+    use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of milestones
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project, or you are a client
+
+ProductionMonthTimeSpentsResource_get:
+  summary: Get the time spent of a project by month
+  description: Get the total time spent of a project for each month. You must
+    be an administrator.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The total time spent for each month
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+
+ProductionPreviewAccountResource_delete:
+  summary: Delete the preview account of a project
+  description: Delete the preview account of a project. You must be a manager
+    of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    204:
+      description: The preview account is deleted
+    403:
+      description: You are not a manager of the project
+
+ProductionPreviewAccountResource_get:
+  summary: Get the preview account of a project
+  description: Get the preview account of a project. If the project has no
+    preview account, the response is null. You must be a manager of the
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The preview account, or null
+      content:
+        application/json:
+          schema:
+            type: object
+            nullable: true
+            properties:
+              id:
+                type: string
+                format: uuid
+              email:
+                type: string
+                example: preview-0a1b2c3d4e5f@preview.kitsu.invalid
+              full_name:
+                type: string
+                example: Preview Cosmos Landromat
+              preview_open_until:
+                type: string
+                format: date-time
+                nullable: true
+                description: End of the access window, null when closed
+    403:
+      description: You are not a manager of the project
+
+ProductionPreviewAccountResource_post:
+  summary: Create the preview account of a project
+  description: Create the preview account of a project. If the account exists,
+    the route sets a new password and closes the access. Only this response
+    gives the password. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The preview account with its password
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              email:
+                type: string
+                example: preview-0a1b2c3d4e5f@preview.kitsu.invalid
+              full_name:
+                type: string
+                example: Preview Cosmos Landromat
+              preview_open_until:
+                type: string
+                format: date-time
+                nullable: true
+                description: End of the access window, null when closed
+              password:
+                type: string
+                example: 3kT9dQvE1xZb7mLw
+    400:
+      description: The authentication strategy does not support preview
+        accounts
+    403:
+      description: You are not a manager of the project
+
+ProductionPreviewAccountResource_put:
+  summary: Open or close the preview account
+  description: Open the access of the preview account for one hour, or close
+    it. When you close it, its sessions end. You must be a manager of the
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - is_open
+          properties:
+            is_open:
+              type: boolean
+              example: true
+  responses:
+    200:
+      description: The updated preview account
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              email:
+                type: string
+                example: preview-0a1b2c3d4e5f@preview.kitsu.invalid
+              full_name:
+                type: string
+                example: Preview Cosmos Landromat
+              preview_open_until:
+                type: string
+                format: date-time
+                nullable: true
+                description: End of the access window, null when closed
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project has no preview account
+
+ProductionPreviewBackgroundFileRemoveResource_delete:
+  summary: Remove a preview background file from a project
+  description: Remove a preview background file from the settings of a
+    project. The preview background file is not deleted. You must be a manager
+    of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: preview_background_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview background file unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The preview background file is removed from the project
+    403:
+      description: You are not a manager of the project
+
+ProductionPreviewBackgroundFileResource_get:
+  summary: Get the preview background files of a project
+  description: Get the preview background files of a project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of preview background files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project
+
+ProductionPreviewBackgroundFileResource_post:
+  summary: Add a preview background file to a project
+  description: Add a preview background file to the settings of a project. You
+    must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - preview_background_file_id
+          properties:
+            preview_background_file_id:
+              type: string
+              format: uuid
+              description: Preview background file unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The updated project
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionScheduleItemsResource_get:
+  summary: Get the schedule items of a project
+  description: Get the schedule items of a project. A schedule item gives the
+    start date and the end date of a part of the production in the schedule.
+    Clients and vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of schedule items
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+ProductionScheduleVersionApplyToProductionResource_post:
+  summary: Apply a schedule version to the tasks
+  description: Copy the start dates and the due dates of a production schedule
+    version to the tasks of the project. A production schedule version is a
+    copy of the schedule. You can change it, and then apply it to the tasks.
+    You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: production_schedule_version_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the production schedule version
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The number of updated tasks
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              task_count:
+                type: integer
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The production schedule version does not exist, or the
+        identifier is not a valid UUID
+
+ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource_post:
+  summary: Copy the task dates of another schedule version
+  description: Copy the task dates of another production schedule version
+    into this version. A production schedule version is a copy of the
+    schedule. You can change it, and then apply it to the tasks. You must be a
+    manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: production_schedule_version_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the production schedule version
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - production_schedule_version_id
+          properties:
+            production_schedule_version_id:
+              type: string
+              format: uuid
+              description: Source production schedule version unique
+                identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The task links of the version
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              task_link_count:
+                type: integer
+                description: Number of task links copied
+    400:
+      description: The body is not valid, the two versions are not in the same
+        project, or the source version is the target version
+    403:
+      description: You are not a manager of the project
+    404:
+      description: A production schedule version does not exist
+
+ProductionScheduleVersionSetTaskLinksFromTasksResource_post:
+  summary: Copy the task dates into a schedule version
+  description: Copy the start dates and the due dates of the tasks of the
+    project into a production schedule version. A production schedule version
+    is a copy of the schedule. You can change it, and then apply it to the
+    tasks. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: production_schedule_version_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the production schedule version
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The task links of the version
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              task_link_count:
+                type: integer
+                description: Number of task links copied
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The production schedule version does not exist, or the
+        identifier is not a valid UUID
+
+ProductionScheduleVersionTaskLinksResource_get:
+  summary: Get the task dates of a schedule version
+  description: Get the task links of a production schedule version. Each link
+    gives the start date and the due date of a task in this version. A
+    production schedule version is a copy of the schedule. You can change it,
+    and then apply it to the tasks. Clients and vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: production_schedule_version_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the production schedule version
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the links of the tasks of this task type
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: Add the related objects to each link
+  responses:
+    200:
+      description: The list of task links
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+    404:
+      description: The production schedule version does not exist, or the
+        identifier is not a valid UUID
+
+ProductionSequencesScheduleItemsResource_get:
+  summary: Get the schedule items of the sequences for a task type
+  description: Get the schedule items of the sequences of a project, for a
+    task type. A schedule item gives the start date and the end date of a part
+    of the production in the schedule. Give episode_id to get the items of one
+    episode. Vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Restrict results to sequences of the given episode
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of schedule items
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+ProductionSettingsBatchResource_post:
+  summary: Add settings to a project
+  description: Add task types with their priority, task statuses and asset
+    types to a project in one request. The unknown identifiers are skipped. If
+    replace_task_types is true, the task types of the project are replaced.
+    You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            task_types:
+              type: array
+              items:
+                type: object
+                properties:
+                  task_type_id:
+                    type: string
+                    format: uuid
+                  priority:
+                    type: integer
+                  is_client_visible:
+                    type: boolean
+                    description: Whether clients see this task type, left
+                      untouched when omitted
+            task_status_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            asset_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            replace_task_types:
+              type: boolean
+              default: false
+  responses:
+    200:
+      description: The updated project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionStatusAutomationRemoveResource_delete:
+  summary: Remove a status automation from a project
+  description: Remove a status automation from the settings of a project. The
+    status automation is not deleted. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: status_automation_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Status automation unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The status automation is removed from the project
+    403:
+      description: You are not a manager of the project
+
+ProductionStatusAutomationResource_get:
+  summary: Get the status automations of a project
+  description: Get the status automations of a project. You must be a manager
+    of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of status automations
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You are not a manager of the project
+
+ProductionStatusAutomationResource_post:
+  summary: Add a status automation to a project
+  description: Add a status automation to the settings of a project. You must
+    be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - status_automation_id
+          properties:
+            status_automation_id:
+              type: string
+              format: uuid
+              description: Status automation unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The updated project
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionTaskStatusRemoveResource_delete:
+  summary: Remove a task status from a project
+  description: Remove a task status from the settings of a project. The task
+    status is not deleted. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_status_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task status unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The task status is removed from the project
+    403:
+      description: You are not a manager of the project
+
+ProductionTaskStatusRemoveResource_put:
+  summary: Let the clients use a task status
+  description: Set if the clients of a project can use a task status. A null
+    value uses the value of the studio. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_status_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task status unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - is_client_allowed
+          properties:
+            is_client_allowed:
+              type: boolean
+              nullable: true
+              description: Whether clients may set this status in this
+                production, null inherits the studio value
+              example: false
+  responses:
+    200:
+      description: The updated link
+    400:
+      description: is_client_allowed is missing
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not use this task status
+
+ProductionTaskStatusResource_get:
+  summary: Get the task statuses of a project
+  description: Get the task statuses of a project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of task statuses
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project
+
+ProductionTaskStatusResource_post:
+  summary: Add a task status to a project
+  description: Add a task status to the settings of a project. You must be a
+    manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_status_id
+          properties:
+            task_status_id:
+              type: string
+              format: uuid
+              description: Task status unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The updated project
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionTaskTypeRemoveResource_delete:
+  summary: Remove a task type from a project
+  description: Remove a task type from the settings of a project. The task
+    type is not deleted. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The task type is removed from the project
+    403:
+      description: You are not a manager of the project
+
+ProductionTaskTypeResource_post:
+  summary: Add a task type to a project
+  description: Add a task type to the settings of a project. You can give its
+    priority, its movie bitrates and its visibility for the clients. You must
+    be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_id
+          properties:
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            priority:
+              type: integer
+              nullable: true
+              description: Task type priority
+              example: 1
+            hd_bitrate_compression:
+              type: integer
+              description: High definition movie bitrate in Mbit/s for this
+                task type, null inherits the project's
+              example: 20
+            ld_bitrate_compression:
+              type: integer
+              description: Low definition movie bitrate in Mbit/s for this
+                task type, null inherits the project's
+              example: 4
+            is_client_visible:
+              type: boolean
+              description: Whether clients see this task type, left untouched
+                when omitted
+              example: true
+  responses:
+    201:
+      description: The updated project
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionTaskTypeScheduleItemsResource_get:
+  summary: Get the schedule items of the task types
+  description: Get the schedule items of the task types that have tasks in a
+    project. A schedule item gives the start date and the end date of a part
+    of the production in the schedule. If the project has task type settings,
+    the route skips the other task types. Vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of schedule items
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+ProductionTaskTypeSoftwareRemoveResource_delete:
+  summary: Remove a software from a task type of a project
+  description: Remove a software from a task type of a project. Administrators
+    and managers of the project can use this route. A supervisor of the
+    project can use it for the task types of their departments. A supervisor
+    with no department can use it for every task type.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: path
+      name: software_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Software unique identifier
+      example: c46c8fc6-ef97-4887-a292-79675204e471
+  responses:
+    204:
+      description: The software is removed from the task type
+    403:
+      description: You cannot change the softwares of this task type
+
+ProductionTaskTypeSoftwareResource_post:
+  summary: Add a software to a task type of a project
+  description: Add a software to a task type of a project. The project must
+    use the task type. The software must not be archived. If the link exists,
+    the route returns it. Administrators and managers of the project can use
+    this route. A supervisor of the project can use it for the task types of
+    their departments. A supervisor with no department can use it for every
+    task type.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - software_id
+          properties:
+            software_id:
+              type: string
+              format: uuid
+              description: Software unique identifier
+              example: c46c8fc6-ef97-4887-a292-79675204e471
+  responses:
+    201:
+      description: The link between the task type and the software
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              project_id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                description: Task type unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              software_id:
+                type: string
+                format: uuid
+                description: Software unique identifier
+                example: c46c8fc6-ef97-4887-a292-79675204e471
+    400:
+      description: The project does not use the task type, or the software is
+        archived
+    403:
+      description: You cannot change the softwares of this task type
+    404:
+      description: The software does not exist
+
+ProductionTaskTypeSoftwaresResource_get:
+  summary: Get the softwares of the task types of a project
+  description: Get the softwares that the artists use for each task type of a
+    project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of links between task types and softwares
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                software_id:
+                  type: string
+                  format: uuid
+                  description: Software unique identifier
+                  example: c46c8fc6-ef97-4887-a292-79675204e471
+    403:
+      description: You do not have access to this project
+
+ProductionTaskTypesResource_get:
+  summary: Get the task types of a project
+  description: Get the task types of a project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of task types
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project
+
+ProductionTaskTypesTimeSpentsResource_get:
+  summary: Get the time spents of a task type in a project
+  description: Get the time spent entries of the tasks of a task type in a
+    project. Give start_date and end_date to get the entries of a period. You
+    must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: start_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: First date of the period, in the YYYY-MM-DD format
+      example: '2022-07-01'
+    - in: query
+      name: end_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Last date of the period, in the YYYY-MM-DD format
+      example: '2022-07-31'
+  responses:
+    200:
+      description: The list of time spent entries
+      content:
+        application/json:
+          schema:
+            type: object
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Time spent unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                duration:
+                  type: number
+                  format: float
+                  description: Time spent duration in hours
+                  example: 8.5
+                date:
+                  type: string
+                  format: date
+                  description: Date of time spent entry
+                  example: '2022-07-15'
+    400:
+      description: The task type identifier is not a valid UUID, or a date is
+        not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionTeamMemberResource_delete:
+  summary: Remove a person from a project team
+  description: Remove a person from the team of a project. You must be a
+    manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the person
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The person is removed from the team
+    403:
+      description: You are not a manager of the project
+
+ProductionTeamMemberResource_put:
+  summary: Set the role of a team member
+  description: Set the role of a person in one project. A null role gives back
+    the global role of the person. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the project
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the person
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            role:
+              type: string
+              nullable: true
+              enum: [user, supervisor, manager, client, vendor, null]
+  responses:
+    200:
+      description: The updated team link
+    400:
+      description: The person is not in the team, or the role is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionTeamResource_get:
+  summary: Get the team of a project
+  description: Get the persons of the team of a project, with their role in
+    the project. A manager gets all the fields of each person. A client gets
+    the fields for clients. Other users get the minimal fields.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of team members
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                first_name:
+                  type: string
+                  description: Person first name
+                  example: John
+                last_name:
+                  type: string
+                  description: Person last name
+                  example: Doe
+                email:
+                  type: string
+                  description: Person email address
+                  example: john.doe@example.com
+                project_role:
+                  type: string
+                  nullable: true
+                  description: Person role on this project only. Null means
+                    the person's global role applies.
+                  example: supervisor
+    403:
+      description: You do not have access to this project
+
+ProductionTeamResource_post:
+  summary: Add a person to a project team
+  description: Add a person to the team of a project. You can give the role of
+    the person in this project. You must be a manager of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - person_id
+          properties:
+            person_id:
+              type: string
+              format: uuid
+              description: Person unique identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            role:
+              type: string
+              nullable: true
+              description: Role of the person on this project only. Null means
+                the person's global role applies.
+              enum: [user, supervisor, manager, client, vendor, null]
+  responses:
+    201:
+      description: The updated project
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Project name
+                example: My Project
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+ProductionTimeSpentsResource_get:
+  summary: Get the time spents of a project
+  description: Get the time spent entries of a project. Clients and vendors cannot use this route.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of time spent entries
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    403:
+      description: You do not have access to this project, or you are a client or a vendor

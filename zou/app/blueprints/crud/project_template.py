@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask_jwt_extended import jwt_required
 
@@ -13,6 +12,9 @@ from zou.app.exceptions import (
 from zou.app.models.project_template import ProjectTemplate
 from zou.app.services import project_templates_service
 from zou.app.utils import permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/project_template.yml")
 
 
 class ProjectTemplatesResource(BaseModelsResource):
@@ -35,7 +37,7 @@ class ProjectTemplatesResource(BaseModelsResource):
         return permissions.check_admin_permissions()
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplatesResource_get.yml")
+    @swag_from(SPECS["ProjectTemplatesResource_get"])
     def get(self):
         """
         Get project templates
@@ -43,7 +45,7 @@ class ProjectTemplatesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplatesResource_post.yml")
+    @swag_from(SPECS["ProjectTemplatesResource_post"])
     def post(self):
         """
         Create project template
@@ -73,7 +75,7 @@ class ProjectTemplateResource(BaseModelResource):
         return permissions.check_admin_permissions()
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateResource_get.yml")
+    @swag_from(SPECS["ProjectTemplateResource_get"])
     def get(self, instance_id):
         """
         Get project template
@@ -81,7 +83,7 @@ class ProjectTemplateResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateResource_put.yml")
+    @swag_from(SPECS["ProjectTemplateResource_put"])
     def put(self, instance_id):
         """
         Update project template
@@ -99,7 +101,7 @@ class ProjectTemplateResource(BaseModelResource):
         return template, 200
 
     @jwt_required()
-    @swag_from("openapi/ProjectTemplateResource_delete.yml")
+    @swag_from(SPECS["ProjectTemplateResource_delete"])
     def delete(self, instance_id):
         """
         Delete project template

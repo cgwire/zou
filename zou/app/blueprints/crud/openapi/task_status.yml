@@ -1,0 +1,303 @@
+TaskStatusResource_delete:
+  summary: Delete a task status
+  tags:
+    - Crud
+  description: Delete a task status. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task status
+  responses:
+    204:
+      description: The task status is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The task status does not exist
+
+TaskStatusResource_get:
+  summary: Get a task status
+  tags:
+    - Crud
+  description: Get a task status. All users can read it.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task status
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The task status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: To Do
+              short_name:
+                type: string
+                example: TODO
+              color:
+                type: string
+                example: '#FF5733'
+              is_default:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    404:
+      description: The task status does not exist
+
+TaskStatusResource_put:
+  summary: Update a task status
+  tags:
+    - Crud
+  description: Update the fields of a task status. Send only the fields to
+    change. You cannot change id, created_at, updated_at. Dates use the ISO 8601
+    format. If is_default is true, the previous default status stops being the
+    default. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task status
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: In Progress
+            short_name:
+              type: string
+              example: WIP
+            color:
+              type: string
+              example: '#00FF00'
+            is_default:
+              type: boolean
+              example: true
+  responses:
+    200:
+      description: The updated task status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: In Progress
+              short_name:
+                type: string
+                example: WIP
+              color:
+                type: string
+                example: '#00FF00'
+              is_default:
+                type: boolean
+                example: true
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The task status does not exist
+
+TaskStatusesResource_get:
+  summary: Get task status rows
+  tags:
+    - Crud
+  description: Get the task status rows. Add a query parameter for each column
+    to filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have one
+    value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. All users can read them.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of task status rows, or a page of rows if you give
+        page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+
+TaskStatusesResource_post:
+  summary: Create a task status
+  tags:
+    - Crud
+  description: Create a task status. Send the fields of the new row in JSON. If
+    is_default is true, the previous default status stops being the default. You
+    must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - color
+          properties:
+            name:
+              type: string
+              example: To Do
+            short_name:
+              type: string
+              example: TODO
+            color:
+              type: string
+              example: '#FF5733'
+            is_default:
+              type: boolean
+              default: false
+              example: false
+  responses:
+    201:
+      description: The new task status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: To Do
+              short_name:
+                type: string
+                example: TODO
+              color:
+                type: string
+                example: '#FF5733'
+              is_default:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

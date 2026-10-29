@@ -1,0 +1,95 @@
+ConfigCheckResource_get:
+  summary: Compare the environment and the stored configuration
+  description: Get the value of each setting in the environment and in Redis.
+    Also get the number of active human accounts. This route is for the
+    operator. The route exists only when ADMIN_TOKEN is set. Send ADMIN_TOKEN
+    as the bearer token in the Authorization header. A user token does not
+    give access to this route.
+  tags:
+    - Admin
+  security: []
+  responses:
+    200:
+      description: The value of each setting in the environment and in Redis
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              user_limit:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              default_timezone:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              default_locale:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              nomad_host:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              nomad_normalize_job:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              nomad_playlist_job:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              nomad_tile_job:
+                type: object
+                properties:
+                  env:
+                    nullable: true
+                    description: Value in the environment
+                  redis:
+                    type: string
+                    nullable: true
+                    description: Value in Redis. Null if Redis does not keep a value.
+              active_users:
+                type: integer
+                nullable: true
+                description: Number of active human accounts. Null if the
+                  database is not available.
+    403:
+      description: The admin token is missing or wrong

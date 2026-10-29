@@ -102,9 +102,7 @@ swagger_template = {
         "description": "Read the installation documentation",
         "url": "https://zou.cg-wire.com",
     },
-    "host": "localhost:8080",
-    "basePath": "/api",
-    "schemes": ["http", "https"],
+    "servers": [{"url": "/api"}],
     "components": {
         "securitySchemes": {
             "JWT Authorization": {
@@ -338,11 +336,14 @@ def configure_openapi_route(app, swagger_instance):
         api_paths = merged_api_spec.setdefault("paths", {})
         code_paths = code_samples_spec.get("paths", {})
 
+        # Samples only add x-codeSamples: a sample for a removed route must
+        # not show up as an operation without responses.
         for path, methods in code_paths.items():
-            api_path_item = api_paths.setdefault(path, {})
-
             for method, method_spec in methods.items():
-                api_method_spec = api_path_item.setdefault(method, {})
-                api_method_spec.update(method_spec)
+                api_method_spec = api_paths.get(path, {}).get(method)
+                if api_method_spec is not None:
+                    api_method_spec["x-codeSamples"] = method_spec[
+                        "x-codeSamples"
+                    ]
 
         return jsonify(merged_api_spec)

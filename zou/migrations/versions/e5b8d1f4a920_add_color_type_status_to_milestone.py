@@ -5,7 +5,7 @@ track whether they are reached, so the schedule can show them as colored
 labels. Existing rows get the "other" type and the "todo" status.
 
 Revision ID: e5b8d1f4a920
-Revises: b8e3d1f6a2c9
+Revises: c7d2e9f4a1b3
 Create Date: 2026-10-20 10:00:00.000000
 
 """
@@ -18,7 +18,7 @@ from zou.app.models.milestone import MILESTONE_STATUSES, MILESTONE_TYPES
 
 # revision identifiers, used by Alembic.
 revision = "e5b8d1f4a920"
-down_revision = "b8e3d1f6a2c9"
+down_revision = "c7d2e9f4a1b3"
 branch_labels = None
 depends_on = None
 

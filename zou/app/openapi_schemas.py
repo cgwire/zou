@@ -12,27 +12,27 @@ AssetSchema = {
         },
         "canceled": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the asset has been delete one time, False otherwise",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "entity_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Asset type ID",
         },
         "source_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "ID of preview file used as thumbnail",
         },
         "data": {
@@ -52,13 +52,13 @@ AssetInstanceSchema = {
     "properties": {
         "asset_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Instantiated asset",
         },
         "name": {"type": "string"},
         "number": {"type": "integer"},
         "description": {"type": "string"},
-        "active": {"type": "boolean", "default": "True"},
+        "active": {"type": "boolean", "default": True},
         "data": {
             "type": "string",
             "format": "json",
@@ -66,12 +66,12 @@ AssetInstanceSchema = {
         },
         "scene_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Target scene",
         },
         "target_asset_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Use when instantiating an asset in an asset is required",
         },
     },
@@ -100,7 +100,7 @@ AttachmentFileSchema = {
         "mimetype": {"type": "string"},
         "comment_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Comment to which the file is attached",
         },
     },
@@ -124,7 +124,7 @@ BuildJobSchema = {
         },
         "playlist_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Playlist ID",
         },
     },
@@ -139,7 +139,7 @@ CommentSchema = {
         },
         "object_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Unique ID of the commented model instance",
         },
         "object_type": {
@@ -161,17 +161,17 @@ CommentSchema = {
         "pinned": {"type": "boolean"},
         "task_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task status attached to comment",
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "The person who publishes the comment",
         },
         "preview_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "ID of preview file used as thumbnail",
         },
     },
@@ -188,7 +188,7 @@ CustomActionSchema = {
         "entity_type": {"type": "string", "default": "all"},
         "is_ajax": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the custom action is ajax, False otherwise",
         },
     },
@@ -215,7 +215,7 @@ DayOffSchema = {
         "date": {"type": "string", "format": "date"},
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "The person who will take the day off",
         },
     },
@@ -245,7 +245,7 @@ DesktopLoginLogSchema = {
         "date": {"type": "string", "format": "date"},
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Person ID",
         },
     },
@@ -265,22 +265,22 @@ EpisodeSchema = {
         },
         "canceled": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the episode has been delete one time, False otherwise",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "source_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "ID of preview file used as thumbnail",
         },
         "data": {
@@ -301,12 +301,12 @@ EventSchema = {
         "name": {"type": "string", "description": "Name of event"},
         "user_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "The user who made the action that emitted the event",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "data": {
@@ -335,7 +335,7 @@ LoginLogSchema = {
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Person ID",
         },
     },
@@ -346,7 +346,7 @@ MetadataSchema = {
     "properties": {
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "ID of project for which metadata are added",
         },
         "entity_type": {
@@ -401,12 +401,12 @@ MilestoneSchema = {
         },
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
     },
@@ -415,25 +415,25 @@ MilestoneSchema = {
 NewsSchema = {
     "type": "object",
     "properties": {
-        "change": {"type": "boolean", "default": "False"},
+        "change": {"type": "boolean", "default": False},
         "author_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Person who wrote the comment",
         },
         "comment_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Posted comment ID",
         },
         "task_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task ID",
         },
         "preview_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Preview file ID",
         },
     },
@@ -452,27 +452,27 @@ NotificationSchema = {
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "The user to who the notification is aimed at",
         },
         "author_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Author of the event to notify",
         },
         "comment_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Comment related to the notification, if there is any",
         },
         "task_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task related to the notification, if there is any",
         },
         "reply_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Reply related to notification",
         },
         "type": {
@@ -489,23 +489,23 @@ OrganisationSchema = {
             "type": "string",
             "description": "Name of organisation",
         },
-        "hours_by_day": {"type": "float"},
+        "hours_by_day": {"type": "number"},
         "has_avatar": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the organisation has an avatar, False otherwise",
         },
         "use_original_file_name": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the organisation uses original file names, False otherwise",
         },
         "timesheets_locked": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the organisation's timesheets are locked, False otherwise",
         },
-        "hd_by_default": {"type": "boolean", "default": "False"},
+        "hd_by_default": {"type": "boolean", "default": False},
         "chat_token_slack": {"type": "string"},
         "chat_webhook_mattermost": {"type": "string"},
         "chat_token_discord": {"type": "string"},
@@ -561,7 +561,7 @@ OutputFileSchema = {
         },
         "nb_elements": {
             "type": "integer",
-            "default": "1",
+            "default": 1,
             "description": "For image sequence",
         },
         "canceled": {
@@ -569,42 +569,42 @@ OutputFileSchema = {
         },
         "file_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "File status ID",
         },
         "entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Asset or Shot concerned by the output file",
         },
         "asset_instance_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Asset instance ID",
         },
         "output_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Type of output (geometry, cache, etc.)",
         },
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type related to this output file (modeling, animation, etc.)",
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Author of the file",
         },
         "source_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Working file that led to create this output file",
         },
         "temporal_entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Shot, scene or sequence needed for output files related to an asset instance",
         },
         "data": {
@@ -658,7 +658,7 @@ PersonSchema = {
         "role": {"type": "string", "default": "user"},
         "has_avatar": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if user has an avatar, False otherwise",
         },
         "notifications_enabled": {
@@ -696,20 +696,20 @@ PlaylistSchema = {
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "episode_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Episode ID",
         },
-        "for_client": {"type": "boolean", "default": "False"},
+        "for_client": {"type": "boolean", "default": False},
         "for_entity": {"type": "string", "default": "shot"},
-        "is_for_all": {"type": "boolean", "default": "False"},
+        "is_for_all": {"type": "boolean", "default": False},
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
     },
@@ -732,12 +732,12 @@ PreviewFileSchema = {
         },
         "revision": {
             "type": "integer",
-            "default": "1",
+            "default": 1,
             "description": "Revision number of preview file",
         },
         "position": {
             "type": "integer",
-            "default": "1",
+            "default": 1,
             "description": "Position of preview file",
         },
         "extension": {
@@ -758,7 +758,7 @@ PreviewFileSchema = {
         },
         "file_size": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Size of output file",
         },
         "comment": {
@@ -775,7 +775,7 @@ PreviewFileSchema = {
         },
         "nb_elements": {
             "type": "integer",
-            "default": "1",
+            "default": 1,
             "description": "For image sequence",
         },
         "canceled": {
@@ -783,42 +783,42 @@ PreviewFileSchema = {
         },
         "file_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "File status ID",
         },
         "entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Asset or Shot concerned by the output file",
         },
         "asset_instance_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Asset instance ID",
         },
         "output_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Type of output (geometry, cache, etc.)",
         },
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type related to this output file (modeling, animation, etc.)",
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Author of the file",
         },
         "source_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Working file that led to create this output file",
         },
         "temporal_entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Shot, scene or sequence needed for output files related to an asset instance",
         },
         "data": {
@@ -857,12 +857,12 @@ ProjectSchema = {
         },
         "project_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project status ID",
         },
         "has_avatar": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the project has an avatar, False otherwise",
         },
         "fps": {"type": "string", "description": "Frames per second"},
@@ -879,19 +879,19 @@ ProjectSchema = {
             "type": "integer",
             "description": "Estimated number of working days to complete the project",
         },
-        "nb_episodes": {"type": "integer", "default": "0"},
-        "episode_span": {"type": "integer", "default": "0"},
-        "max_retakes": {"type": "integer", "default": "0"},
+        "nb_episodes": {"type": "integer", "default": 0},
+        "episode_span": {"type": "integer", "default": 0},
+        "max_retakes": {"type": "integer", "default": 0},
         "is_clients_isolated": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the clients are isolated from the project, False otherwise",
         },
-        "is_client_stats_visible": {"type": "boolean", "default": "True"},
-        "is_client_task_list_visible": {"type": "boolean", "default": "True"},
+        "is_client_stats_visible": {"type": "boolean", "default": True},
+        "is_client_task_list_visible": {"type": "boolean", "default": True},
         "is_client_task_panel_visible": {
             "type": "boolean",
-            "default": "True",
+            "default": True,
         },
     },
 }
@@ -912,17 +912,17 @@ ScheduleItemSchema = {
         "man_days": {"type": "integer"},
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
         "object_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Object ID",
         },
     },
@@ -943,12 +943,12 @@ SearchFilterSchema = {
         "search_query": {"type": "string"},
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Person ID",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
     },
@@ -968,27 +968,27 @@ SequenceSchema = {
         },
         "canceled": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the sequence has been delete one time, False otherwise",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "parent_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Episode ID",
         },
         "source_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "ID of preview file used as thumbnail",
         },
         "data": {
@@ -1014,32 +1014,32 @@ ShotSchema = {
         "description": {"type": "string", "description": "Shot brief"},
         "canceled": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the shot has been delete one time, False otherwise",
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "parent_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Episode ID",
         },
         "entity_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Shot type ID",
         },
         "source_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "ID of preview file used as thumbnail",
         },
         "data": {
@@ -1080,12 +1080,12 @@ StatusAutomationSchema = {
         "entity_type": {"type": "string", "default": "asset"},
         "in_task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
         "in_task_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task status ID",
         },
         "out_field_type": {
@@ -1094,12 +1094,12 @@ StatusAutomationSchema = {
         },
         "out_task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
         "out_task_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task status ID",
         },
     },
@@ -1110,22 +1110,22 @@ SubscriptionToNotificationsSchema = {
     "properties": {
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Person ID",
         },
         "task_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task ID",
         },
         "entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Entity ID",
         },
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
     },
@@ -1156,32 +1156,32 @@ TaskSchema = {
         "description": {"type": "string", "description": "Task brief"},
         "priority": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Priority of task",
         },
         "duration": {
-            "type": "float",
-            "default": "0",
+            "type": "number",
+            "default": 0,
             "description": "Duration of task",
         },
         "estimation": {
-            "type": "float",
-            "default": "0",
+            "type": "number",
+            "default": 0,
             "description": "Estimation of duration of task",
         },
         "completion_rate": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Completion rate of task",
         },
         "retake_count": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Retake count of task",
         },
         "sort_order": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Sort order of task",
         },
         "start_date": {"type": "string", "format": "date-time"},
@@ -1191,7 +1191,7 @@ TaskSchema = {
         "last_comment_date": {"type": "string", "format": "date-time"},
         "nb_assets_ready": {
             "type": "integer",
-            "default": "0",
+            "default": 0,
             "description": "Number of assets ready",
         },
         "data": {
@@ -1205,27 +1205,27 @@ TaskSchema = {
         },
         "project_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Project ID",
         },
         "task_type_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task type ID",
         },
         "task_status_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task status ID",
         },
         "entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Entity ID",
         },
         "assigner_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Person ID",
         },
     },
@@ -1245,32 +1245,32 @@ TaskStatusSchema = {
         "color": {"type": "string"},
         "is_done": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the task is done, False otherwise",
         },
         "is_artist_allowed": {
             "type": "boolean",
-            "default": "True",
+            "default": True,
             "description": "True if the artist is allowed, False otherwise",
         },
         "is_client_allowed": {
             "type": "boolean",
-            "default": "True",
+            "default": True,
             "description": "True if the client is allowed, False otherwise",
         },
         "is_retake": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the task was retaken, False otherwise",
         },
         "is_feedback_request": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if feedback was requested, False otherwise",
         },
         "is_default": {
             "type": "boolean",
-            "default": "False",
+            "default": False,
             "description": "True if the task is default, False otherwise",
         },
         "shotgun_id": {
@@ -1291,13 +1291,13 @@ TaskTypeSchema = {
         "color": {"type": "string", "default": "#FFFFFF"},
         "priority": {
             "type": "integer",
-            "default": "1",
+            "default": 1,
             "description": "Priority of task type",
         },
         "for_entity": {"type": "string", "default": "Asset"},
         "allow_timelog": {
             "type": "boolean",
-            "default": "True",
+            "default": True,
             "description": "True if timelog is allowed, False otherwise",
         },
         "shotgun_id": {
@@ -1306,7 +1306,7 @@ TaskTypeSchema = {
         },
         "department_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Department ID",
         },
     },
@@ -1315,16 +1315,16 @@ TaskTypeSchema = {
 TimeSpentSchema = {
     "type": "object",
     "properties": {
-        "duration": {"type": "float"},
+        "duration": {"type": "number"},
         "date": {"type": "string", "format": "date"},
         "task_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Related task ID",
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "The person who performed the working time",
         },
     },
@@ -1372,22 +1372,22 @@ WorkingFileSchema = {
         },
         "task_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Task for which the working file is made",
         },
         "entity_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Entity for which the working is made",
         },
         "person_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Author of the file",
         },
         "software_id": {
             "type": "string",
-            "format": "UUID",
+            "format": "uuid",
             "description": "Software used to build this working file",
         },
     },

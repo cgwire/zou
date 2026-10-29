@@ -1,0 +1,329 @@
+PreviewFileResource_delete:
+  summary: Delete a preview file
+  tags:
+    - Crud
+  description: Delete a preview file. Its files in the storage are marked as
+    deleted. The files are removed from the storage if REMOVE_FILES is set, or
+    if you give force=true. If the task showed this preview, the task gets
+    its previous preview. If the entity showed this preview and the project
+    sets the entity preview automatically, the entity gets the newest preview
+    of its tasks. Otherwise the entity has no preview. You must be an
+    administrator, or a manager in the team of the project.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the preview file
+    - in: query
+      name: force
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Remove the files from the storage, even if REMOVE_FILES is
+        not set
+  responses:
+    204:
+      description: The preview file is deleted
+    400:
+      description: The identifier is not valid, or other data uses the preview
+        file
+    403:
+      description: You are not an administrator or a manager in the team of
+        the project
+    404:
+      description: The preview file does not exist
+
+PreviewFileResource_get:
+  summary: Get a preview file
+  tags:
+    - Crud
+  description: Get a preview file. You must be in the team of the project of
+    its task, or an administrator. On this project, a vendor must also be
+    assigned to the task.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the preview file
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The preview file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: preview_file_v001
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 1
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not in the team of the project, or you are a vendor
+        and the task is not assigned to you
+    404:
+      description: The preview file does not exist
+
+PreviewFileResource_put:
+  summary: Update a preview file
+  tags:
+    - Crud
+  description: Update the fields of a preview file. Send only the fields to
+    change. You must be in the team of the project of its task, or an
+    administrator. If you are not a manager, the task must be assigned to you,
+    or you must be a supervisor in the team with the department of the task
+    type, or with no department. You cannot change id, created_at, updated_at
+    and task_id. For a main preview (position 1), the new revision must be
+    unique for the task. The extra previews of the same revision get the new
+    revision too. Dates use the ISO 8601 format.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the preview file
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: updated_preview_file_v001
+            revision:
+              type: integer
+              example: 2
+  responses:
+    200:
+      description: The updated preview file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: updated_preview_file_v001
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 2
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not in the team of the project, or you are not a
+        manager, the task is not assigned to you and you are not a supervisor
+        of the task type
+    404:
+      description: The preview file does not exist
+
+PreviewFilesResource_get:
+  summary: Get preview file rows
+  tags:
+    - Crud
+  description: Get the preview file rows. All users can call this route. An
+    administrator gets all the preview files. The other users get only the
+    preview files of the tasks of open projects. A vendor gets only the
+    preview files of the tasks assigned to them. The other users get only the
+    preview files of the projects of their teams. Give project_id to get the
+    preview files of one project. Add a query parameter for each column to
+    filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"].
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+    - in: query
+      name: project_id
+      required: false
+      description: Keep only the preview files of the tasks of this project.
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of preview file rows, or a page of rows if you
+        give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid, or project_id is not a valid UUID
+
+PreviewFilesResource_post:
+  summary: Create a preview file
+  tags:
+    - Crud
+  description: Create a preview file. Send the fields of the new row in JSON.
+    You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - task_id
+          properties:
+            name:
+              type: string
+              example: preview_file_v001
+            task_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            revision:
+              type: integer
+              default: 1
+              example: 1
+  responses:
+    201:
+      description: The new preview file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: preview_file_v001
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 1
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

@@ -164,3 +164,35 @@ class SequenceTestCase(ApiDBTestCase):
     def test_cant_delete_sequence(self):
         self.get(f"data/sequences/{self.sequence_id}")
         self.delete(f"data/sequences/{self.sequence_id}", 400)
+
+    def test_a_team_member_deletes_no_sequence_of_another(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        self.delete(f"data/sequences/{self.sequence_02_id}", 403)
+
+    def test_a_creator_out_of_the_team_deletes_no_sequence(self):
+        self.generate_fixture_user_cg_artist()
+        entities_service.get_entity_raw(self.sequence_02_id).update(
+            {"created_by": self.user_cg_artist["id"]}
+        )
+        self.log_in_cg_artist()
+        self.delete(f"data/sequences/{self.sequence_02_id}", 403)
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.delete(f"data/sequences/{self.sequence_02_id}", 204)
+
+    def test_a_creator_who_is_not_a_manager_cannot_force_the_deletion(self):
+        self.generate_fixture_user_cg_artist()
+        entities_service.get_entity_raw(self.sequence_02_id).update(
+            {"created_by": self.user_cg_artist["id"]}
+        )
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        self.delete(f"data/sequences/{self.sequence_02_id}?force=true", 403)
+        self.delete(f"data/sequences/{self.sequence_02_id}", 204)

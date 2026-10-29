@@ -1,0 +1,890 @@
+AllConceptsResource_get:
+  summary: Get concepts
+  description: Get the concepts. Add a query parameter for each column to
+    filter on. If you are not an administrator, you must give project_id.
+  tags:
+    - Concepts
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the concepts of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: parent_id
+      required: false
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Get only the concepts of this concept folder
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: assigned_to
+      required: false
+      description: With any value, get only the concepts that have a task
+        assigned to you.
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of concepts
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Concept unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Concept name
+                  example: Character Design
+                description:
+                  type: string
+                  description: Concept description
+                  example: Main character concept art
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                parent_id:
+                  type: string
+                  format: uuid
+                  description: Parent concept identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+ConceptFolderResource_delete:
+  summary: Delete a concept folder
+  description: Delete a concept folder. The concepts of the folder are not
+    deleted. They go back to the root of the project. You must be a manager or
+    a supervisor of the project.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_folder_id
+      required: true
+      example: e68e02e8-a219-8009-e514-91897426a691
+      description: Unique identifier of the concept folder
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The concept folder is deleted
+    403:
+      description: You are not a manager or a supervisor of the project
+    404:
+      description: The concept folder does not exist
+
+ConceptFolderResource_put:
+  summary: Rename a concept folder
+  description: Rename a concept folder. Two folders of a project cannot have
+    the same name. You must be a manager or a supervisor of the project.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_folder_id
+      required: true
+      example: e68e02e8-a219-8009-e514-91897426a691
+      description: Unique identifier of the concept folder
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Concept folder name
+              example: Characters
+  responses:
+    200:
+      description: The renamed concept folder
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Concept folder unique identifier
+                example: e68e02e8-a219-8009-e514-91897426a691
+              name:
+                type: string
+                description: Concept folder name
+                example: Characters
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              created_by:
+                type: string
+                format: uuid
+                description: Creator person identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: Another folder of the project has this name, or the name
+        is not valid
+    403:
+      description: You are not a manager or a supervisor of the project
+    404:
+      description: The concept folder does not exist
+
+ConceptPreviewsResource_get:
+  summary: Get the previews of a concept
+  description: Get the preview files of a concept. The response is a map of
+    task type identifiers to lists of previews.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the concept
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of task type identifiers to lists of previews
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Preview unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d360
+                  name:
+                    type: string
+                    description: Preview name
+                    example: concept_preview_01
+                  original_name:
+                    type: string
+                    description: Original file name
+                    example: character_concept.jpg
+                  file_path:
+                    type: string
+                    description: File path
+                    example: /previews/concept/concept_preview_01.jpg
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    description: Task type identifier
+                    example: c46c80c6-e097-6887-c292-79675204e470
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                    example: '2023-01-01T12:00:00Z'
+    403:
+      description: You do not have access to this project, or you are a client
+    404:
+      description: The concept does not exist
+
+ConceptResource_delete:
+  summary: Delete a concept
+  description: Delete a concept. The creator of the concept can delete it if
+    the creator is in the project team. Other users must be managers of the
+    project. If the concept has tasks, the concept is only marked as canceled.
+    Use force=true to delete the concept and all its related data.
+    Only a manager of the project can use force=true.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the concept to delete
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: force
+      required: false
+      description: Delete the concept and all its related data
+      example: false
+      schema:
+        type: boolean
+  responses:
+    204:
+      description: The concept is deleted
+    403:
+      description: You cannot delete this concept
+    404:
+      description: The concept does not exist
+
+ConceptResource_get:
+  summary: Get a concept
+  description: Get a concept with its related data.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the concept
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The concept
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Concept unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Concept name
+                example: Character Design
+              description:
+                type: string
+                description: Concept description
+                example: Main character concept art
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project, or you are a client
+    404:
+      description: The concept does not exist
+
+ConceptTaskTypesResource_get:
+  summary: Get the task types of a concept
+  description: Get the task types of the tasks of a concept.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the concept
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of task types
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task type unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Task type name
+                  example: Concept Art
+                short_name:
+                  type: string
+                  description: Task type short name
+                  example: CON
+                color:
+                  type: string
+                  description: Task type color code
+                  example: '#FF5733'
+                for_entity:
+                  type: string
+                  description: Entity type this task type is for
+                  example: Concept
+    403:
+      description: You do not have access to this project, or you are a client
+    404:
+      description: The concept does not exist
+
+ConceptTasksResource_get:
+  summary: Get the tasks of a concept
+  description: Get the tasks of a concept.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: concept_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the concept
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each task
+      example: true
+      schema:
+        type: boolean
+  responses:
+    200:
+      description: The list of tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Task name
+                  example: Character Design Task
+                task_type_id:
+                  type: string
+                  format: uuid
+                  description: Task type identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                task_status_id:
+                  type: string
+                  format: uuid
+                  description: Task status identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                assigned_to:
+                  type: string
+                  format: uuid
+                  description: Assigned person identifier
+                  example: f79f13f9-1320-9010-f625-029985371800
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project, or you are a client
+    404:
+      description: The concept does not exist
+
+ConceptsAndTasksResource_get:
+  summary: Get concepts with their tasks
+  description: Get the concepts with the tasks of each concept. Filter with
+    project_id or id. The other columns are not filters on this route. If you
+    are not an administrator, you must give project_id.
+  tags:
+    - Concepts
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the concepts of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: assigned_to
+      required: false
+      description: With any value, get only the concepts that have a task
+        assigned to you.
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of concepts with their tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Concept unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Concept name
+                  example: Character Design
+                description:
+                  type: string
+                  description: Concept description
+                  example: Main character concept art
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                project_name:
+                  type: string
+                  description: Project name
+                  example: My Animation Project
+                asset_type_name:
+                  type: string
+                  description: Asset type name
+                  example: Character
+                tasks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task unique identifier
+                        example: c46c80c6-e097-6887-c292-79675204e470
+                      name:
+                        type: string
+                        description: Task name
+                        example: Character Design Task
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        description: Task type identifier
+                        example: d57d91d7-f108-7998-d403-80786315f580
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+MoveConceptsResource_post:
+  summary: Move concepts to a concept folder
+  description: Move concepts of a project to a concept folder of the project.
+    If you do not give concept_folder_id, the concepts go back to the root of
+    the project. The identifiers that are not concepts of the project are
+    skipped. You must be a manager or a supervisor of the project.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - concept_ids
+          properties:
+            concept_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Identifiers of the concepts to move
+              example: [b35b7fb5-df86-5776-b181-68564193d360,
+                    c46c80c6-e097-6887-c292-79675204e470]
+            concept_folder_id:
+              type: string
+              format: uuid
+              description: Concept folder to move the concepts to, none to
+                move them back to the root of the project
+              example: e68e02e8-a219-8009-e514-91897426a691
+  responses:
+    200:
+      description: The identifiers of the moved concepts
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+            example: [b35b7fb5-df86-5776-b181-68564193d360,
+                  c46c80c6-e097-6887-c292-79675204e470]
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager or a supervisor of the project
+    404:
+      description: The concept folder does not exist in this project
+
+ProjectConceptFoldersResource_get:
+  summary: Get the concept folders of a project
+  description: Get the concept folders of a project, sorted by name. The
+    parent_id of a concept is the identifier of its folder.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of concept folders
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Concept folder unique identifier
+                  example: e68e02e8-a219-8009-e514-91897426a691
+                name:
+                  type: string
+                  description: Concept folder name
+                  example: Characters
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                created_by:
+                  type: string
+                  format: uuid
+                  description: Creator person identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+ProjectConceptFoldersResource_post:
+  summary: Create a concept folder
+  description: Create a concept folder in a project. If a folder already has
+    this name, the route returns this folder. You must be a manager or a
+    supervisor of the project.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Concept folder name
+              example: Characters
+  responses:
+    201:
+      description: The concept folder
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Concept folder unique identifier
+                example: e68e02e8-a219-8009-e514-91897426a691
+              name:
+                type: string
+                description: Concept folder name
+                example: Characters
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              created_by:
+                type: string
+                format: uuid
+                description: Creator person identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: The name is not valid
+    403:
+      description: You are not a manager or a supervisor of the project
+
+ProjectConceptsResource_get:
+  summary: Get the concepts of a project
+  description: Get the concepts of a project.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of concepts
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Concept unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Concept name
+                  example: Character Design
+                description:
+                  type: string
+                  description: Concept description
+                  example: Main character concept art
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+ProjectConceptsResource_post:
+  summary: Create a concept
+  description: Create a concept in a project. You can put the concept in a
+    concept folder with parent_id. If a concept with this name exists in the
+    project, the route returns it.
+  tags:
+    - Concepts
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Concept name
+              example: Character Design
+            description:
+              type: string
+              description: Concept description
+              example: Main character concept art
+            data:
+              type: object
+              description: Additional concept data
+              example: {style: realistic, mood: heroic}
+            entity_concept_links:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: List of entity concept link identifiers
+              example: [b35b7fb5-df86-5776-b181-68564193d360,
+                    c46c80c6-e097-6887-c292-79675204e470]
+            parent_id:
+              type: string
+              format: uuid
+              description: Concept folder of the project to create the concept
+                in
+              example: e68e02e8-a219-8009-e514-91897426a691
+  responses:
+    201:
+      description: The new concept
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Concept unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Concept name
+                example: Character Design
+              description:
+                type: string
+                description: Concept description
+                example: Main character concept art
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              data:
+                type: object
+                description: Additional concept data
+                example: {style: realistic, mood: heroic}
+              created_by:
+                type: string
+                format: uuid
+                description: Creator person identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+    404:
+      description: The project or the concept folder does not exist in this
+        project

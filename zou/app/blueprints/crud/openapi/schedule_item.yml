@@ -1,0 +1,317 @@
+ScheduleItemResource_delete:
+  summary: Delete a schedule item
+  tags:
+    - Crud
+  description: Delete a schedule item. You must be an administrator or a manager
+    of the project.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the schedule item
+  responses:
+    204:
+      description: The schedule item is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The schedule item does not exist
+
+ScheduleItemResource_get:
+  summary: Get a schedule item
+  tags:
+    - Crud
+  description: Get a schedule item. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the schedule item
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The schedule item
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              man_days:
+                type: number
+                example: 10.5
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The schedule item does not exist
+
+ScheduleItemResource_put:
+  summary: Update a schedule item
+  tags:
+    - Crud
+  description: Update the fields of a schedule item. Send only the fields to
+    change. You cannot change id, created_at, updated_at and project_id. Dates
+    use the ISO 8601 format. A man_days value sent as a string is ignored. You
+    must be an administrator, or a manager or a supervisor of the project. A
+    supervisor with departments can change only the items of a task type of
+    these departments.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the schedule item
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            man_days:
+              type: number
+              example: 12.0
+  responses:
+    200:
+      description: The updated schedule item
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              man_days:
+                type: number
+                example: 12.0
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not a manager or a supervisor of the project, or the
+        task type is not in your departments
+    404:
+      description: The schedule item does not exist
+
+ScheduleItemsResource_get:
+  summary: Get schedule item rows
+  tags:
+    - Crud
+  description: Get the schedule item rows. Add a query parameter for each column
+    to filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have one
+    value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. You must be an administrator.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of schedule item rows, or a page of rows if you
+        give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are not an administrator
+
+ScheduleItemsResource_post:
+  summary: Create a schedule item
+  tags:
+    - Crud
+  description: Create a schedule item. Send the fields of the new row in JSON.
+    You must be an administrator or a manager of the project. A project, a task
+    type and an object can have only one schedule item.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - project_id
+            - task_type_id
+            - object_id
+          properties:
+            project_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            object_id:
+              type: string
+              format: uuid
+              example: c24a6ea4-ce75-4665-a070-57453082c250
+            man_days:
+              type: number
+              example: 10.5
+  responses:
+    201:
+      description: The new schedule item
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              man_days:
+                type: number
+                example: 10.5
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, a similar schedule item already
+        exists, or a field breaks a database constraint
+    403:
+      description: You are not a manager of the project, or project_id is
+        missing
+    404:
+      description: The project does not exist

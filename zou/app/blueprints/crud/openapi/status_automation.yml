@@ -1,0 +1,394 @@
+StatusAutomationResource_delete:
+  summary: Delete a status automation
+  tags:
+    - Crud
+  description: Delete a status automation. You cannot delete an automation
+    that a project uses. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the status automation
+  responses:
+    204:
+      description: The status automation is deleted
+    400:
+      description: A project uses this automation
+    403:
+      description: You are not an administrator
+    404:
+      description: The status automation does not exist
+
+StatusAutomationResource_get:
+  summary: Get a status automation
+  tags:
+    - Crud
+  description: Get a status automation. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the status automation
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The status automation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              entity_type:
+                type: string
+                example: asset
+              in_task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              in_task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              out_field_type:
+                type: string
+                example: status
+              out_task_type_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              out_task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              import_last_revision:
+                type: boolean
+                example: false
+              archived:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The status automation does not exist
+
+StatusAutomationResource_put:
+  summary: Update a status automation
+  tags:
+    - Crud
+  description: Update the fields of a status automation. Send only the fields to
+    change. You cannot change id, created_at, updated_at. Dates use the ISO 8601
+    format. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the status automation
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            entity_type:
+              type: string
+              description: Type of entity of the tasks, for example asset or
+                shot
+              default: asset
+            in_task_type_id:
+              type: string
+              format: uuid
+              description: Task type that starts the automation
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            in_task_status_id:
+              type: string
+              format: uuid
+              description: Task status that starts the automation
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            out_field_type:
+              type: string
+              enum:
+                - status
+                - ready_for
+              description: Field that the automation changes
+            out_task_type_id:
+              type: string
+              format: uuid
+              description: Task type that the automation changes
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            out_task_status_id:
+              type: string
+              format: uuid
+              description: New task status
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            import_last_revision:
+              type: boolean
+              description: Copy the last preview to the changed task
+  responses:
+    200:
+      description: The updated status automation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              entity_type:
+                type: string
+                example: asset
+              in_task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              in_task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              out_field_type:
+                type: string
+                example: status
+              out_task_type_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              out_task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              import_last_revision:
+                type: boolean
+                example: false
+              archived:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The status automation does not exist
+
+StatusAutomationsResource_get:
+  summary: Get status automation rows
+  tags:
+    - Crud
+  description: Get the status automation rows. Add a query parameter for each
+    column to filter on, for example name=Modeling. The name filter does not
+    make a difference between upper case and lower case. To get the rows that
+    have one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. All users can read them, except vendors.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of status automation rows, or a page of rows if
+        you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a vendor
+
+StatusAutomationsResource_post:
+  summary: Create a status automation
+  tags:
+    - Crud
+  description: Create a status automation. Send the fields of the new row in
+    JSON. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            entity_type:
+              type: string
+              description: Type of entity of the tasks, for example asset or
+                shot
+              default: asset
+            in_task_type_id:
+              type: string
+              format: uuid
+              description: Task type that starts the automation
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            in_task_status_id:
+              type: string
+              format: uuid
+              description: Task status that starts the automation
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            out_field_type:
+              type: string
+              enum:
+                - status
+                - ready_for
+              description: Field that the automation changes
+            out_task_type_id:
+              type: string
+              format: uuid
+              description: Task type that the automation changes
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            out_task_status_id:
+              type: string
+              format: uuid
+              description: New task status
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            import_last_revision:
+              type: boolean
+              description: Copy the last preview to the changed task
+  responses:
+    201:
+      description: The new status automation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              entity_type:
+                type: string
+                example: asset
+              in_task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              in_task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              out_field_type:
+                type: string
+                example: status
+              out_task_type_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              out_task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              import_last_revision:
+                type: boolean
+                example: false
+              archived:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

@@ -1,8 +1,13 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-from zou.app.models.entity import EntityConceptLink
-from zou.app.services import concepts_service, subscriptions_service
+from zou.app.models.entity import Entity, EntityConceptLink
+from zou.app.services import (
+    concepts_service,
+    projects_service,
+    subscriptions_service,
+    tasks_service,
+)
 from zou.app.utils import fields
 
 
@@ -19,6 +24,32 @@ class EntityTestCase(ApiDBTestCase):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 3)
         self.assertEqual(entities[0]["type"], "Asset")
+
+    def test_get_entities_as_a_vendor_of_this_project_only(self):
+        task = self.generate_fixture_task(entity_id=self.asset_1_id)
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "vendor")
+        tasks_service.assign_task(task.id, artist_id)
+        self.log_in_cg_artist()
+        entities = self.get("data/entities")
+        self.assertEqual(
+            [entity["id"] for entity in entities], [self.asset_1_id]
+        )
+
+    def test_get_entities_vendor_with_two_tasks_on_an_entity(self):
+        first_task = self.generate_fixture_task(entity_id=self.asset_1_id)
+        second_task = self.generate_fixture_task(
+            name="Second", entity_id=self.asset_1_id
+        )
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project.id, vendor_id)
+        tasks_service.assign_task(first_task.id, vendor_id)
+        tasks_service.assign_task(second_task.id, vendor_id)
+        self.log_in_vendor()
+        entities = self.get("data/entities")
+        self.assertEqual(
+            [entity["id"] for entity in entities], [self.asset_1_id]
+        )
 
     def test_get_entity(self):
         entity = self.get_first("data/entities?relations=true")
@@ -106,6 +137,14 @@ class EntityTestCase(ApiDBTestCase):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 2)
         self.delete_404(f"data/entities/{fields.gen_uuid()}")
+
+    def test_a_creator_out_of_the_team_deletes_no_entity(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        Entity.get(self.asset_1_id).update({"created_by": artist_id})
+        self.log_in_cg_artist()
+        self.delete(f"data/entities/{self.asset_1_id}", 403)
+        projects_service.add_team_member(self.project.id, artist_id)
+        self.delete(f"data/entities/{self.asset_1_id}", 204)
 
     def test_delete_entity_removes_its_links(self):
         """

@@ -35,6 +35,12 @@ class OutputFileTestCase(ApiDBTestCase):
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 3)
 
+    def test_get_output_files_as_a_vendor_of_this_project_only(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "vendor")
+        self.log_in_cg_artist()
+        self.assertEqual(self.get("data/output-files"), [])
+
     def test_get_output_file(self):
         output_file = self.get_first("data/output-files")
         output_file_again = self.get(f"data/output-files/{output_file['id']}")

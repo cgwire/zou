@@ -49,6 +49,14 @@ class MilestoneTestCase(ApiDBTestCase):
         self.assertEqual(data["name"], milestone_again["name"])
         self.put_404(f"data/milestones/{fields.gen_uuid()}", data)
 
+    def test_update_milestone_date_with_a_utc_designator(self):
+        # PostgreSQL takes a Z after a date alone, Python's fromisoformat
+        # does not: the date check has to keep up with PostgreSQL.
+        milestone = self.get_first("data/milestones")
+        self.put(f"data/milestones/{milestone['id']}", {"date": "2024-12-31Z"})
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
+        self.assertEqual(milestone_again["date"], "2024-12-31")
+
     def test_update_milestone_cannot_move_it_to_another_project(self):
         # The permission hook checks the project stored on the milestone, so
         # a body naming another one would push the row into a production the

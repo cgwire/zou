@@ -47,6 +47,25 @@ class AssetInstanceTestCase(ApiDBTestCase):
         self.assertEqual(instance["number"], self.asset_instance["number"])
         self.assertEqual(instance["description"], "Second thought")
 
+    def test_asset_id_is_protected(self):
+        path = f"data/asset-instances/{self.asset_instance['id']}"
+        self.put(path, {"asset_id": str(self.shot.id), "description": "Moved"})
+        instance = self.get(path)
+        self.assertEqual(instance["asset_id"], str(self.asset.id))
+        self.assertEqual(instance["description"], "Moved")
+
+    def test_a_client_updates_no_asset_instance(self):
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project.id, self.user_client["id"]
+        )
+        self.log_in_client()
+        self.put(
+            f"data/asset-instances/{self.asset_instance['id']}",
+            {"description": "Mine"},
+            403,
+        )
+
     def test_reading_one_needs_access_to_its_asset(self):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()

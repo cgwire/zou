@@ -1,9 +1,9 @@
 import copy
 import re
 
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import (
@@ -36,6 +36,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import date_helpers, events, fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/entity.yml")
 
 # A shot version takes the next change of its author up to a minute after
 # its last change, and up to five minutes after its creation, when that
@@ -74,7 +77,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         permissions_service.check_manager_project_access(entity["project_id"])
 
     @jwt_required()
-    @swag_from("openapi/EntitiesResource_get.yml")
+    @swag_from(SPECS["EntitiesResource_get"])
     def get(self):
         """
         Get entities
@@ -82,7 +85,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/EntitiesResource_post.yml")
+    @swag_from(SPECS["EntitiesResource_post"])
     def post(self):
         """
         Create entity
@@ -100,9 +103,19 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
-            if permissions.has_vendor_permissions():
-                query = query.join(Task).filter(
-                    persons_service.build_assignee_filter()
+            # Each entity follows the role held on its own project.
+            vendor_project_ids = user_service.get_project_ids_with_roles(
+                "vendor"
+            )
+            if vendor_project_ids:
+                assigned_entity_ids = Task.query.with_entities(
+                    Task.entity_id
+                ).filter(persons_service.build_assignee_filter())
+                query = query.filter(
+                    or_(
+                        Entity.project_id.not_in(vendor_project_ids),
+                        Entity.id.in_(assigned_entity_ids),
+                    )
                 )
 
         return query
@@ -212,7 +225,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return data
 
     @jwt_required()
-    @swag_from("openapi/EntityResource_get.yml")
+    @swag_from(SPECS["EntityResource_get"])
     def get(self, instance_id):
         """
         Get entity
@@ -220,7 +233,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/EntityResource_delete.yml")
+    @swag_from(SPECS["EntityResource_delete"])
     def delete(self, instance_id):
         """
         Delete entity
@@ -228,11 +241,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return super().delete(instance_id)
 
     def check_delete_permissions(self, entity):
-        return entity["created_by"] == persons_service.get_current_user()[
-            "id"
-        ] or permissions_service.check_manager_project_access(
-            entity["project_id"]
-        )
+        return permissions_service.check_entity_delete_access(entity)
 
     def pre_delete(self, entity):
         """
@@ -250,7 +259,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return entity
 
     @jwt_required()
-    @swag_from("openapi/EntityResource_put.yml")
+    @swag_from(SPECS["EntityResource_put"])
     def put(self, instance_id):
         """
         Update entity

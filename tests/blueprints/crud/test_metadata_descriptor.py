@@ -134,6 +134,43 @@ class MetadataTestCase(ApiDBTestCase):
         data = {"data_type": "wrongdatatype"}
         self.put(f"data/metadata-descriptors/{descriptor['id']}", data, 400)
 
+    def test_a_descriptor_cannot_take_the_key_of_a_built_in_field(self):
+        # This route takes the field name as is: on the key of a built-in
+        # field, an entity column shared its values.
+        data = {
+            "name": "Resolution",
+            "field_name": "resolution",
+            "data_type": "string",
+            "entity_type": "Shot",
+            "project_id": self.project.id,
+        }
+        self.post("data/metadata-descriptors", data, 400)
+        self.put(
+            f"data/metadata-descriptors/{self.meta_descriptor.id}",
+            {"field_name": "fps"},
+            400,
+        )
+        descriptor = self.post(
+            "data/metadata-descriptors", {**data, "entity_type": "Project"}
+        )
+        self.assertEqual(descriptor["field_name"], "resolution")
+
+    def test_a_descriptor_on_the_key_of_a_built_in_field_stays_editable(
+        self,
+    ):
+        legacy = MetadataDescriptor.create(
+            project_id=self.project.id,
+            entity_type="Shot",
+            name="Resolution",
+            data_type="string",
+            field_name="resolution",
+        )
+        descriptor = self.put(
+            f"data/metadata-descriptors/{legacy.id}",
+            {"field_name": "resolution", "for_client": True},
+        )
+        self.assertTrue(descriptor["for_client"])
+
     def test_an_updated_descriptor_lists_its_departments(self):
         self.generate_fixture_department()
         department_id = str(self.department.id)

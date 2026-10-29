@@ -1,0 +1,202 @@
+EventResource_delete:
+  summary: Delete an API event
+  tags:
+    - Crud
+  description: Delete an API event. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the api event
+  responses:
+    204:
+      description: The api event is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The api event does not exist
+
+EventResource_get:
+  summary: Get an API event
+  tags:
+    - Crud
+  description: Get an API event. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the api event
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The api event
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Event Name
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The api event does not exist
+
+EventResource_put:
+  summary: Update an API event
+  tags:
+    - Crud
+  description: Update the fields of an API event. Send only the fields to
+    change. You cannot change id, created_at, updated_at and project_id. Dates
+    use the ISO 8601 format. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the api event
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Updated Event Name
+  responses:
+    200:
+      description: The updated api event
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Updated Event Name
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The api event does not exist
+
+EventsResource_get:
+  summary: Get events
+  tags:
+    - Crud
+  description: Get the events of the API, for example task:update. Add a query
+    parameter for each column to filter on. Use page and limit to get the
+    events page by page. Without page, you get 1000 events or fewer. You must
+    be an administrator.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      example: 1
+      description: Page number for pagination
+    - in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+      example: 50
+      description: Number of results per page
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Whether to include relations
+    - in: query
+      name: fields
+      required: false
+      schema:
+        type: string
+      example: name,created_at
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+  responses:
+    200:
+      description: The list of events, or a page of events if you give page
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Event Name
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+    400:
+      description: A filter is not valid
+    403:
+      description: You are not an administrator

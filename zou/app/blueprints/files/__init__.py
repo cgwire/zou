@@ -24,6 +24,7 @@ from zou.app.blueprints.files.resources import (
     NewWorkingFileResource,
     ProjectOutputFilesResource,
     TaskWorkingFilesResource,
+    OutputFileFileResource,
     WorkingFileFileResource,
     WorkingFilePathResource,
 )
@@ -103,6 +104,10 @@ routes = [
     (
         "/data/working-files/<working_file_id>/file",
         WorkingFileFileResource,
+    ),
+    (
+        "/data/output-files/<output_file_id>/file",
+        OutputFileFileResource,
     ),
     (
         "/actions/working-files/<working_file_id>/comment",

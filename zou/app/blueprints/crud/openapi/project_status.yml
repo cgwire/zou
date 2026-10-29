@@ -1,0 +1,269 @@
+ProjectStatusResource_delete:
+  summary: Delete a project status
+  tags:
+    - Crud
+  description: Delete a project status. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project status
+  responses:
+    204:
+      description: The project status is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The project status does not exist
+
+ProjectStatusResource_get:
+  summary: Get a project status
+  tags:
+    - Crud
+  description: Get a project status. All users can read project statuses.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project status
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The project status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Open
+              color:
+                type: string
+                example: '#00FF00'
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    404:
+      description: The project status does not exist
+
+ProjectStatusResource_put:
+  summary: Update a project status
+  tags:
+    - Crud
+  description: Update the fields of a project status. Send only the fields to
+    change. You cannot change id, created_at, updated_at. Dates use the ISO
+    8601 format. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project status
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Closed
+            color:
+              type: string
+              example: '#FF0000'
+  responses:
+    200:
+      description: The updated project status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Closed
+              color:
+                type: string
+                example: '#FF0000'
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The project status does not exist
+
+ProjectStatussResource_get:
+  summary: Get project status rows
+  tags:
+    - Crud
+  description: Get the project status rows. All users can call this route. Add
+    a query parameter for each column to filter on, for example name=Modeling.
+    The name filter does not make a difference between upper case and lower
+    case. To get the rows that have one value of a list, give the list in
+    JSON, for example task_status_id=["<id1>","<id2>"].
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of project status rows, or a page of rows if you
+        give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+
+ProjectStatussResource_post:
+  summary: Create a project status
+  tags:
+    - Crud
+  description: Create a project status. Send the fields of the new row in
+    JSON. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              example: Open
+            color:
+              type: string
+              example: '#00FF00'
+  responses:
+    201:
+      description: The new project status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Open
+              color:
+                type: string
+                example: '#00FF00'
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not an administrator

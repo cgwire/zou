@@ -3,7 +3,6 @@ import datetime
 import psutil
 import redis
 import requests
-from flasgger import swag_from
 from flask import Response
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -19,10 +18,13 @@ from zou.app.services import (
 )
 from zou.app.stores import redis_client
 from zou.app.utils import date_helpers, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class IndexResource(MethodView):
-    @swag_from("openapi/IndexResource_get.yml")
+    @swag_from(SPECS["IndexResource_get"])
     def get(self):
         """
         Get API name and version
@@ -112,7 +114,7 @@ class BaseStatusResource(MethodView):
 
 
 class StatusResource(BaseStatusResource):
-    @swag_from("openapi/StatusResource_get.yml")
+    @swag_from(SPECS["StatusResource_get"])
     def get(self):
         """
         Get status of the API services
@@ -139,7 +141,7 @@ class StatusResource(BaseStatusResource):
 
 
 class StatusResourcesResource(BaseStatusResource):
-    @swag_from("openapi/StatusResourcesResource_get.yml")
+    @swag_from(SPECS["StatusResourcesResource_get"])
     def get(self):
         """
         Get resource usage stats
@@ -182,7 +184,7 @@ class StatusResourcesResource(BaseStatusResource):
 
 
 class TxtStatusResource(BaseStatusResource):
-    @swag_from("openapi/TxtStatusResource_get.yml")
+    @swag_from(SPECS["TxtStatusResource_get"])
     def get(self):
         """
         Get status of the API services as text
@@ -209,7 +211,7 @@ indexer-up: {"up" if is_indexer_up else "down"}
 
 
 class InfluxStatusResource(BaseStatusResource):
-    @swag_from("openapi/InfluxStatusResource_get.yml")
+    @swag_from(SPECS["InfluxStatusResource_get"])
     def get(self):
         """
         Get status of the API services for InfluxDB
@@ -238,7 +240,7 @@ class InfluxStatusResource(BaseStatusResource):
 
 class StatsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/StatsResource_get.yml")
+    @swag_from(SPECS["StatsResource_get"])
     def get(self):
         """
         Get usage stats
@@ -249,7 +251,7 @@ class StatsResource(MethodView):
 
 
 class ConfigResource(MethodView):
-    @swag_from("openapi/ConfigResource_get.yml")
+    @swag_from(SPECS["ConfigResource_get"])
     def get(self):
         """
         Get the configuration of the Kitsu instance
@@ -281,12 +283,14 @@ class ConfigResource(MethodView):
 
 
 class TestEventsResource(MethodView):
-    @swag_from("openapi/TestEventsResource_get.yml")
+    @jwt_required()
+    @swag_from(SPECS["TestEventsResource_get"])
     def get(self):
         """
         Generate a test event
         """
         from zou.app.utils import events
 
+        permissions.check_admin_permissions()
         events.emit("main:test", data={}, persist=False, project_id=None)
         return {"success": True}

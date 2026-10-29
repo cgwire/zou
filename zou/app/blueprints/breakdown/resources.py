@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -19,11 +18,14 @@ from zou.app.services import (
     shots_service,
 )
 from zou.app.utils import permissions, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class CastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/CastingResource_get.yml")
+    @swag_from(SPECS["CastingResource_get"])
     def get(self, project_id, entity_id):
         """
         Get entity casting
@@ -37,7 +39,7 @@ class CastingResource(MethodView):
         return breakdown_service.get_casting(entity_id)
 
     @jwt_required()
-    @swag_from("openapi/CastingResource_put.yml")
+    @swag_from(SPECS["CastingResource_put"])
     def put(self, project_id, entity_id):
         """
         Update entity casting
@@ -57,7 +59,7 @@ class CastingResource(MethodView):
 
 class EntitiesCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntitiesCastingResource_put.yml")
+    @swag_from(SPECS["EntitiesCastingResource_put"])
     def put(self, project_id):
         """
         Update several entity castings
@@ -83,7 +85,7 @@ class EntitiesCastingResource(MethodView):
 
 class EntitiesAssetCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EntitiesAssetCastingResource_put.yml")
+    @swag_from(SPECS["EntitiesAssetCastingResource_put"])
     def put(self, project_id, asset_id):
         """
         Cast one asset in several entities
@@ -110,7 +112,7 @@ class EntitiesAssetCastingResource(MethodView):
 
 class EpisodesCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodesCastingResource_get.yml")
+    @swag_from(SPECS["EpisodesCastingResource_get"])
     def get(self, project_id):
         """
         Get episodes casting
@@ -123,7 +125,7 @@ class EpisodesCastingResource(MethodView):
 
 class EpisodeSequenceAllCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/EpisodeSequenceAllCastingResource_get.yml")
+    @swag_from(SPECS["EpisodeSequenceAllCastingResource_get"])
     def get(self, project_id, episode_id):
         """
         Get episode shots casting
@@ -138,7 +140,7 @@ class EpisodeSequenceAllCastingResource(MethodView):
 
 class SequenceAllCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequenceAllCastingResource_get.yml")
+    @swag_from(SPECS["SequenceAllCastingResource_get"])
     def get(self, project_id):
         """
         Get project shots casting
@@ -151,7 +153,7 @@ class SequenceAllCastingResource(MethodView):
 
 class SequenceCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SequenceCastingResource_get.yml")
+    @swag_from(SPECS["SequenceCastingResource_get"])
     def get(self, project_id, sequence_id):
         """
         Get sequence shots casting
@@ -167,7 +169,7 @@ class SequenceCastingResource(MethodView):
 
 class AssetTypeCastingResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/AssetTypeCastingResource_get.yml")
+    @swag_from(SPECS["AssetTypeCastingResource_get"])
     def get(self, project_id, asset_type_id):
         """
         Get asset type casting
@@ -183,7 +185,7 @@ class AssetTypeCastingResource(MethodView):
 
 class ShotAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ShotAssetInstancesResource_get.yml")
+    @swag_from(SPECS["ShotAssetInstancesResource_get"])
     def get(self, shot_id):
         """
         Get shot asset instances
@@ -194,7 +196,7 @@ class ShotAssetInstancesResource(MethodView, ArgsMixin):
         return breakdown_service.get_asset_instances_for_shot(shot_id)
 
     @jwt_required()
-    @swag_from("openapi/ShotAssetInstancesResource_post.yml")
+    @swag_from(SPECS["ShotAssetInstancesResource_post"])
     def post(self, shot_id):
         """
         Add shot asset instance
@@ -202,7 +204,7 @@ class ShotAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddAssetInstanceSchema)
 
         shot = shots_service.get_shot(shot_id)
-        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_edition_access(shot["project_id"])
         shot = breakdown_service.add_asset_instance_to_shot(
             shot_id, str(body.asset_instance_id)
         )
@@ -211,13 +213,13 @@ class ShotAssetInstancesResource(MethodView, ArgsMixin):
 
 class RemoveShotAssetInstanceResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/RemoveShotAssetInstanceResource_delete.yml")
+    @swag_from(SPECS["RemoveShotAssetInstanceResource_delete"])
     def delete(self, shot_id, asset_instance_id):
         """
         Remove shot asset instance
         """
         shot = shots_service.get_shot(shot_id)
-        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_edition_access(shot["project_id"])
         shot = breakdown_service.remove_asset_instance_for_shot(
             shot_id, asset_instance_id
         )
@@ -226,7 +228,7 @@ class RemoveShotAssetInstanceResource(MethodView, ArgsMixin):
 
 class SceneAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/SceneAssetInstancesResource_get.yml")
+    @swag_from(SPECS["SceneAssetInstancesResource_get"])
     def get(self, scene_id):
         """
         Get scene asset instances
@@ -237,7 +239,7 @@ class SceneAssetInstancesResource(MethodView, ArgsMixin):
         return breakdown_service.get_asset_instances_for_scene(scene_id)
 
     @jwt_required()
-    @swag_from("openapi/SceneAssetInstancesResource_post.yml")
+    @swag_from(SPECS["SceneAssetInstancesResource_post"])
     def post(self, scene_id):
         """
         Create scene asset instance
@@ -245,7 +247,7 @@ class SceneAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddSceneAssetInstanceSchema)
 
         scene = shots_service.get_scene(scene_id)
-        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_edition_access(scene["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_scene(
             scene_id, str(body.asset_id), body.description
         )
@@ -254,7 +256,7 @@ class SceneAssetInstancesResource(MethodView, ArgsMixin):
 
 class SceneCameraInstancesResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/SceneCameraInstancesResource_get.yml")
+    @swag_from(SPECS["SceneCameraInstancesResource_get"])
     def get(self, scene_id):
         """
         Get scene camera instances
@@ -267,7 +269,7 @@ class SceneCameraInstancesResource(MethodView):
 
 class ProjectEntityLinksResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectEntityLinksResource_get.yml")
+    @swag_from(SPECS["ProjectEntityLinksResource_get"])
     def get(self, project_id):
         """
         Get project entity links
@@ -287,7 +289,7 @@ class ProjectEntityLinksResource(MethodView, ArgsMixin):
 
 class ProjectEntityLinkResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectEntityLinkResource_delete.yml")
+    @swag_from(SPECS["ProjectEntityLinkResource_delete"])
     def delete(self, project_id, entity_link_id):
         """
         Delete entity link

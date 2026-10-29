@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -19,12 +18,15 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import permissions, query, validation
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ConceptResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ConceptResource_get.yml")
+    @swag_from(SPECS["ConceptResource_get"])
     def get(self, concept_id):
         """
         Get concept
@@ -37,19 +39,14 @@ class ConceptResource(MethodView, ArgsMixin):
         return concept
 
     @jwt_required()
-    @swag_from("openapi/ConceptResource_delete.yml")
+    @swag_from(SPECS["ConceptResource_delete"])
     def delete(self, concept_id):
         """
         Delete concept
         """
         force = self.get_force()
         concept = concepts_service.get_concept(concept_id)
-        if concept["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(concept["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                concept["project_id"]
-            )
+        permissions_service.check_entity_delete_access(concept, force=force)
         cascade_deletion_service.remove_concept(concept_id, force=force)
         return "", 204
 
@@ -57,7 +54,7 @@ class ConceptResource(MethodView, ArgsMixin):
 class AllConceptsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AllConceptsResource_get.yml")
+    @swag_from(SPECS["AllConceptsResource_get"])
     def get(self):
         """
         Get all concepts
@@ -77,7 +74,7 @@ class AllConceptsResource(MethodView):
 class ConceptTaskTypesResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ConceptTaskTypesResource_get.yml")
+    @swag_from(SPECS["ConceptTaskTypesResource_get"])
     def get(self, concept_id):
         """
         Get concept task types
@@ -93,7 +90,7 @@ class ConceptTaskTypesResource(MethodView):
 class ConceptTasksResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ConceptTasksResource_get.yml")
+    @swag_from(SPECS["ConceptTasksResource_get"])
     def get(self, concept_id):
         """
         Get concept tasks
@@ -112,7 +109,7 @@ class ConceptTasksResource(MethodView, ArgsMixin):
 class ConceptPreviewsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ConceptPreviewsResource_get.yml")
+    @swag_from(SPECS["ConceptPreviewsResource_get"])
     def get(self, concept_id):
         """
         Get concept previews
@@ -127,7 +124,7 @@ class ConceptPreviewsResource(MethodView):
 
 class ConceptsAndTasksResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ConceptsAndTasksResource_get.yml")
+    @swag_from(SPECS["ConceptsAndTasksResource_get"])
     def get(self):
         """
         Get concepts and tasks
@@ -147,7 +144,7 @@ class ConceptsAndTasksResource(MethodView):
 
 class ProjectConceptsResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/ProjectConceptsResource_get.yml")
+    @swag_from(SPECS["ProjectConceptsResource_get"])
     def get(self, project_id):
         """
         Get project concepts
@@ -162,7 +159,7 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
         return concepts_service.get_concepts_for_project(project_id)
 
     @jwt_required()
-    @swag_from("openapi/ProjectConceptsResource_post.yml")
+    @swag_from(SPECS["ProjectConceptsResource_post"])
     def post(self, project_id):
         """
         Create concept
@@ -190,7 +187,7 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
 
 class ProjectConceptFoldersResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ProjectConceptFoldersResource_get.yml")
+    @swag_from(SPECS["ProjectConceptFoldersResource_get"])
     def get(self, project_id):
         """
         Get project concept folders
@@ -205,7 +202,7 @@ class ProjectConceptFoldersResource(MethodView):
         return concepts_service.get_concept_folders_for_project(project_id)
 
     @jwt_required()
-    @swag_from("openapi/ProjectConceptFoldersResource_post.yml")
+    @swag_from(SPECS["ProjectConceptFoldersResource_post"])
     def post(self, project_id):
         """
         Create concept folder
@@ -223,7 +220,7 @@ class ProjectConceptFoldersResource(MethodView):
 
 class ConceptFolderResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ConceptFolderResource_put.yml")
+    @swag_from(SPECS["ConceptFolderResource_put"])
     def put(self, concept_folder_id):
         """
         Rename concept folder
@@ -238,7 +235,7 @@ class ConceptFolderResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/ConceptFolderResource_delete.yml")
+    @swag_from(SPECS["ConceptFolderResource_delete"])
     def delete(self, concept_folder_id):
         """
         Delete concept folder
@@ -253,7 +250,7 @@ class ConceptFolderResource(MethodView):
 
 class MoveConceptsResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/MoveConceptsResource_post.yml")
+    @swag_from(SPECS["MoveConceptsResource_post"])
     def post(self, project_id):
         """
         Move concepts to a concept folder

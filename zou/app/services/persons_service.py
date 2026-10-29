@@ -168,26 +168,34 @@ def get_person_raw(person_id):
 
 
 @cache.memoize_function(120)
-def get_person(person_id, unsafe=False, relations=True):
+def get_person(person_id, unsafe=False, relations=True, minimal=False):
     """
     Return given person as a dictionary.
     """
     person = get_person_raw(person_id)
     if unsafe:
         return person.serialize(relations=relations)
+    elif minimal:
+        return person.present_minimal(relations=relations)
     else:
         return person.serialize_safe(relations=relations)
 
 
-def get_persons_by_ids(person_ids):
+def get_persons_by_ids(person_ids, minimal=False):
     """
-    Return persons matching given ids as a list of safe dictionaries.
-    Single query instead of one per person.
+    Return persons matching given ids as a list of safe dictionaries, or of
+    minimal ones. One query for the persons, plus one for the departments of
+    the minimal ones, instead of one per person.
     """
     if not person_ids:
         return []
-    persons = Person.query.filter(Person.id.in_(person_ids)).all()
-    return [person.serialize_safe() for person in persons]
+    query = Person.query.filter(Person.id.in_(person_ids))
+    if minimal:
+        query = query.options(selectinload(Person.departments))
+        return [
+            person.present_minimal(relations=True) for person in query.all()
+        ]
+    return [person.serialize_safe() for person in query.all()]
 
 
 def build_short_person(person):
@@ -646,7 +654,14 @@ def create_desktop_login_logs(person_id, date):
 def update_person_last_presence(person_id):
     """
     Update person presence field with the most recent time spent or
-    desktop login log for this person.
+    desktop login log for this person. Return True when the field changed.
+
+    It runs for every new time spent and desktop login, so it writes the
+    field alone, and only when the day changes: no updated_at change
+    (Kitsu puts it in the avatar URL), no reindex, no person cache clear
+    for the whole instance, and no person:update that makes every connected
+    client reload the person. Kitsu never reads the field, and the memoized
+    persons catch up when they expire.
     """
     log = (
         DesktopLoginLog.query.filter(DesktopLoginLog.person_id == person_id)
@@ -666,9 +681,17 @@ def update_person_last_presence(person_id):
     if time_spent is not None:
         dates.append(time_spent.date)
     date = max(dates, default=None)
-    return update_person(
-        person_id, {"last_presence": date}, bypass_protected_accounts=True
+    changed = Person.query.filter(
+        Person.id == person_id,
+        Person.last_presence.is_distinct_from(date),
+    ).update(
+        # Set to itself, updated_at keeps its value instead of taking the
+        # onupdate default.
+        {"last_presence": date, "updated_at": Person.updated_at},
+        synchronize_session=False,
     )
+    Person.commit()
+    return changed > 0
 
 
 def get_presence_logs(year, month):

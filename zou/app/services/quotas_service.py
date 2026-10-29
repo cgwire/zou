@@ -1,7 +1,11 @@
+import hashlib
 from datetime import datetime, timedelta
+from itertools import accumulate
+from math import floor
 from operator import itemgetter
 
-from sqlalchemy import func
+from sqlalchemy import func, select
+from sqlalchemy.orm import aliased
 
 from zou.app.models.entity import Entity
 from zou.app.models.person import Person
@@ -31,7 +35,8 @@ def get_weighted_quotas(
 
     If time spent is  filled for it, it weights the result with the frame
     number with the time spents. If there is no time spent, it considers that
-    the work was done from the wip date to the feedback date (or approval date).
+    the work was done from the wip date to the feedback date (or approval
+    date), or on that end date for a task that never went WIP.
     It computes the shot count and the number of seconds too.
 
     If the `feedback` flag is set to True, it uses the feedback date
@@ -45,6 +50,9 @@ def get_weighted_quotas(
     query = (
         Task.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
+        # A duration set to 0, or to null, once time was logged leaves
+        # nothing to share the shot out by.
+        .filter(Task.duration > 0)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
@@ -59,8 +67,19 @@ def get_weighted_quotas(
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
 
+    person = None
     if person_id is not None:
-        query = query.filter(TimeSpent.person_id == person_id)
+        person = persons_service.get_person_raw(person_id)
+        # Every time spent of the tasks the person logged time on: the
+        # shares of a task are taken together, as on the task type route.
+        own_time_spent = aliased(TimeSpent)
+        query = query.filter(
+            Task.id.in_(
+                select(own_time_spent.task_id).where(
+                    own_time_spent.person_id == person.id
+                )
+            )
+        )
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -74,34 +93,44 @@ def get_weighted_quotas(
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
+    # The time spents of a task share its frames out together, whoever
+    # logged them, so that the shares add up to the shot.
+    time_spents = {}
     for task, nb_frames, date, duration, task_person_id in result:
-        task_person_id = str(task_person_id)
-        nb_drawings = task.nb_drawings or 0
-        nb_frames = nb_frames or 0
-        if task.duration > 0:
-            share = duration / task.duration
-            nb_frames = round(nb_frames * share)
-            nb_drawings = round(nb_drawings * share)
-            entry_id = str(task_person_id)
-            # We get quotas for a specific person split by task types
-            if person_id is not None:
-                entry_id = str(task.task_type_id)
-            for entry in [entry_id, "total"]:
-                _add_quota_entry(
-                    quotas,
-                    entry,
-                    date,
-                    timezone,
-                    nb_frames,
-                    nb_drawings,
-                    fps,
-                    count=share,
-                )
+        if task.id not in time_spents:
+            time_spents[task.id] = task, nb_frames or 0, []
+        time_spents[task.id][2].append((date, str(task_person_id), duration))
+
+    for task, nb_frames, days in time_spents.values():
+        # One block per person: interleaved with the days of another
+        # person, the running sum would move frames from one to the other.
+        # The blocks come in an order drawn for the task, so that the frame
+        # left over by a tie does not always go to the same person.
+        days.sort(key=lambda day: (_get_block_key(task.id, day[1]), day[0]))
+        durations = [duration for _, _, duration in days]
+        frames = _share_out(nb_frames, durations, task.duration)
+        drawings = _share_out(task.nb_drawings or 0, durations, task.duration)
+        for index, (date, day_person_id, duration) in enumerate(days):
+            if person is None or day_person_id == str(person.id):
+                entry_id = day_person_id
+                # We get quotas for a specific person split by task types
+                if person_id is not None:
+                    entry_id = str(task.task_type_id)
+                for entry in [entry_id, "total"]:
+                    _add_quota_entry(
+                        quotas,
+                        entry,
+                        date,
+                        timezone,
+                        frames[index],
+                        drawings[index],
+                        fps,
+                        count=duration / task.duration,
+                    )
 
     query = (
         Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.real_start_date != None)
         .filter(TimeSpent.id == None)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
@@ -113,9 +142,10 @@ def get_weighted_quotas(
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
 
-    if person_id is not None:
-        person = persons_service.get_person_raw(person_id)
-        query = query.filter(Task.assignees.contains(person))
+    if person is not None:
+        # On the assignee the query joins: contains() joins the assignees
+        # again and keeps a row for each of them.
+        query = query.filter(Person.id == person.id)
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -129,44 +159,36 @@ def get_weighted_quotas(
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
+    tasks_in_total = set()
     for task, nb_frames, task_person_id in result:
         end_date = task.done_date
         if feedback:
             end_date = task.end_date
 
-        business_days = (
-            date_helpers.get_business_days(task.real_start_date, end_date) + 1
-        )
-        if nb_frames is not None:
-            nb_frames = round(nb_frames / business_days) or 0
-        else:
-            nb_frames = 0
-
-        nb_drawings = task.nb_drawings or 0
-
         # Spread the work over the days the task was actually in progress,
-        # from the wip date to the end date. The cursor used to start at
-        # the end date, which pushed every frame past the period.
-        day = task.real_start_date
-        for _ in range((end_date - task.real_start_date).days + 1):
-            if day.weekday() < 5:
-                entry_id = str(task_person_id)
-                # We get quotas for a specific person split by task types
-                if person_id is not None:
-                    entry_id = str(task.task_type_id)
+        # from the wip date to the end date.
+        days = _get_working_days(task.real_start_date, end_date, timezone)
+        frames = _spread(nb_frames or 0, len(days))
+        drawings = _spread(task.nb_drawings or 0, len(days))
 
-                for entry in [entry_id, "total"]:
-                    _add_quota_entry(
-                        quotas,
-                        entry,
-                        day,
-                        timezone,
-                        nb_frames,
-                        nb_drawings,
-                        fps,
-                        count=1 / business_days,
-                    )
-            day = day + timedelta(1)
+        entry_id = str(task_person_id)
+        # We get quotas for a specific person split by task types
+        if person_id is not None:
+            entry_id = str(task.task_type_id)
+        entries = _get_quota_entries(entry_id, task, tasks_in_total)
+
+        for day, nb_day_frames, nb_day_drawings in zip(days, frames, drawings):
+            for entry in entries:
+                _add_quota_entry(
+                    quotas,
+                    entry,
+                    day,
+                    timezone,
+                    nb_day_frames,
+                    nb_day_drawings,
+                    fps,
+                    count=1 / len(days),
+                )
     return _round_counts(quotas)
 
 
@@ -216,7 +238,9 @@ def get_raw_quotas(
 
     if person_id is not None:
         person = persons_service.get_person_raw(person_id)
-        query = query.filter(Task.assignees.contains(person))
+        # On the assignee the query joins: contains() joins the assignees
+        # again and keeps a row for each of them.
+        query = query.filter(Person.id == person.id)
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -231,6 +255,7 @@ def get_raw_quotas(
 
     result = query.all()
 
+    tasks_in_total = set()
     for task, nb_frames, task_person_id in result:
         date = task.done_date
         if feedback:
@@ -245,11 +270,102 @@ def get_raw_quotas(
         if person_id is not None:
             entry_id = str(task.task_type_id)
 
-        for entry in [entry_id, "total"]:
+        for entry in _get_quota_entries(entry_id, task, tasks_in_total):
             _add_quota_entry(
                 quotas, entry, date, timezone, nb_frames, nb_drawings, fps
             )
     return quotas
+
+
+def _get_quota_entries(entry_id, task, tasks_in_total):
+    """
+    The entries a row of a task adds to. The query returns a row for each
+    assignee of the task: each of them counts it whole, the total counts
+    it once.
+    """
+    if task.id in tasks_in_total:
+        return [entry_id]
+    tasks_in_total.add(task.id)
+    return [entry_id, "total"]
+
+
+def _spread(amount, nb_days):
+    """
+    Split a whole amount into whole daily shares that add up to it, the
+    remainder spread evenly. Rounding each day's share on its own lost or
+    added frames: 5 frames over 11 days counted none.
+    """
+    return [
+        amount * (day + 1) // nb_days - amount * day // nb_days
+        for day in range(nb_days)
+    ]
+
+
+def _share_out(amount, durations, task_duration):
+    """
+    Split a whole amount between time spents by the share of the task
+    duration they took. Each share comes from the running sum, so the
+    shares add up: rounded one by one, three equal time spents on 10
+    frames counted 9. The sum is rounded half up, so that consecutive
+    time spents worth a whole number of frames get exactly that number,
+    and to 9 decimals first, so that a tie stays one with minutes that
+    are not whole (439.8 for a day of 7.33 hours).
+    """
+    totals = [
+        floor(round(amount * spent / task_duration, 9) + 0.5)
+        for spent in accumulate(durations)
+    ]
+    return [total - previous for previous, total in zip([0] + totals, totals)]
+
+
+def _get_block_key(task_id, person_id):
+    """
+    The rank of the time spents of a person when a task is shared out: the
+    same on every page, but drawn anew for each task, so that the frame
+    left over by a tie does not always go to the same person.
+    """
+    return hashlib.sha1(
+        f"{task_id}{person_id}".encode(), usedforsecurity=False
+    ).hexdigest()
+
+
+def _get_working_days(start_date, end_date, timezone):
+    """
+    The business days a task without time spent is spread over, from its
+    WIP day to its end day, taken as calendar days of the user: east of
+    UTC, a Monday morning is still Sunday in UTC. A task that never went
+    WIP, or one without any working day, run over a weekend only or WIP
+    after its end, lands on its end day.
+    """
+    end_day = _get_local_day(end_date, timezone)
+    if start_date is None:
+        return [end_day]
+    start_day = _get_local_day(start_date, timezone)
+    days = (
+        start_day + timedelta(days=offset)
+        for offset in range((end_day - start_day).days + 1)
+    )
+    return [day for day in days if day.weekday() < 5] or [end_day]
+
+
+def _get_local_day(date_obj, timezone):
+    """
+    The calendar day a UTC instant falls on for the user.
+    """
+    return date_helpers.get_date_from_string(
+        date_helpers.get_simple_string_with_timezone_from_date(
+            date_obj, timezone
+        )
+    ).date()
+
+
+def _get_day(date_obj):
+    """
+    The calendar day of a period bound, given as a date or a datetime.
+    """
+    if isinstance(date_obj, datetime):
+        return date_obj.date()
+    return date_obj
 
 
 def _add_quota_entry(
@@ -493,12 +609,14 @@ def get_weighted_quota_shots_between(
 ):
     """
     Get all shots leading to a quota computation during the given period.
-    Set a weight on each one:
-        * If there is time spent filled, weight it by the sum of duration
-          divided py the overall task duration.
-        * If there is no time spent, weight it by the number of business days
-          in the time interval spent between WIP date (start) and
-          feedback date (end).
+    Set a weight on each one, the sum of the shares of its tasks:
+        * A task with time spent filled weighs the sum of the durations
+          divided by the overall task duration. A task whose duration is 0
+          or unset is left out.
+        * A task without time spent weighs the share of its working days,
+          from its WIP day to its end day (feedback or approval), that
+          falls in the period. A task that never went WIP, or has no
+          working day, weighs whole on its end day.
 
     The period bounds are expressed in the user's local time. TimeSpent
     dates are plain calendar days, so the bounds apply to them as-is; task
@@ -508,12 +626,13 @@ def get_weighted_quota_shots_between(
     """
     shot_type = entity_types_service.get_shot_type()
     person = persons_service.get_person_raw(person_id)
-    shots = []
-    already_listed = {}
+    shots = {}
     if type(start) is str:
         start = date_helpers.get_datetime_from_string(start)
     if type(end) is str:
         end = date_helpers.get_datetime_from_string(end)
+    if timezone is None:
+        timezone = persons_service.get_timezone()
     utc_start, utc_end = _get_timezoned_interval(start, end, timezone)
 
     query = (
@@ -521,6 +640,9 @@ def get_weighted_quota_shots_between(
         .filter(TimeSpent.person_id == person_id)
         .filter(TimeSpent.date >= func.cast(start, TimeSpent.date.type))
         .filter(TimeSpent.date < func.cast(end, TimeSpent.date.type))
+        # As in the quotas: a duration set to 0, or to null, once time was
+        # logged leaves nothing to share the shot out by.
+        .filter(Task.duration > 0)
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
@@ -539,20 +661,11 @@ def get_weighted_quota_shots_between(
 
     query_shots = query.all()
     for entity, task_duration, duration, _ in query_shots:
-        shot = entity.serialize()
-        if shot["id"] not in already_listed:
-            full_name, _, _ = entities_service.get_full_entity_name(shot["id"])
-            shot["full_name"] = full_name
-            shot["weight"] = round(duration / task_duration, 2) or 0
-            shots.append(shot)
-            already_listed[shot["id"]] = shot
-        else:
-            shot = already_listed[shot["id"]]
-            shot["weight"] += round(duration / task_duration, 2)
+        shot = _get_listed_shot(shots, entity)
+        shot["weight"] += duration / task_duration
 
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
@@ -562,11 +675,13 @@ def get_weighted_quota_shots_between(
 
     query = _filter_on_scope(query, project_id, task_type_id)
 
+    # A task that never went WIP, or went WIP after its end date, is worked
+    # on its end date only. LEAST ignores a NULL start date.
     if feedback:
         query = (
             query.filter(Task.end_date != None)
             .filter(
-                (Task.real_start_date <= utc_end)
+                (func.least(Task.real_start_date, Task.end_date) <= utc_end)
                 & (Task.end_date >= utc_start)
             )
             .add_columns(Task.real_start_date, Task.end_date)
@@ -575,38 +690,51 @@ def get_weighted_quota_shots_between(
         query = (
             query.filter(Task.done_date != None)
             .filter(
-                (Task.real_start_date <= utc_end)
+                (func.least(Task.real_start_date, Task.done_date) <= utc_end)
                 & (Task.done_date >= utc_start)
             )
             .add_columns(Task.real_start_date, Task.done_date)
         )
 
-    query_shots = query.all()
+    # Task.id keeps apart two tasks of a shot worked on the same dates: the
+    # legacy Query.all() drops duplicate rows.
+    query_shots = query.add_columns(Task.id).all()
 
-    for entity, task_start, task_end in query_shots:
+    # The share of the days the quotas spread a task over that falls in
+    # the period, compared as days of the user: a week is bounded by
+    # dates, not datetimes. The period ends before its end bound. As in
+    # the quotas, every task of a shot adds its share.
+    first_day = _get_day(start)
+    last_day = _get_day(end)
+    for entity, task_start, task_end, _ in query_shots:
+        days = _get_working_days(task_start, task_end, timezone)
+        nb_days = len([day for day in days if first_day <= day < last_day])
+        if nb_days > 0:
+            shot = _get_listed_shot(shots, entity)
+            shot["weight"] += nb_days / len(days)
+
+    # Rounded once: rounded per time spent, a shot logged whole in the
+    # period weighed 0.99.
+    for shot in shots.values():
+        shot["weight"] = round(shot["weight"], 2)
+
+    return sorted(shots.values(), key=itemgetter("full_name"))
+
+
+def _get_listed_shot(shots, entity):
+    """
+    The entry of a shot in a quota list, created on the first task row of
+    the shot, so that the time spents and the tasks of a shot add their
+    weights up on it.
+    """
+    shot_id = str(entity.id)
+    if shot_id not in shots:
         shot = entity.serialize()
-        if shot["id"] not in already_listed:
-            business_days = (
-                date_helpers.get_business_days(task_start, task_end) + 1
-            )
-            full_name, _, _ = entities_service.get_full_entity_name(shot["id"])
-            shot["full_name"] = full_name
-            multiplicator = 1
-            if task_start >= start and task_end <= end:
-                multiplicator = business_days
-            elif task_start >= start:
-                multiplicator = (
-                    date_helpers.get_business_days(task_start, end) + 1
-                )
-            elif task_end <= end:
-                multiplicator = (
-                    date_helpers.get_business_days(start, task_end) + 1
-                )
-            shot["weight"] = round(multiplicator / business_days, 2)
-            already_listed[shot["id"]] = True
-            shots.append(shot)
-
-    return sorted(shots, key=itemgetter("full_name"))
+        full_name, _, _ = entities_service.get_full_entity_name(shot_id)
+        shot["full_name"] = full_name
+        shot["weight"] = 0
+        shots[shot_id] = shot
+    return shots[shot_id]
 
 
 def get_raw_quota_shots_between(
@@ -626,7 +754,7 @@ def get_raw_quota_shots_between(
     """
     shot_type = entity_types_service.get_shot_type()
     person = persons_service.get_person_raw(person_id)
-    shots = []
+    shots = {}
     if type(start) is str:
         start = date_helpers.get_datetime_from_string(start)
     if type(end) is str:
@@ -642,31 +770,29 @@ def get_raw_quota_shots_between(
 
     query = _filter_on_scope(query, project_id, task_type_id)
 
+    # The period ends before its end bound: a task ending on that local
+    # midnight belongs to the next period, as in the raw quotas.
     if feedback:
         query = query.filter(
-            Task.end_date.between(
-                func.cast(start, Task.end_date.type),
-                func.cast(end, Task.end_date.type),
-            )
+            (Task.end_date >= func.cast(start, Task.end_date.type))
+            & (Task.end_date < func.cast(end, Task.end_date.type))
         )
     else:
         query = query.filter(
-            Task.done_date.between(
-                func.cast(start, Task.done_date.type),
-                func.cast(end, Task.done_date.type),
-            )
+            (Task.done_date >= func.cast(start, Task.done_date.type))
+            & (Task.done_date < func.cast(end, Task.done_date.type))
         )
 
-    query_shots = query.all()
+    # Task.id keeps a row for each task of a shot: on the shots alone, the
+    # legacy Query.all() returns each of them once.
+    query_shots = query.add_columns(Task.id).all()
 
-    for entity in query_shots:
-        shot = entity.serialize()
-        full_name, _, _ = entities_service.get_full_entity_name(shot["id"])
-        shot["full_name"] = full_name
-        shot["weight"] = 1
-        shots.append(shot)
+    # As in the quotas, every task of a shot counts.
+    for entity, _ in query_shots:
+        shot = _get_listed_shot(shots, entity)
+        shot["weight"] += 1
 
-    return sorted(shots, key=itemgetter("full_name"))
+    return sorted(shots.values(), key=itemgetter("full_name"))
 
 
 def _filter_on_scope(query, project_id=None, task_type_id=None):

@@ -29,6 +29,7 @@ from zou.app.models.comment import (
     department_mentions_table,
     mentions_table,
 )
+from zou.app.models.entity import EntityLink
 from zou.app.models.person import DepartmentLink
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
@@ -166,6 +167,17 @@ def check_project_access(project_id):
     return is_allowed
 
 
+def check_project_edition_access(project_id):
+    """
+    Project access for the members who edit its structure, as the shots of
+    a scene or the asset instances: neither a client nor a vendor. Raise a
+    PermissionDenied exception otherwise.
+    """
+    check_project_access(project_id)
+    block_access_to_client()
+    return block_access_to_vendor()
+
+
 def block_access_to_vendor():
     """
     Raise PermissionDenied if current user has a vendor role.
@@ -245,6 +257,32 @@ def check_entity_access(entity_id):
     return is_allowed
 
 
+def check_assigned_or_cast_entity_access(entity_id):
+    """
+    An administrator, a manager or a supervisor reaches every entity of the
+    resolved project. An artist or a vendor reaches the entities they hold a
+    task on, and the assets cast in these entities, to build the scene of a
+    shot. Resolve the project first.
+    """
+    if (
+        permissions.has_admin_permissions()
+        or permissions.has_at_least_supervisor_permissions()
+    ):
+        return True
+    assigned_tasks = Task.query.filter(persons_service.build_assignee_filter())
+    if assigned_tasks.filter(Task.entity_id == entity_id).count():
+        return True
+    if (
+        assigned_tasks.join(
+            EntityLink, EntityLink.entity_in_id == Task.entity_id
+        )
+        .filter(EntityLink.entity_out_id == entity_id)
+        .count()
+    ):
+        return True
+    raise permissions.PermissionDenied
+
+
 def keep_entities_a_vendor_reaches(entities):
     """
     Drop from a listing the entities a vendor holds no task on. Anyone else
@@ -291,6 +329,19 @@ def check_task_status_access(task_status_id, project_id):
     return True
 
 
+def check_chat_access(entity_id):
+    """
+    Return true if current user may use the chat of given entity, or the
+    files of its messages: the team of its project, but neither the vendors
+    without a task on it nor the clients, by the role held on the project.
+    """
+    entity = entities_service.get_entity(entity_id)
+    check_project_access(entity["project_id"])
+    check_entity_access(entity_id)
+    block_access_to_client()
+    return True
+
+
 def check_task_access(task_id):
     """
     Return true if current user can have access to a task.
@@ -334,6 +385,16 @@ def check_task_action_access(task_id):
     if not is_allowed:
         raise permissions.PermissionDenied
     return is_allowed
+
+
+def check_task_work_access(task_id):
+    """
+    Task action access for the work itself, previews and working files: a
+    client comments on a task but never adds to its deliverables. The
+    action check resolves the project role first.
+    """
+    check_task_action_access(task_id)
+    return block_access_to_client()
 
 
 def is_person_mentioned_on_task(person_id, task_id):
@@ -534,18 +595,37 @@ def check_manager_project_access(project_id):
     return is_allowed
 
 
+def check_entity_delete_access(entity, force=False):
+    """
+    A member of the project team deletes the entities they created, a
+    manager of the project every one of them. Only a manager of the project
+    forces a deletion, as it removes the work of others below the entity.
+    Raise a PermissionDenied exception otherwise.
+    """
+    if (
+        not force
+        and entity["created_by"] == persons_service.get_current_user()["id"]
+    ):
+        check_project_access(entity["project_id"])
+    else:
+        check_manager_project_access(entity["project_id"])
+    return True
+
+
 def check_time_spent_access(task_id, person_id):
     """
-    Return true if current user is an admin or is a manager or is assigned to
-    the task.
+    Return true if current user is an admin, or if the person is assigned to
+    the task and the current user is that person or a manager of the project.
     """
     task = tasks_service.get_task(task_id, relations=True)
-    is_allowed = person_id in task["assignees"] and (
-        persons_service.get_current_user()["id"] == person_id
-        or permissions.has_admin_permissions()
-        or (
-            check_belong_to_project(task["project_id"])
-            and permissions.has_manager_permissions()
+    is_allowed = permissions.has_admin_permissions() or (
+        person_id in task["assignees"]
+        and (
+            persons_service.get_current_user()["id"] == person_id
+            or (
+                check_belong_to_project(task["project_id"])
+                and permissions.has_manager_permissions()
+            )
         )
     )
 
@@ -664,7 +744,7 @@ def check_metadata_department_access(entity, new_data=None):
                         if descriptor["entity_type"] == entity_type
                     ]
                     found_and_in_departments = False
-                    for descriptor_name in new_data["data"].keys():
+                    for descriptor_name in (new_data.get("data") or {}).keys():
                         found_and_in_departments = False
                         for descriptor in descriptors:
                             if descriptor["field_name"] == descriptor_name:

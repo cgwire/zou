@@ -1,0 +1,1033 @@
+AssetTypeCastingResource_get:
+  summary: Get the casting of an asset type
+  description: Get the casting of each asset of an asset type in a project.
+    The casting of an entity is the list of assets in the entity, with the
+    number of occurrences of each asset.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: asset_type_id
+      required: true
+      example: 08002400-2431-0221-0736-130196482810
+      description: Unique identifier of the asset type
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of asset identifiers to castings
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                asset_id:
+                  type: string
+                  format: uuid
+                  description: Asset unique identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                asset_name:
+                  type: string
+                  description: Asset name
+                  example: Main Character
+                asset_type_id:
+                  type: string
+                  format: uuid
+                  description: Asset type identifier
+                  example: 08002400-2431-0221-0736-130196482810
+                casting:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      entity_id:
+                        type: string
+                        format: uuid
+                        description: Entity identifier
+                        example: e68e02e8-0219-8009-e514-918974260690
+                      entity_name:
+                        type: string
+                        description: Entity name
+                        example: SH001
+                      entity_type:
+                        type: string
+                        description: Entity type (shot/sequence)
+                        example: shot
+    403:
+      description: You do not have access to this project, or you are a vendor
+    404:
+      description: The asset type does not exist
+
+CastingResource_get:
+  summary: Get the casting of an entity
+  description: Get the casting of a shot, an asset or an episode. The casting
+    of an entity is the list of assets in the entity, with the number of
+    occurrences of each asset.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: entity_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The casting of the entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              entity_id:
+                type: string
+                format: uuid
+                description: Entity unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              casting:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Casting entry unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d360
+                    asset_id:
+                      type: string
+                      format: uuid
+                      description: Asset identifier
+                      example: c46c80c6-e097-6887-c292-79675204e470
+                    asset_name:
+                      type: string
+                      description: Asset name
+                      example: Main Character
+    403:
+      description: You do not have access to this project, or you are a
+        vendor, or the entity is not in the project
+    404:
+      description: The entity does not exist
+
+CastingResource_put:
+  summary: Replace the casting of an entity
+  description: Replace the casting of a shot, an asset or an episode. Send the
+    full list of assets. The assets that are not in the list are removed from
+    the casting. To change one asset only, use the route that casts one asset
+    in entities. You must be a manager of the project. Each entry must have
+    asset_id and nb_occurences. An entry without nb_occurences is skipped and
+    its asset is removed from the casting.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: entity_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - asset_id
+              - nb_occurences
+            properties:
+              asset_id:
+                type: string
+                format: uuid
+                description: Asset to cast
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              nb_occurences:
+                type: integer
+                minimum: 0
+                description: Number of occurrences of the asset
+              label:
+                type: string
+                default: ''
+                description: Label of the link
+  responses:
+    200:
+      description: The new casting of the entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              entity_id:
+                type: string
+                format: uuid
+                description: Entity unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              casting:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Casting entry unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d360
+                    asset_id:
+                      type: string
+                      format: uuid
+                      description: Asset identifier
+                      example: c46c80c6-e097-6887-c292-79675204e470
+                    asset_name:
+                      type: string
+                      description: Asset name
+                      example: Main Character
+    400:
+      description: The body is not a JSON array
+    403:
+      description: You are not a manager of the project, or the entity is not
+        in the project
+    404:
+      description: The entity does not exist
+
+EntitiesAssetCastingResource_put:
+  summary: Cast one asset in entities
+  description: Set the casting of one asset in each entity of the list. The
+    entities are shots, assets or episodes of the project. The other assets of
+    each entity do not change. Thus two users can edit the casting at the same
+    time. Set nb_occurences to 0 to remove the asset from the casting. You
+    must be a manager of the project.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: asset_id
+      required: true
+      example: c46c80c6-e097-6887-c292-79675204e470
+      description: Unique identifier of the asset to cast
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - entity_ids
+          properties:
+            entity_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Entities to cast the asset in
+            nb_occurences:
+              type: integer
+              description: Number of occurences, 0 removes the asset from the
+                casting, omit to keep the current one (1 on a new link)
+            label:
+              type: string
+              description: Casting label, omit to keep the current one
+  responses:
+    200:
+      description: A map of entity identifiers to their new casting
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The list of entities is empty, or nb_occurences is negative
+    403:
+      description: You are not a manager of the project, or an entity is not
+        in the project
+    404:
+      description: The asset or an entity does not exist
+
+EntitiesCastingResource_put:
+  summary: Replace the casting of entities
+  description: Replace the casting of entities of a project in one request.
+    The body is a map of entity identifiers to casting lists. Each list has
+    the format of the route that replaces the casting of one entity. You must
+    be a manager of the project. Each entry must have asset_id and
+    nb_occurences. An entry without nb_occurences is skipped and its asset is
+    removed from the casting.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              required:
+                - asset_id
+                - nb_occurences
+              properties:
+                asset_id:
+                  type: string
+                  format: uuid
+                  description: Asset to cast
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                nb_occurences:
+                  type: integer
+                  minimum: 0
+                  description: Number of occurrences of the asset
+                label:
+                  type: string
+                  default: ''
+                  description: Label of the link
+          example:
+            a24a6ea4-ce75-4665-a070-57453082c250:
+              - asset_id: b35b7fb5-df86-5776-b181-68564193d360
+                nb_occurences: 2
+  responses:
+    200:
+      description: A map of entity identifiers to their new casting
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The body is not a map of casting lists
+    403:
+      description: You are not a manager of the project, or an entity is not
+        in the project
+    404:
+      description: The entity does not exist
+
+EpisodeSequenceAllCastingResource_get:
+  summary: Get the casting of the shots of an episode
+  description: Get the casting of each shot of an episode. The casting of an
+    entity is the list of assets in the entity, with the number of occurrences
+    of each asset.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: episode_id
+      required: true
+      example: d57d91d7-f108-7998-d403-80786315f580
+      description: Unique identifier of the episode
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of shot identifiers to castings
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                shot_id:
+                  type: string
+                  format: uuid
+                  description: Shot unique identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                shot_name:
+                  type: string
+                  description: Shot name
+                  example: SH001
+                casting:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      asset_id:
+                        type: string
+                        format: uuid
+                        description: Asset identifier
+                        example: c46c80c6-e097-6887-c292-79675204e470
+                      asset_name:
+                        type: string
+                        description: Asset name
+                        example: Main Character
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+EpisodesCastingResource_get:
+  summary: Get the casting of the episodes
+  description: Get the casting of each episode of a project. The casting of an
+    entity is the list of assets in the entity, with the number of occurrences
+    of each asset.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of episode identifiers to castings
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                episode_id:
+                  type: string
+                  format: uuid
+                  description: Episode unique identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                episode_name:
+                  type: string
+                  description: Episode name
+                  example: Episode 01
+                casting:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      asset_id:
+                        type: string
+                        format: uuid
+                        description: Asset identifier
+                        example: c46c80c6-e097-6887-c292-79675204e470
+                      asset_name:
+                        type: string
+                        description: Asset name
+                        example: Main Character
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+ProjectEntityLinkResource_delete:
+  summary: Delete an entity link
+  description: Delete an entity link of a project. An entity link is one asset
+    in the casting of an entity. Synchronization tools use this route. You
+    must be a manager of the project.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: entity_link_id
+      required: true
+      example: 64668a66-8a97-6887-6403-807863158470
+      description: Unique identifier of the entity link
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The deleted entity link
+    403:
+      description: You are not a manager of the project, or the link is not in
+        the project
+    404:
+      description: The entity link does not exist
+
+ProjectEntityLinksResource_get:
+  summary: Get the entity links of a project
+  description: Get the entity links of a project. An entity link is one asset
+    in the casting of an entity. Use page and limit to get the links page by
+    page. For a more stable pagination, give the created_at value of the last
+    link in cursor_created_at to get the next page. Synchronization tools use
+    this route. You must be a manager of the project. With page, the response
+    is a pagination envelope with data, total, nb_pages, limit, offset and
+    page. Without page, the response is a list. cursor_created_at is ignored
+    when page is given.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: page
+      required: false
+      example: 2
+      description: Page number for pagination
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      example: 100
+      description: Number of items per page
+      schema:
+        type: integer
+    - in: query
+      name: cursor_created_at
+      required: false
+      example: '2020-01-01T00:00:00'
+      description: Get the links created after this date
+      schema:
+        type: string
+        format: date-time
+  responses:
+    200:
+      description: The list of entity links
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Entity link unique identifier
+                  example: 64668a66-8a97-6887-6403-807863158470
+                entity_in_id:
+                  type: string
+                  format: uuid
+                  description: Source entity identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                entity_out_id:
+                  type: string
+                  format: uuid
+                  description: Target entity identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2020-01-01T00:00:00'
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+
+RemoveShotAssetInstanceResource_delete:
+  summary: Remove an asset instance from a shot
+  description: Remove an asset instance from a shot. A client or a vendor of
+    the project cannot use this route.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: shot_id
+      required: true
+      example: e68e02e8-0219-8009-e514-918974260690
+      description: Unique identifier of the shot
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: asset_instance_id
+      required: true
+      example: 19113511-3542-1332-1847-241207593920
+      description: Unique identifier of the asset instance
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The asset instance is removed from the shot
+    403:
+      description: You do not have access to this project, or you are a
+        client or a vendor
+    404:
+      description: The shot or the asset instance does not exist
+
+SceneAssetInstancesResource_get:
+  summary: Get the asset instances of a scene
+  description: Get the asset instances of a scene.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: scene_id
+      required: true
+      example: 20224622-4653-2443-2958-352318704030
+      description: Unique identifier of the scene
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of asset instances
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Asset instance unique identifier
+                  example: 31335733-5764-3554-3069-463429815140
+                asset_id:
+                  type: string
+                  format: uuid
+                  description: Asset identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                scene_id:
+                  type: string
+                  format: uuid
+                  description: Scene identifier
+                  example: 20224622-4653-2443-2958-352318704030
+                number:
+                  type: string
+                  description: Instance number
+                  example: '001'
+                description:
+                  type: string
+                  description: Instance description
+                  example: Main character instance
+    403:
+      description: You do not have access to this project
+    404:
+      description: The scene does not exist
+
+SceneAssetInstancesResource_post:
+  summary: Add an asset instance to a scene
+  description: Make an instance of an asset in a scene. A client or a vendor
+    of the project cannot use this route.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: scene_id
+      required: true
+      example: 20224622-4653-2443-2958-352318704030
+      description: Unique identifier of the scene
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - asset_id
+          properties:
+            asset_id:
+              type: string
+              format: uuid
+              description: Asset identifier to create instance from
+              example: c46c80c6-e097-6887-c292-79675204e470
+            description:
+              type: string
+              description: Instance description
+              example: Main character instance
+  responses:
+    201:
+      description: The new asset instance
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset instance unique identifier
+                example: 31335733-5764-3554-3069-463429815140
+              asset_id:
+                type: string
+                format: uuid
+                description: Asset identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              scene_id:
+                type: string
+                format: uuid
+                description: Scene identifier
+                example: 20224622-4653-2443-2958-352318704030
+              number:
+                type: string
+                description: Instance number
+                example: '001'
+              description:
+                type: string
+                description: Instance description
+                example: Main character instance
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project, or you are a
+        client or a vendor
+    404:
+      description: The scene does not exist
+
+SceneCameraInstancesResource_get:
+  summary: Get the camera instances of a scene
+  description: Get the camera instances of a scene.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: scene_id
+      required: true
+      example: 20224622-4653-2443-2958-352318704030
+      description: Unique identifier of the scene
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of camera instances
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Camera instance unique identifier
+                  example: 42446844-6875-4665-4180-574530826250
+                camera_id:
+                  type: string
+                  format: uuid
+                  description: Camera identifier
+                  example: 53557955-7986-5776-5291-685641937360
+                scene_id:
+                  type: string
+                  format: uuid
+                  description: Scene identifier
+                  example: 20224622-4653-2443-2958-352318704030
+                number:
+                  type: string
+                  description: Instance number
+                  example: '001'
+                description:
+                  type: string
+                  description: Instance description
+                  example: Main camera instance
+    403:
+      description: You do not have access to this project
+    404:
+      description: The scene does not exist
+
+SequenceAllCastingResource_get:
+  summary: Get the casting of the shots of a project
+  description: Get the casting of each shot of a project. The casting of an
+    entity is the list of assets in the entity, with the number of occurrences
+    of each asset.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of shot identifiers to castings
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                shot_id:
+                  type: string
+                  format: uuid
+                  description: Shot unique identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                shot_name:
+                  type: string
+                  description: Shot name
+                  example: SH001
+                sequence_id:
+                  type: string
+                  format: uuid
+                  description: Sequence identifier
+                  example: f79f13f9-1320-9110-f625-029085371700
+                sequence_name:
+                  type: string
+                  description: Sequence name
+                  example: SEQ01
+                casting:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      asset_id:
+                        type: string
+                        format: uuid
+                        description: Asset identifier
+                        example: c46c80c6-e097-6887-c292-79675204e470
+                      asset_name:
+                        type: string
+                        description: Asset name
+                        example: Main Character
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+SequenceCastingResource_get:
+  summary: Get the casting of the shots of a sequence
+  description: Get the casting of each shot of a sequence. The casting of an
+    entity is the list of assets in the entity, with the number of occurrences
+    of each asset.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: sequence_id
+      required: true
+      example: f79f13f9-1320-9110-f625-029085371700
+      description: Unique identifier of the sequence
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: A map of shot identifiers to castings
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                shot_id:
+                  type: string
+                  format: uuid
+                  description: Shot unique identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                shot_name:
+                  type: string
+                  description: Shot name
+                  example: SH001
+                sequence_id:
+                  type: string
+                  format: uuid
+                  description: Sequence identifier
+                  example: f79f13f9-1320-9110-f625-029085371700
+                casting:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      asset_id:
+                        type: string
+                        format: uuid
+                        description: Asset identifier
+                        example: c46c80c6-e097-6887-c292-79675204e470
+                      asset_name:
+                        type: string
+                        description: Asset name
+                        example: Main Character
+    403:
+      description: You do not have access to this project, or you are a
+        vendor, or the sequence is not in the project
+    404:
+      description: The sequence does not exist
+
+ShotAssetInstancesResource_get:
+  summary: Get the asset instances of a shot
+  description: Get the asset instances of a shot.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: shot_id
+      required: true
+      example: e68e02e8-0219-8009-e514-918974260690
+      description: Unique identifier of the shot
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of asset instances
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Asset instance unique identifier
+                  example: 19113511-3542-1332-1847-241207593920
+                asset_id:
+                  type: string
+                  format: uuid
+                  description: Asset identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                shot_id:
+                  type: string
+                  format: uuid
+                  description: Shot identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                number:
+                  type: string
+                  description: Instance number
+                  example: '001'
+                description:
+                  type: string
+                  description: Instance description
+                  example: Main character instance
+    403:
+      description: You do not have access to this project
+    404:
+      description: The shot does not exist
+
+ShotAssetInstancesResource_post:
+  summary: Add an asset instance to a shot
+  description: Add an asset instance to a shot. A client or a vendor of the
+    project cannot use this route.
+  tags:
+    - Breakdown
+  parameters:
+    - in: path
+      name: shot_id
+      required: true
+      example: e68e02e8-0219-8009-e514-918974260690
+      description: Unique identifier of the shot
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - asset_instance_id
+          properties:
+            asset_instance_id:
+              type: string
+              format: uuid
+              description: Asset instance identifier to add
+              example: 19113511-3542-1332-1847-241207593920
+  responses:
+    201:
+      description: The shot
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Shot unique identifier
+                example: e68e02e8-0219-8009-e514-918974260690
+              name:
+                type: string
+                description: Shot name
+                example: SH001
+              asset_instances:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Asset instance unique identifier
+                      example: 19113511-3542-1332-1847-241207593920
+                    asset_id:
+                      type: string
+                      format: uuid
+                      description: Asset identifier
+                      example: c46c80c6-e097-6887-c292-79675204e470
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project, or you are a
+        client or a vendor
+    404:
+      description: The shot or the asset instance does not exist

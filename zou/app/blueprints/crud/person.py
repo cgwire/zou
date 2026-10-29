@@ -1,7 +1,6 @@
 import datetime
 
 import sqlalchemy.orm as orm
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 from sqlalchemy.inspection import inspect
 
@@ -16,9 +15,12 @@ from zou.app.models.person import (
     normalize_country,
     normalize_locale,
 )
+from zou.app.utils.openapi import load_specs, swag_from
 
-# Columns behind Person.present_minimal, the payload every non admin gets
-# from the list route, plus email. Email is not in that payload but the
+SPECS = load_specs(__file__, "openapi/person.yml")
+
+# Columns behind Person.present_minimal, the list payload of every non admin
+# but clients, plus is_guest and email. Email is not in that payload but the
 # lookup is part of the API every studio pipeline builds on
 # (gazu.person.get_person_by_email); matching an address the caller already
 # holds is not the sweep the other hidden columns allow, since equality
@@ -35,6 +37,21 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "role",
     "desktop_login",
     "email",
+    "is_bot",
+    "updated_at",
+    "is_guest",
+]
+# Columns behind Person.present_client, plus is_guest, which Kitsu sends
+# for every role. Any other column would answer which department or studio
+# each member of the team belongs to.
+CLIENT_PERSON_FILTER_FIELDS = [
+    "id",
+    "first_name",
+    "last_name",
+    "full_name",
+    "has_avatar",
+    "active",
+    "role",
     "is_bot",
     "is_guest",
 ]
@@ -117,10 +134,15 @@ class PersonsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         # Applied before pagination: all_entries gets an already limited
         # query on paginated calls.
-        return query.filter(Person.preview_project_id.is_(None))
+        query = query.filter(Person.preview_project_id.is_(None))
+        if permissions.has_client_permissions():
+            query = query.filter(
+                Person.id.in_(user_service.get_client_team_person_ids())
+            )
+        return query
 
     @jwt_required()
-    @swag_from("openapi/PersonsResource_get.yml")
+    @swag_from(SPECS["PersonsResource_get"])
     def get(self):
         """
         Get persons
@@ -128,7 +150,7 @@ class PersonsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/PersonsResource_post.yml")
+    @swag_from(SPECS["PersonsResource_post"])
     def post(self):
         """
         Create person
@@ -161,11 +183,7 @@ class PersonsResource(BaseModelsResource):
                     for person in query.all()
                 ]
         elif permissions.has_client_permissions():
-            team_ids = user_service.get_client_team_person_ids()
-            return [
-                person.present_client()
-                for person in query.filter(Person.id.in_(team_ids)).all()
-            ]
+            return [person.present_client() for person in query.all()]
         else:
             return [
                 person.present_minimal(relations=relations)
@@ -185,12 +203,15 @@ class PersonsResource(BaseModelsResource):
                 for name in inspect(self.model).all_orm_descriptors.keys()
                 if name not in SENSITIVE_FIELDS
             ]
+        if permissions.has_client_permissions():
+            return CLIENT_PERSON_FILTER_FIELDS
         return MINIMAL_PERSON_FILTER_FIELDS
 
     def check_read_permissions(self, options=None):
         return True
 
     def check_create_permissions(self, data):
+        permissions.check_admin_permissions()
         if (
             not data.get("is_bot", False)
             and data.get("active", True)
@@ -202,7 +223,7 @@ class PersonsResource(BaseModelsResource):
                     "limit": organisation_service.get_user_limit(),
                 },
             )
-        return permissions.check_admin_permissions()
+        return True
 
     def check_creation_integrity(self, data):
         if "role" in data and data["role"] not in [
@@ -295,7 +316,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return True
 
     @jwt_required()
-    @swag_from("openapi/PersonResource_get.yml")
+    @swag_from(SPECS["PersonResource_get"])
     def get(self, instance_id):
         """
         Get person
@@ -303,7 +324,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/PersonResource_put.yml")
+    @swag_from(SPECS["PersonResource_put"])
     def put(self, instance_id):
         """
         Update person
@@ -472,7 +493,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     @jwt_required()
-    @swag_from("openapi/PersonResource_delete.yml")
+    @swag_from(SPECS["PersonResource_delete"])
     def delete(self, instance_id):
         """
         Delete person

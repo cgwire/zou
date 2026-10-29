@@ -1,0 +1,370 @@
+TaskResource_delete:
+  summary: Delete a task
+  tags:
+    - Crud
+  description: Delete a task. Without force, the task is deleted only if it
+    has no comments and no files. With force=true, the comments, previews and
+    files of the task are deleted too. If the entity showed a preview of this
+    task, the entity gets the newest preview of its other tasks. You must be a
+    manager of the project.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: query
+      name: force
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Delete the comments, previews and files of the task too
+  responses:
+    204:
+      description: The task is deleted
+    400:
+      description: The task has comments or files
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The task does not exist
+
+TaskResource_get:
+  summary: Get a task
+  tags:
+    - Crud
+  description: Get a task. You must be an administrator or a member of the
+    project team. A vendor must also have a task assigned on the entity of the
+    task. A client gets the studio fields blank, for example assignees,
+    duration, estimation and dates.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The task
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [f24a6ea4-ce75-4665-a070-57453082c250]
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not in the project team, or you are a vendor without
+        a task on this entity
+    404:
+      description: The task does not exist
+
+TaskResource_put:
+  summary: Update a task
+  tags:
+    - Crud
+  description: Update the fields of a task. Send only the fields to change. You
+    cannot change id, created_at, updated_at and project_id. Dates use the ISO
+    8601 format. You must be an administrator or a manager of the project. A
+    supervisor of the project can change only priority, start_date, due_date,
+    estimation, difficulty and data. A supervisor must send only these fields.
+    Any other field in the body, including id and project_id, gives 403. The
+    task type must also be in the
+    departments of the supervisor, if they have departments. The data field
+    merges into the current metadata. A bot made for previews cannot be an
+    assignee. A change of assignees sends task:assign and task:unassign events
+    and notifies the new assignees.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            task_status_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            assignees:
+              type: array
+              items:
+                oneOf:
+                  - type: string
+                    format: uuid
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+              description: List of person identifiers, or of objects with an id
+              example: [c24a6ea4-ce75-4665-a070-57453082c250]
+            duration:
+              type: number
+              example: 8.5
+  responses:
+    200:
+      description: The updated task
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [f24a6ea4-ce75-4665-a070-57453082c250]
+              duration:
+                type: number
+                example: 8.5
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not a manager of the project, or you are a supervisor
+        and you change a field or a task type that you cannot change
+    404:
+      description: The task does not exist
+
+TasksResource_get:
+  summary: Get task rows
+  tags:
+    - Crud
+  description: Get the task rows. Add a query parameter for each column to
+    filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. Add episode_id to get the tasks of the
+    shots of this episode. An administrator gets all the tasks. Other users
+    get the tasks of the open projects of their team. On a project where you
+    are a vendor, you get only the tasks assigned to you. On a project where
+    you are a client, the studio fields are blank, for example assignees,
+    duration, estimation and dates. The role held on the project team applies.
+  parameters:
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Filter tasks by episode ID
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of task rows, or a page of rows if you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+
+TasksResource_post:
+  summary: Create a task
+  tags:
+    - Crud
+  description: Create a task for an entity. Give task_type_id and entity_id.
+    The task type must be for the type of the entity. The default name is
+    main. You can give assignees, a list of person identifiers. A bot made for
+    previews cannot be an assignee. You must be an administrator or a manager
+    of the project of the entity. The task gets the project of the entity. The
+    route ignores the project_id of the body.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_id
+            - entity_id
+          properties:
+            task_type_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            entity_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            assignees:
+              type: array
+              items:
+                type: string
+                format: uuid
+              example: [c24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    201:
+      description: The new task, with its related data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              task_type_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [c24a6ea4-ce75-4665-a070-57453082c250]
+    400:
+      description: An identifier is missing or not valid, assignees is not a
+        list, the task type is not for this entity, or the task already exists
+    403:
+      description: You are not a manager of the project of the entity

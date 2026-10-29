@@ -1,9 +1,11 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import projects_service
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/project_status.yml")
 
 
 class ProjectStatussResource(BaseModelsResource):
@@ -18,7 +20,7 @@ class ProjectStatussResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/ProjectStatussResource_get.yml")
+    @swag_from(SPECS["ProjectStatussResource_get"])
     def get(self):
         """
         Get project statuses
@@ -26,7 +28,7 @@ class ProjectStatussResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/ProjectStatussResource_post.yml")
+    @swag_from(SPECS["ProjectStatussResource_post"])
     def post(self):
         """
         Create project status
@@ -50,7 +52,7 @@ class ProjectStatusResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/ProjectStatusResource_get.yml")
+    @swag_from(SPECS["ProjectStatusResource_get"])
     def get(self, instance_id):
         """
         Get project status
@@ -58,7 +60,7 @@ class ProjectStatusResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ProjectStatusResource_put.yml")
+    @swag_from(SPECS["ProjectStatusResource_put"])
     def put(self, instance_id):
         """
         Update project status
@@ -66,7 +68,7 @@ class ProjectStatusResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/ProjectStatusResource_delete.yml")
+    @swag_from(SPECS["ProjectStatusResource_delete"])
     def delete(self, instance_id):
         """
         Delete project status

@@ -51,6 +51,33 @@ def called_names(node):
     return names
 
 
+def raised_names(node):
+    """
+    The names raised as such: ConnectionRefusedError for
+    `raise ConnectionRefusedError(message)`, but nothing for
+    `raise builtins.ConnectionRefusedError(message)`.
+    """
+    return {
+        child.exc.func.id
+        for child in ast.walk(node)
+        if isinstance(child, ast.Raise)
+        and isinstance(child.exc, ast.Call)
+        and isinstance(child.exc.func, ast.Name)
+    }
+
+
+def imported_from(name):
+    """
+    The module given name is imported from, None for a builtin.
+    """
+    for node in module().body:
+        if isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if (alias.asname or alias.name) == name:
+                    return node.module
+    return None
+
+
 def decorator_names(node):
     names = set()
     for decorator in node.decorator_list:
@@ -84,6 +111,19 @@ class EventStreamAuthTestCase(unittest.TestCase):
         node = function_node("connected")
         self.assertIn("auth_error_message", called_names(node))
         self.assertIn("ConnectionRefusedError", called_names(node))
+
+    def test_a_refused_connection_raises_the_socketio_error(self):
+        """
+        flask-socketio hands any other exception of the connect handler, the
+        builtin ConnectionRefusedError included, to the on_error handler of
+        the namespace, and the connection is then accepted.
+        """
+        node = function_node("connected")
+        self.assertIn("ConnectionRefusedError", raised_names(node))
+        self.assertIn(
+            imported_from("ConnectionRefusedError"),
+            ["flask_socketio", "socketio.exceptions"],
+        )
 
     def test_the_handlers_use_the_identity_of_the_connection(self):
         handlers = socket_handlers()

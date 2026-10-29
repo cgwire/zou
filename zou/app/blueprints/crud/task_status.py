@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -6,6 +5,9 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
     task_types_service,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/task_status.yml")
 
 
 class TaskStatusesResource(BaseModelsResource):
@@ -16,7 +18,7 @@ class TaskStatusesResource(BaseModelsResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/TaskStatusesResource_get.yml")
+    @swag_from(SPECS["TaskStatusesResource_get"])
     def get(self):
         """
         Get task statuses
@@ -24,7 +26,7 @@ class TaskStatusesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/TaskStatusesResource_post.yml")
+    @swag_from(SPECS["TaskStatusesResource_post"])
     def post(self):
         """
         Create task status
@@ -51,7 +53,7 @@ class TaskStatusResource(BaseModelResource):
         return True
 
     @jwt_required()
-    @swag_from("openapi/TaskStatusResource_get.yml")
+    @swag_from(SPECS["TaskStatusResource_get"])
     def get(self, instance_id):
         """
         Get task status
@@ -59,7 +61,7 @@ class TaskStatusResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/TaskStatusResource_put.yml")
+    @swag_from(SPECS["TaskStatusResource_put"])
     def put(self, instance_id):
         """
         Update task status
@@ -67,7 +69,7 @@ class TaskStatusResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/TaskStatusResource_delete.yml")
+    @swag_from(SPECS["TaskStatusResource_delete"])
     def delete(self, instance_id):
         """
         Delete task status

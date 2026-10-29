@@ -1,6 +1,6 @@
-from flasgger import swag_from
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
@@ -26,6 +26,9 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import events, fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/task.yml")
 
 
 class TasksResource(BaseModelsResource, ArgsMixin):
@@ -44,7 +47,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return True
 
     @jwt_required()
-    @swag_from("openapi/TasksResource_get.yml")
+    @swag_from(SPECS["TasksResource_get"])
     def get(self):
         """
         Get tasks
@@ -52,18 +55,38 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return super().get()
 
     def add_project_permission_filter(self, query):
-        if permissions.has_vendor_permissions():
-            query = query.filter(persons_service.build_assignee_filter())
-        elif not permissions.has_admin_permissions():
+        if not permissions.has_admin_permissions():
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
+            # Each task follows the role held on its own project.
+            vendor_project_ids = user_service.get_project_ids_with_roles(
+                "vendor"
+            )
+            if vendor_project_ids:
+                query = query.filter(
+                    or_(
+                        Task.project_id.not_in(vendor_project_ids),
+                        persons_service.build_assignee_filter(),
+                    )
+                )
         return query
 
     def serialize_list(self, entries, relations=False):
-        return entities_service.blank_tasks_for_current_user(
-            super().serialize_list(entries, relations=relations)
+        tasks = super().serialize_list(entries, relations=relations)
+        client_project_ids = set(
+            user_service.get_project_ids_with_roles("client")
         )
+        if not client_project_ids:
+            return tasks
+        return [
+            (
+                entities_service.blank_task_for_client(task)
+                if task["project_id"] in client_project_ids
+                else task
+            )
+            for task in tasks
+        ]
 
     def build_filters(self, options):
         (
@@ -102,7 +125,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return query
 
     @jwt_required()
-    @swag_from("openapi/TasksResource_post.yml")
+    @swag_from(SPECS["TasksResource_post"])
     def post(self):
         """
         Create task
@@ -126,6 +149,11 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
             task_type = task_types_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
+            permissions_service.check_manager_project_access(
+                entity["project_id"]
+            )
+            # The body project_id is not trusted: the task follows its entity.
+            data["project_id"] = entity["project_id"]
             if task_type["for_entity"] == "Asset":
                 if not entity_types_service.is_asset_dict(entity):
                     raise WrongTaskTypeForEntityException(
@@ -182,7 +210,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return task
 
     @jwt_required()
-    @swag_from("openapi/TaskResource_get.yml")
+    @swag_from(SPECS["TaskResource_get"])
     def get(self, instance_id):
         """
         Get task
@@ -190,7 +218,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/TaskResource_put.yml")
+    @swag_from(SPECS["TaskResource_put"])
     def put(self, instance_id):
         """
         Update task
@@ -245,7 +273,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     @jwt_required()
-    @swag_from("openapi/TaskResource_delete.yml")
+    @swag_from(SPECS["TaskResource_delete"])
     def delete(self, instance_id):
         """
         Delete task

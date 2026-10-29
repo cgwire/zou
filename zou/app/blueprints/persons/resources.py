@@ -1,7 +1,6 @@
 import datetime
 import ipaddress
 
-from flasgger import swag_from
 from flask import current_app, request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -40,32 +39,45 @@ from zou.app.utils import (
     permissions,
     validation,
 )
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
-def _get_project_department_ids_for_person_access(person_id):
+def _get_project_scope_for_person_access(person_id):
     """
-    Returns (project_ids, department_ids) for the current user when accessing
-    the given person_id. For admin or when person_id is the current user,
-    returns (None, None). For manager/supervisor returns (project_ids, department_ids).
-    Raises PermissionDenied otherwise.
+    Returns (project_ids, scope) for the current user when accessing the
+    given person_id. For admin or when person_id is the current user,
+    returns (None, None). For manager/supervisor returns the ids of these
+    projects and the task filter their roles grant. Raises PermissionDenied
+    otherwise.
     """
     if permissions.has_admin_permissions():
         return (None, None)
     current_user_id = persons_service.get_current_user()["id"]
     if current_user_id == person_id:
         return (None, None)
-    if not (
+    # Read per project: the role held on each project of the team.
+    roles = user_service.get_team_project_roles()
+    project_ids = [
+        project_id
+        for project_id, role in roles.items()
+        if role in ("manager", "supervisor")
+    ]
+    # A global manager or supervisor on no team yet is allowed, and scoped
+    # to nothing.
+    if not project_ids and not (
         permissions.has_manager_permissions()
         or permissions.has_supervisor_permissions()
     ):
         raise permissions.PermissionDenied
-    project_ids = [p["id"] for p in user_service.get_projects()]
-    department_ids = None
-    if permissions.has_supervisor_permissions():
+    department_ids = []
+    if "supervisor" in roles.values():
         department_ids = persons_service.get_current_user(relations=True).get(
             "departments", []
         )
-    return (project_ids, department_ids)
+    scope = user_service.build_supervision_scope_filter(roles, department_ids)
+    return (project_ids, scope)
 
 
 def _check_day_off_read_access(person_id):
@@ -100,7 +112,7 @@ def _shape_day_offs(day_offs, with_description):
 class DesktopLoginsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/DesktopLoginsResource_get.yml")
+    @swag_from(SPECS["DesktopLoginsResource_get"])
     def get(self, person_id):
         """
         Get desktop login logs
@@ -116,7 +128,7 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
         return persons_service.get_desktop_login_logs(person_id)
 
     @jwt_required()
-    @swag_from("openapi/DesktopLoginsResource_post.yml")
+    @swag_from(SPECS["DesktopLoginsResource_post"])
     def post(self, person_id):
         """
         Create desktop login log
@@ -145,7 +157,7 @@ class DesktopLoginsResource(MethodView, ArgsMixin):
 class PresenceLogsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PresenceLogsResource_get.yml")
+    @swag_from(SPECS["PresenceLogsResource_get"])
     def get(self, month_date):
         """
         Get presence logs
@@ -164,22 +176,20 @@ class PresenceLogsResource(MethodView):
 class TimeSpentsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentsResource_get.yml")
+    @swag_from(SPECS["TimeSpentsResource_get"])
     def get(self, person_id):
         """
         Get time spents
         """
         permissions_service.check_person_is_not_bot(person_id)
-        project_ids, department_ids = (
-            _get_project_department_ids_for_person_access(person_id)
-        )
+        project_ids, scope = _get_project_scope_for_person_access(person_id)
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         if not start_date and not end_date:
             return time_spents_service.get_time_spents(
                 person_id,
                 project_ids=project_ids,
-                department_ids=department_ids,
+                scope=scope,
             )
 
         if None in [start_date, end_date]:
@@ -194,7 +204,7 @@ class TimeSpentsResource(MethodView, ArgsMixin):
                 start_date,
                 end_date,
                 project_ids=project_ids,
-                department_ids=department_ids,
+                scope=scope,
             )
         except WrongDateFormatException:
             raise WrongParameterException(
@@ -205,21 +215,19 @@ class TimeSpentsResource(MethodView, ArgsMixin):
 class DateTimeSpentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DateTimeSpentsResource_get.yml")
+    @swag_from(SPECS["DateTimeSpentsResource_get"])
     def get(self, person_id, date):
         """
         Get time spents for date
         """
         permissions_service.check_person_is_not_bot(person_id)
-        project_ids, department_ids = (
-            _get_project_department_ids_for_person_access(person_id)
-        )
+        project_ids, scope = _get_project_scope_for_person_access(person_id)
         try:
             return time_spents_service.get_time_spents(
                 person_id,
                 date,
                 project_ids=project_ids,
-                department_ids=department_ids,
+                scope=scope,
             )
         except WrongDateFormatException:
             raise WrongParameterException("Invalid month or year.")
@@ -228,7 +236,7 @@ class DateTimeSpentsResource(MethodView):
 class DayOffResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/DayOffResource_get.yml")
+    @swag_from(SPECS["DayOffResource_get"])
     def get(self, person_id, date):
         """
         Get day off
@@ -245,9 +253,7 @@ class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
 
     def get_project_department_arguments(self, person_id):
         project_id = self.get_project_id()
-        project_ids, department_ids = (
-            _get_project_department_ids_for_person_access(person_id)
-        )
+        project_ids, scope = _get_project_scope_for_person_access(person_id)
         if project_ids is not None:
             if project_id is None:
                 project_id = project_ids
@@ -255,14 +261,14 @@ class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
                 raise permissions.PermissionDenied
         return {
             "project_id": project_id,
-            "department_ids": department_ids,
+            "scope": scope,
         }
 
 
 class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonYearTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonYearTimeSpentsResource_get"])
     def get(self, person_id, year):
         """
         Get year time spents
@@ -281,7 +287,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonMonthTimeSpentsResource_get"])
     def get(self, person_id, year, month):
         """
         Get month time spents
@@ -301,7 +307,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonMonthAllTimeSpentsResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthAllTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonMonthAllTimeSpentsResource_get"])
     def get(self, person_id, year, month):
         """
         Get all month time spents
@@ -320,7 +326,7 @@ class PersonMonthAllTimeSpentsResource(MethodView):
 class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonWeekTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonWeekTimeSpentsResource_get"])
     def get(self, person_id, year, week):
         """
         Get week time spents
@@ -340,7 +346,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
 
     @jwt_required()
-    @swag_from("openapi/PersonDayTimeSpentsResource_get.yml")
+    @swag_from(SPECS["PersonDayTimeSpentsResource_get"])
     def get(self, person_id, year, month, day):
         """
         Get day time spents
@@ -420,7 +426,7 @@ class PersonMonthQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthQuotaShotsResource_get.yml")
+    @swag_from(SPECS["PersonMonthQuotaShotsResource_get"])
     def get(self, person_id, year, month):
         """
         Get month quota shots
@@ -436,7 +442,7 @@ class PersonWeekQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/PersonWeekQuotaShotsResource_get.yml")
+    @swag_from(SPECS["PersonWeekQuotaShotsResource_get"])
     def get(self, person_id, year, week):
         """
         Get week quota shots
@@ -452,7 +458,7 @@ class PersonDayQuotaShotsResource(MethodView, PersonQuotaMixin):
         )
 
     @jwt_required()
-    @swag_from("openapi/PersonDayQuotaShotsResource_get.yml")
+    @swag_from(SPECS["PersonDayQuotaShotsResource_get"])
     def get(self, person_id, year, month, day):
         """
         Get day quota shots
@@ -474,29 +480,38 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
         else:
             department_ids = None
         studio_id = self.get_text_parameter("studio_id")
+        scope = None
         if not permissions.has_admin_permissions():
-            if (
-                permissions.has_manager_permissions()
-                or permissions.has_supervisor_permissions()
-            ):
-                project_ids = [
-                    project["id"] for project in user_service.get_projects()
-                ]
+            # Read per project: the role held on each project of the team.
+            roles = user_service.get_team_project_roles()
+            project_ids = [
+                project_id
+                for project_id, role in roles.items()
+                if role in ("manager", "supervisor")
+            ]
+            if project_ids:
                 if project_id is None:
                     project_id = project_ids
+                    is_supervising = "supervisor" in roles.values()
                 elif project_id not in project_ids:
                     raise permissions.PermissionDenied
-                if permissions.has_supervisor_permissions():
+                else:
+                    is_supervising = roles[project_id] == "supervisor"
+                persons_departments = []
+                if is_supervising:
                     persons_departments = persons_service.get_current_user(
                         relations=True
                     )["departments"]
-                    if department_id is not None:
-                        if department_id not in persons_departments:
-                            raise WrongParameterException(
-                                "Supervisor not allowed to access this department"
-                            )
-                    else:
-                        department_ids = persons_departments
+                    if (
+                        department_id is not None
+                        and department_id not in persons_departments
+                    ):
+                        raise WrongParameterException(
+                            "Supervisor not allowed to access this department"
+                        )
+                scope = user_service.build_supervision_scope_filter(
+                    roles, persons_departments
+                )
             else:
                 person_id = persons_service.get_current_user()["id"]
 
@@ -504,6 +519,7 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
             "person_id": person_id,
             "project_id": project_id,
             "department_ids": department_ids,
+            "scope": scope,
             "studio_id": studio_id,
         }
 
@@ -511,7 +527,7 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
 class TimeSpentMonthResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentMonthResource_get.yml")
+    @swag_from(SPECS["TimeSpentMonthResource_get"])
     def get(self, year, month):
         """
         Get time spent month table
@@ -527,7 +543,7 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
 class TimeSpentYearsResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentYearsResource_get.yml")
+    @swag_from(SPECS["TimeSpentYearsResource_get"])
     def get(self):
         """
         Get time spent years table
@@ -540,7 +556,7 @@ class TimeSpentYearsResource(TimeSpentDurationResource):
 class TimeSpentMonthsResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentMonthsResource_get.yml")
+    @swag_from(SPECS["TimeSpentMonthsResource_get"])
     def get(self, year):
         """
         Get time spent months table
@@ -553,7 +569,7 @@ class TimeSpentMonthsResource(TimeSpentDurationResource):
 class TimeSpentWeekResource(TimeSpentDurationResource):
 
     @jwt_required()
-    @swag_from("openapi/TimeSpentWeekResource_get.yml")
+    @swag_from(SPECS["TimeSpentWeekResource_get"])
     def get(self, year):
         """
         Get time spent weeks table
@@ -566,7 +582,7 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
 class InvitePersonResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/InvitePersonResource_get.yml")
+    @swag_from(SPECS["InvitePersonResource_get"])
     def get(self, person_id):
         """
         Invite person
@@ -580,7 +596,7 @@ class InvitePersonResource(MethodView):
 class ResetPasswordLinkResource(MethodView):
 
     @jwt_required()
-    @swag_from("openapi/ResetPasswordLinkResource_post.yml")
+    @swag_from(SPECS["ResetPasswordLinkResource_post"])
     def post(self, person_id):
         """
         Get a password reset link
@@ -605,7 +621,7 @@ class ResetPasswordLinkResource(MethodView):
 class DayOffForMonthResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/DayOffForMonthResource_get.yml")
+    @swag_from(SPECS["DayOffForMonthResource_get"])
     def get(self, year, month):
         """
         Get day offs for month
@@ -617,7 +633,7 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
 
 class DayOffForYearResource(MethodView, ArgsMixin):
     @jwt_required()
-    @swag_from("openapi/DayOffForYearResource_get.yml")
+    @swag_from(SPECS["DayOffForYearResource_get"])
     def get(self, year):
         """
         Get day offs for year
@@ -633,68 +649,80 @@ def _readable_day_offs(list_period, *period):
     with the descriptions of the ones the caller may read in full.
     """
     readable = permissions_service.get_day_off_readable_person_ids()
-    if readable is None:
-        return list_period(*period)
-    day_offs = list_period(*period, person_ids=list(readable.keys()))
+    try:
+        if readable is None:
+            return list_period(*period)
+        day_offs = list_period(*period, person_ids=list(readable.keys()))
+    except WrongDateFormatException:
+        raise WrongParameterException("Wrong date format.")
     return [
         day_off if readable[day_off["person_id"]] else _dates_only(day_off)
         for day_off in day_offs
     ]
 
 
+def _person_day_offs(list_period, person_id, *period):
+    """
+    The day offs of the person for the period, with their descriptions when
+    the caller may read them.
+    """
+    with_description = _check_day_off_read_access(person_id)
+    try:
+        day_offs = list_period(person_id, *period)
+    except WrongDateFormatException:
+        raise WrongParameterException("Wrong date format.")
+    return _shape_day_offs(day_offs, with_description)
+
+
 class PersonWeekDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonWeekDayOffResource_get.yml")
+    @swag_from(SPECS["PersonWeekDayOffResource_get"])
     def get(self, person_id, year, week):
         """
         Get person week day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_week(
-                person_id, year, week
-            ),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_week,
+            person_id,
+            year,
+            week,
         )
 
 
 class PersonMonthDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonMonthDayOffResource_get.yml")
+    @swag_from(SPECS["PersonMonthDayOffResource_get"])
     def get(self, person_id, year, month):
         """
         Get person month day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_month(
-                person_id, year, month
-            ),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_month,
+            person_id,
+            year,
+            month,
         )
 
 
 class PersonYearDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonYearDayOffResource_get.yml")
+    @swag_from(SPECS["PersonYearDayOffResource_get"])
     def get(self, person_id, year):
         """
         Get person year day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_year(person_id, year),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_year, person_id, year
         )
 
 
 class PersonDayOffResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/PersonDayOffResource_get.yml")
+    @swag_from(SPECS["PersonDayOffResource_get"])
     def get(self, person_id):
         """
         Get person day offs
@@ -709,7 +737,7 @@ class PersonDayOffResource(MethodView, ArgsMixin):
 class AddToDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/AddToDepartmentResource_post.yml")
+    @swag_from(SPECS["AddToDepartmentResource_post"])
     def post(self, person_id):
         """
         Add person to department
@@ -731,7 +759,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
 class RemoveFromDepartmentResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/RemoveFromDepartmentResource_delete.yml")
+    @swag_from(SPECS["RemoveFromDepartmentResource_delete"])
     def delete(self, person_id, department_id):
         """
         Remove person from department
@@ -750,7 +778,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
 class ChangePasswordForPersonResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/ChangePasswordForPersonResource_post.yml")
+    @swag_from(SPECS["ChangePasswordForPersonResource_post"])
     def post(self, person_id):
         """
         Change person password
@@ -805,9 +833,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
 class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from(
-        "openapi/DisableTwoFactorAuthenticationPersonResource_delete.yml"
-    )
+    @swag_from(SPECS["DisableTwoFactorAuthenticationPersonResource_delete"])
     def delete(self, person_id):
         """
         Disable two factor authentication
@@ -852,7 +878,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
 
 class ClearAvatarPersonResource(MethodView):
     @jwt_required()
-    @swag_from("openapi/ClearAvatarPersonResource_delete.yml")
+    @swag_from(SPECS["ClearAvatarPersonResource_delete"])
     def delete(self, person_id):
         """
         Clear person avatar

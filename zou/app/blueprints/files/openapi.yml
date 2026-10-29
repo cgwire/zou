@@ -1,0 +1,2170 @@
+CommentWorkingFileResource_put:
+  summary: Change the comment of a working file
+  description: Change the comment of a working file. You must be able to do
+    actions on the task. A client of the project cannot use this route.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: working_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Working file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - comment
+          properties:
+            comment:
+              type: string
+              description: Working file comment
+              example: Updated lighting and materials
+  responses:
+    200:
+      description: The updated working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Working file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              comment:
+                type: string
+                description: Updated comment
+                example: Updated lighting and materials
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: The comment is missing
+    403:
+      description: You cannot do actions on this task
+    404:
+      description: The working file does not exist
+
+EntityOutputFilePathResource_post:
+  summary: Get the path of an output file
+  description: Get the folder path and the file name of an output file of an
+    entity. The route uses the file tree of the project to make the path. If
+    revision is 0, the route uses the next revision. A vendor must have a
+    task on the entity.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - output_type_id
+            - task_type_id
+          properties:
+            name:
+              type: string
+              description: File name
+              default: main
+              example: main
+            mode:
+              type: string
+              description: File mode
+              default: output
+              example: output
+            output_type_id:
+              type: string
+              format: uuid
+              description: Output type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            extension:
+              type: string
+              description: File extension
+              example: .mp4
+            representation:
+              type: string
+              description: File representation
+              example: mp4
+            revision:
+              type: integer
+              description: File revision number
+              example: 1
+            separator:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    200:
+      description: The folder path and the file name
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              folder_path:
+                type: string
+                description: Generated folder path
+                example: /project/asset/output
+              file_name:
+                type: string
+                description: Generated file name
+                example: main_v001.mp4
+    400:
+      description: The body is not valid, or the file tree is not valid
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
+    404:
+      description: The entity does not exist
+
+EntityOutputFilesResource_get:
+  summary: Get the output files of an entity
+  description: Get the output files of an entity.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: output_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this task type
+      example: c46c80c6-e097-6887-c292-79675204e470
+    - in: query
+      name: file_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files with this file status
+      example: d57d91d7-f108-7998-d403-80786315f580
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: cache
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this name
+      example: main
+  responses:
+    200:
+      description: The list of output files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/output/main_v001.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: f79f13f9-1320-9010-f625-a09008537180
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity does not exist
+
+EntityOutputTypeOutputFilesResource_get:
+  summary: Get the output files of an output type
+  description: Get the output files of an entity that have an output type.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: output_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: mp4
+  responses:
+    200:
+      description: The list of output files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/output/main_v001.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity or the output type does not exist
+
+EntityOutputTypesResource_get:
+  summary: Get the output types of an entity
+  description: Get the output types of the output files of an entity.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of output types
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output type unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Output type name
+                  example: Cache
+                short_name:
+                  type: string
+                  description: Output type short name
+                  example: CACHE
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity does not exist
+
+EntityWorkingFilesResource_get:
+  summary: Get the working files of an entity
+  description: Get the working files of the tasks of an entity, with all their
+    revisions.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: task_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the working files of this task
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the working files with this name
+      example: main
+    - in: query
+      name: relations
+      required: false
+      description: Add the related objects to each working file
+      schema:
+        type: boolean
+        default: false
+  responses:
+    200:
+      description: The list of working files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Working file unique identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                name:
+                  type: string
+                  description: Working file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Working file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Working file path
+                  example: /project/asset/working/main_v001.blend
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                entity_id:
+                  type: string
+                  format: uuid
+                  description: Entity identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity does not exist
+
+FileResource_get:
+  summary: Get a file
+  description: Get a working file or an output file. Give the identifier of
+    one of the two types.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: File unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The working file or the output file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: File unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              name:
+                type: string
+                description: File name
+                example: main
+              path:
+                type: string
+                description: File path
+                example: /project/asset/working/main_v001.blend
+              revision:
+                type: integer
+                description: File revision
+                example: 1
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:00:00Z'
+              task_id:
+                type: string
+                format: uuid
+                description: Task identifier (for working files)
+                example: c46c80c6-e097-6887-c292-79675204e470
+              entity_id:
+                type: string
+                format: uuid
+                description: Entity identifier (for output files)
+                example: d57d91d7-f108-7998-d403-80786315f580
+    403:
+      description: You do not have access to this project
+    404:
+      description: No working file and no output file has this identifier
+
+GetNextEntityOutputFileRevisionResource_post:
+  summary: Get the next revision of an output file
+  description: Get the next revision number of an output file of an entity.
+    The route finds the last revision for the name, the output type and the
+    task type of the body.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - output_type_id
+            - task_type_id
+          properties:
+            name:
+              type: string
+              description: File name
+              default: main
+              example: main
+            output_type_id:
+              type: string
+              format: uuid
+              description: Output type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The next revision number
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              next_revision:
+                type: integer
+                description: Next available revision number
+                example: 3
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity, the output type or the task type does not exist
+
+GetNextInstanceOutputFileRevisionResource_post:
+  summary: Get the next revision of an instance output file
+  description: Get the next revision number of an output file of an asset
+    instance. An asset instance is a copy of an asset in a shot or a scene.
+    The temporal entity is this shot or this scene.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: temporal_entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Temporal entity unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - output_type_id
+            - task_type_id
+          properties:
+            name:
+              type: string
+              description: File name
+              default: main
+              example: main
+            output_type_id:
+              type: string
+              format: uuid
+              description: Output type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The next revision number
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              next_revision:
+                type: integer
+                description: Next available revision number
+                example: 2
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project
+    404:
+      description: The asset instance, the output type or the task type does
+        not exist
+
+GuessFromPathResource_post:
+  summary: Guess the entity from a file path
+  description: Find the templates of the file tree of a project that match a
+    file path. For each template, the response gives the identifiers that
+    match the tokens of the template.
+  tags:
+    - Files
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - project_id
+            - file_path
+          properties:
+            project_id:
+              type: string
+              format: uuid
+              description: Project unique identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            file_path:
+              type: string
+              description: File path to analyze
+              example: /project/asset/working/main_v001.blend
+            sep:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    200:
+      description: The list of the matching templates
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              matches:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    template:
+                      type: string
+                      description: Template name
+                      example: default
+                    confidence:
+                      type: number
+                      description: Confidence score
+                      example: 0.95
+                    data:
+                      type: object
+                      description: Extracted data from path
+                      properties:
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c250
+                        entity_id:
+                          type: string
+                          format: uuid
+                          description: Entity identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d360
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project
+
+InstanceOutputFilePathResource_post:
+  summary: Get the path of an instance output file
+  description: Get the folder path and the file name of an output file of an
+    asset instance. An asset instance is a copy of an asset in a shot or a
+    scene. The temporal entity is this shot or this scene. The route uses the
+    file tree of the project to make the path. The route uses the revision of
+    the body as it is. A vendor must have a task on the asset of the
+    instance.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: temporal_entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Temporal entity unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - output_type_id
+            - task_type_id
+          properties:
+            name:
+              type: string
+              description: File name
+              default: main
+              example: main
+            mode:
+              type: string
+              description: File mode
+              default: output
+              example: output
+            output_type_id:
+              type: string
+              format: uuid
+              description: Output type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            extension:
+              type: string
+              description: File extension
+              example: .mp4
+            representation:
+              type: string
+              description: File representation
+              example: mp4
+            revision:
+              type: integer
+              description: File revision number
+              example: 1
+            separator:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    200:
+      description: The folder path and the file name
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              folder_path:
+                type: string
+                description: Generated folder path
+                example: /project/asset/instance/output
+              file_name:
+                type: string
+                description: Generated file name
+                example: main_v001.mp4
+    400:
+      description: The body is not valid, or the file tree is not valid
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this asset
+    404:
+      description: The asset instance, the temporal entity, the asset, the
+        output type or the task type does not exist
+
+InstanceOutputFilesResource_get:
+  summary: Get the output files of an asset instance
+  description: Get the output files of an asset instance. An asset instance is
+    a copy of an asset in a shot or a scene. The temporal entity is this shot
+    or this scene.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: temporal_entity_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this shot or scene
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: output_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: c46c80c6-e097-6887-c292-79675204e470
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this task type
+      example: d57d91d7-f108-7998-d403-80786315f580
+    - in: query
+      name: file_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files with this file status
+      example: e68e02e8-0219-8009-e514-918974260690
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: cache
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this name
+      example: main
+  responses:
+    200:
+      description: The list of output files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: f79f13f9-1320-9010-f625-a09008537180
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/instance/output/main_v001.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                asset_instance_id:
+                  type: string
+                  format: uuid
+                  description: Asset instance identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                temporal_entity_id:
+                  type: string
+                  format: uuid
+                  description: Temporal entity identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+    403:
+      description: You do not have access to this project
+    404:
+      description: The asset instance does not exist
+
+InstanceOutputTypeOutputFilesResource_get:
+  summary: Get the instance output files of an output type
+  description: Get the output files of an asset instance that have an output
+    type. An asset instance is a copy of an asset in a shot or a scene. The
+    temporal entity is this shot or this scene.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: temporal_entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this shot or scene
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: path
+      name: output_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: c46c80c6-e097-6887-c292-79675204e470
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: mp4
+  responses:
+    200:
+      description: The list of output files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/instance/output/main_v001.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                asset_instance_id:
+                  type: string
+                  format: uuid
+                  description: Asset instance identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                temporal_entity_id:
+                  type: string
+                  format: uuid
+                  description: Temporal entity identifier
+                  example: f79f13f9-1320-9010-f625-a09008537180
+    403:
+      description: You do not have access to this project
+    404:
+      description: The asset instance does not exist
+
+InstanceOutputTypesResource_get:
+  summary: Get the output types of an asset instance
+  description: Get the output types of the output files of an asset instance.
+    An asset instance is a copy of an asset in a shot or a scene. The temporal
+    entity is this shot or this scene.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: temporal_entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Temporal entity unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of output types
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output type unique identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                name:
+                  type: string
+                  description: Output type name
+                  example: Render
+                short_name:
+                  type: string
+                  description: Output type short name
+                  example: RENDER
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:30:00Z'
+    403:
+      description: You do not have access to this project
+    404:
+      description: The asset instance does not exist
+
+LastEntityOutputFilesResource_get:
+  summary: Get the last output files of an entity
+  description: Get the last revision of each output file of an entity. The
+    response groups the files by output type and by name.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: output_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this task type
+      example: c46c80c6-e097-6887-c292-79675204e470
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: mp4
+    - in: query
+      name: file_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files with this file status
+      example: d57d91d7-f108-7998-d403-80786315f580
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this name
+      example: main
+  responses:
+    200:
+      description: The last revisions, by output type and by name
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 2
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/output/main_v002.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity does not exist
+
+LastInstanceOutputFilesResource_get:
+  summary: Get the last output files of an asset instance
+  description: Get the last revision of each output file of an asset instance.
+    The response groups the files by output type and by name. An asset
+    instance is a copy of an asset in a shot or a scene. The temporal entity
+    is this shot or this scene.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: temporal_entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this shot or scene
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: output_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: c46c80c6-e097-6887-c292-79675204e470
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this task type
+      example: d57d91d7-f108-7998-d403-80786315f580
+    - in: query
+      name: file_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files with this file status
+      example: e68e02e8-0219-8009-e514-918974260690
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: cache
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this name
+      example: main
+  responses:
+    200:
+      description: The last revisions, by output type and by name
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: f79f13f9-1320-9010-f625-a09008537180
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/instance/output/main_v001.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+    403:
+      description: You do not have access to this project
+    404:
+      description: The asset instance does not exist
+
+LastWorkingFilesResource_get:
+  summary: Get the last working files of a task
+  description: Get the last revision of each working file of a task, by name.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: A map of file names to working files
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Working file unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Working file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Working file revision
+                  example: 3
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+    403:
+      description: You do not have access to this task
+    404:
+      description: The task does not exist
+
+ModifiedFileResource_put:
+  summary: Mark a working file as modified
+  description: Set the modification date of a working file to the current
+    date. You must be able to do actions on the task. A client of the project
+    cannot use this route.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: working_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Working file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The updated working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Working file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              updated_at:
+                type: string
+                format: date-time
+                description: Updated modification timestamp
+                example: '2023-01-01T12:30:00Z'
+    403:
+      description: You cannot do actions on this task
+    404:
+      description: The working file does not exist
+
+NewEntityOutputFileResource_post:
+  summary: Create an output file
+  description: Create an output file for an entity. An artist makes an output
+    file from a working file. Give the output type, for example textures or
+    caches. Give the task type to give the department of the file. If revision
+    is 0, the route uses the next revision. An unknown working_file_id is
+    ignored.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - output_type_id
+            - task_type_id
+          properties:
+            name:
+              type: string
+              description: Output file name
+              example: main
+            mode:
+              type: string
+              description: Output file mode
+              default: output
+              example: output
+            output_type_id:
+              type: string
+              format: uuid
+              description: Output type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            person_id:
+              type: string
+              format: uuid
+              description: Person identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            working_file_id:
+              type: string
+              format: uuid
+              description: Source working file identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            file_status_id:
+              type: string
+              format: uuid
+              description: File status identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            comment:
+              type: string
+              description: Output file comment
+              example: Final render
+            extension:
+              type: string
+              description: File extension
+              example: .mp4
+            representation:
+              type: string
+              description: File representation
+              example: mp4
+            revision:
+              type: integer
+              description: File revision number
+              example: 1
+            nb_elements:
+              type: integer
+              description: Number of elements
+              default: 1
+              example: 1
+            sep:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    201:
+      description: The new output file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Output file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              name:
+                type: string
+                description: Output file name
+                example: main
+              path:
+                type: string
+                description: Output file path
+                example: /project/asset/output/main_v001.mp4
+              revision:
+                type: integer
+                description: Output file revision
+                example: 1
+              entity_id:
+                type: string
+                format: uuid
+                description: Entity identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: The body is not valid, the output type or the person does
+        not exist, the output file already exists, or the file tree of the
+        project is not valid
+    403:
+      description: You do not have access to this project
+    404:
+      description: The entity or the task type does not exist
+
+NewInstanceOutputFileResource_post:
+  summary: Create an instance output file
+  description: Create an output file for an asset instance. An asset instance
+    is a copy of an asset in a shot or a scene. The temporal entity is this
+    shot or this scene. If revision is 0, the route uses the next revision.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: asset_instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset instance unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: temporal_entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Temporal entity unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - output_type_id
+            - task_type_id
+          properties:
+            name:
+              type: string
+              description: Output file name
+              default: main
+              example: main
+            mode:
+              type: string
+              description: Output file mode
+              default: output
+              example: output
+            output_type_id:
+              type: string
+              format: uuid
+              description: Output type identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_type_id:
+              type: string
+              format: uuid
+              description: Task type identifier
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            person_id:
+              type: string
+              format: uuid
+              description: Person identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            working_file_id:
+              type: string
+              format: uuid
+              description: Source working file identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            file_status_id:
+              type: string
+              format: uuid
+              description: File status identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            comment:
+              type: string
+              description: Output file comment
+              example: Final render
+            extension:
+              type: string
+              description: File extension
+              example: .mp4
+            representation:
+              type: string
+              description: File representation
+              example: mp4
+            revision:
+              type: integer
+              description: File revision number
+              example: 1
+            nb_elements:
+              type: integer
+              description: Number of elements
+              default: 1
+              example: 1
+            sep:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    201:
+      description: The new output file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Output file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              name:
+                type: string
+                description: Output file name
+                example: main
+              path:
+                type: string
+                description: Output file path
+                example: /project/asset/instance/output/main_v001.mp4
+              revision:
+                type: integer
+                description: Output file revision
+                example: 1
+              asset_instance_id:
+                type: string
+                format: uuid
+                description: Asset instance identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              temporal_entity_id:
+                type: string
+                format: uuid
+                description: Temporal entity identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: The body is not valid, the output type or the person does
+        not exist, or the output file already exists
+    403:
+      description: You do not have access to this project
+    404:
+      description: The asset instance, the temporal entity, the asset or the
+        task type does not exist
+
+NewWorkingFileResource_post:
+  summary: Create a working file
+  description: Create a working file for a task. A working file is a revision
+    of a file that an artist uses to make output files. The route uses the
+    file tree of the project to make the path. If revision is 0, the route
+    uses the next revision. The task is assigned to the current user. A
+    vendor must have a task on the entity of the task. If software_id is not
+    given, the route uses the Blender software and creates it if it does not
+    exist. Only a manager of the project can give person_id to set another
+    author. For other users, the author is always the current user.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Working file name
+              example: main
+            mode:
+              type: string
+              description: Working file mode
+              default: working
+              example: working
+            description:
+              type: string
+              description: Working file description
+              example: Main character model
+            comment:
+              type: string
+              description: Working file comment
+              example: Updated lighting and materials
+            person_id:
+              type: string
+              format: uuid
+              description: Person identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            software_id:
+              type: string
+              format: uuid
+              description: Software identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            revision:
+              type: integer
+              description: Working file revision
+              example: 1
+            sep:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    201:
+      description: The new working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Working file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              name:
+                type: string
+                description: Working file name
+                example: main
+              path:
+                type: string
+                description: Working file path
+                example: /project/asset/working/main_v001.blend
+              revision:
+                type: integer
+                description: Working file revision
+                example: 1
+              task_id:
+                type: string
+                format: uuid
+                description: Task identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: The body is not valid, or the working file already exists
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
+    404:
+      description: The task or the software does not exist
+
+ProjectOutputFilesResource_get:
+  summary: Get the output files of a project
+  description: Get the output files of a project. You must be a manager of the
+    project.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: output_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this output type
+      example: b35b7fb5-df86-5776-b181-68564193d360
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files of this task type
+      example: c46c80c6-e097-6887-c292-79675204e470
+    - in: query
+      name: file_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the files with this file status
+      example: d57d91d7-f108-7998-d403-80786315f580
+    - in: query
+      name: representation
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this representation, for example
+        abc or fbx
+      example: cache
+    - in: query
+      name: name
+      required: false
+      schema:
+        type: string
+      description: Get only the files with this name
+      example: main
+  responses:
+    200:
+      description: The list of output files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Output file unique identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                name:
+                  type: string
+                  description: Output file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Output file revision
+                  example: 1
+                path:
+                  type: string
+                  description: Output file path
+                  example: /project/asset/output/main_v001.mp4
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: f79f13f9-1320-9010-f625-a09008537180
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+
+TaskWorkingFilesResource_get:
+  summary: Get the working files of a task
+  description: Get the working files of a task, with all their revisions.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of working files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Working file unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                name:
+                  type: string
+                  description: Working file name
+                  example: main
+                revision:
+                  type: integer
+                  description: Working file revision
+                  example: 1
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Last update timestamp
+                  example: '2023-01-01T12:00:00Z'
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+    403:
+      description: You do not have access to this task
+    404:
+      description: The task does not exist
+
+WorkingFileFileResource_get:
+  summary: Download a working file
+  description: Download the file of a working file from the storage. You must
+    be in the project team. A client cannot download it. A manager or a
+    supervisor of the project downloads every working file of the project. An
+    artist or a vendor downloads the working files of the entities they have
+    a task on, and of the assets cast in these entities.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: working_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Working file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The file
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+            description: PNG image file
+            example: binary data
+        image/jpg:
+          schema:
+            type: string
+            format: binary
+            description: JPEG image file
+            example: binary data
+        image/gif:
+          schema:
+            type: string
+            format: binary
+            description: GIF image file
+            example: binary data
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+            description: Binary file content
+            example: binary data
+    403:
+      description: You do not have access to this task
+    404:
+      description: The working file or its file does not exist
+
+WorkingFileFileResource_post:
+  summary: Upload a working file
+  description: Upload the file of a working file to the storage. Send the file
+    in a multipart form.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: working_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Working file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - file
+          properties:
+            file:
+              type: string
+              format: binary
+              description: Working file to upload
+              example: file content
+  responses:
+    201:
+      description: The working file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Working file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Working file name
+                example: main
+              path:
+                type: string
+                description: Working file path
+                example: /project/asset/working/main_v001.blend
+              revision:
+                type: integer
+                description: Working file revision
+                example: 1
+              task_id:
+                type: string
+                format: uuid
+                description: Task identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: The file is missing
+    403:
+      description: You do not have access to this task
+    404:
+      description: The working file does not exist
+
+WorkingFilePathResource_post:
+  summary: Get the path of a working file
+  description: Get the folder path and the file name of a working file of a
+    task. The route uses the file tree of the project to make the path. If
+    revision is 0, the route uses the next revision. A vendor must have a
+    task on the entity of the task. If software_id is not given, the route
+    uses the 3ds Max software and creates it if it does not exist.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              description: File name
+              default: main
+              example: main
+            mode:
+              type: string
+              description: File mode
+              default: working
+              example: working
+            software_id:
+              type: string
+              format: uuid
+              description: Software identifier
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            comment:
+              type: string
+              description: File comment
+              example: Updated lighting
+            revision:
+              type: integer
+              description: File revision number
+              example: 1
+            sep:
+              type: string
+              description: Path separator
+              default: /
+              example: /
+  responses:
+    200:
+      description: The path and the file name
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              path:
+                type: string
+                description: Generated file path
+                example: /project/asset/working/main_v001.blend
+              name:
+                type: string
+                description: Generated file name
+                example: main_v001.blend
+    400:
+      description: The body is not valid, or the file tree is not valid
+    403:
+      description: You do not have access to this project, or you are a vendor
+        without a task on this entity
+    404:
+      description: The task or the software does not exist
+OutputFileFileResource_get:
+  summary: Download an output file
+  description: Download the file of an output file from the storage. You must
+    be in the project team. A client cannot download it. A manager or a
+    supervisor of the project downloads every output file of the project. An
+    artist or a vendor downloads the output files of the entities they have a
+    task on, and of the assets cast in these entities.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: output_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Output file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The file
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+            description: Binary file content
+            example: binary data
+    403:
+      description: You do not have access to this output file
+    404:
+      description: The output file or its file does not exist
+OutputFileFileResource_post:
+  summary: Upload an output file
+  description: Upload the file of an output file to the storage. Send the file
+    in a multipart form. You must be in the project team, and be a manager of
+    the project or have a task on the entity of the output file. A client
+    cannot upload it. The upload sets the size and the upload date of the
+    output file.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: output_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Output file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - file
+          properties:
+            file:
+              type: string
+              format: binary
+              description: File to upload
+              example: file content
+  responses:
+    201:
+      description: The output file, with its new size and upload date
+      content:
+        application/json:
+          schema:
+            type: object
+    403:
+      description: You do not have access to this output file
+    404:
+      description: The output file does not exist

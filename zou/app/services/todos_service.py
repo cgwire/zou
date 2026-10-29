@@ -29,13 +29,12 @@ def get_person_done_tasks(person_id, projects):
     return get_person_tasks(person_id, projects, is_done=True)
 
 
-def get_person_related_tasks(person_id, task_type_id):
+def get_person_related_tasks(person_id, task_type_id, projects):
     """
     Retrieve all tasks for given task types and to entiities
-    that have at least one person assignation.
+    that have at least one person assignation, in given projects.
     """
     person = Person.get(person_id)
-    projects = projects_service.open_projects()
     project_ids = [project["id"] for project in projects]
 
     entities = (
@@ -173,7 +172,7 @@ def get_person_tasks(person_id, projects, is_done=None):
 
 def get_person_tasks_to_check(
     project_ids=None,
-    department_ids=None,
+    scope=None,
     project_id=None,
     task_type_id=None,
     task_status_id=None,
@@ -186,7 +185,8 @@ def get_person_tasks_to_check(
     limit=100,
 ):
     """
-    Retrieve all tasks requiring a feedback for given departments and projects.
+    Retrieve all tasks requiring a feedback for given projects, through a
+    task filter such as user_service.build_supervision_scope_filter returns.
     When a page number is given, return a pagination envelope instead of a
     bare list.
     """
@@ -231,8 +231,8 @@ def get_person_tasks_to_check(
     else:
         query = query.filter(projects_service.build_open_project_filter())
 
-    if department_ids:
-        query = query.filter(TaskType.department_id.in_(department_ids))
+    if scope is not None:
+        query = query.filter(scope)
 
     if project_id is not None:
         query = query.filter(Project.id == project_id)
@@ -362,13 +362,12 @@ def get_person_tasks_to_check(
     }
 
 
-def get_person_tasks_to_check_filter_values(
-    project_ids=None, department_ids=None
-):
+def get_person_tasks_to_check_filter_values(project_ids=None, scope=None):
     """
     Return the distinct project, task type, task status, episode and
     assignee ids present in the tasks requiring a feedback for given
-    departments and projects.
+    projects, through a task filter such as
+    user_service.build_supervision_scope_filter returns.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -384,8 +383,8 @@ def get_person_tasks_to_check_filter_values(
             query = query.filter(Project.id.in_(project_ids))
         else:
             query = query.filter(projects_service.build_open_project_filter())
-        if department_ids:
-            query = query.filter(TaskType.department_id.in_(department_ids))
+        if scope is not None:
+            query = query.filter(scope)
         return query
 
     rows = scope_query(
@@ -846,10 +845,11 @@ def _fold_done_rows_before(done_rows, window_start):
 
 
 def get_tasks_for_project(
-    project_id, page=0, task_type_id=None, episode_id=None
+    project_id, page=0, task_type_id=None, episode_id=None, only_assigned=False
 ):
     """
-    Return all tasks for given project.
+    Return all tasks for given project, or with only_assigned the ones
+    assigned to the current user.
     """
     query = (
         # subqueryload: one query whatever the size, selectinload sends
@@ -867,13 +867,13 @@ def get_tasks_for_project(
             .join(Sequence, Sequence.id == Entity.parent_id)
             .filter(Sequence.parent_id == episode_id)
         )
-
-        if permissions.has_vendor_permissions():
-            query = query.filter(persons_service.build_assignee_filter())
-        elif not permissions.has_admin_permissions():
+        if not (only_assigned or permissions.has_admin_permissions()):
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
+
+    if only_assigned:
+        query = query.filter(persons_service.build_assignee_filter())
 
     return query_utils.get_paginated_results(query, page, relations=True)
 
@@ -898,25 +898,32 @@ def get_done_tasks():
 
 def _get_tasks_to_check_scope():
     """
-    Return (allowed, project_ids, department_ids) used to scope the
-    tasks-to-check queries depending on the current user role.
+    Return (allowed, project_ids, scope) used to scope the tasks-to-check
+    queries depending on the roles held per project by the current user.
     """
     if permissions.has_admin_permissions():
         return True, None, None
-    if permissions.has_manager_permissions():
-        return (
-            True,
-            [project["id"] for project in user_service.related_projects()],
-            None,
-        )
-    if permissions.has_supervisor_permissions():
-        current_user = persons_service.get_current_user(relations=True)
-        return (
-            True,
-            [project["id"] for project in user_service.related_projects()],
-            current_user["departments"],
-        )
-    return False, None, None
+    # Read per project: the role held on each project of the team.
+    roles = user_service.get_team_project_roles()
+    project_ids = [
+        project_id
+        for project_id, role in roles.items()
+        if role in ("manager", "supervisor")
+    ]
+    # A global manager or supervisor on no team yet is allowed, and scoped
+    # to nothing.
+    if not project_ids and not (
+        permissions.has_manager_permissions()
+        or permissions.has_supervisor_permissions()
+    ):
+        return False, None, None
+    department_ids = []
+    if "supervisor" in roles.values():
+        department_ids = persons_service.get_current_user(relations=True)[
+            "departments"
+        ]
+    scope = user_service.build_supervision_scope_filter(roles, department_ids)
+    return True, project_ids, scope
 
 
 def get_tasks_to_check(
@@ -935,15 +942,15 @@ def get_tasks_to_check(
     Get all tasks waiting for feedback in the user department. When a page
     number is given, return a pagination envelope instead of a bare list.
     """
-    allowed, project_ids, departments_ids = _get_tasks_to_check_scope()
+    allowed, project_ids, scope = _get_tasks_to_check_scope()
     if not allowed:
         # an empty project scope yields the same empty list or envelope
         # shape as the allowed path, clamping included
-        project_ids, departments_ids = [], None
+        project_ids, scope = [], None
 
     return get_person_tasks_to_check(
         project_ids,
-        departments_ids,
+        scope,
         project_id=project_id,
         task_type_id=task_type_id,
         task_status_id=task_status_id,
@@ -962,7 +969,7 @@ def get_tasks_to_check_filter_values():
     Return the distinct filter values available for the tasks waiting for
     feedback in the user department.
     """
-    allowed, project_ids, departments_ids = _get_tasks_to_check_scope()
+    allowed, project_ids, scope = _get_tasks_to_check_scope()
     if not allowed:
         return {
             "project_ids": [],
@@ -971,6 +978,4 @@ def get_tasks_to_check_filter_values():
             "episode_ids": [],
             "person_ids": [],
         }
-    return get_person_tasks_to_check_filter_values(
-        project_ids, departments_ids
-    )
+    return get_person_tasks_to_check_filter_values(project_ids, scope)

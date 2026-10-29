@@ -1,0 +1,1065 @@
+SharedPlaylistAnnotationsResource_put:
+  summary: Change the annotations of a shared preview
+  description: Change the annotations of a preview of the shared playlist. The
+    body uses the same additions, updates and deletions as the route for
+    users. A guest can change only the annotations of this guest. The guest
+    must be a guest of this link. You do not need an account. The token of the
+    link is the credential. If the link has a password, give it in the
+    password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guest_id
+            - preview_file_id
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+            preview_file_id:
+              type: string
+              format: uuid
+            additions:
+              type: array
+              items:
+                type: object
+            updates:
+              type: array
+              items:
+                type: object
+            deletions:
+              type: array
+              items:
+                type: string
+                format: uuid
+  responses:
+    200:
+      description: Updated preview file with the new annotations
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: Missing required body fields
+    403:
+      description: Annotations are disabled for this link, the guest is not a
+        guest of this link, or the preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the preview file does not exist
+
+SharedPlaylistAttachmentFileResource_get:
+  summary: Download an attachment of a shared comment
+  description: 'Download a file attached to a comment that the link shows: a
+    comment for the clients or a comment of a guest. You do not need an
+    account. The token of the link is the credential. If the link has a
+    password, give it in the password query parameter.'
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      description: Token of the share link
+      schema:
+        type: string
+    - in: path
+      name: attachment_file_id
+      required: true
+      description: Unique identifier of the attachment
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: file_name
+      required: true
+      description: Any value. The route ignores it. The response uses the
+        name stored on the attachment.
+      schema:
+        type: string
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: The file
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the attachment is not shown by this link
+
+SharedPlaylistCommentAttachmentResource_delete:
+  summary: Delete an attachment of a guest comment
+  description: Delete a file attached to a comment. Only the guest who wrote
+    the comment can delete it. You do not need an account. The token of the
+    link is the credential. If the link has a password, give it in the
+    password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      description: Token of the share link
+      schema:
+        type: string
+    - in: path
+      name: comment_id
+      required: true
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: attachment_file_id
+      required: true
+      description: Unique identifier of the attachment
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guest_id
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+              description: Identifier of the guest who wrote the comment
+  responses:
+    204:
+      description: The attachment is deleted
+    400:
+      description: The body has no guest_id, or guest_id is not a UUID
+    403:
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, another guest wrote the comment, or the comment
+        is not on a task of the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the comment does not exist, or the attachment
+        does not exist
+
+SharedPlaylistCommentAttachmentsResource_post:
+  summary: Attach files to a guest comment
+  description: Attach files to a comment. Only the guest who wrote the comment
+    can attach files. Send the files in a multipart form. The route attaches
+    every file of the form, whatever the name of its field. Give guest_id in
+    the form or in the query string. You do not need an account. The token of
+    the link is the credential. If the link has a password, give it in the
+    password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      description: Token of the share link
+      schema:
+        type: string
+    - in: path
+      name: comment_id
+      required: true
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: guest_id
+      required: false
+      description: Same as the form field
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+              description: Identifier of the guest who wrote the comment
+            files:
+              type: array
+              items:
+                type: string
+                format: binary
+              description: Files to attach
+  responses:
+    201:
+      description: The comment with its attachments
+    403:
+      description: Comments are disabled for this link, guest_id is missing,
+        the guest is not a guest of this link, another guest wrote the
+        comment, or the comment is not on a task of the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the comment does not exist
+
+SharedPlaylistCommentResource_delete:
+  summary: Delete a guest comment
+  description: Delete a comment. Only the guest who wrote the comment can
+    delete it. You do not need an account. The token of the link is the
+    credential. If the link has a password, give it in the password query
+    parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      description: Token of the share link
+      schema:
+        type: string
+    - in: path
+      name: comment_id
+      required: true
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guest_id
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+              description: Identifier of the guest who wrote the comment
+  responses:
+    204:
+      description: The comment is deleted
+    400:
+      description: The body has no guest_id, or guest_id is not a UUID
+    403:
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, another guest wrote the comment, or the comment
+        is not on a task of the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the comment does not exist
+
+SharedPlaylistCommentResource_put:
+  summary: Edit a guest comment
+  description: Change the text, the checklist or the task status of a comment.
+    Only the guest who wrote the comment can change it. You do not need an
+    account. The token of the link is the credential. If the link has a
+    password, give it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      description: Token of the share link
+      schema:
+        type: string
+    - in: path
+      name: comment_id
+      required: true
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guest_id
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+              description: Identifier of the guest who wrote the comment
+            text:
+              type: string
+              description: New text
+            checklist:
+              type: array
+              items:
+                type: object
+              description: New checklist
+            task_status_id:
+              type: string
+              format: uuid
+              description: New task status. The status must allow clients
+                on the project.
+  responses:
+    200:
+      description: The updated comment
+    400:
+      description: The body is not valid
+    403:
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, another guest wrote the comment, the comment is
+        not on a task of the shared playlist, or the new task status does not
+        allow clients
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the comment does not exist
+
+SharedPlaylistCommentsResource_get:
+  summary: Get the comments of a shared playlist
+  description: Get the comments of the tasks of the shared playlist. The
+    response has only the comments for the clients and the comments of the
+    guests. The internal comments of the team are not in the response. You
+    do not need an account. The token of the link is the
+    credential. If the link has a password, give it in the password query
+    parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: The list of comments
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    404:
+      description: The link is not valid, has expired, or the password is
+        wrong
+
+SharedPlaylistCommentsResource_post:
+  summary: Comment a shared playlist
+  description: Add a comment as a guest. Give guest_id, task_id,
+    task_status_id and the text. The link must allow comments. The task status
+    must allow clients. You do not need an account. The token of the link is
+    the credential. If the link has a password, give it in the password query
+    parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guest_id
+            - task_id
+            - task_status_id
+          properties:
+            guest_id:
+              type: string
+              format: uuid
+            task_id:
+              type: string
+              format: uuid
+            task_status_id:
+              type: string
+              format: uuid
+            text:
+              type: string
+            checklist:
+              type: array
+              items:
+                type: object
+  responses:
+    201:
+      description: Comment created
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: Missing required body fields, unknown task status, or task
+        status not allowed for guest reviewers
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    403:
+      description: Comments are disabled for this link, the guest is not a
+        guest of this link, or the task is not in the shared playlist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    404:
+      description: The link is not valid, has expired, or the password is
+        wrong
+
+SharedPlaylistContextResource_get:
+  summary: Get the context of a shared playlist
+  description: Get the minimal data that the share page needs. It gives what the
+    link allows, the project, its task types and its task statuses. You do not
+    need an account. The token of the link is the credential. If the link
+    has a password, give it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: The context of the share page
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              share_link:
+                type: object
+                properties:
+                  can_comment:
+                    type: boolean
+                    description: True if the guests can comment and annotate
+              project:
+                type: object
+                description: Project of the playlist
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                  fps:
+                    type: string
+                    nullable: true
+                  ratio:
+                    type: string
+                    nullable: true
+                  resolution:
+                    type: string
+                    nullable: true
+                  team:
+                    type: array
+                    description: Always empty. The link gives no team.
+                    items:
+                      type: string
+                      format: uuid
+              task_types:
+                type: array
+                description: Task types of the project
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    color:
+                      type: string
+                      nullable: true
+                    for_entity:
+                      type: string
+                      nullable: true
+              task_statuses:
+                type: array
+                description: Task statuses of the project
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    short_name:
+                      type: string
+                    color:
+                      type: string
+                    is_client_allowed:
+                      type: boolean
+                      nullable: true
+                      description: True if a guest can set this status. The
+                        setting of the project applies.
+                    is_default:
+                      type: boolean
+                      nullable: true
+                    for_concept:
+                      type: boolean
+                      nullable: true
+    404:
+      description: The link is not valid, has expired, or the password is
+        wrong
+
+SharedPlaylistGuestResource_post:
+  summary: Create a guest for a shared playlist
+  description: Create a guest identity for the shared playlist. If you give
+    the guest_id of a guest created from this link, the route returns this
+    guest with the code 200. Else the route creates a new guest and returns it
+    with the code 201. The route never reuses a guest by name. You do not need
+    an account. The token of the link is the credential. If the link has a
+    password, give it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            first_name:
+              type: string
+              default: Guest
+            last_name:
+              type: string
+            guest_id:
+              type: string
+              format: uuid
+              description: If set, return this guest if it still exists
+  responses:
+    200:
+      description: The guest already exists
+      content:
+        application/json:
+          schema:
+            type: object
+    201:
+      description: The guest
+      content:
+        application/json:
+          schema:
+            type: object
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong
+
+SharedPlaylistPersonThumbnailResource_get:
+  summary: Get the avatar of a person on a shared playlist
+  description: Get the avatar of a person that the share page shows, as the
+    author of a comment or of a reply. You do not need an account. The token
+    of the link is the credential. If the link has a password, give it in the
+    password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Person unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Avatar image
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    404:
+      description: The link is not valid, the password is missing or wrong,
+        the page does not show this person, or the person has no avatar
+
+SharedPlaylistPreviewFileDownloadResource_get:
+  summary: Download a shared preview file
+  description: Download the file of a preview of the shared playlist as an
+    attachment. The preview must be in the playlist. You do not need an
+    account. The token of the link is the credential. If the link has a
+    password, give it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Preview file downloaded as attachment
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+
+SharedPlaylistPreviewFileExtensionResource_get:
+  summary: Get the original file of a shared preview
+  description: Get the original file of a preview of the shared playlist, for
+    example a GIF, an SVG, a JPEG or a PDF file. The extension of the path
+    must be the extension of the preview. The preview must be in the playlist.
+    You do not need an account. The token of the link is the credential. If
+    the link has a password, give it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: path
+      name: extension
+      required: true
+      schema:
+        type: string
+      description: File extension
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Original picture file
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+    400:
+      description: Extension not allowed
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+SharedPlaylistPreviewFileMovieResource_get:
+  summary: Get the movie of a shared preview
+  description: Get the movie of a preview of the shared playlist. The preview
+    must be in the playlist. You do not need an account. The token of the link
+    is the credential. If the link has a password, give it in the password
+    query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Movie preview file stream
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+SharedPlaylistPreviewFileOriginalResource_get:
+  summary: Get the original picture of a shared preview
+  description: Get the full size PNG picture of a preview of the shared
+    playlist. The preview must be in the playlist. You do not need an account.
+    The token of the link is the credential. If the link has a password, give
+    it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Original picture file
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+SharedPlaylistPreviewFileResource_get:
+  summary: Get a shared preview file
+  description: Get the data of a preview of the shared playlist. The preview
+    must be in the playlist. You do not need an account. The token of the link
+    is the credential. If the link has a password, give it in the password
+    query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Preview file metadata
+      content:
+        application/json:
+          schema:
+            type: object
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+
+SharedPlaylistPreviewFileThumbnailResource_get:
+  summary: Get the thumbnail of a shared preview
+  description: Get the PNG thumbnail of a preview of the shared playlist. The
+    preview must be in the playlist. You do not need an account. The token of
+    the link is the credential. If the link has a password, give it in the
+    password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Thumbnail image
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+SharedPlaylistPreviewFileTileResource_get:
+  summary: Get the tile sheet of a shared movie
+  description: Get the tile sheet of a movie of the shared playlist. The
+    player shows it when the mouse is on the timeline. The preview must be in
+    the playlist. You do not need an account. The token of the link is the
+    credential. If the link has a password, give it in the password query
+    parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Preview file unique identifier
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Tile sprite image
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: The preview is not in the shared playlist
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong, or the file does not exist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+SharedPlaylistResource_get:
+  summary: Get a shared playlist
+  description: Get the playlist of a share link. Each shot has the revision
+    that the playlist uses, and no other revision. You do not need an account.
+    The token of the link is the credential. If the link has a password, give
+    it in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: Playlist with the positioned revision of each shot and
+        enriched shots
+      content:
+        application/json:
+          schema:
+            type: object
+    404:
+      description: The link is not valid, has expired, or the password is
+        wrong

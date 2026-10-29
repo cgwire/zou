@@ -20,6 +20,7 @@ from flask_jwt_extended import (
     create_refresh_token,
     get_jti,
 )
+from sqlalchemy import func
 from sqlalchemy.orm.attributes import flag_modified
 
 from zou.app import config
@@ -135,11 +136,7 @@ def check_auth(
         else:
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
-        update_login_failed_attempts(
-            person["id"],
-            login_failed_attemps + 1,
-            date_helpers.get_utc_now_datetime(),
-        )
+        add_login_failed_attempt(person["id"])
         raise WrongPasswordException()
 
     # Past the password, and before the second factor: a deactivated
@@ -162,11 +159,7 @@ def check_auth(
             fido_authentication_response,
             recovery_code,
         ):
-            update_login_failed_attempts(
-                person["id"],
-                login_failed_attemps + 1,
-                date_helpers.get_utc_now_datetime(),
-            )
+            add_login_failed_attempt(person["id"])
             raise WrongOTPException()
 
     if login_failed_attemps > 0:
@@ -286,7 +279,7 @@ def update_login_failed_attempts(
     person_id, login_failed_attemps, last_login_failed=None
 ):
     """
-    Update login failed attempts for a person_id.
+    Set the failed login counter of a person_id to given count.
 
     The person cache is deliberately left alone: check_login_failed_attempts
     reads the counter from the row, so nothing needs the cached copy to be
@@ -294,13 +287,42 @@ def update_login_failed_attempts(
     the whole instance. Calling it here let an anonymous caller keep that
     cache cold with a handful of wrong passwords a minute, while the JWT
     loader reads it on every authenticated request.
+
+    updated_at keeps its value too: Kitsu versions the avatar URL with it.
     """
-    person = Person.get(person_id)
-    person.login_failed_attemps = login_failed_attemps
+    values = {
+        "login_failed_attemps": login_failed_attemps,
+        # Set to itself, updated_at keeps its value instead of taking the
+        # onupdate default.
+        "updated_at": Person.updated_at,
+    }
     if last_login_failed is not None:
-        person.last_login_failed = last_login_failed
-    person.commit()
-    return person.serialize()
+        values["last_login_failed"] = last_login_failed
+    Person.query.filter(Person.id == person_id).update(
+        values, synchronize_session=False
+    )
+    Person.commit()
+
+
+def add_login_failed_attempt(person_id):
+    """
+    Count one more failed login for a person_id, dated now. The database
+    adds it to the stored count, so failures running in parallel all
+    count. The person cache and updated_at stay as they are, as in
+    update_login_failed_attempts.
+    """
+    Person.query.filter(Person.id == person_id).update(
+        {
+            "login_failed_attemps": func.coalesce(
+                Person.login_failed_attemps, 0
+            )
+            + 1,
+            "last_login_failed": date_helpers.get_utc_now_datetime(),
+            "updated_at": Person.updated_at,
+        },
+        synchronize_session=False,
+    )
+    Person.commit()
 
 
 def check_two_factor_authentication(
@@ -913,7 +935,13 @@ def check_login_failed_attempts(person):
     meant dropping the whole instance person cache on every wrong
     password. See update_login_failed_attempts.
     """
-    row = Person.get(person["id"])
+    row = (
+        Person.query.with_entities(
+            Person.login_failed_attemps, Person.last_login_failed
+        )
+        .filter(Person.id == person["id"])
+        .one()
+    )
     login_failed_attemps = row.login_failed_attemps or 0
     if login_failed_attemps < MAX_LOGIN_FAILED_ATTEMPS:
         return login_failed_attemps

@@ -1,0 +1,315 @@
+CustomActionResource_delete:
+  summary: Delete a custom action
+  tags:
+    - Crud
+  description: Delete a custom action. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the custom action
+  responses:
+    204:
+      description: The custom action is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not an administrator
+    404:
+      description: The custom action does not exist
+
+CustomActionResource_get:
+  summary: Get a custom action
+  tags:
+    - Crud
+  description: Get a custom action. You must be an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the custom action
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The custom action
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Custom Action Name
+              url:
+                type: string
+                example: https://example.com/hook
+              entity_type:
+                type: string
+                example: all
+              is_ajax:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The custom action does not exist
+
+CustomActionResource_put:
+  summary: Update a custom action
+  tags:
+    - Crud
+  description: Update the fields of a custom action. Send only the fields to
+    change. You cannot change id, created_at, updated_at. Dates use the ISO
+    8601 format. You cannot set the name to null. You must be an
+    administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the custom action
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Updated Custom Action Name
+            url:
+              type: string
+              description: URL that the action calls
+              example: https://example.com/hook
+            entity_type:
+              type: string
+              description: Type of the entities that show the action. The
+                default value is all.
+              example: all
+            is_ajax:
+              type: boolean
+              description: True if the action sends an AJAX request. The
+                default value is false.
+              example: false
+  responses:
+    200:
+      description: The updated custom action
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Updated Custom Action Name
+              url:
+                type: string
+                example: https://example.com/hook
+              entity_type:
+                type: string
+                example: all
+              is_ajax:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The name is null, the body is not valid, a date is not
+        valid, or a field breaks a database constraint
+    403:
+      description: You are not an administrator
+    404:
+      description: The custom action does not exist
+
+CustomActionsResource_get:
+  summary: Get custom action rows
+  tags:
+    - Crud
+  description: Get the custom action rows. Add a query parameter for each
+    column to filter on, for example name=Modeling. The name filter does not
+    make a difference between upper case and lower case. To get the rows that
+    have one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. All users can read the custom actions,
+    except the vendors.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of custom action rows, or a page of rows if you
+        give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a vendor
+
+CustomActionsResource_post:
+  summary: Create a custom action
+  tags:
+    - Crud
+  description: Create a custom action. Send the fields of the new row in JSON.
+    The name is required. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              example: Custom Action Name
+            url:
+              type: string
+              description: URL that the action calls
+              example: https://example.com/hook
+            entity_type:
+              type: string
+              description: Type of the entities that show the action. The
+                default value is all.
+              example: all
+            is_ajax:
+              type: boolean
+              description: True if the action sends an AJAX request. The
+                default value is false.
+              example: false
+  responses:
+    201:
+      description: The new custom action
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Custom Action Name
+              url:
+                type: string
+                example: https://example.com/hook
+              entity_type:
+                type: string
+                example: all
+              is_ajax:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The name is missing, the body is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not an administrator

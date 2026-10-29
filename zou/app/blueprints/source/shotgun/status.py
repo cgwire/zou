@@ -1,4 +1,3 @@
-from flasgger import swag_from
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
@@ -11,11 +10,14 @@ from zou.app.services import (
     task_types_service,
 )
 from zou.app.utils import colors
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class ImportShotgunStatusResource(BaseImportShotgunResource):
     @jwt_required()
-    @swag_from("openapi/ImportShotgunStatusResource_post.yml")
+    @swag_from(SPECS["ImportShotgunStatusResource_post"])
     def post(self):
         """
         Import shotgun task statuses
@@ -58,7 +60,7 @@ class ImportRemoveShotgunStatusResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(self, TaskStatus)
 
     @jwt_required()
-    @swag_from("openapi/ImportRemoveShotgunStatusResource_post.yml")
+    @swag_from(SPECS["ImportRemoveShotgunStatusResource_post"])
     def post(self):
         """
         Remove shotgun task status

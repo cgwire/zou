@@ -1,0 +1,2113 @@
+BaseImportShotgunResource_post:
+  summary: Import Shotgun rows
+  tags:
+    - Import
+  description: Import rows from Shotgun. Send a JSON list of Shotgun rows. A
+    row that exists in Kitsu, with the same Shotgun identifier, is updated.
+    Else, it is created. A row that misses a field is skipped. You must be an
+    administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 12345
+                description: Shotgun ID of the entry
+              code:
+                type: string
+                example: SH010
+              name:
+                type: string
+                example: Shot name
+        example:
+          - id: 12345
+            code: SH010
+            name: Shot name
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Imported resource
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportRemoveShotgunAssetResource_post:
+  summary: Remove a Shotgun asset
+  description: Remove an asset. If tasks of the asset have working files, the
+    asset is only canceled that was imported from Shotgun. Send the Shotgun
+    identifier of the row in the body. If no row has this identifier, the
+    response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the asset to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed asset, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunBaseResource_post:
+  summary: Remove a Shotgun row
+  tags:
+    - Import
+  description: Remove a row that was imported from Shotgun. Send the Shotgun
+    identifier of the row in the body. If no row has this identifier, the
+    response is a success. You must be an administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              example: 12345
+              description: Shotgun ID of the entry to remove
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+                description: Whether the removal was successful
+              removed_instance_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+                description: ID of the removed instance, if found
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunEpisodeResource_post:
+  summary: Remove a Shotgun episode
+  description: Remove an episode that was imported from Shotgun. Send the
+    Shotgun identifier of the row in the body. If no row has this identifier,
+    the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the episode to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed episode, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunNoteResource_post:
+  summary: Remove a Shotgun note
+  description: Remove a note, a comment in Kitsu that was imported from
+    Shotgun. Send the Shotgun identifier of the row in the body. If no row has
+    this identifier, the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the note to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed note, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunPersonResource_post:
+  summary: Remove a Shotgun person
+  description: Remove a person that was imported from Shotgun. Send the
+    Shotgun identifier of the row in the body. If no row has this identifier,
+    the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the person to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed person, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunProjectConnectionResource_post:
+  summary: Remove a Shotgun team member
+  description: Remove a person from the team of a project that was imported
+    from Shotgun. Send the Shotgun identifier of the row in the body. If no
+    row has this identifier, the response is a success. You must be an
+    administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the connection to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunProjectResource_post:
+  summary: Remove a Shotgun project
+  description: Remove a project that was imported from Shotgun. Send the
+    Shotgun identifier of the row in the body. If no row has this identifier,
+    the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the project to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed project, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunSceneResource_post:
+  summary: Remove a Shotgun scene
+  description: Remove a scene that was imported from Shotgun. Send the Shotgun
+    identifier of the row in the body. If no row has this identifier, the
+    response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the scene to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed scene, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunSequenceResource_post:
+  summary: Remove a Shotgun sequence
+  description: Remove a sequence that was imported from Shotgun. Send the
+    Shotgun identifier of the row in the body. If no row has this identifier,
+    the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the sequence to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed sequence, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunShotResource_post:
+  summary: Remove a Shotgun shot
+  description: Remove a shot that was imported from Shotgun. Send the Shotgun
+    identifier of the row in the body. If no row has this identifier, the
+    response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the shot to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed shot, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunStatusResource_post:
+  summary: Remove a Shotgun task status
+  description: Remove a task status that was imported from Shotgun. Send the
+    Shotgun identifier of the row in the body. If no row has this identifier,
+    the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the task status to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed task status, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunStepResource_post:
+  summary: Remove a Shotgun step
+  description: Remove a step, a task type in Kitsu that was imported from
+    Shotgun. Send the Shotgun identifier of the row in the body. If no row has
+    this identifier, the response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the step to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed step, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunTaskResource_post:
+  summary: Remove a Shotgun task
+  description: Remove a task that was imported from Shotgun. Send the Shotgun
+    identifier of the row in the body. If no row has this identifier, the
+    response is a success. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the task to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed task, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportRemoveShotgunVersionResource_post:
+  summary: Remove a Shotgun version
+  description: Remove a version, a preview file in Kitsu that was imported
+    from Shotgun. Send the Shotgun identifier of the row in the body. If no
+    row has this identifier, the response is a success. You must be an
+    administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              description: Shotgun ID of the version to remove
+              example: 12345
+        example:
+          id: 12345
+  responses:
+    200:
+      description: The result of the removal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                description: Whether the removal was successful
+                example: true
+              removed_instance_id:
+                type: string
+                format: uuid
+                description: ID of the removed version, if found
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body has no id, or the id is not an integer
+
+ImportShotgunAssetsResource_post:
+  summary: Import Shotgun assets
+  description: Import assets from Shotgun. The route also links each asset to
+    its parent assets. Send a JSON list of Shotgun rows. A row that exists in
+    Kitsu, with the same Shotgun identifier, is updated. Else, it is created.
+    A row that misses a field is skipped. A row with no sg_asset_type, or
+    whose project is not in Kitsu, is skipped. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the asset
+                example: 12345
+              code:
+                type: string
+                description: Asset code
+                example: Asset01
+              description:
+                type: string
+                description: Asset description
+                example: Main character asset
+              sg_asset_type:
+                type: string
+                description: Asset type name
+                example: Character
+              project:
+                type: object
+                description: Project information
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+              parents:
+                type: array
+                description: Parent assets
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 22222
+        example:
+          - id: 12345
+            code: Asset01
+            description: Main character asset
+            sg_asset_type: Character
+            project:
+              id: 11111
+            parents:
+              - id: 22222
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Asset unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Asset name
+                  example: Asset01
+                description:
+                  type: string
+                  description: Asset description
+                  example: Main character asset
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunEpisodesResource_post:
+  summary: Import Shotgun episodes
+  description: Import episodes from Shotgun. Send a JSON list of Shotgun rows.
+    A row that exists in Kitsu, with the same Shotgun identifier, is updated.
+    Else, it is created. A row that misses a field is skipped. A row whose
+    project is not in Kitsu is skipped. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the episode
+                example: 12345
+              code:
+                type: string
+                description: Episode code
+                example: EP01
+              description:
+                type: string
+                description: Episode description
+                example: First episode
+              project:
+                type: object
+                description: Project information
+                properties:
+                  name:
+                    type: string
+                    example: My Project
+        example:
+          - id: 12345
+            code: EP01
+            description: First episode
+            project:
+              name: My Project
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Episode unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Episode name
+                  example: EP01
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunNotesResource_post:
+  summary: Import Shotgun notes
+  description: Import notes as comments from Shotgun. The route imports only
+    the notes whose first task exists in Kitsu. Send a JSON list of Shotgun
+    rows. A row that exists in Kitsu, with the same Shotgun identifier, is
+    updated. Else, it is created. A row that misses a field is skipped. You
+    must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the note
+                example: 12345
+              content:
+                type: string
+                description: Note content
+                example: This is a comment
+              tasks:
+                type: array
+                description: Linked tasks
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 67890
+              user:
+                type: object
+                description: User who created the note
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2024-01-15T10:30:00Z'
+        example:
+          - id: 12345
+            content: This is a comment
+            tasks:
+              - id: 67890
+            user:
+              id: 11111
+            created_at: '2024-01-15T10:30:00Z'
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Comment unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                text:
+                  type: string
+                  description: Comment text
+                  example: This is a comment
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunPersonsResource_post:
+  summary: Import Shotgun persons
+  description: Import persons from Shotgun. Send a JSON list of Shotgun rows.
+    A person that exists in Kitsu, with the same Shotgun identifier or the
+    same email, is not changed, but their department is set to the department
+    of the row. Else, the person is created. The role is manager or admin when
+    permission_rule_set.name is Manager or Admin, user otherwise. A row with
+    the email changeme@email.com is skipped. A row that misses a field is
+    skipped. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the person
+                example: 12345
+              firstname:
+                type: string
+                description: First name
+                example: John
+              lastname:
+                type: string
+                description: Last name
+                example: Doe
+              email:
+                type: string
+                format: email
+                description: Email address
+                example: john.doe@example.com
+              login:
+                type: string
+                description: Desktop login
+                example: jdoe
+              sg_status_list:
+                type: string
+                description: Status list
+                example: act
+              permission_rule_set:
+                type: object
+                description: Permission rule set
+                properties:
+                  name:
+                    type: string
+                    example: Manager
+              department:
+                type: object
+                description: Department information
+                properties:
+                  name:
+                    type: string
+                    example: Animation
+        example:
+          - id: 12345
+            firstname: John
+            lastname: Doe
+            email: john.doe@example.com
+            login: jdoe
+            sg_status_list: act
+            permission_rule_set:
+              name: Manager
+            department:
+              name: Animation
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                first_name:
+                  type: string
+                  description: First name
+                  example: John
+                last_name:
+                  type: string
+                  description: Last name
+                  example: Doe
+                email:
+                  type: string
+                  format: email
+                  description: Email address
+                  example: john.doe@example.com
+                role:
+                  type: string
+                  description: User role
+                  example: manager
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunProjectConnectionsResource_post:
+  summary: Import Shotgun team members
+  description: Import team members from Shotgun. Each row adds a person to the
+    team of a project. Send a JSON list of Shotgun rows. A row that exists in
+    Kitsu is left as is. Else, the person is added to the team of the project.
+    A row whose project or person is not in Kitsu is skipped. The response is
+    the list of the projects. A row that misses a field is skipped. You must
+    be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the connection
+                example: 12345
+              project:
+                type: object
+                description: Project information
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+              user:
+                type: object
+                description: User information
+                properties:
+                  id:
+                    type: integer
+                    example: 22222
+        example:
+          - id: 12345
+            project:
+              id: 11111
+            user:
+              id: 22222
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Project name
+                  example: My Project
+                team:
+                  type: array
+                  description: Team member IDs
+                  items:
+                    type: string
+                    format: uuid
+                  example:
+                    - b35b7fb5-df86-5776-b181-68564193d360
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunProjectsResource_post:
+  summary: Import Shotgun projects
+  description: Import projects from Shotgun. Send a JSON list of Shotgun rows.
+    A row that exists in Kitsu, with the same Shotgun identifier, is updated.
+    Else, it is created. A row that misses a field is skipped. You must be an
+    administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the project
+                example: 12345
+              name:
+                type: string
+                description: Project name
+                example: My Project
+              sg_status:
+                type: string
+                description: Project status
+                example: Active
+        example:
+          - id: 12345
+            name: My Project
+            sg_status: Active
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Project name
+                  example: My Project
+                data:
+                  type: object
+                  description: Custom project data
+                  example: {}
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunScenesResource_post:
+  summary: Import Shotgun scenes
+  description: Import scenes from Shotgun. Send a JSON list of Shotgun rows. A
+    row that exists in Kitsu, with the same Shotgun identifier, is updated.
+    Else, it is created. A row that misses a field is skipped. You must be an
+    administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the scene
+                example: 12345
+              code:
+                type: string
+                description: Scene code
+                example: SC01
+              project:
+                type: object
+                description: Project information
+                properties:
+                  name:
+                    type: string
+                    example: My Project
+              sequence_sg_scenes_1_sequences:
+                type: array
+                description: Sequences of the scene. The first one becomes the
+                  parent of the scene.
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 678
+        example:
+          - id: 12345
+            code: SC01
+            project:
+              name: My Project
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Scene unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Scene name
+                  example: SC01
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunSequencesResource_post:
+  summary: Import Shotgun sequences
+  description: Import sequences from Shotgun. Send a JSON list of Shotgun
+    rows. A row that exists in Kitsu, with the same Shotgun identifier, is
+    updated. Else, it is created. A row that misses a field is skipped. A row
+    whose project is not in Kitsu is skipped. A row whose name, episode and
+    project match another sequence is skipped. If the sequence exists with the
+    same Shotgun identifier and another sequence has the same name, only its
+    description and Shotgun identifier are updated. You must be an
+    administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the sequence
+                example: 12345
+              code:
+                type: string
+                description: Sequence code
+                example: SQ01
+              description:
+                type: string
+                description: Sequence description
+                example: Main sequence
+              project:
+                type: object
+                description: Project information
+                properties:
+                  name:
+                    type: string
+                    example: My Project
+              episode:
+                type: object
+                description: Episode information
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+        example:
+          - id: 12345
+            code: SQ01
+            description: Main sequence
+            project:
+              name: My Project
+            episode:
+              id: 11111
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Sequence unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Sequence name
+                  example: SQ01
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunShotsResource_post:
+  summary: Import Shotgun shots
+  description: Import shots from Shotgun. The route also sets the frames, the
+    custom fields and the casting of each shot. Send a JSON list of Shotgun
+    rows. A row that exists in Kitsu, with the same Shotgun identifier, is
+    updated. Else, it is created. A row that misses a field is skipped. You
+    must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the shot
+                example: 12345
+              code:
+                type: string
+                description: Shot code
+                example: SH010
+              sg_cut_in:
+                type: integer
+                description: Cut in frame
+                example: 1001
+              sg_cut_duration:
+                type: integer
+                description: Cut duration in frames
+                example: 50
+              project:
+                type: object
+                description: Project information
+                properties:
+                  name:
+                    type: string
+                    example: My Project
+              sg_sequence:
+                type: object
+                description: Sequence information
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+              sg_scene:
+                type: object
+                description: Scene information
+                properties:
+                  id:
+                    type: integer
+                    example: 22222
+              assets:
+                type: array
+                description: Linked assets
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 33333
+        example:
+          - id: 12345
+            code: SH010
+            sg_cut_in: 1001
+            sg_cut_duration: 50
+            project:
+              name: My Project
+            sg_sequence:
+              id: 11111
+            sg_scene:
+              id: 22222
+            assets:
+              - id: 33333
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Shot unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Shot name
+                  example: SH010
+                data:
+                  type: object
+                  description: Shot data with frame ranges and custom fields
+                  example:
+                    frame_in: 1001
+                    frame_out: 1051
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunStatusResource_post:
+  summary: Import Shotgun task statuses
+  description: Import task statuses from Shotgun. A status becomes a task
+    status. Send a JSON list of Shotgun rows. A task status that exists in
+    Kitsu, with the same Shotgun identifier or the same short name, is
+    updated. Else, it is created. A row that misses a field is skipped. You
+    must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the status
+                example: 12345
+              name:
+                type: string
+                description: Status name
+                example: In Progress
+              code:
+                type: string
+                description: Status short code
+                example: IP
+              bg_color:
+                type: string
+                description: Background color in RGB format
+                example: 255,128,0
+        example:
+          - id: 12345
+            name: In Progress
+            code: IP
+            bg_color: 255,128,0
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task status unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Status name
+                  example: In Progress
+                short_name:
+                  type: string
+                  description: Status short code
+                  example: IP
+                color:
+                  type: string
+                  description: Status color in hex format
+                  example: '#FF8000'
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunStepsResource_post:
+  summary: Import Shotgun steps
+  description: Import steps as task types from Shotgun. A step becomes a task
+    type. Send a JSON list of Shotgun rows. A task type that exists in Kitsu,
+    with the same Shotgun identifier or the same name and entity type, is
+    updated. Else, it is created. The department is the first word of the
+    code. The route creates the department if it does not exist. Without
+    entity_type, the task type is for assets. A row that misses a field is
+    skipped. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the step
+                example: 12345
+              code:
+                type: string
+                description: Step code (used to extract department)
+                example: Animation Modeling
+              short_name:
+                type: string
+                description: Step short name
+                example: mod
+              color:
+                type: string
+                description: Color in RGB format
+                example: 255,128,0
+              entity_type:
+                type: string
+                description: Entity type this step applies to
+                example: Asset
+        example:
+          - id: 12345
+            code: Animation Modeling
+            short_name: mod
+            color: 255,128,0
+            entity_type: Asset
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task type unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Task type name
+                  example: Animation Modeling
+                short_name:
+                  type: string
+                  description: Task type short name
+                  example: mod
+                color:
+                  type: string
+                  description: Task type color in hex format
+                  example: '#FF8000'
+                for_entity:
+                  type: string
+                  description: Entity type
+                  example: Asset
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunTasksResource_post:
+  summary: Import Shotgun tasks
+  description: Import tasks from Shotgun. The route imports only the tasks
+    that have a step and a project. Send a JSON list of Shotgun rows. A task
+    that exists in Kitsu, with the same Shotgun identifier or the same name,
+    project, step and entity, is updated. Else, it is created. A row with an
+    assignee that is not in Kitsu is skipped. A row that misses a field is
+    skipped. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the task
+                example: 12345
+              cached_display_name:
+                type: string
+                description: Task display name
+                example: Modeling for Asset
+              start_date:
+                type: string
+                format: date
+                description: Start date
+                example: '2024-01-15'
+              due_date:
+                type: string
+                format: date
+                description: Due date
+                example: '2024-02-15'
+              sg_sort_order:
+                type: integer
+                description: Sort order
+                example: 1
+              duration:
+                type: integer
+                description: Duration in days
+                example: 30
+              step:
+                type: object
+                description: Step (task type) information
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+              project:
+                type: object
+                description: Project information
+                properties:
+                  id:
+                    type: integer
+                    example: 22222
+              entity:
+                type: object
+                description: Entity information
+                properties:
+                  id:
+                    type: integer
+                    example: 33333
+                  type:
+                    type: string
+                    example: Asset
+              sg_status_list:
+                type: string
+                description: Status short name
+                example: IP
+              created_by:
+                type: object
+                description: Creator information
+                properties:
+                  id:
+                    type: integer
+                    example: 44444
+              task_assignees:
+                type: array
+                description: Task assignees
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 55555
+        example:
+          - id: 12345
+            cached_display_name: Modeling for Asset
+            start_date: '2024-01-15'
+            due_date: '2024-02-15'
+            sg_sort_order: 1
+            duration: 30
+            step:
+              id: 11111
+            project:
+              id: 22222
+            entity:
+              id: 33333
+              type: Asset
+            sg_status_list: IP
+            created_by:
+              id: 44444
+            task_assignees:
+              - id: 55555
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Task unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Task name
+                  example: Modeling for Asset
+                start_date:
+                  type: string
+                  format: date
+                  description: Start date
+                  example: '2024-01-15'
+                due_date:
+                  type: string
+                  format: date
+                  description: Due date
+                  example: '2024-02-15'
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ImportShotgunVersionsResource_post:
+  summary: Import Shotgun versions
+  description: Import versions as preview files from Shotgun. The route
+    imports only the versions that are linked to a task. A version becomes a
+    preview file. Send a JSON list of Shotgun rows. A preview file that exists
+    in Kitsu, with the same Shotgun identifier or the same name and task, is
+    updated. Else, it is created. A row that misses a field is skipped. You
+    must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Shotgun ID of the version
+                example: 12345
+              code:
+                type: string
+                description: Version code
+                example: v001
+              description:
+                type: string
+                description: Version description
+                example: First version
+              sg_task:
+                type: object
+                description: Task information
+                properties:
+                  id:
+                    type: integer
+                    example: 11111
+              user:
+                type: object
+                description: User information
+                properties:
+                  id:
+                    type: integer
+                    example: 22222
+              sg_uploaded_movie:
+                type: object
+                description: Uploaded movie information
+                properties:
+                  url:
+                    type: string
+                    example: https://example.com/movie.mp4
+                  name:
+                    type: string
+                    example: movie.mp4
+        example:
+          - id: 12345
+            code: v001
+            description: First version
+            sg_task:
+              id: 11111
+            user:
+              id: 22222
+            sg_uploaded_movie:
+              url: https://example.com/movie.mp4
+              name: movie.mp4
+  responses:
+    200:
+      description: The created and updated rows
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Preview file unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Preview file name
+                  example: v001
+                description:
+                  type: string
+                  description: Preview file description
+                  example: First version
+                source:
+                  type: string
+                  description: Source of the preview
+                  example: Shotgun
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  description: Update timestamp
+                  example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not JSON
+    403:
+      description: You are not an administrator
+    500:
+      description: The body is not a list, or a row breaks a database
+        constraint
+
+ShotgunImportErrorResource_delete:
+  summary: Delete a Shotgun import error
+  description: Delete an error of a Shotgun import. You must be an
+    administrator.
+  tags:
+    - Import
+  parameters:
+    - in: path
+      name: error_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the import error
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    204:
+      description: The import error is deleted
+    403:
+      description: You are not an administrator
+    404:
+      description: The import error does not exist, or the identifier is not
+        valid
+
+ShotgunImportErrorsResource_get:
+  summary: Get the Shotgun import errors
+  description: Get the errors of the Shotgun imports. You must be an
+    administrator.
+  tags:
+    - Import
+  responses:
+    200:
+      description: The list of import errors
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Import error unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                source:
+                  type: string
+                  description: Source of the import error
+                  example: shotgun
+                event_data:
+                  type: object
+                  description: Error event data
+                  example: {error: Import failed}
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2024-01-15T10:30:00Z'
+    403:
+      description: You are not an administrator
+
+ShotgunImportErrorsResource_post:
+  summary: Save a Shotgun import error
+  description: Save an error of a Shotgun import. The body is kept as the data
+    of the error. You must be an administrator.
+  tags:
+    - Import
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Error event data
+          properties:
+            error:
+              type: string
+              description: Error message
+              example: Failed to import asset
+            details:
+              type: object
+              description: Additional error details
+              example: {shotgun_id: 12345, reason: Missing field}
+          example:
+            error: Failed to import asset
+            details:
+              shotgun_id: 12345
+              reason: Missing required field
+  responses:
+    201:
+      description: The new import error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Import error unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              source:
+                type: string
+                description: Source of the import error
+                example: shotgun
+              event_data:
+                type: object
+                description: Error event data
+                example: {error: Failed to import asset}
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: Invalid request body
+    403:
+      description: You are not an administrator

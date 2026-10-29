@@ -1,0 +1,829 @@
+AckCommentResource_post:
+  summary: Acknowledge a comment
+  description: Acknowledge a comment for the current user. If the current user
+    already acknowledged the comment, remove the acknowledgement.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: comment_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Comment unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              acknowledged:
+                type: boolean
+                description: Whether the comment is acknowledged
+                example: true
+    403:
+      description: You do not have access to this task
+    404:
+      description: The comment does not exist, or it is not on this task
+
+AddAttachmentToCommentResource_post:
+  summary: Add attachments to a comment
+  description: Attach files to a comment. The author of the comment can attach
+    files. Other users must be managers of the project.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: comment_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+  responses:
+    201:
+      description: The list of the attachment files of the comment
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Attachment file unique identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                name:
+                  type: string
+                  description: File name
+                  example: document.pdf
+                mimetype:
+                  type: string
+                  description: File MIME type
+                  example: application/pdf
+                size:
+                  type: integer
+                  description: File size in bytes
+                  example: 1024000
+                comment_id:
+                  type: string
+                  format: uuid
+                  description: Comment identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+    403:
+      description: You cannot change this comment, or the comment is not on
+        this task
+    404:
+      description: The task or the comment does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            files:
+              type: string
+              description: Files to attach to the comment
+              format: binary
+          required:
+            - files
+
+AttachmentResource_delete:
+  summary: Delete a comment attachment
+  description: Delete a file attached to a comment. The author of the comment
+    can delete it. Other users must be managers of the project.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: comment_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: attachment_file_id
+      required: true
+      example: c46c80c6-e097-6887-c292-79675204e470
+      description: Unique identifier of the attachment
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The attachment is deleted
+    403:
+      description: You cannot change this comment, or the attachment is not on
+        this comment
+    404:
+      description: The comment or the attachment does not exist
+
+CommentManyTasksResource_post:
+  summary: Comment several tasks
+  description: Add a comment to each task of the list. Each comment sets the
+    status of its task. Thus, the comments keep the history of the status
+    changes. The author is the current user. An entry without task, status or
+    text is skipped. A manager of the project can comment all the tasks. A
+    supervisor can comment the tasks of their departments. Other users can
+    comment their assigned tasks only. The other entries are skipped.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              object_id:
+                type: string
+                format: uuid
+                description: Task to comment
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                description: New status of the task
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              comment:
+                type: string
+                description: Text of the comment
+              links:
+                type: array
+                items:
+                  type: string
+                description: URLs linked to the comment
+  responses:
+    201:
+      description: The list of new comments
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Comment unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                comment:
+                  type: string
+                  description: Comment text content
+                  example: This looks great! Ready for review.
+                task_status_id:
+                  type: string
+                  format: uuid
+                  description: Task status identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+    400:
+      description: The body is not valid
+    403:
+      description: You cannot use this task status
+    404:
+      description: The project does not exist, or a task of the list does not
+        exist
+
+CommentTaskResource_post:
+  summary: Comment a task
+  description: Add a comment to a task and set the status of the task. Thus,
+    the comments keep the history of the status changes. Send JSON, or send a
+    multipart form to attach files. You must be able to do actions on the
+    task. Managers and clients of the project, the assignees, the supervisors
+    of the department of the task and the creator of the entity can do
+    actions. A user who is mentioned on the task, but cannot do actions on
+    it, can comment with the current status only. Vendors cannot use the
+    mention rule.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_status_id
+          properties:
+            task_status_id:
+              type: string
+              format: uuid
+              description: New status of the task
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            comment:
+              type: string
+              default: ''
+              description: Text of the comment
+            person_id:
+              type: string
+              format: uuid
+              description: Author of the comment. Managers only. Else the
+                author is the current user.
+            created_at:
+              type: string
+              example: '2026-10-28T10:00:00'
+              description: Creation date of the comment. Managers only.
+            checklist:
+              type: array
+              items:
+                type: object
+              description: Checklist items. In a multipart form, send a JSON
+                string.
+            links:
+              type: array
+              items:
+                type: string
+              description: URLs linked to the comment. In a multipart form,
+                send a JSON string.
+            for_client:
+              type: boolean
+              default: false
+              description: Show the comment to the clients. Managers only.
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - task_status_id
+          properties:
+            task_status_id:
+              type: string
+              format: uuid
+              description: New status of the task
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            comment:
+              type: string
+              default: ''
+              description: Text of the comment
+            person_id:
+              type: string
+              format: uuid
+              description: Author of the comment. Managers only. Else the
+                author is the current user.
+            created_at:
+              type: string
+              example: '2026-10-28T10:00:00'
+              description: Creation date of the comment. Managers only.
+            checklist:
+              type: array
+              items:
+                type: object
+              description: Checklist items. In a multipart form, send a JSON
+                string.
+            links:
+              type: array
+              items:
+                type: string
+              description: URLs linked to the comment. In a multipart form,
+                send a JSON string.
+            for_client:
+              type: boolean
+              default: false
+              description: Show the comment to the clients. Managers only.
+            files:
+              type: array
+              items:
+                type: string
+                format: binary
+              description: Files to attach
+  responses:
+    201:
+      description: The new comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Comment unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              task_id:
+                type: string
+                format: uuid
+                description: Task identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                description: Person identifier
+                example: d57d91d7-f108-7998-d403-80786315f580
+              comment:
+                type: string
+                description: Comment text content
+                example: This looks great! Ready for review.
+              task_status_id:
+                type: string
+                format: uuid
+                description: Task status identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: The body is not valid
+    403:
+      description: You cannot do actions on this task, or you cannot use this
+        task status
+    404:
+      description: The task does not exist
+
+CopyClientCommentsResource_post:
+  summary: Copy the client comments to the artists
+  description: Artists do not see the comments of clients. For each task of
+    the list, copy the last client comment into a new comment of the current
+    user. Then the artists see it. The status of the task does not change. A
+    task without client comment, or a task of another project, is skipped.
+    You must be a manager of the project.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_ids
+          properties:
+            task_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Identifiers of the tasks
+              example: [e68e02e8-0219-8009-e514-918974260690]
+            prefix:
+              type: string
+              description: Text put before the client text, on its own line
+              example: 'Client feedback:'
+  responses:
+    201:
+      description: The new comments, one for each task with a client comment
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Comment unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                object_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: e68e02e8-0219-8009-e514-918974260690
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Author identifier, the current user
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                text:
+                  type: string
+                  description: Copied text, with its prefix
+                  example: "Client feedback:\n\nThe light is too warm."
+                task_status_id:
+                  type: string
+                  format: uuid
+                  description: Current status of the task
+                  example: c46c80c6-e097-6887-c292-79675204e470
+    400:
+      description: The body is not valid
+    403:
+      description: You are not a manager of the project
+
+DeleteReplyCommentResource_delete:
+  summary: Delete a comment reply
+  description: Delete a reply of a comment. The comment must be on the task,
+    and you must have access to the task. Only the author of the reply or an
+    administrator can delete it.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: comment_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: reply_id
+      required: true
+      example: c46c80c6-e097-6887-c292-79675204e470
+      description: Unique identifier of the reply
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The comment without the reply
+    403:
+      description: You do not have access to the task, or you cannot delete
+        this reply
+    404:
+      description: The comment or the reply does not exist, or the comment
+        is not on this task
+
+DownloadAttachmentResource_get:
+  summary: Download an attachment
+  description: Download a file attached to a comment or to a chat message.
+    The browser shows JPEG, PNG, GIF, WebP, BMP and AVIF images. Other files
+    are sent as downloads. Clients cannot get the files of a chat. A vendor
+    must have a task on the entity.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: attachment_file_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the attachment file
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: file_name
+      required: true
+      example: document.pdf
+      description: Name of the file to download
+      schema:
+        type: string
+  responses:
+    200:
+      description: The file
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+            description: File content
+    403:
+      description: You do not have access to the task of the comment or to the
+        chat, you are a client and the file is in a chat, or the file is linked
+        to nothing
+    404:
+      description: The attachment or its file does not exist
+
+MoveCommentResource_post:
+  summary: Move a comment to another task
+  description: Move a comment to another task of the same entity. The entity
+    can be a shot, an asset, a sequence, an episode or an edit. The comment
+    keeps its text, attachments, mentions, creation date and status change.
+    The notifications and the news of the comment move to the new task. Thus,
+    the watchers of the new task get a notification. You cannot move a comment
+    that is linked to a preview revision. You must have the manager role as
+    your studio role. A manager role given on the project only is not
+    enough. You must have access to the two tasks.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      description: Unique identifier of the comment's current task
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: comment_id
+      required: true
+      description: Unique identifier of the comment to move
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - target_task_id
+          properties:
+            target_task_id:
+              type: string
+              format: uuid
+              description: Unique identifier of the task to move the comment
+                to. Must belong to the same entity as the current task.
+              example: c46c80c6-e097-6887-c292-79675204e470
+  responses:
+    200:
+      description: The moved comment, with its new object_id
+    400:
+      description: The comment is not on this task, the tasks are on different
+        entities, the two tasks are the same, or the comment is linked to a
+        preview revision
+    403:
+      description: You are not a studio manager, or you do not have access to
+        one of the tasks
+    404:
+      description: The task, the target task or the comment does not exist
+
+ProjectAttachmentFiles_get:
+  summary: Get the attachments of a project
+  description: Get the files attached to the comments of a project. You must
+    be an administrator.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of attachment files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Attachment file unique identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                name:
+                  type: string
+                  description: File name
+                  example: document.pdf
+                mimetype:
+                  type: string
+                  description: File MIME type
+                  example: application/pdf
+                size:
+                  type: integer
+                  description: File size in bytes
+                  example: 1024000
+                comment_id:
+                  type: string
+                  format: uuid
+                  description: Comment identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+    403:
+      description: You are not an administrator
+
+ReplyCommentResource_post:
+  summary: Reply to a comment
+  description: Add a reply to a comment. You must have access to the task. The
+    author of the comment can reply. Other users must be able to do actions on
+    the task, or be mentioned on it. A client cannot reply to a client of
+    another studio. A client can see some threads. These are the comments for
+    the client and the comments of a client. In these threads, only the
+    managers and the clients can reply. Send multipart form data to attach
+    files.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: comment_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the comment
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The new reply
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Reply unique identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              comment_id:
+                type: string
+                format: uuid
+                description: Parent comment identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              text:
+                type: string
+                description: Reply text content
+                example: Thanks for the feedback!
+              person_id:
+                type: string
+                format: uuid
+                description: Person identifier who made the reply
+                example: d57d91d7-f108-7998-d403-80786315f580
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    403:
+      description: The comment is not on this task, you do not have access
+        to the task, you cannot do actions on the task and you are not
+        mentioned on it, or you cannot reply in this thread
+    404:
+      description: The comment does not exist
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            text:
+              type: string
+              description: Reply text content
+              example: Thanks for the feedback!
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            text:
+              type: string
+              description: Reply text content
+              example: Thanks for the feedback!
+            files:
+              type: array
+              description: Files to attach to the reply
+              items:
+                type: string
+                format: binary
+
+TaskAttachmentFiles_get:
+  summary: Get the attachments of a task
+  description: Get the files attached to the comments of a task. You must be
+    an administrator.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of attachment files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Attachment file unique identifier
+                  example: d57d91d7-f108-7998-d403-80786315f580
+                name:
+                  type: string
+                  description: File name
+                  example: document.pdf
+                mimetype:
+                  type: string
+                  description: File MIME type
+                  example: application/pdf
+                size:
+                  type: integer
+                  description: File size in bytes
+                  example: 1024000
+                comment_id:
+                  type: string
+                  format: uuid
+                  description: Comment identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                task_id:
+                  type: string
+                  format: uuid
+                  description: Task identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                reply_id:
+                  type: string
+                  format: uuid
+                  description: Reply identifier if attached to a reply
+                  example: c46c80c6-e097-6887-c292-79675204e470
+    403:
+      description: You are not an administrator

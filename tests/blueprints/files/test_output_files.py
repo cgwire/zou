@@ -682,3 +682,159 @@ class OutputFileListingTestCase(OutputFileTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(path, 403)
+
+
+class OutputFileFileTestCase(OutputFileTestCase):
+    """
+    The file route of an output file: the same two verbs as a working file,
+    with the prefix output in the file store.
+    """
+
+    def new_output_file(self):
+        return self.new_output(
+            {
+                "output_type_id": self.tx_type_id,
+                "task_type_id": self.task_type_id,
+                "working_file_id": self.working_file_id,
+                "person_id": self.person_id,
+                "comment": "test",
+            }
+        )
+
+    def test_output_file_round_trip(self):
+        import os
+
+        output_file = self.new_output_file()
+        self.assertIsNone(output_file["uploaded_at"])
+        path = f"/data/output-files/{output_file['id']}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+
+        uploaded = self.upload_file(path, fixture)
+        self.assertIsNotNone(uploaded["uploaded_at"])
+        self.assertEqual(uploaded["size"], os.path.getsize(fixture))
+        stored = self.get(f"data/output-files/{output_file['id']}")
+        self.assertEqual(stored["uploaded_at"], uploaded["uploaded_at"])
+
+        response = self.app.get(path, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        with open(fixture, "rb") as f:
+            self.assertEqual(response.data, f.read())
+
+    def upload_as_artist(self, role=None, assigned=True, in_team=True):
+        import os
+
+        from zou.app.services import projects_service, tasks_service
+
+        output_file = self.new_output_file()
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        if in_team:
+            projects_service.add_team_member(self.project.id, artist_id, role)
+        if assigned:
+            tasks_service.assign_task(self.task_id, artist_id)
+        self.log_in_cg_artist()
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        return lambda code: self.upload_file(
+            f"/data/output-files/{output_file['id']}/file", fixture, code
+        )
+
+    def test_an_assignee_of_the_entity_uploads_an_output_file(self):
+        self.upload_as_artist()(201)
+
+    def test_a_vendor_assignee_uploads_an_output_file(self):
+        self.upload_as_artist(role="vendor")(201)
+
+    def test_a_manager_of_the_project_uploads_an_output_file(self):
+        self.upload_as_artist(role="manager", assigned=False)(201)
+
+    def test_a_team_member_not_assigned_uploads_no_output_file(self):
+        self.upload_as_artist(assigned=False)(403)
+
+    def test_an_assignee_out_of_the_team_uploads_no_output_file(self):
+        self.upload_as_artist(in_team=False)(403)
+
+    def test_a_client_of_the_project_uploads_no_output_file(self):
+        self.upload_as_artist(role="client")(403)
+
+    def download_as_artist(self, role=None, task_id=None, cast=False):
+        import os
+
+        from zou.app.services import (
+            breakdown_service,
+            projects_service,
+            tasks_service,
+        )
+
+        output_file = self.new_output_file()
+        path = f"/data/output-files/{output_file['id']}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        self.upload_file(path, fixture)
+        if cast:
+            breakdown_service.update_casting(
+                self.shot.id, [{"asset_id": self.asset_id, "nb_occurences": 1}]
+            )
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, role)
+        if task_id is not None:
+            tasks_service.assign_task(task_id, artist_id)
+        self.log_in_cg_artist()
+        return self.app.get(path, headers=self.base_headers).status_code
+
+    def test_a_vendor_downloads_the_output_file_of_their_entity(self):
+        self.assertEqual(
+            self.download_as_artist("vendor", task_id=self.task_id), 200
+        )
+
+    def test_a_vendor_downloads_the_output_file_of_an_asset_cast(self):
+        self.assertEqual(
+            self.download_as_artist(
+                "vendor", task_id=self.shot_task.id, cast=True
+            ),
+            200,
+        )
+
+    def test_a_vendor_downloads_no_output_file_of_an_asset_not_cast(self):
+        self.assertEqual(
+            self.download_as_artist("vendor", task_id=self.shot_task.id), 403
+        )
+
+    def test_a_client_downloads_no_output_file(self):
+        self.assertEqual(self.download_as_artist("client"), 403)
+
+    def test_an_artist_downloads_no_output_file_out_of_their_tasks(self):
+        self.assertEqual(self.download_as_artist(), 403)
+
+    def test_an_artist_downloads_the_output_file_of_an_asset_cast(self):
+        self.assertEqual(
+            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+        )
+
+    def test_a_supervisor_of_the_project_downloads_any_output_file(self):
+        self.assertEqual(self.download_as_artist("supervisor"), 200)
+
+    def test_an_output_file_stores_a_size_over_2_gb(self):
+        from zou.app.services import files_service
+
+        output_file = self.new_output_file()
+        size = 3 * 1024**3
+        updated = files_service.update_output_file(
+            output_file["id"], {"size": size}
+        )
+        self.assertEqual(updated["size"], size)
+
+    def test_an_output_file_without_binary_is_a_404(self):
+        output_file = self.new_output_file()
+        self.get(f"/data/output-files/{output_file['id']}/file", 404)
+
+    def test_output_file_needs_project_access(self):
+        output_file = self.new_output_file()
+        path = f"/data/output-files/{output_file['id']}/file"
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.get(path, 403)

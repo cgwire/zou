@@ -42,11 +42,17 @@ def update_preview_file_annotations(
     additions=None,
     updates=None,
     deletions=None,
+    only_own_objects=False,
 ):
     """
     Update annotations for given preview file.
     Uses a Redis lock to prevent race conditions when multiple processes update
     annotations on the same preview file concurrently.
+
+    With ``only_own_objects`` (guests), the added objects are stamped with
+    ``person_id`` and the updates and deletions are kept to the objects it
+    stamped before: a guest never touches a drawing of the team or of
+    another guest.
     """
     if additions is None:
         additions = []
@@ -63,6 +69,10 @@ def update_preview_file_annotations(
             )
         preview_file = files_service.get_preview_file_raw(preview_file_id)
         previous_annotations = copy.deepcopy(preview_file.annotations or [])
+        if only_own_objects:
+            _keep_own_objects(
+                previous_annotations, person_id, additions, updates, deletions
+            )
         annotations = _clean_annotations(previous_annotations)
         annotations = _apply_annotation_additions(
             previous_annotations, additions
@@ -82,6 +92,43 @@ def update_preview_file_annotations(
             project_id=project_id,
         )
         return preview_file
+
+
+def _keep_own_objects(
+    previous_annotations, person_id, additions, updates, deletions
+):
+    """
+    Stamp the added and updated objects with ``person_id`` and drop from
+    the updates and deletions every object not stamped with it. Objects are
+    keyed by (time, id) like the updates and deletions address them, so an
+    addition reusing the id of another time's object grants nothing.
+    """
+    own = {
+        (annotation["time"], drawing_object.get("id"))
+        for annotation in previous_annotations
+        for drawing_object in annotation.get("drawing", {}).get(
+            "objects", []
+        )
+        if drawing_object.get("person_id") == person_id
+    }
+    for annotation in additions + updates:
+        for drawing_object in annotation.get("drawing", {}).get(
+            "objects", []
+        ):
+            drawing_object["person_id"] = person_id
+    for update in updates:
+        drawing = update.setdefault("drawing", {})
+        drawing["objects"] = [
+            drawing_object
+            for drawing_object in drawing.get("objects", [])
+            if (update["time"], drawing_object.get("id")) in own
+        ]
+    for deletion in deletions:
+        deletion["objects"] = [
+            object_id
+            for object_id in deletion.get("objects", [])
+            if (deletion["time"], object_id) in own
+        ]
 
 
 def _ensure_object_id(drawing_object):

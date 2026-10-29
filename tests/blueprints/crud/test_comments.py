@@ -58,6 +58,14 @@ class CommentTestCase(ApiDBTestCase):
         comment_id = fields.gen_uuid()
         self.put_404(f"data/comments/{comment_id}", data)
 
+    def test_object_id_is_protected(self):
+        comment = self.comments[0]
+        path = f"data/comments/{comment['id']}"
+        self.put(path, {"object_id": fields.gen_uuid(), "text": "Moved"})
+        comment_again = self.get(path)
+        self.assertEqual(comment_again["object_id"], comment["object_id"])
+        self.assertEqual(comment_again["text"], "Moved")
+
     def test_update_comment_with_a_null_checklist(self):
         comment_id = self.comments[0]["id"]
         self.put(f"data/comments/{comment_id}", {"checklist": None})
@@ -203,3 +211,10 @@ class CommentTestCase(ApiDBTestCase):
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 2)
         self.delete_404(f"data/comments/{fields.gen_uuid()}")
+
+    def test_delete_own_comment_as_manager_out_of_the_team(self):
+        manager = self.generate_fixture_user_manager()
+        own_comment = self.generate_fixture_comment(person=manager)
+        self.log_in_manager()
+        self.delete(f"data/comments/{self.comments[0]['id']}", 403)
+        self.delete(f"data/comments/{own_comment['id']}")

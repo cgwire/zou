@@ -1,9 +1,9 @@
-from flasgger import swag_from
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError
 
+from zou.app.blueprints.crud.base import build_db_error_message
 from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
@@ -27,6 +27,9 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import events, fields, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 def _project_id_from_task(entry):
@@ -58,11 +61,12 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
         self.model = model
 
     @jwt_required()
-    @swag_from("openapi/BaseImportKitsuResource_post.yml")
+    @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
         """
         Import kitsu resource
         """
+        permissions.check_admin_permissions()
         kitsu_entries = request.json
         if not isinstance(kitsu_entries, list):
             raise WrongParameterException("A list of entities is expected.")
@@ -76,24 +80,20 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
 
         instances = []
         for entry in kitsu_entries:
-            if self.check_access(entry):
-                try:
-                    instance, is_updated = self.model.create_from_import(entry)
-                    if not silent:
-                        if is_updated:
-                            self.emit_event("update", entry)
-                        else:
-                            self.emit_event("new", entry)
-                except IntegrityError as exc:
-                    raise WrongParameterException(exc.orig)
-                instances.append(instance)
+            try:
+                instance, is_updated = self.model.create_from_import(entry)
+                if not silent:
+                    if is_updated:
+                        self.emit_event("update", entry)
+                    else:
+                        self.emit_event("new", entry)
+            except IntegrityError as exc:
+                raise WrongParameterException(build_db_error_message(exc))
+            instances.append(instance)
         return fields.serialize_models(instances)
 
     def emit_event(self, event_type, entry):
         pass
-
-    def check_access(self, entry):
-        return permissions.has_admin_permissions()
 
 
 class ImportKitsuCommentsResource(BaseImportKitsuResource):
@@ -101,7 +101,7 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Comment)
 
     @jwt_required()
-    @swag_from("openapi/ImportKitsuCommentsResource_post.yml")
+    @swag_from(SPECS["ImportKitsuCommentsResource_post"])
     def post(self):
         """
         Import kitsu comments
@@ -129,7 +129,7 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Entity)
 
     @jwt_required()
-    @swag_from("openapi/ImportKitsuEntitiesResource_post.yml")
+    @swag_from(SPECS["ImportKitsuEntitiesResource_post"])
     def post(self):
         """
         Import kitsu entities
@@ -151,7 +151,7 @@ class ImportKitsuProjectsResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Project)
 
     @jwt_required()
-    @swag_from("openapi/ImportKitsuProjectsResource_post.yml")
+    @swag_from(SPECS["ImportKitsuProjectsResource_post"])
     def post(self):
         """
         Import kitsu projects
@@ -167,7 +167,7 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, Task)
 
     @jwt_required()
-    @swag_from("openapi/ImportKitsuTasksResource_post.yml")
+    @swag_from(SPECS["ImportKitsuTasksResource_post"])
     def post(self):
         """
         Import kitsu tasks
@@ -183,7 +183,7 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, EntityLink)
 
     @jwt_required()
-    @swag_from("openapi/ImportKitsuEntityLinksResource_post.yml")
+    @swag_from(SPECS["ImportKitsuEntityLinksResource_post"])
     def post(self):
         """
         Import kitsu entity links
@@ -200,7 +200,7 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
     """
     Import resource whose entries carry a ``project_id`` directly.
 
-    Admin-only by inheritance (BaseImportKitsuResource.check_access).
+    Admin-only by inheritance (BaseImportKitsuResource.post).
 
     """
 
@@ -208,7 +208,7 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
     id_field = ""
 
     @jwt_required()
-    @swag_from("openapi/BaseImportKitsuResource_post.yml")
+    @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
         return super().post()
 
@@ -224,7 +224,7 @@ class _TaskScopedImportResource(BaseImportKitsuResource):
     """
     Import resource whose entries derive their project via ``task_id``.
 
-    Admin-only by inheritance (BaseImportKitsuResource.check_access).
+    Admin-only by inheritance (BaseImportKitsuResource.post).
 
     """
 
@@ -232,7 +232,7 @@ class _TaskScopedImportResource(BaseImportKitsuResource):
     id_field = ""
 
     @jwt_required()
-    @swag_from("openapi/BaseImportKitsuResource_post.yml")
+    @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
         return super().post()
 
@@ -252,7 +252,7 @@ class ImportKitsuPreviewFilesResource(_TaskScopedImportResource):
         BaseImportKitsuResource.__init__(self, PreviewFile)
 
     @jwt_required()
-    @swag_from("openapi/BaseImportKitsuResource_post.yml")
+    @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
         # Flag every imported entry as binary-not-available so downstream
         # services (thumbnail regen, frame extraction) know not to touch
@@ -341,7 +341,7 @@ class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, BuildJob)
 
     @jwt_required()
-    @swag_from("openapi/BaseImportKitsuResource_post.yml")
+    @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
         return super().post()
 
@@ -362,7 +362,7 @@ class ImportKitsuAttachmentFilesResource(BaseImportKitsuResource):
         BaseImportKitsuResource.__init__(self, AttachmentFile)
 
     @jwt_required()
-    @swag_from("openapi/BaseImportKitsuResource_post.yml")
+    @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
         return super().post()
 

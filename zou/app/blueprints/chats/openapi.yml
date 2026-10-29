@@ -1,0 +1,276 @@
+ChatMessageResource_delete:
+  summary: Delete a chat message
+  description: Delete a message of the chat of an entity. Only the author of
+    the message or an administrator can delete it. Clients cannot use this
+    route.
+  tags:
+    - Chat
+  parameters:
+    - in: path
+      name: entity_id
+      description: Unique identifier of the entity that has the chat
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: chat_message_id
+      description: Unique identifier of the message to delete
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The message is deleted
+    403:
+      description: You are a client, you cannot delete this message, or the
+        message is not in this chat
+    404:
+      description: The entity or the message does not exist
+
+ChatMessageResource_get:
+  summary: Get a chat message
+  description: Get a message of the chat of an entity. Clients cannot use
+    this route.
+  tags:
+    - Chat
+  parameters:
+    - in: path
+      name: entity_id
+      description: Unique identifier of the entity that has the chat
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: chat_message_id
+      description: Unique identifier of the message
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The message
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Message unique identifier
+              message:
+                type: string
+                description: Message content
+              person_id:
+                type: string
+                format: uuid
+                description: ID of the message sender
+              created_at:
+                type: string
+                format: date-time
+                description: Message creation timestamp
+              updated_at:
+                type: string
+                format: date-time
+                description: Message last update timestamp
+              attachments:
+                type: array
+                items:
+                  type: object
+                description: Array of file attachments
+    403:
+      description: You are a client, or you do not have access to this
+        entity, or the message is
+        not in this chat
+    404:
+      description: The entity or the message does not exist
+
+ChatMessagesResource_get:
+  summary: Get the chat messages
+  description: Get the messages of the chat of an entity. Each message has
+    its author and its date. Clients cannot use this route.
+  tags:
+    - Chat
+  parameters:
+    - in: path
+      name: entity_id
+      description: Unique identifier of the entity that has the chat
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The list of messages
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Message unique identifier
+                message:
+                  type: string
+                  description: Message content
+                person_id:
+                  type: string
+                  format: uuid
+                  description: ID of the message sender
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Message creation timestamp
+                attachments:
+                  type: array
+                  items:
+                    type: object
+                  description: Array of file attachments
+    403:
+      description: You are a client, or you do not have access to this
+        entity
+    404:
+      description: The entity does not exist
+
+ChatMessagesResource_post:
+  summary: Send a chat message
+  description: Send a message in the chat of an entity. Only the
+    participants of the chat can send messages. Send JSON for a text
+    message. Send multipart form data to attach files. Clients cannot use
+    this route.
+  tags:
+    - Chat
+  parameters:
+    - in: path
+      name: entity_id
+      description: Unique identifier of the entity that has the chat
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Message content to send
+              example: Hello, world!
+          required:
+            - message
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Message content to send
+              example: Hello, world!
+            files:
+              type: array
+              items:
+                type: string
+                format: binary
+              description: Files to attach to the message
+          required:
+            - message
+  responses:
+    201:
+      description: The new message
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Created message unique identifier
+              message:
+                type: string
+                description: Message content
+              person_id:
+                type: string
+                format: uuid
+                description: ID of the message sender
+              created_at:
+                type: string
+                format: date-time
+                description: Message creation timestamp
+              attachments:
+                type: array
+                items:
+                  type: object
+                description: Array of attached files
+    400:
+      description: The message is missing, or you are not a participant of the
+        chat
+    403:
+      description: You are a client, or you do not have access to this
+        entity
+    404:
+      description: The entity does not exist
+
+ChatResource_get:
+  summary: Get the chat of an entity
+  description: Get the chat of an entity, with its participants and its
+    messages. Clients cannot use this route.
+  tags:
+    - Chat
+  parameters:
+    - in: path
+      name: entity_id
+      description: Unique identifier of the entity that has the chat
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The chat and its messages
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Chat unique identifier
+              entity_id:
+                type: string
+                format: uuid
+                description: Entity ID this chat is associated with
+              participants:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: List of participant user IDs
+              messages:
+                type: array
+                items:
+                  type: object
+                description: Array of chat messages
+    403:
+      description: You are a client, or you do not have access to this
+        entity
+    404:
+      description: The entity does not exist

@@ -1,0 +1,598 @@
+ProductionScheduleVersionResource_delete:
+  summary: Delete a production schedule version
+  tags:
+    - Crud
+  description: Delete a production schedule version. The versions copied from
+    it and the project that uses it lose their link to it first. You must be a
+    manager in the team of the project, or an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the production schedule version
+  responses:
+    204:
+      description: The production schedule version is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not a manager in the team of the project
+    404:
+      description: The production schedule version does not exist
+
+ProductionScheduleVersionResource_get:
+  summary: Get a production schedule version
+  tags:
+    - Crud
+  description: Get a production schedule version. You must be in the team of
+    the project, or an administrator. A vendor or a client cannot read
+    schedule versions.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the production schedule version
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The production schedule version
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Schedule Version 1
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not in the team of the project, or you are a vendor
+        or a client
+    404:
+      description: The production schedule version does not exist
+
+ProductionScheduleVersionResource_put:
+  summary: Update a production schedule version
+  tags:
+    - Crud
+  description: Update the fields of a production schedule version. Send only
+    the fields to change. You must be a manager in the team of the project, or
+    an administrator. You cannot change id, created_at, updated_at and
+    project_id. Dates use the ISO 8601 format.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the production schedule version
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Updated Schedule Version 1
+  responses:
+    200:
+      description: The updated production schedule version
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Updated Schedule Version 1
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not a manager in the team of the project
+    404:
+      description: The production schedule version does not exist
+
+ProductionScheduleVersionTaskLinkResource_delete:
+  summary: Delete a production schedule version task link
+  tags:
+    - Crud
+  description: Delete a production schedule version task link. You must be a
+    manager in the team of the project of the task, or an administrator.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the production schedule version task
+        link
+  responses:
+    204:
+      description: The production schedule version task link is deleted
+    400:
+      description: Other data uses this row
+    403:
+      description: You are not a manager in the team of the project
+    404:
+      description: The production schedule version task link does not exist
+
+ProductionScheduleVersionTaskLinkResource_get:
+  summary: Get a production schedule version task link
+  tags:
+    - Crud
+  description: Get a production schedule version task link. You must be in the
+    team of the project of the task, or an administrator. A vendor or a client
+    cannot read task links.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the production schedule version task
+        link
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The production schedule version task link
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              production_schedule_version_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not in the team of the project, or you are a vendor
+        or a client
+    404:
+      description: The production schedule version task link does not exist
+
+ProductionScheduleVersionTaskLinkResource_put:
+  summary: Update a production schedule version task link
+  tags:
+    - Crud
+  description: Update the fields of a production schedule version task link.
+    Send only the fields to change. You must be a manager in the team of the
+    project of the task, or an administrator. You cannot change id,
+    created_at, updated_at, task_id and production_schedule_version_id. Dates
+    use the ISO 8601 format.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the production schedule version task
+        link
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties: {}
+  responses:
+    200:
+      description: The updated production schedule version task link
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              production_schedule_version_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The body is not valid, a date is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not a manager in the team of the project
+    404:
+      description: The production schedule version task link does not exist
+
+ProductionScheduleVersionTaskLinksResource_get:
+  summary: Get production schedule version task link rows
+  tags:
+    - Crud
+  description: Get the production schedule version task link rows. Give
+    project_id to get the rows of a project. You must then be in the team of
+    this project. Without project_id, you must be an administrator. A vendor
+    or a client cannot call this route. Add a query parameter for each column
+    to filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"].
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Filter by project ID
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of production schedule version task link rows, or
+        a page of rows if you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a vendor or a client, you are not in the team of
+        the project, or you give no project_id and you are not an
+        administrator
+
+ProductionScheduleVersionTaskLinksResource_post:
+  summary: Create a production schedule version task link
+  tags:
+    - Crud
+  description: Create a production schedule version task link. Send the fields
+    of the new row in JSON. The task and the schedule version must be in the
+    same project. You must be a manager in the team of the project, or an
+    administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - production_schedule_version_id
+            - task_id
+          properties:
+            production_schedule_version_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            task_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The new production schedule version task link
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              production_schedule_version_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not a manager in the team of the project
+    404:
+      description: The production schedule version or the task does not exist
+
+ProductionScheduleVersionsResource_get:
+  summary: Get production schedule version rows
+  tags:
+    - Crud
+  description: Get the production schedule version rows. Give project_id to
+    get the rows of a project. You must then be in the team of this project.
+    Without project_id, you must be an administrator. A vendor or a client
+    cannot call this route. Add a query parameter for each column to filter
+    on, for example name=Modeling. The name filter does not make a difference
+    between upper case and lower case. To get the rows that have one value of
+    a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"].
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Filter by project ID
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of production schedule version rows, or a page of
+        rows if you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a vendor or a client, you are not in the team of
+        the project, or you give no project_id and you are not an
+        administrator
+
+ProductionScheduleVersionsResource_post:
+  summary: Create a production schedule version
+  tags:
+    - Crud
+  description: Create a production schedule version. Send the fields of the
+    new row in JSON. You must be a manager in the team of the project, or an
+    administrator.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - project_id
+          properties:
+            name:
+              type: string
+              example: Schedule Version 1
+            project_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The new production schedule version
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: Schedule Version 1
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, or a field breaks a database
+        constraint
+    403:
+      description: You are not a manager in the team of the project

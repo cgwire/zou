@@ -1,6 +1,5 @@
 import re
 
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -11,6 +10,9 @@ from zou.app.models.milestone import (
     Milestone,
 )
 from zou.app.services import permissions_service, user_service
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/milestone.yml")
 
 HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
 MILESTONE_TYPE_CODES = [code for code, _ in MILESTONE_TYPES]
@@ -58,7 +60,7 @@ class MilestonesResource(BaseModelsResource):
         return check_milestone_fields(data)
 
     @jwt_required()
-    @swag_from("openapi/MilestonesResource_get.yml")
+    @swag_from(SPECS["MilestonesResource_get"])
     def get(self):
         """
         Get milestones
@@ -66,7 +68,7 @@ class MilestonesResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/MilestonesResource_post.yml")
+    @swag_from(SPECS["MilestonesResource_post"])
     def post(self):
         """
         Create milestone
@@ -83,7 +85,7 @@ class MilestoneResource(BaseModelResource):
         permissions_service.block_access_to_vendor()
 
     @jwt_required()
-    @swag_from("openapi/MilestoneResource_get.yml")
+    @swag_from(SPECS["MilestoneResource_get"])
     def get(self, instance_id):
         """
         Get milestone
@@ -91,7 +93,7 @@ class MilestoneResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/MilestoneResource_put.yml")
+    @swag_from(SPECS["MilestoneResource_put"])
     def put(self, instance_id):
         """
         Update milestone
@@ -99,7 +101,7 @@ class MilestoneResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/MilestoneResource_delete.yml")
+    @swag_from(SPECS["MilestoneResource_delete"])
     def delete(self, instance_id):
         """
         Delete milestone

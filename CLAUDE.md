@@ -64,7 +64,7 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - Pre-commit hooks enforce both — run `pre-commit install` after cloning
 
 ### Python style
-- Python 3.10+ (no walrus operator abuse, keep it readable)
+- Python 3.11+ (no walrus operator abuse, keep it readable)
 - Services are **module-level functions**, not classes
 - Models inherit `db.Model, BaseMixin, SerializerMixin`
 - UUIDs everywhere for primary keys (`UUIDType(binary=False)`)

@@ -36,6 +36,11 @@ _CSS_RGBA_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Pillow 13 (raqm 0.11) cannot lay out a line holding a paragraph
+# separator. Kitsu's canvas breaks the lines on \r?\n and draws a lone \r
+# as a space: draw the other separators as a space too.
+_PARAGRAPH_SEPARATOR_RE = re.compile("[\r\x1c-\x1e\x85\u2029]")
+
 _ELLIPSE_SAMPLES = 64
 
 
@@ -605,6 +610,7 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     text = obj.get("text") or ""
     if not text:
         return
+    text = _PARAGRAPH_SEPARATOR_RE.sub(" ", text.replace("\r\n", "\n"))
     font_size = int(
         round(
             (obj.get("fontSize", 16) or 16)

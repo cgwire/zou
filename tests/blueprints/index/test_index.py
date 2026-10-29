@@ -62,6 +62,12 @@ class StatsRouteTestCase(ApiDBTestCase):
         self.log_in_manager()
         self.get("/stats", 403)
 
+    def test_test_event_route_is_admin_only(self):
+        self.get("/status/test-event")
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.get("/status/test-event", 403)
+
 
 class ConfigRouteTestCase(ApiDBTestCase):
     def test_config_route_gives_the_instance_movie_bitrates(self):

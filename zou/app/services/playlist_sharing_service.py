@@ -130,11 +130,15 @@ def get_share_link_by_token_raw(token):
     return share_link
 
 
-def validate_share_token(token, password=None):
+def validate_share_token(token):
     """
     Validate that a share token is active and not expired.
     Returns the serialized share link on success.
     Raises appropriate exceptions on failure.
+
+    The password of a protected link is checked apart, by
+    check_share_link_password, once per request in the route decorator:
+    the service functions re-validating the token do not hold it.
     """
     share_link = get_share_link_by_token_raw(token)
     if not share_link.is_active:
@@ -148,7 +152,16 @@ def validate_share_token(token, password=None):
         if now > expiration:
             raise PlaylistShareLinkNotFoundException
 
-    if share_link.password is not None and share_link.password != "":
+    return share_link.serialize()
+
+
+def check_share_link_password(token, password):
+    """
+    Raise PlaylistShareLinkNotFoundException when the link is protected and
+    ``password`` is missing or wrong. A link without password accepts any.
+    """
+    share_link = get_share_link_by_token_raw(token)
+    if share_link.password:
         # Constant-time bcrypt verify; never a plain `!=`.
         if not password:
             raise PlaylistShareLinkNotFoundException
@@ -157,8 +170,6 @@ def validate_share_token(token, password=None):
                 raise PlaylistShareLinkNotFoundException
         except (ValueError, TypeError):
             raise PlaylistShareLinkNotFoundException
-
-    return share_link.serialize()
 
 
 def get_shared_playlist(token):
@@ -835,31 +846,19 @@ def enrich_shots_with_entity_info(playlist_dict):
 
 def create_guest(token, first_name, last_name=""):
     """
-    Return or create a guest Person scoped to the share link of ``token``.
+    Create a guest Person scoped to the share link of ``token``.
 
     Each guest is bound to the share link that created it (via
-    ``Person.data['share_link_id']``). Reuse by first/last name only matches
-    guests created from the same share link, so a reviewer named "John
-    Smith" who has commented through link A cannot be impersonated by an
-    attacker who later creates a guest with the same name through link B.
-    The guest always has ``is_guest=True`` and ``role=client``.
+    ``Person.data['share_link_id']``). A guest is never looked up by name:
+    typing the name of a reviewer who commented before must not take their
+    identity. The viewer keeps their guest id and reuses it through
+    get_guest_for_share_link. The guest always has ``is_guest=True`` and
+    ``role=client``.
     """
     share_link = validate_share_token(token)
     share_link_id = str(share_link["id"])
     first_name = (first_name or "Guest").strip()
     last_name = (last_name or "").strip()
-
-    existing = (
-        Person.query.filter_by(
-            is_guest=True,
-            first_name=first_name,
-            last_name=last_name,
-        )
-        .filter(Person.data["share_link_id"].astext == share_link_id)
-        .first()
-    )
-    if existing is not None:
-        return existing.serialize()
 
     guest = Person.create(
         first_name=first_name,
@@ -898,14 +897,14 @@ def get_guest_for_share_link(guest_id, share_link):
     return person
 
 
-def get_shared_playlist_context(token):
+def get_share_link_context(share_link):
     """
-    Return the minimal project context needed to display a shared
-    playlist: the project, its task types, and its task statuses. No
-    entity is listed: the shots of the playlist carry their names, and the
-    main preview of an entity can be a revision the link does not share.
+    Return the minimal context needed to display the playlist of a
+    validated share link: what the link allows, the project, its task
+    types, and its task statuses. No entity is listed: the shots of the
+    playlist carry their names, and the main preview of an entity can be
+    a revision the link does not share.
     """
-    share_link = validate_share_token(token)
     playlist = playlists_service.get_playlist(share_link["playlist_id"])
     project_id = playlist["project_id"]
     project = projects_service.get_project(project_id)
@@ -917,6 +916,7 @@ def get_shared_playlist_context(token):
     )
 
     return {
+        "share_link": {"can_comment": share_link["can_comment"]},
         "project": {
             "id": project["id"],
             "name": project["name"],

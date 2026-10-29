@@ -1,0 +1,755 @@
+AppLoginCodeResource_post:
+  summary: Make a browser login code
+  description: Make a one-time code for the current user. A desktop app or a
+    script on the same computer uses this code to get its own tokens. The code
+    is linked to the PKCE challenge in the body. The code expires after 60
+    seconds. A bot cannot make a code. A user who must set up two-factor
+    authentication first cannot make a code.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            code_challenge:
+              type: string
+              pattern: "^[A-Za-z0-9_-]{43}$"
+              example: E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+              description: SHA-256 of the PKCE code verifier, encoded in
+                base64url without padding (43 characters)
+          required:
+            - code_challenge
+  responses:
+    201:
+      description: The one-time login code
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                description: One-time login code
+    400:
+      description: The code challenge is not correct
+    403:
+      description: The token belongs to a bot, or the user must set up
+        two-factor authentication first
+
+AppLoginTokenResource_post:
+  summary: Change a browser login code into tokens
+  description: Change a one-time browser login code into a new pair of access
+    and refresh tokens. You can use a code one time only. The code verifier
+    must agree with the PKCE challenge of the code. The response has the same
+    shape as the response of a login. This route does not set cookies. The
+    organisation has the chat tokens only for an administrator.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            code:
+              type: string
+              minLength: 1
+              maxLength: 128
+              description: One-time login code
+            code_verifier:
+              type: string
+              pattern: "^[A-Za-z0-9._~-]{43,128}$"
+              example: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+              description: PKCE code verifier (43 to 128 characters)
+          required:
+            - code
+            - code_verifier
+  responses:
+    200:
+      description: The user, the organisation and the two tokens
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              login:
+                type: boolean
+                example: true
+              user:
+                type: object
+              organisation:
+                type: object
+              access_token:
+                type: string
+              refresh_token:
+                type: string
+    400:
+      description: The code is unknown, expired or used, the verifier is not
+        correct, or the user is inactive
+
+AuthenticatedResource_get:
+  summary: Get the authentication status
+  description: Get the current user and the organisation if the token is
+    valid. A browser frontend or a third-party tool uses this route to know if
+    the user is still logged in. The organisation has the chat tokens only
+    for an administrator.
+  tags:
+    - Authentication
+  responses:
+    200:
+      description: The user is authenticated
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              authenticated:
+                type: boolean
+                example: true
+              user:
+                type: object
+                description: Current user, with relations and FIDO devices
+              organisation:
+                type: object
+    401:
+      description: The token is missing, not valid or expired
+
+ChangePasswordResource_post:
+  summary: Change the password
+  description: Change the password of the current user. Give the current
+    password and the new password two times.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            old_password:
+              type: string
+              format: password
+              minLength: 1
+              description: Current password
+            password:
+              type: string
+              format: password
+              minLength: 1
+              description: New password
+            password_2:
+              type: string
+              format: password
+              minLength: 1
+              description: New password again
+          required:
+            - old_password
+            - password
+            - password_2
+  responses:
+    200:
+      description: The password is changed
+    400:
+      description: The current password is wrong, the two new passwords are
+        different, the new password is too short, the user is inactive, or
+        too many login attempts failed recently
+    403:
+      description: The token belongs to a bot
+
+EmailOTPResource_delete:
+  summary: Disable the email OTP
+  description: Disable the authentication with a one-time password (OTP) sent
+    by email. Give a second factor to confirm this operation.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Give one of the second factors of the user.
+          properties:
+            totp:
+              type: string
+              description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
+  responses:
+    200:
+      description: The email OTP is disabled
+    400:
+      description: The email OTP is not enabled, or the second factor is wrong
+    403:
+      description: The token belongs to a bot
+
+EmailOTPResource_get:
+  summary: Send an email OTP
+  description: Send a one-time password (OTP) by email to the user. You do not
+    need a token for this route. The response is the same if the address is
+    unknown, or if the account cannot get an OTP by email.
+  tags:
+    - Authentication
+  security: []
+  parameters:
+    - in: query
+      name: email
+      required: true
+      schema:
+        type: string
+      example: admin@example.com
+      description: Email address or desktop login of the user
+  responses:
+    200:
+      description: The request is received
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true
+    400:
+      description: email is missing
+
+EmailOTPResource_post:
+  summary: Enable the email OTP
+  description: Enable the authentication with a one-time password (OTP) sent
+    by email. Give the code that the user got by email to confirm this
+    operation.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            email_otp:
+              type: string
+              minLength: 1
+              description: One-time password that the user got by email
+          required:
+            - email_otp
+  responses:
+    200:
+      description: The email OTP is enabled
+    400:
+      description: The email OTP is already enabled, or the code is wrong
+    403:
+      description: The token belongs to a bot
+
+EmailOTPResource_put:
+  summary: Prepare the email OTP
+  description: Send a one-time password (OTP) by email to the current user.
+    Use this code to enable the email OTP.
+  tags:
+    - Authentication
+  responses:
+    200:
+      description: The code is sent
+    400:
+      description: The email OTP is already enabled
+    403:
+      description: The token belongs to a bot
+
+FIDOResource_delete:
+  summary: Remove a FIDO device
+  description: Remove a FIDO device of the current user. Give a second factor
+    to confirm this operation.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            device_name:
+              type: string
+              minLength: 1
+              description: Name of the FIDO device to remove
+            totp:
+              type: string
+              description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
+          required:
+            - device_name
+  responses:
+    200:
+      description: The FIDO device is removed
+    400:
+      description: FIDO is not enabled, or the second factor is wrong
+    403:
+      description: The token belongs to a bot
+
+FIDOResource_get:
+  summary: Get a FIDO challenge
+  description: Get a challenge for the FIDO devices of the user. You do not
+    need a token for this route. Use the challenge to log in with WebAuthn.
+  tags:
+    - Authentication
+  security: []
+  parameters:
+    - in: query
+      name: email
+      required: true
+      schema:
+        type: string
+      example: admin@example.com
+      description: Email address or desktop login of the user
+  responses:
+    200:
+      description: The FIDO challenge
+    400:
+      description: email is missing, or no FIDO challenge is available for
+        this user
+
+FIDOResource_post:
+  summary: Register a FIDO device
+  description: Register a FIDO device for the current user. First, prepare the
+    registration. Then, send the response of the device.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            registration_response:
+              type: object
+              description: Registration response of the FIDO device
+            device_name:
+              type: string
+              minLength: 1
+              description: Name of the FIDO device
+          required:
+            - registration_response
+            - device_name
+  responses:
+    200:
+      description: The FIDO device is registered
+    400:
+      description: The registration failed, or the registration is not
+        prepared
+    403:
+      description: The token belongs to a bot
+
+FIDOResource_put:
+  summary: Prepare a FIDO registration
+  description: Get the WebAuthn registration options for a new FIDO device of
+    the current user.
+  tags:
+    - Authentication
+  responses:
+    200:
+      description: The WebAuthn registration options
+    403:
+      description: The token belongs to a bot
+
+LoginResource_post:
+  summary: Log in
+  description: Log in a user and get authentication tokens. The email field
+    accepts the email address or the desktop login of the user. Desktop tools
+    that do not know the email address use the desktop login. If the user has
+    two-factor authentication, give one second factor. The organisation has
+    the chat tokens only for an administrator.
+  tags:
+    - Authentication
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+              example: admin@example.com
+              description: Email address or desktop login of the user
+            password:
+              type: string
+              format: password
+              example: "********"
+              description: Password of the user
+            totp:
+              type: string
+              example: "123456"
+              description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              example: "123456"
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              example: ABCD-EFGH-IJKL-MNOP
+              description: One recovery code of the user
+          required:
+            - email
+  responses:
+    200:
+      description: The login is successful. If the instance enforces
+        two-factor authentication and the user has not set it up, the body
+        has two_factor_authentication_required and the tokens only give
+        access to the authentication routes until the setup is done.
+    400:
+      description: The login failed. The body tells the cause with the flags
+        default_password, missing_OTP, wrong_OTP or
+        too_many_failed_login_attemps. A wrong email and a wrong password
+        give the same answer.
+    401:
+      description: The user is inactive. The body has the flag unactive.
+    409:
+      description: The authentication strategy is not correctly configured
+    500:
+      description: The database is not available, or a server error occurred
+
+LogoutResource_get:
+  summary: Log out
+  description: Log out the current user. This route revokes the access token
+    and the refresh token. After this operation, the tokens cannot access the
+    API.
+  tags:
+    - Authentication
+  responses:
+    200:
+      description: The logout is successful
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              logout:
+                type: boolean
+                example: true
+    403:
+      description: The token belongs to a bot
+
+OIDCCallbackResource_get:
+  summary: Receive the OIDC SSO callback
+  description: Receive the response of the OpenID Connect identity provider.
+    This route changes the authorization code into tokens and validates the ID
+    token. Then, it logs in the person linked to the issuer and the subject of
+    the token. At the first login, the person with the email of the token is
+    linked to this identity. If no person has this email, a new person is
+    created.
+  tags:
+    - Authentication
+  security: []
+  responses:
+    302:
+      description: The login is successful. Redirect to the home page.
+    400:
+      description: OIDC is not enabled, the authentication failed, the email
+        is not verified, the provider gives no email, or the account is linked
+        to a different identity
+
+OIDCLoginResource_get:
+  summary: Start the OIDC SSO login
+  description: Start an SSO login. This route redirects to the OpenID Connect
+    identity provider.
+  tags:
+    - Authentication
+  security: []
+  responses:
+    302:
+      description: Redirect to the OIDC identity provider
+    400:
+      description: OIDC is not enabled
+
+RecoveryCodesResource_put:
+  summary: Make new recovery codes
+  description: Make new recovery codes for the two-factor authentication of the
+    current user. The new codes replace the old codes. Give a second factor to
+    confirm this operation.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Give one of the second factors of the user.
+          properties:
+            totp:
+              type: string
+              description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
+  responses:
+    200:
+      description: The new recovery codes
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              otp_recovery_codes:
+                type: array
+                items:
+                  type: string
+    400:
+      description: Two-factor authentication is not enabled, or the second
+        factor is wrong
+    403:
+      description: The token belongs to a bot
+
+RefreshTokenResource_get:
+  summary: Refresh the access token
+  description: Get a new access token. Send the refresh token as the bearer
+    token. An access token expires after a period. Use this route before the
+    access token expires. A browser gets the new token in a cookie.
+  tags:
+    - Authentication
+  responses:
+    200:
+      description: The new access token, or a refresh flag for a browser
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              access_token:
+                type: string
+              refresh:
+                type: boolean
+    403:
+      description: The token belongs to a bot
+
+ResetPasswordResource_post:
+  summary: Ask for a password reset
+  description: Send an email with a password reset link to the user. You do
+    not need a token for this route. The response is the same if the address
+    is unknown or if the user is inactive.
+  tags:
+    - Authentication
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+              minLength: 1
+              example: admin@example.com
+              description: Email address of the user
+          required:
+            - email
+  responses:
+    200:
+      description: The request is received
+
+ResetPasswordResource_put:
+  summary: Reset the password with a token
+  description: Set a new password for a user who forgot the password. Give the
+    token from the password reset email. The token proves that the user asked
+    for the reset.
+  tags:
+    - Authentication
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+              minLength: 1
+              example: admin@example.com
+              description: Email address of the user
+            token:
+              type: string
+              minLength: 1
+              description: Password reset token from the email
+            password:
+              type: string
+              format: password
+              minLength: 1
+              description: New password
+            password2:
+              type: string
+              format: password
+              minLength: 1
+              description: New password again
+          required:
+            - email
+            - token
+            - password
+            - password2
+  responses:
+    200:
+      description: The password is changed
+    400:
+      description: The token is wrong or expired, the password is not valid,
+        or the user is inactive
+
+SAMLLoginResource_get:
+  summary: Start the SAML SSO login
+  description: Start an SSO login. This route redirects to the SAML identity
+    provider.
+  tags:
+    - Authentication
+  security: []
+  responses:
+    302:
+      description: Redirect to the SAML identity provider
+    400:
+      description: SAML is not enabled, or a parameter is wrong
+
+SAMLSSOResource_post:
+  summary: Receive the SAML SSO response
+  description: Receive the authentication response of the SAML identity
+    provider. If SAML_SUBJECT_ATTRIBUTE is set, this route logs in the person
+    linked to the issuer and the subject of the assertion. The email finds the
+    account at the first login only. If no person has this email, a new person
+    is created.
+  tags:
+    - Authentication
+  security: []
+  requestBody:
+    required: true
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+          required:
+            - SAMLResponse
+          properties:
+            SAMLResponse:
+              type: string
+              description: SAML response of the identity provider, base64
+                encoded
+  responses:
+    302:
+      description: The login is successful. Redirect to the home page.
+    400:
+      description: SAML is not enabled, a parameter is wrong, or the account
+        is linked to a different identity
+
+TOTPResource_delete:
+  summary: Disable the TOTP
+  description: Disable the authentication with a time-based one-time password
+    (TOTP). Give a second factor to confirm this operation.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          description: Give one of the second factors of the user.
+          properties:
+            totp:
+              type: string
+              description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
+  responses:
+    200:
+      description: The TOTP is disabled
+    400:
+      description: The TOTP is not enabled, or the second factor is wrong
+    403:
+      description: The token belongs to a bot
+
+TOTPResource_post:
+  summary: Enable the TOTP
+  description: Enable the authentication with a time-based one-time password
+    (TOTP). Give a code from the authenticator app to confirm this operation.
+  tags:
+    - Authentication
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            totp:
+              type: string
+              minLength: 1
+              description: TOTP code from the authenticator app
+          required:
+            - totp
+  responses:
+    200:
+      description: The TOTP is enabled. The body has the recovery codes.
+    400:
+      description: The TOTP is already enabled, or the code is wrong
+    403:
+      description: The token belongs to a bot
+
+TOTPResource_put:
+  summary: Prepare the TOTP
+  description: Get the provisioning URI and the secret for the authenticator
+    app. Use them to enable the time-based one-time password (TOTP).
+  tags:
+    - Authentication
+  responses:
+    200:
+      description: The provisioning URI and the secret
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              totp_provisionning_uri:
+                type: string
+              otp_secret:
+                type: string
+    400:
+      description: The TOTP is already enabled
+    403:
+      description: The token belongs to a bot

@@ -39,6 +39,12 @@ class MovieTestCase(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.video_only_path = str(Path(self.tmpdir) / "demo.m4v")
         shutil.copyfile(self.source_path, self.video_only_path)
+        # normalize_movie and the other helpers write their outputs to the
+        # system temporary folder: keep them in this test's folder, which
+        # tearDown removes.
+        tempdir = patch.object(tempfile, "tempdir", self.tmpdir)
+        tempdir.start()
+        self.addCleanup(tempdir.stop)
 
     def tearDown(self):
         super().tearDown()
@@ -155,6 +161,37 @@ class MovieTestCase(unittest.TestCase):
 
         self.assertEqual(ret, 0)
         self.assertTrue(movie.has_soundtrack(webm_path))
+
+    def test_soundtrack_keeps_every_frame_of_a_movie_with_b_frames(self):
+        # cgwire/zou#1310: the duration of an upload can change by a
+        # fraction of a millisecond with the silent track, depending on the
+        # encoder that wrote it, so the probe of the upload is shortened
+        # here. A stream copy cut back to the old duration with -ss dropped
+        # the first keyframe, whose dts is negative with B-frames, and every
+        # frame up to the next one.
+        clip_path = str(Path(self.tmpdir) / "b_frames.mp4")
+        ffmpeg.input("testsrc=size=320x240:rate=24", f="lavfi", t=3).output(
+            clip_path, vcodec="libx264", pix_fmt="yuv420p", bf=2, g=24, an=None
+        ).overwrite_output().run(quiet=True)
+        probe = ffmpeg.probe
+
+        def probe_a_shorter_upload(path, **kwargs):
+            result = probe(path, **kwargs)
+            if path == clip_path:
+                duration = float(result["format"]["duration"]) - 0.0003
+                result["format"]["duration"] = f"{duration:.6f}"
+            return result
+
+        with patch.object(
+            movie.ffmpeg, "probe", side_effect=probe_a_shorter_upload
+        ):
+            ret, _, _ = movie.add_empty_soundtrack(clip_path)
+
+        self.assertEqual(ret, 0)
+        self.assertTrue(movie.has_soundtrack(clip_path))
+        video = ffmpeg.probe(clip_path, select_streams="v", count_frames=None)
+        self.assertEqual(len(video["streams"]), 1)
+        self.assertEqual(int(video["streams"][0]["nb_read_frames"]), 72)
 
     def test_get_movie_size(self):
         width, height = movie.get_movie_size(self.video_only_path)

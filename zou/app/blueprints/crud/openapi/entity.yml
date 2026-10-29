@@ -1,0 +1,331 @@
+EntitiesResource_get:
+  summary: Get entity rows
+  tags:
+    - Crud
+  description: Get the entity rows. Add a query parameter for each column to
+    filter on, for example name=Modeling. The name filter does not make a
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
+    task_status_id=["<id1>","<id2>"]. An administrator gets all the entities.
+    Other users get the entities of the open projects where they are in the
+    team. On a project where you are a vendor, you get only the entities with
+    a task assigned to you. The role held on the project team applies. Each
+    row has a type field, for example Asset or Shot.
+  parameters:
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without this parameter, the response has all
+        the rows.
+      example: 1
+      schema:
+        type: integer
+    - in: query
+      name: limit
+      required: false
+      description: Number of rows in a page. The default value is 100.
+      example: 100
+      schema:
+        type: integer
+    - in: query
+      name: relations
+      required: false
+      description: Add the related data to each row
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: fields
+      required: false
+      description: Comma-separated list of the fields to get for each row. The
+        response always has id and type. The names that are not fields are
+        ignored.
+      example: id,name
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of entity rows, or a page of rows if you give page
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: array
+                items:
+                  type: object
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  total:
+                    type: integer
+                    example: 100
+                  nb_pages:
+                    type: integer
+                    example: 2
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+                  page:
+                    type: integer
+                    example: 1
+    400:
+      description: A filter is not valid
+
+EntitiesResource_post:
+  summary: Create an entity
+  tags:
+    - Crud
+  description: Create an entity. Send the fields of the new row in JSON. You
+    must be an administrator or a manager of the project. You become the
+    creator of the entity. The status must be a valid entity status.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+            - project_id
+            - entity_type_id
+          properties:
+            name:
+              type: string
+              example: SH010
+            project_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+            entity_type_id:
+              type: string
+              format: uuid
+              example: b24a6ea4-ce75-4665-a070-57453082c250
+            status:
+              type: string
+              example: running
+            data:
+              type: object
+              example: {frame_in: 1001, frame_out: 1120}
+  responses:
+    201:
+      description: The new entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_type_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              status:
+                type: string
+                example: running
+              data:
+                type: object
+                example: {frame_in: 1001, frame_out: 1120}
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The status is not valid, the body is not valid, or a field
+        breaks a database constraint
+    403:
+      description: You are not a manager of the project
+
+EntityResource_delete:
+  summary: Delete an entity
+  tags:
+    - Crud
+  description: Delete an entity. An administrator, a manager of the project or
+    the creator of the entity can delete it. The creator must be in the
+    project team. The links of the entity are
+    deleted too. You cannot delete an entity that has tasks, versions or child
+    entities.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+  responses:
+    204:
+      description: The entity is deleted
+    400:
+      description: Tasks, versions, child entities or other data use this
+        entity
+    403:
+      description: You are not a manager of the project or the creator of the
+        entity
+    404:
+      description: The entity does not exist
+
+EntityResource_get:
+  summary: Get an entity
+  tags:
+    - Crud
+  description: Get an entity. You must have access to its project. A vendor
+    must also have a task on the entity. The response has a type field, for
+    example Asset or Shot.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+    - in: query
+      name: relations
+      required: false
+      schema:
+        type: boolean
+        default: true
+      example: true
+      description: Add the related data. The default value is true.
+  responses:
+    200:
+      description: The entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              entity_type_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              status:
+                type: string
+                example: running
+              data:
+                type: object
+                example: {frame_in: 1001, frame_out: 1120}
+              type:
+                type: string
+                example: shot
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You do not have access to the project, or you are a vendor
+        without a task on the entity
+    404:
+      description: The entity does not exist
+
+EntityResource_put:
+  summary: Update an entity
+  tags:
+    - Crud
+  description: Update the fields of an entity. An entity is an asset, a shot,
+    a sequence, an episode, an edit or a concept. Send only the fields to
+    change. You cannot change id, created_at, updated_at, project_id, type,
+    instance_casting, entities_in, entities_out, shotgun_id and created_by. An
+    administrator, a manager of the project or the creator of the entity can
+    change the other fields. The creator must be in the team of the project. A
+    supervisor of the project with a department can change only the data field
+    of an asset, a shot or an edit. Each key must be a metadata descriptor of
+    one of their departments. A key that is not a descriptor of their
+    departments refuses the whole update. A supervisor without a department
+    can change the data field of every entity. The data field is merged with the
+    current data. The name must be unique for the project, the type and the
+    parent. When the frames or the name of a shot change, a new version of the
+    shot is saved. Changes of one person that are less than one minute apart
+    update the same version, for five minutes at most.
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              example: SH010
+            data:
+              type: object
+              example: {frame_in: 1001, frame_out: 1120}
+  responses:
+    200:
+      description: The updated entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              data:
+                type: object
+                example: {frame_in: 1001, frame_out: 1120}
+    400:
+      description: The body is not valid, the status is not valid, or another
+        entity has the same name, type and parent in the project
+    403:
+      description: You are not in the team of the project, or your role cannot
+        change these fields
+    404:
+      description: The entity does not exist

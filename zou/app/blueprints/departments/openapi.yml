@@ -1,0 +1,494 @@
+AddHardwareItemToDepartmentResource_post:
+  summary: Add a hardware item to a department
+  description: Add a hardware item to a department. The budget forecast uses
+    the hardware items of each department. If the link already exists, the
+    route returns it. You must be an administrator.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - hardware_item_id
+          properties:
+            hardware_item_id:
+              type: string
+              format: uuid
+              description: Hardware item identifier to add to department
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The link between the department and the hardware item
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Hardware department link unique identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              department_id:
+                type: string
+                format: uuid
+                description: Department identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              hardware_item_id:
+                type: string
+                format: uuid
+                description: Hardware item identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The department or the hardware item does not exist
+
+AddSoftwareToDepartmentResource_post:
+  summary: Add a software license to a department
+  description: Add a software license to a department. The budget forecast
+    uses the software licenses of each department. If the link already exists,
+    the route returns it. You must be an administrator.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - software_id
+          properties:
+            software_id:
+              type: string
+              format: uuid
+              description: Software identifier to add to department
+              example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    201:
+      description: The link between the department and the software license
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Software license department link unique
+                  identifier
+                example: c46c80c6-e097-6887-c292-79675204e470
+              department_id:
+                type: string
+                format: uuid
+                description: Department identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              software_id:
+                type: string
+                format: uuid
+                description: Software license identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The department or the software license does not exist
+
+AllDepartmentHardwareItemsResource_get:
+  summary: Get the hardware items of all departments
+  description: Get the hardware items of each department. The response is a
+    map of department identifiers to lists of hardware items. You must be an
+    administrator.
+  tags:
+    - Departments
+  responses:
+    200:
+      description: A map of department identifiers to lists of hardware items
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Hardware item unique identifier
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    description: Hardware item name
+                    example: Workstation
+                  description:
+                    type: string
+                    description: Hardware item description
+                    example: High-performance workstation
+                  department_id:
+                    type: string
+                    format: uuid
+                    description: Department identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d360
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                    example: '2023-01-01T12:00:00Z'
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                    example: '2023-01-01T12:30:00Z'
+    403:
+      description: You are not an administrator
+
+AllDepartmentSoftwareResource_get:
+  summary: Get the software licenses of all departments
+  description: Get the software licenses of each department. The response is a
+    map of department identifiers to lists of software licenses. You must be
+    an administrator.
+  tags:
+    - Departments
+  responses:
+    200:
+      description: A map of department identifiers to lists of software
+        licenses
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Software license unique identifier
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    description: Software license name
+                    example: Maya
+                  short_name:
+                    type: string
+                    description: Software license short name
+                    example: MAYA
+                  file_extension:
+                    type: string
+                    description: Default file extension for the software
+                      license
+                    example: .ma
+                  department_id:
+                    type: string
+                    format: uuid
+                    description: Department identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d360
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                    example: '2023-01-01T12:00:00Z'
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                    example: '2023-01-01T12:30:00Z'
+    403:
+      description: You are not an administrator
+
+DepartmentPersonsResource_get:
+  summary: Get the members of a department
+  description: Get the persons of a department, sorted by name. An
+    administrator gets all the fields of each person. Other users get the
+    minimal fields. Clients cannot use this route.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+  responses:
+    200:
+      description: The list of persons
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Person unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                first_name:
+                  type: string
+                  description: Person first name
+                  example: John
+                last_name:
+                  type: string
+                  description: Person last name
+                  example: Doe
+                departments:
+                  type: array
+                  description: Departments the person belongs to
+                  items:
+                    type: string
+                    format: uuid
+                    example: b35b7fb5-df86-5776-b181-68564193d360
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are a client
+    404:
+      description: The department does not exist
+
+HardwareItemDepartmentResource_delete:
+  summary: Remove a hardware item from a department
+  description: Remove a hardware item from a department. The hardware item is
+    not deleted. If the department and the hardware item exist but are not
+    linked, the route also returns 204. You must be an administrator.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: hardware_item_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the hardware item to remove
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The hardware item is removed from the department
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The department or the hardware item does not exist
+
+HardwareItemDepartmentResource_get:
+  summary: Get a hardware item of a department
+  description: Get a hardware item of a department. You must be an
+    administrator.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: hardware_item_id
+      required: true
+      description: Unique identifier of the hardware item
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The hardware item
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Hardware item unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Hardware item name
+                example: Workstation
+              description:
+                type: string
+                description: Hardware item description
+                example: High-performance workstation
+              department_id:
+                type: string
+                format: uuid
+                description: Department identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: The identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The hardware item is not linked to the department
+
+SoftwareDepartmentResource_delete:
+  summary: Remove a software license from a department
+  description: Remove a software license from a department. The software
+    license is not deleted. If the department and the software license exist
+    but are not linked, the route also returns 204. You must be an
+    administrator.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: software_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the software license to remove
+      schema:
+        type: string
+        format: uuid
+  responses:
+    204:
+      description: The software license is removed from the department
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The department or the software license does not exist
+
+SoftwareDepartmentResource_get:
+  summary: Get a software license of a department
+  description: Get a software license of a department. You must be an
+    administrator.
+  tags:
+    - Departments
+  parameters:
+    - in: path
+      name: department_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the department
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: software_id
+      required: true
+      example: b35b7fb5-df86-5776-b181-68564193d360
+      description: Unique identifier of the software license
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: The software license
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Software license unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Software license name
+                example: Maya
+              short_name:
+                type: string
+                description: Software license short name
+                example: MAYA
+              file_extension:
+                type: string
+                description: Default file extension for the software license
+                example: .ma
+              department_id:
+                type: string
+                format: uuid
+                description: Department identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: '2023-01-01T12:30:00Z'
+    400:
+      description: An identifier is not a valid UUID
+    403:
+      description: You are not an administrator
+    404:
+      description: The department does not have this software license

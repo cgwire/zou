@@ -1,8 +1,10 @@
-from flasgger import swag_from
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.budget import Budget
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi/budget.yml")
 
 
 class BudgetsResource(BaseModelsResource):
@@ -10,7 +12,7 @@ class BudgetsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, Budget)
 
     @jwt_required()
-    @swag_from("openapi/BudgetsResource_get.yml")
+    @swag_from(SPECS["BudgetsResource_get"])
     def get(self):
         """
         Get budgets
@@ -18,7 +20,7 @@ class BudgetsResource(BaseModelsResource):
         return super().get()
 
     @jwt_required()
-    @swag_from("openapi/BudgetsResource_post.yml")
+    @swag_from(SPECS["BudgetsResource_post"])
     def post(self):
         """
         Create budget
@@ -35,7 +37,7 @@ class BudgetResource(BaseModelResource):
         self.protected_fields.append("revision")
 
     @jwt_required()
-    @swag_from("openapi/BudgetResource_get.yml")
+    @swag_from(SPECS["BudgetResource_get"])
     def get(self, instance_id):
         """
         Get budget
@@ -43,7 +45,7 @@ class BudgetResource(BaseModelResource):
         return super().get(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/BudgetResource_put.yml")
+    @swag_from(SPECS["BudgetResource_put"])
     def put(self, instance_id):
         """
         Update budget
@@ -51,7 +53,7 @@ class BudgetResource(BaseModelResource):
         return super().put(instance_id)
 
     @jwt_required()
-    @swag_from("openapi/BudgetResource_delete.yml")
+    @swag_from(SPECS["BudgetResource_delete"])
     def delete(self, instance_id):
         """
         Delete budget

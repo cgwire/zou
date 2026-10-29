@@ -59,13 +59,14 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
             400,
         )
 
-    def test_permissions(self):
+    def test_admin_sets_time_of_someone_not_assigned(self):
         user_id = str(self.user["id"])
         task_id = str(self.task.id)
 
         data = {"duration": 7200}
         path = f"/actions/tasks/{task_id}/time-spents/2017-09-27/persons/{user_id}"
-        self.post(path, data, 403)
+        self.post(path, data, 201)
+        self.delete(path, 200)
 
     def test_get_time_spent(self):
         person_id = str(self.person.id)

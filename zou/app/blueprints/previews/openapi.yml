@@ -1,0 +1,1177 @@
+AddTaskBatchCommentResource_post:
+  summary: Comment a task several times
+  description: Add several comments to a task in one request. Send a multipart
+    form. Each entry of comments is a JSON object with task_status_id and
+    text, and optional checklist, links, person_id and created_at. You can
+    also send a JSON body with a comments list. Each comment sets the status
+    of its task. To attach files to the comment at index i, name the form
+    fields attachment_file-i for attachments and preview_file-i for previews.
+    Only a manager can set person_id and created_at. You must be able to do
+    actions on each task.
+  tags:
+    - Comments
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Task unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - comments
+          properties:
+            comments:
+              type: string
+              description: JSON string containing array of comments
+              example: '[{"text": "Good work", "task_status_id": "uuid"}]'
+      application/json:
+        schema:
+          type: object
+          required:
+            - comments
+          properties:
+            comments:
+              type: array
+              description: List of comments
+              items:
+                type: object
+  responses:
+    201:
+      description: The new comments
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You cannot do actions on this task, or you cannot use a
+        task status
+    404:
+      description: The task does not exist
+
+AddTasksBatchCommentResource_post:
+  summary: Comment several tasks
+  description: Add comments to several tasks in one request. Send a multipart
+    form. Each entry of comments is a JSON object with task_id,
+    task_status_id and text, and optional checklist, links, person_id and
+    created_at. You can also send a JSON body with a comments list. Each
+    comment sets the status of its task. To attach files to the comment at
+    index i, name the form fields attachment_file-i and preview_file-i. Only
+    a manager can set person_id and created_at. You must be able to do
+    actions on each task.
+  tags:
+    - Comments
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - comments
+          properties:
+            comments:
+              type: string
+              description: JSON string containing array of comments
+              example: '[{"task_id": "uuid", "text": "Good work", "task_status_id":
+                "uuid"}]'
+      application/json:
+        schema:
+          type: object
+          required:
+            - comments
+          properties:
+            comments:
+              type: array
+              description: List of comments
+              items:
+                type: object
+  responses:
+    201:
+      description: The new comments
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You cannot do actions on a task, or you cannot use a task
+        status
+    404:
+      description: A task does not exist
+
+AttachmentThumbnailResource_get:
+  summary: Get the thumbnail of an attachment
+  description: Get the thumbnail of a file attached to a comment or to a
+    chat message. You must have access to the task or to the chat. Clients
+    cannot get the files of a chat. A vendor must have a task on the entity.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: attachment_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Attachment file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The PNG thumbnail
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to the task of the comment or to the
+        chat, you are a client and the file is in a chat, or the file is linked
+        to nothing
+    404:
+      description: The attachment or its thumbnail does not exist
+
+BasePreviewPictureResource_get:
+  summary: Get a picture of a preview
+  description: Get a picture of a preview file. It can be the thumbnail, the
+    square thumbnail, the original picture or the preview picture. For the
+    thumbnail, the square thumbnail and the original picture, anybody who is
+    logged in can get the main preview of a shared entity, except vendors.
+    For the preview picture, and for the other previews, you must have access
+    to the task. A vendor must have a task on the entity.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The PNG picture
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview file or its file does not exist
+
+BaseThumbnailResource_get:
+  summary: Get a thumbnail
+  description: Get the thumbnail of a person, an organisation, a project or a
+    preview background file. For a project, you must have access to the
+    project, if you are not a manager.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the person, organisation, project or
+        preview background file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The PNG thumbnail
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to this project
+    404:
+      description: The thumbnail does not exist
+
+BaseThumbnailResource_post:
+  summary: Upload a thumbnail
+  description: Upload the thumbnail of a person, an organisation or a project.
+    Send the picture in a multipart form. For a person, you must be this
+    person or an administrator. For a project, you must be a manager of the
+    project. For an organisation, you must be an administrator. The route with
+    the .png extension cannot receive uploads and returns 405.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the person, organisation or project
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The path of the new thumbnail
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              thumbnail_path:
+                type: string
+                description: URL path to the thumbnail
+                example: /api/thumbnails/persons/uuid
+    400:
+      description: The file is missing or is not a picture
+    403:
+      description: You cannot change this thumbnail
+    404:
+      description: The person or the project does not exist
+    405:
+      description: This route is read only. Use the route without extension.
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: Image file to use as thumbnail
+              format: binary
+          required:
+            - file
+
+CreatePreviewBackgroundFileResource_post:
+  summary: Upload a preview background file
+  description: Upload the file of a preview background. The route also makes a
+    thumbnail. Send the file in a multipart form. You must be an
+    administrator.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview background file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    201:
+      description: The preview background file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Preview background file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              extension:
+                type: string
+                description: File extension
+                example: hdr
+              file_size:
+                type: integer
+                description: File size in bytes
+                example: 2048000
+    400:
+      description: The file is missing, or its format is not valid
+    403:
+      description: You are not an administrator
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: HDR file to upload
+              format: binary
+          required:
+            - file
+
+CreatePreviewFilePictureResource_post:
+  summary: Upload the file of a preview
+  description: Upload the file of a preview. Send the file in a multipart
+    form. For a picture, the route makes a square thumbnail, a rectangle
+    thumbnail and a preview picture. For a movie, the route normalizes the
+    movie and makes the thumbnails. Use normalize=false to keep the movie as
+    it is. You cannot upload a file again for a preview that already has a
+    file. You must be able to do actions on the task. A client of the project
+    cannot use this route.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: normalize
+      required: false
+      description: Normalize the movie
+      schema:
+        type: boolean
+        default: true
+    - in: query
+      name: no_job
+      required: false
+      description: Process the file in the request instead of the job queue
+      schema:
+        type: boolean
+        default: false
+  responses:
+    201:
+      description: The preview file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Preview file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              extension:
+                type: string
+                description: File extension
+                example: png
+              file_size:
+                type: integer
+                description: File size in bytes
+                example: 1024000
+    400:
+      description: The file is missing, its format is not valid, or the
+        preview already has a file
+    403:
+      description: You cannot do actions on this task
+    404:
+      description: The preview file does not exist
+    500:
+      description: The processing of the movie failed
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: Preview file to upload
+              format: binary
+          required:
+            - file
+
+ExtractAllAnnotatedFramesAsPdfFromPreview_get:
+  summary: Get the annotated frames of a preview as a PDF
+  description: Get a PDF file with one page for each annotation. For a movie,
+    each picture is the frame of the annotation. For a picture, each picture
+    is the picture with the annotation on it. You must be a manager of the
+    project.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The PDF file
+      content:
+        application/pdf:
+          schema:
+            type: string
+            format: binary
+    400:
+      description: The preview has no annotations, or its extension is not
+        supported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The file of the preview is not available
+
+ExtractAllAnnotatedFramesFromPreview_get:
+  summary: Get the annotated frames of a preview as a ZIP file
+  description: Get a ZIP file with one PNG picture for each annotation. For a
+    movie, each picture is the frame of the annotation. For a picture, each
+    picture is the picture with the annotation on it. You must be a manager of
+    the project.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The ZIP file
+      content:
+        application/zip:
+          schema:
+            type: string
+            format: binary
+    400:
+      description: The preview has no annotations, or its extension is not
+        supported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The file of the preview is not available
+
+ExtractAnnotatedFrameFromPreview_get:
+  summary: Get an annotated frame of a preview
+  description: Get a frame of a movie preview, or the picture of a picture
+    preview, with the annotation of this frame on it. For a movie,
+    frame_number is required. For a picture, frame_number is ignored. You must
+    be a manager of the project.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: frame_number
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+      description: Number of the frame, from 1. Movies only.
+      example: 120
+  responses:
+    200:
+      description: The PNG picture
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    400:
+      description: There is no annotation, frame_number is missing for a
+        movie, or the extension is not supported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The file of the preview is not available
+
+ExtractFrameFromPreview_get:
+  summary: Get a frame of a movie preview
+  description: Get a frame of a movie preview as a PNG picture. The default
+    frame number is 0. You must be a manager of the project.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: frame_number
+      required: false
+      schema:
+        type: integer
+      description: Number of the frame. The default value is 0.
+      example: 120
+  responses:
+    200:
+      description: The PNG picture
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The file of the preview is not available
+
+ExtractTileFromPreview_get:
+  summary: Make the tile sheet of a movie preview
+  description: Make the tile sheet of a movie preview and save it in the
+    storage. A tile sheet is a picture with small frames of the movie. You
+    must have access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The PNG tile sheet
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The file of the preview is not available
+
+PreviewBackgroundFileResource_get:
+  summary: Download a preview background file
+  description: Download the file of a preview background.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview background file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: extension
+      required: true
+      schema:
+        type: string
+      description: Extension of the file, for example hdr
+      example: hdr
+  responses:
+    200:
+      description: The file
+      content:
+        image/vnd.radiance:
+          schema:
+            type: string
+            format: binary
+    404:
+      description: The preview background file or its file does not exist
+
+PreviewFileDownloadResource_get:
+  summary: Download the original file of a preview
+  description: Download the original file of a preview as an attachment. You
+    must have access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The file
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview file or its file does not exist
+
+PreviewFileLowMovieResource_get:
+  summary: Get the low definition movie of a preview
+  description: Get the low definition movie of a preview. If this movie does
+    not exist, the route sends the full quality movie. Then it sends the
+    uploaded source. You must have access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The MP4 movie
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    206:
+      description: A part of the movie, for a Range request
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview file or its file does not exist
+
+PreviewFileMovieDownloadResource_get:
+  summary: Download the movie of a preview
+  description: Download the movie of a preview as an attachment. You must have
+    access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The MP4 movie
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    206:
+      description: A part of the movie, for a Range request
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview file or its file does not exist
+
+PreviewFileMovieResource_get:
+  summary: Get the movie of a preview
+  description: Get the full quality movie of a preview. If this movie does not
+    exist, the route sends the low definition movie. Then it sends the
+    uploaded source. You must have access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The MP4 movie
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    206:
+      description: A part of the movie, for a Range request
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview file or its file does not exist
+
+PreviewFileResource_get:
+  summary: Get the original file of a preview
+  description: Get the original file of a preview. Give the extension of the
+    preview. A picture, a PDF or a file extension of the allowed list is
+    accepted. Movie extensions are not accepted on this route. You must have
+    access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: extension
+      required: true
+      schema:
+        type: string
+      description: Extension of the file, for example pdf
+      example: png
+  responses:
+    200:
+      description: The file
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The extension is not in the list of allowed extensions
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview file does not exist, or there is no file with
+        this extension
+
+PreviewFileSourceMovieResource_get:
+  summary: Get the source movie of a preview
+  description: Get the movie as it was uploaded, before the normalization.
+    Synchronization tools use this route. You must have access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The MP4 movie
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview does not exist, or the source movie was not
+        kept
+
+PreviewFileTileResource_get:
+  summary: Get the tile sheet of a movie preview
+  description: Get the tile sheet of a movie preview. If a ready movie has no
+    tile sheet, the route starts to make it for the next request. You must
+    have access to the task.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: instance_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+  responses:
+    200:
+      description: The PNG tile sheet
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+    202:
+      description: The preview is still processing. The body has the status
+        and the Retry-After header gives the delay. Only for a client that
+        accepts application/json. Other clients get a 404.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: processing
+              preview_file_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+    403:
+      description: You do not have access to the task of this preview
+    404:
+      description: The preview has no tile sheet
+
+RunningPreviewFiles_get:
+  summary: Get the previews that are processing
+  description: Get the preview files of the open projects that have the
+    processing or broken status. To get the next page, give the identifier of
+    the last preview in cursor_preview_file_id. You must be an administrator.
+  tags:
+    - Previews
+  parameters:
+    - in: query
+      name: cursor_preview_file_id
+      required: false
+      description: Get the previews that come after this preview
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: limit
+      required: false
+      description: Maximum number of previews
+      example: 100
+      schema:
+        type: integer
+  responses:
+    200:
+      description: The list of preview files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Preview file unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                status:
+                  type: string
+                  description: Preview file status
+                  example: processing
+    400:
+      description: The cursor is not a valid identifier
+    403:
+      description: You are not an administrator
+
+SetMainPreviewResource_put:
+  summary: Set the main preview of an entity
+  description: Use a preview as the picture of its entity. For a movie, give
+    frame_number to use this frame as the picture. Clients cannot use this
+    route.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: no_job
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: Extract the frame in the request instead of the job queue
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            frame_number:
+              type: integer
+              description: Frame of the movie to use as the picture. You can
+                also give it as a query parameter when the request has no
+                JSON body.
+              example: 120
+  responses:
+    200:
+      description: The entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Entity unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              preview_file_id:
+                type: string
+                format: uuid
+                description: Preview file unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              preview_file_status:
+                type: string
+                enum: [processing, ready, broken, missing]
+                description: Status of the preview file. Its pictures can be
+                  read once it is ready.
+                example: processing
+    400:
+      description: frame_number is given for a preview that is not a movie
+    403:
+      description: You do not have access to this entity, or you are a client
+    404:
+      description: The preview file does not exist
+
+UpdateAnnotationsResource_put:
+  summary: Change the annotations of a preview
+  description: Change the annotations of a preview. Give the annotations to
+    add in additions, the annotations to change in updates, and the
+    annotations to delete in deletions. Managers and clients of the project
+    can use this route. A supervisor can use it for the tasks of their
+    departments, or for all the tasks if the supervisor has no department.
+    Other users cannot use this route.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            additions:
+              type: array
+              description: Annotations to add
+              items:
+                type: object
+              example: [{type: drawing, x: 100, y: 200}]
+            updates:
+              type: array
+              description: Annotations to update
+              items:
+                type: object
+              example: [{id: uuid, x: 150, y: 250}]
+            deletions:
+              type: array
+              description: Annotation IDs to remove
+              items:
+                type: string
+                format: uuid
+              example: [a24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    200:
+      description: The preview with its annotations
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Preview file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              annotations:
+                type: array
+                description: Updated annotations
+                items:
+                  type: object
+    400:
+      description: additions, updates or deletions is not a list
+    403:
+      description: You cannot change the annotations of this preview
+    404:
+      description: The preview file does not exist
+
+UpdatePreviewPositionResource_put:
+  summary: Change the position of a preview
+  description: Change the position of a preview in its revision. A revision
+    can have several previews. You must be able to do actions on the task. A
+    client of the project cannot use this route.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            position:
+              type: integer
+              minimum: 0
+              default: 0
+              description: New position for the preview
+              example: 2
+  responses:
+    200:
+      description: The previews of the revision
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Preview file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              position:
+                type: integer
+                description: Preview position
+                example: 2
+    400:
+      description: position is negative or is not an integer
+    403:
+      description: You cannot do actions on this task
+    404:
+      description: The preview file does not exist

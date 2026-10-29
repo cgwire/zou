@@ -1,0 +1,242 @@
+EventNamesResource_get:
+  summary: Get the event names
+  description: >-
+    Get the names of the events in the event log, sorted. The log screen uses these
+    names to make its filters. The list is the same for all the productions. It
+    does not show production data. You must have the manager role as your
+    studio role. A manager role given on a project only is not enough.
+  tags:
+    - Events
+  responses:
+    200:
+      description: The sorted list of event names
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              example: task:update
+    403:
+      description: You are not a studio manager
+
+EventsResource_get:
+  summary: Get the last events
+  description: Get the last events of the event log, the newest first. Use the
+    query parameters to filter the events. To get the next page, give the
+    identifier of the last event in cursor_event_id. An administrator gets the
+    events of all projects. A manager gets the events of their projects only.
+    You must be a manager. A user who has the manager role on a project only
+    must give project_id.
+  tags:
+    - Events
+  parameters:
+    - in: query
+      name: after
+      example: '2022-07-12'
+      description: Get the events after this date. Date in the ISO 8601
+        format, for example 2026-10-28T10:00:00
+      schema:
+        type: string
+        format: date
+    - in: query
+      name: before
+      example: '2022-07-12'
+      description: Get the events before this date. Date in the ISO 8601
+        format, for example 2026-10-28T10:00:00
+      schema:
+        type: string
+        format: date
+    - in: query
+      name: only_files
+      description: Get only the events about files
+      example: false
+      schema:
+        type: boolean
+        default: false
+    - in: query
+      name: cursor_event_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get the events that are older than this event
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: limit
+      example: 100
+      description: Maximum number of events. The maximum value is 1000.
+      schema:
+        type: integer
+        default: 100
+    - in: query
+      name: project_id
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the events of this project
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: name
+      example: user_login
+      description: Get only the events with this name, for example task:update
+      schema:
+        type: string
+    - in: query
+      name: name_prefixes
+      example: [task, comment]
+      description: Filter events by object, the part of the event name before
+        the colon. Repeat the parameter for each value.
+      schema:
+        type: array
+        items:
+          type: string
+    - in: query
+      name: name_suffixes
+      example: [update, delete]
+      description: Filter events by action, the part of the event name after
+        the colon. Repeat the parameter for each value.
+      schema:
+        type: array
+        items:
+          type: string
+    - in: query
+      name: person_ids
+      description: Filter events by author. Repeat the parameter for each
+        value.
+      schema:
+        type: array
+        items:
+          type: string
+          format: uuid
+  responses:
+    200:
+      description: The list of events
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Event unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Event name
+                  example: user_login
+                data:
+                  type: object
+                  description: Event data content
+                  example: {user_id: b35b7fb5-df86-5776-b181-68564193d360}
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: c46c80c6-e097-6887-c292-79675204e470
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Event timestamp
+                  example: '2023-01-01T12:00:00Z'
+                user_id:
+                  type: string
+                  format: uuid
+                  description: User identifier who triggered the event
+                  example: d57d91d7-f108-7998-d403-80786315f580
+    400:
+      description: A date or an identifier is not valid
+    403:
+      description: You are not a manager, you are a manager of this project
+        only and did not give project_id, or you do not have access to this
+        project
+
+LoginLogsResource_get:
+  summary: Get the last login logs
+  description: Get the last login logs, the newest first. To get the next
+    page, give the identifier of the last log in cursor_login_log_id. You must
+    be an administrator.
+  tags:
+    - Events
+  parameters:
+    - in: query
+      name: after
+      example: '2022-07-12'
+      description: Get the logs after this date. Date in the ISO 8601 format,
+        for example 2026-10-28T10:00:00
+      schema:
+        type: string
+        format: date
+    - in: query
+      name: before
+      example: '2022-07-12'
+      description: Get the logs before this date. Date in the ISO 8601 format,
+        for example 2026-10-28T10:00:00
+      schema:
+        type: string
+        format: date
+    - in: query
+      name: cursor_login_log_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get the logs that are older than this log
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: limit
+      example: 100
+      description: Maximum number of logs. The maximum value is 1000.
+      schema:
+        type: integer
+        default: 100
+    - in: query
+      name: person_ids
+      description: Filter login logs by person. Repeat the parameter for each
+        value.
+      schema:
+        type: array
+        items:
+          type: string
+          format: uuid
+  responses:
+    200:
+      description: The list of login logs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Login log unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Login timestamp
+                  example: '2023-01-01T12:00:00Z'
+                ip_address:
+                  type: string
+                  description: IP address of the login
+                  example: 192.168.1.100
+                person_id:
+                  type: string
+                  format: uuid
+                  description: Person identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+                origin:
+                  type: string
+                  description: Login origin
+                  example: web
+                  enum: [web, script]
+    400:
+      description: A date or an identifier is not valid
+    403:
+      description: You are not an administrator

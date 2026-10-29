@@ -1,0 +1,2667 @@
+AddExtraPreviewResource_delete:
+  summary: Delete a preview of a comment
+  tags:
+    - Tasks
+  description: Delete a preview of a comment of a task. The preview must be on
+    the comment, and the comment must be on the task. Administrators and the
+    managers of the project can use this route. Other users must be assignees
+    of the task, supervisors of its department, or creators of its entity. You
+    must also be able to read the comment. A client of the project cannot use
+    this route. Use force=true to delete the files from the storage now. Else,
+    the purge deletes them later. Only an administrator or a manager of the
+    project can use force.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: comment_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the preview file
+    - in: query
+      name: force
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: Delete the files from the storage now
+  responses:
+    204:
+      description: The preview is deleted
+    400:
+      description: An identifier is not valid
+    403:
+      description: You cannot do actions on this task, or you use force and
+        you are not a manager
+    404:
+      description: The task, the comment or the preview does not exist, or
+        they are not linked
+
+AddExtraPreviewResource_post:
+  summary: Upload an extra preview of a comment
+  tags:
+    - Tasks
+  description: Create another preview entry on a comment, in the same revision
+    as the preview preview_file_id. A comment can have several previews in the
+    same revision. The route creates the metadata only. Upload the file after,
+    with the preview file upload route. Administrators and the managers of the
+    project can use this route. Other users must be assignees of the task,
+    supervisors of its department, or creators of its entity. A client of the
+    project cannot use this route.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: comment_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the preview file
+  responses:
+    201:
+      description: The preview file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 2
+              person_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The project allows one preview per revision, or the
+        revision already exists
+    403:
+      description: You cannot do actions on this task
+    404:
+      description: The task, the comment or the preview file does not exist
+
+AddPreviewResource_post:
+  summary: Add a preview to a comment
+  tags:
+    - Tasks
+  description: Create a preview file for a comment of a task. Upload the file
+    of the preview after. If you do not give the revision, the route uses the
+    last revision plus 1. Administrators and the managers of the project can
+    use this route. Other users must be assignees of the task, supervisors of
+    its department, or creators of its entity. A client of the project cannot
+    use this route.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: comment_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            revision:
+              type: integer
+              description: Revision number for the preview
+              example: 1
+  responses:
+    201:
+      description: The new preview file
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              comment_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              revision:
+                type: integer
+                example: 3
+              person_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The body is not valid, the revision already exists on this
+        task, or the project allows one preview per revision
+    403:
+      description: You cannot do actions on this task
+    404:
+      description: The task or the comment does not exist
+
+AddTimeSpentResource_post:
+  summary: Add time to a time spent
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Date in the YYYY-MM-DD format
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            duration:
+              type: number
+              example: 30
+  responses:
+    201:
+      description: The updated time spent
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2022-07-12'
+              duration:
+                type: number
+                example: 150
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The date or the duration is not valid
+    403:
+      description: The person is not an assignee of the task, you cannot add
+        time for this person, or the person is a bot
+    404:
+      description: The task or the person does not exist
+  description: Add a duration to the time spent of a person on a task for a
+    date. If the time spent does not exist, the route creates it. An
+    administrator can add time for all the persons. For other users, the
+    person must be an assignee of the task. The person can add time for
+    themselves. A manager of the project can add time for the assignees. You
+    cannot add time for a bot, except when the project enables bot
+    collaboration.
+
+ClearAssignationResource_put:
+  summary: Remove the assignees of tasks
+  tags:
+    - Tasks
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_ids
+          properties:
+            task_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              example: [a24a6ea4-ce75-4665-a070-57453082c250,
+                    b24a6ea4-ce75-4665-a070-57453082c250]
+            person_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The identifiers of the changed tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+            example: [a24a6ea4-ce75-4665-a070-57453082c250]
+    400:
+      description: The body is not valid
+  description: Remove the assignees of the tasks of the list. Give person_id
+    to remove only this person. The tasks that you cannot change, and the
+    unknown tasks, are skipped. An administrator or a manager of the project
+    can change all the tasks. A supervisor can change the tasks of their
+    departments. An assignee can remove themselves, with their own
+    person_id.
+
+CreateAssetTasksResource_post:
+  summary: Create tasks for assets
+  tags:
+    - Tasks
+  description: Create a task of the task type for each asset of the list. If
+    the body is empty, the route uses the assets of the project that match the
+    query parameters, for example asset_type_id. The identifiers of assets of
+    another project are skipped. A task that exists is skipped. You must be a
+    manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of asset IDs to create tasks for
+        example: [b24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    201:
+      description: The new tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Asset Modeling
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
+    403:
+      description: You are not a manager of the project
+
+CreateConceptTasksResource_post:
+  summary: Create tasks for concepts
+  tags:
+    - Tasks
+  description: Create a task of the task type for each concept of the list. If
+    the body is empty, the route uses the concepts of the project that match
+    the query parameters. The identifiers of concepts of another project are
+    skipped. A task that exists is skipped. Clients and vendors cannot use
+    this route.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of concept IDs to create tasks for
+        example: [b24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    201:
+      description: The new tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Concept Modeling
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+
+CreateEditTasksResource_post:
+  summary: Create tasks for edits
+  tags:
+    - Tasks
+  description: Create a task of the task type for each edit of the list. If
+    the body is empty, the route uses the edits of the project that match the
+    query parameters. The identifiers of edits of another project are skipped.
+    A task that exists is skipped. You must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of edit IDs to create tasks for
+        example: [b24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    201:
+      description: The new tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Edit Compositing
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
+    403:
+      description: You are not a manager of the project
+
+CreateEntityTasksResource_post:
+  summary: Create tasks for entities of a type
+  tags:
+    - Tasks
+  description: Create a task of the task type for each entity of the list. If
+    the body is empty, the route uses all the entities of this type in the
+    project, or of the episode episode_id. The entity type name is not case
+    sensitive. A task that exists is skipped. You must be a manager of the
+    project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: entity_type
+      required: true
+      schema:
+        type: string
+      example: Asset
+      description: Name of the entity type, for example Asset or Sequence
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+    - in: query
+      name: episode_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Use only the entities of this episode, when the body is
+        empty
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of entity IDs to create tasks for
+        example: [b24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    201:
+      description: The new tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Entity Task Name
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not a list of valid identifiers
+    404:
+      description: The project, the task type or the entity type does
+        not exist
+    403:
+      description: You are not a manager of the project
+
+CreateShotTasksResource_post:
+  summary: Create tasks for shots
+  tags:
+    - Tasks
+  description: Create a task of the task type for each shot of the list. If
+    the body is empty, the route uses the shots of the project that match the
+    query parameters, for example sequence_id. The identifiers of shots of
+    another project are skipped. A task that exists is skipped. You must be a
+    manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of shot IDs to create tasks for
+        example: [b24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    201:
+      description: The new tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+    400:
+      description: The body is not a list of valid identifiers
+    404:
+      description: The project or the task type does not exist
+    403:
+      description: You are not a manager of the project
+
+DeleteAllTasksForTaskTypeResource_delete:
+  summary: Delete all the tasks of a task type
+  tags:
+    - Tasks
+  description: Delete all the tasks of a task type in a project, with their
+    comments and previews. Use it when tasks were created by mistake. You must
+    be an administrator.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  responses:
+    204:
+      description: The tasks are deleted
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+DeleteTasksResource_post:
+  summary: Delete tasks
+  tags:
+    - Tasks
+  description: Delete the tasks of the list. Send a list of task identifiers
+    in the body. You must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of task identifiers to delete
+  responses:
+    200:
+      description: The identifiers you sent. The tasks of another project are
+        not deleted but stay in the list.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+            example: [a24a6ea4-ce75-4665-a070-57453082c250]
+    400:
+      description: The body is not a list of valid identifiers
+    403:
+      description: You are not a manager of the project
+
+GetTimeSpentDateResource_get:
+  summary: Get the time spent on a task for a date
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Date in the YYYY-MM-DD format
+  responses:
+    200:
+      description: An object. Each key is a person identifier, with the list
+        of their time spent entries. The key total gives the sum of the
+        durations.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              total:
+                type: number
+                description: Sum of the durations
+            additionalProperties:
+              type: array
+              description: Time spent entries of the person
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  task_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
+                  date:
+                    type: string
+                    format: date
+                    example: '2022-07-12'
+                  duration:
+                    type: number
+                    example: 120
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: '2024-01-15T10:30:00Z'
+    400:
+      description: The date is not valid
+    403:
+      description: You are a client, or you do not have access to this task
+  description: Get the time spent entries of a task for a date, for all the
+    persons. Clients cannot use this route.
+
+GetTimeSpentResource_get:
+  summary: Get the time spent on a task
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  responses:
+    200:
+      description: An object. Each key is a person identifier, with the list
+        of their time spent entries. The key total gives the sum of the
+        durations.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              total:
+                type: number
+                description: Sum of the durations
+            additionalProperties:
+              type: array
+              description: Time spent entries of the person
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  task_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
+                  date:
+                    type: string
+                    format: date
+                    example: '2022-07-12'
+                  duration:
+                    type: number
+                    example: 120
+                  created_at:
+                    type: string
+                    format: date-time
+                    example: '2024-01-15T10:30:00Z'
+    403:
+      description: You are a client, or you do not have access to this task
+  description: Get all the time spent entries of a task, for all the
+    persons. Clients cannot use this route.
+
+OpenTasksBurndownResource_get:
+  summary: Get the burndown of the open tasks
+  tags:
+    - Tasks
+  description: Get the burndown values of the open tasks that match the
+    filters. The response gives the total duration and estimation, the first
+    start date, the last due date and the values for each day. The tasks are
+    the tasks of the open projects of your teams. An administrator gets the
+    tasks of all the open projects. The route skips the concept tasks if you
+    do not give task_type_id. Clients and vendors cannot use this route.
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of this project
+    - in: query
+      name: task_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks with this task status
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of this task type
+    - in: query
+      name: person_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of these assignees. Give a
+        comma-separated list, or unassigned for the tasks without assignee.
+    - in: query
+      name: studio_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of the assignees of this studio
+    - in: query
+      name: department_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of the assignees of this department
+    - in: query
+      name: start_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Get only the tasks that start on this date or after
+    - in: query
+      name: due_date
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Get only the tasks that end on this date or before
+    - in: query
+      name: priority
+      required: false
+      schema:
+        type: integer
+      description: Get only the tasks with this priority
+  responses:
+    200:
+      description: The burndown values
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              total:
+                type: integer
+                description: Total number of tasks
+              total_estimation:
+                type: number
+                description: Total estimation of tasks in minutes
+              start_date:
+                type: string
+                format: date
+                description: First task start date
+              end_date:
+                type: string
+                format: date
+                description: Last task due date
+              done_by_day:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    date:
+                      type: string
+                      format: date
+                    done:
+                      type: integer
+                    done_estimation:
+                      type: number
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a client or a vendor on the given project, or
+        globally when you give no project; or you are not in the team of the
+        given project
+
+OpenTasksResource_get:
+  summary: Get the open tasks
+  tags:
+    - Tasks
+  description: Get the open tasks that match the filters, page by page, with
+    statistics. The tasks are the tasks of the open projects of your teams.
+    An administrator gets the tasks of all the open projects. The route
+    skips the concept tasks if you do not give task_type_id. Clients and
+    vendors cannot use this route.
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the tasks of this project
+    - in: query
+      name: task_status_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the tasks with this task status
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the tasks of this task type
+    - in: query
+      name: person_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the tasks of these assignees. Give a
+        comma-separated list, or unassigned for the tasks without assignee.
+    - in: query
+      name: start_date
+      required: false
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Get only the tasks that start on this date or after
+    - in: query
+      name: due_date
+      required: false
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Get only the tasks that end on this date or before
+    - in: query
+      name: priority
+      required: false
+      schema:
+        type: integer
+      example: 3
+      description: Get only the tasks with this priority
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+        default: 1
+      example: 1
+      description: Page to get
+    - in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        default: 100
+      example: 100
+      description: Number of tasks in a page. The default value is 100.
+
+    - in: query
+      name: studio_id
+      required: false
+      description: Get only the tasks of the assignees of this studio
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: department_id
+      required: false
+      description: Get only the tasks of the assignees of this department
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: group_by
+      required: false
+      description: Group the statistics on this field
+      schema:
+        type: string
+  responses:
+    200:
+      description: A page of tasks with the statistics
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                description: List of tasks
+              stats:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of tasks
+                  total_duration:
+                    type: integer
+                    description: Total duration of tasks in minutes
+                  total_estimation:
+                    type: integer
+                    description: Total estimation of tasks in minutes
+                  status:
+                    type: object
+                    description: Number of tasks per status
+              limit:
+                type: integer
+                description: Number of tasks per page
+              page:
+                type: integer
+                description: Page number
+              is_more:
+                type: boolean
+                description: True if there are more tasks to retrieve
+    400:
+      description: A filter is not valid
+    403:
+      description: You are a client or a vendor on the given project, or
+        globally when you give no project; or you are not in the team of the
+        given project
+
+OpenTasksStatsResource_get:
+  summary: Get the statistics of the open tasks
+  tags:
+    - Tasks
+  description: Get the number of tasks and the totals for each task type and
+    each task status of each open project. An administrator gets all the open
+    projects. Other users get the open projects of their teams.
+  responses:
+    200:
+      description: A map of project identifiers to statistics
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                total:
+                  type: integer
+                done:
+                  type: integer
+                estimation:
+                  type: integer
+                duration:
+                  type: integer
+    400:
+      description: Bad request
+
+PersonDoneTasksResource_get:
+  summary: Get the done tasks of a person
+  tags:
+    - Tasks
+  description: Get the done tasks of a person. An administrator gets the
+    tasks of all the open projects. Other users get only the tasks in the
+    open projects of their own teams. A vendor cannot read the tasks of other
+    persons, and gets an empty list for their own tasks. A client gets an
+    empty list. You cannot read the tasks of a bot.
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  responses:
+    200:
+      description: The list of done tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: EP01 Layout
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: [f24a6ea4-ce75-4665-a070-57453082c250]
+    403:
+      description: You cannot read the tasks of this person, or the person is
+        a bot
+    404:
+      description: The person does not exist
+
+PersonRelatedTasksResource_get:
+  summary: Get the tasks of a type on the entities of a person
+  tags:
+    - Tasks
+  description: Get the tasks of a task type on the entities where a person
+    has assigned tasks. An administrator gets the tasks of all the open
+    projects. Other users get only the tasks in the open projects of their
+    own teams. Clients and
+    vendors get an empty list. A vendor can ask only for their own tasks.
+    You cannot read the tasks of a bot.
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  responses:
+    200:
+      description: The list of tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: Asset Modeling
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: [f24a6ea4-ce75-4665-a070-57453082c250]
+    403:
+      description: You cannot read the tasks of this person, or the person is
+        a bot
+
+PersonTasksResource_get:
+  summary: Get the open tasks of a person
+  tags:
+    - Tasks
+  description: Get the tasks of a person that are not done. An administrator
+    gets the tasks of all the open projects. Other users get only the tasks in
+    the open projects of their own teams. A vendor cannot read the tasks of
+    other persons, and gets an empty list for their own tasks. A client gets
+    an empty list. You cannot read the tasks of a bot.
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  responses:
+    200:
+      description: The list of tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: [f24a6ea4-ce75-4665-a070-57453082c250]
+    403:
+      description: You cannot read the tasks of this person, or the person is
+        a bot
+    404:
+      description: The person does not exist
+
+PersonsTasksDatesResource_get:
+  summary: Get the task dates of the persons
+  tags:
+    - Tasks
+  description: For each active person, get the first start date and the last
+    end date of their tasks. The schedule of the team uses it. An
+    administrator gets all the projects. A manager or a supervisor gets the
+    projects of their teams. The other open projects come as busy periods,
+    without the project or the task. Without project_id, the route uses your
+    global role. You must be a supervisor, a manager or an administrator in
+    the studio. With project_id, the route uses your role on this project.
+  parameters:
+    - in: query
+      name: project_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Get only the tasks of this project
+  responses:
+    200:
+      description: The first and the last date for each person
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                person_id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                min_date:
+                  type: string
+                  description: First task start date for this person within
+                    the requested scope
+                  example: '2024-01-15 00:00:00'
+                max_date:
+                  type: string
+                  description: Last task due date for this person within the
+                    requested scope
+                  example: '2024-03-21 00:00:00'
+                busy_periods:
+                  type: array
+                  description: Anonymous, merged date intervals covering the
+                    person's tasks in open productions outside the caller's
+                    scope. No production or task detail is exposed.
+                  items:
+                    type: object
+                    properties:
+                      start_date:
+                        type: string
+                        example: '2024-01-15 00:00:00'
+                      end_date:
+                        type: string
+                        example: '2024-03-21 00:00:00'
+    400:
+      description: project_id is not valid
+    403:
+      description: You do not have the supervisor role, or you are not in the
+        team of this project
+
+ProjectCommentsResource_get:
+  summary: Get the comments of a project
+  tags:
+    - Tasks
+  description: Get the comments of the tasks of a project, page by page.
+    Synchronization tools use this route. Clients and vendors cannot use this
+    route.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: limit
+      example: 100
+      schema:
+        type: integer
+        default: 100
+      description: Number of rows in a page
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Without page, the route returns all the comments
+        in a list and ignores limit.
+  responses:
+    200:
+      description: Without page, the list of comments. With page, an object
+        with data, total, nb_pages, limit, offset and page.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                object_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                text:
+                  type: string
+                  example: This task looks good
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T11:00:00Z'
+    403:
+      description: You do not have access to this project, or you are a client
+        or a vendor
+    404:
+      description: The project does not exist
+
+ProjectNotificationsResource_get:
+  summary: Get the notifications of a project
+  tags:
+    - Tasks
+  description: Get the notifications of the tasks of a project.
+    Synchronization tools use this route. You must be an administrator.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Without page, the route returns the full
+        list.
+  responses:
+    200:
+      description: Without page, the list of notifications. With page, an object
+        with data, total, nb_pages, limit, offset and page.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    person_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    task_id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    comment_id:
+                      type: string
+                      format: uuid
+                      example: d24a6ea4-ce75-4665-a070-57453082c250
+                    notification_type:
+                      type: string
+                      example: assignment
+                    created_at:
+                      type: string
+                      format: date-time
+                      example: '2024-01-15T10:30:00Z'
+                    updated_at:
+                      type: string
+                      format: date-time
+                      example: '2024-01-15T11:00:00Z'
+              limit:
+                type: integer
+                example: 100
+              page:
+                type: integer
+                example: 1
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              offset:
+                type: integer
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+ProjectPreviewFilesResource_get:
+  summary: Get the preview files of a project
+  tags:
+    - Tasks
+  description: Get the preview files of the tasks of a project.
+    Synchronization tools use this route. You must be an administrator.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Without page, the route returns the full
+        list.
+  responses:
+    200:
+      description: Without page, the list of preview files. With page, an object
+        with data, total, nb_pages, limit, offset and page.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    task_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    comment_id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    revision:
+                      type: integer
+                      example: 1
+                    person_id:
+                      type: string
+                      format: uuid
+                      example: e24a6ea4-ce75-4665-a070-57453082c250
+                    created_at:
+                      type: string
+                      format: date-time
+                      example: '2024-01-15T10:30:00Z'
+              limit:
+                type: integer
+                example: 100
+              page:
+                type: integer
+                example: 1
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              offset:
+                type: integer
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+ProjectSubscriptionsResource_get:
+  summary: Get the subscriptions of a project
+  tags:
+    - Tasks
+  description: Get the subscriptions of the tasks of a project.
+    Synchronization tools use this route. You must be an administrator.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+  responses:
+    200:
+      description: The list of subscriptions
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+ProjectTasksResource_get:
+  summary: Get the tasks of a project
+  tags:
+    - Tasks
+  description: Get the tasks of a project, page by page. Synchronization
+    tools use this route. A vendor gets only the tasks assigned to them. A
+    client gets reduced tasks.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: page
+      required: false
+      example: 1
+      schema:
+        type: integer
+      description: Page to get
+    - in: query
+      name: task_type_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of this task type
+    - in: query
+      name: episode_id
+      required: false
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+      description: Get only the tasks of this episode
+  responses:
+    200:
+      description: Without page, the list of tasks. With page, an object
+        with data, total, nb_pages, limit, offset and page.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c250
+                    name:
+                      type: string
+                      example: SH010 Animation
+                    task_type_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c250
+                    task_status_id:
+                      type: string
+                      format: uuid
+                      example: c24a6ea4-ce75-4665-a070-57453082c250
+                    entity_id:
+                      type: string
+                      format: uuid
+                      example: d24a6ea4-ce75-4665-a070-57453082c250
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: e24a6ea4-ce75-4665-a070-57453082c250
+                    assignees:
+                      type: array
+                      items:
+                        type: string
+                        format: uuid
+                      example: [f24a6ea4-ce75-4665-a070-57453082c250]
+              limit:
+                type: integer
+                example: 100
+              page:
+                type: integer
+                example: 1
+              total:
+                type: integer
+              nb_pages:
+                type: integer
+              offset:
+                type: integer
+    304:
+      description: Not modified. The response carries an ETag. Send it in
+        If-None-Match to get a 304 when nothing changed.
+    403:
+      description: You do not have access to this project
+    404:
+      description: The project does not exist
+
+SetTaskMainPreviewResource_put:
+  summary: Use the last preview of a task as the entity picture
+  tags:
+    - Tasks
+  description: Use the last preview of a task as the picture of its entity.
+    Clients cannot use this route.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  responses:
+    200:
+      description: The entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010
+              project_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              preview_file_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              entity_type_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    400:
+      description: The task has no preview
+    403:
+      description: You do not have access to this project or to this entity,
+        or you are a client
+    404:
+      description: The task does not exist
+
+SetTasksMainPreviewResource_put:
+  summary: Use the last preview of tasks as the entity pictures
+  tags:
+    - Tasks
+  description: For each task of the list, use its last preview as the picture
+    of its entity. The tasks without preview are skipped. If a task does not
+    exist or if you cannot change it, the route stops with an error. The
+    entities changed before the error stay changed. Clients cannot use this
+    route.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_ids
+          properties:
+            task_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+  responses:
+    200:
+      description: The updated entities
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You do not have access to this project, or you are a client
+    404:
+      description: A task does not exist
+
+SetTasksPriorityResource_put:
+  summary: Set the priority of tasks
+  tags:
+    - Tasks
+  description: Set the priority of each task of the list. The tasks that you
+    cannot change are skipped. A manager can change the tasks of the project.
+    A supervisor can change the tasks of their departments.
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_ids
+            - priority
+          properties:
+            task_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              example: [a24a6ea4-ce75-4665-a070-57453082c250,
+                    b24a6ea4-ce75-4665-a070-57453082c250]
+            priority:
+              type: integer
+              example: 2
+  responses:
+    200:
+      description: The updated tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+    400:
+      description: The body is not valid
+
+SetTimeSpentResource_delete:
+  summary: Delete a time spent
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Date in the YYYY-MM-DD format
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  responses:
+    200:
+      description: The deleted time spent
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2022-07-12'
+              duration:
+                type: number
+                example: 0
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The date is not valid
+    403:
+      description: You cannot change the time of this person, or the person is
+        a bot
+    404:
+      description: The task, the person or the time spent does not exist
+  description: Delete the time spent of a person on a task for a date. An
+    administrator can change the time of all the persons. For other users, the
+    person must be an assignee of the task. The person can change their own
+    time. A manager of the project can change the time of the assignees. You
+    cannot change the time of a bot.
+
+SetTimeSpentResource_post:
+  summary: Set a time spent
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: date
+      required: true
+      schema:
+        type: string
+        format: date
+      example: '2022-07-12'
+      description: Date in the YYYY-MM-DD format
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            duration:
+              type: number
+              example: 120
+  responses:
+    201:
+      description: The time spent
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              task_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              date:
+                type: string
+                format: date
+                example: '2022-07-12'
+              duration:
+                type: number
+                example: 120
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+    400:
+      description: The date or the duration is not valid
+    403:
+      description: You cannot change the time of this person, or the person is
+        a bot
+    404:
+      description: The task or the person does not exist
+  description: Set the time spent of a person on a task for a date. The
+    duration replaces the current duration. An administrator can change the
+    time of all the persons. For other users, the person must be an assignee
+    of the task. The person can change their own time. A manager of the
+    project can change the time of the assignees. You cannot change the time
+    of a bot, except when the project enables bot collaboration.
+
+TaskAssignResource_put:
+  summary: Assign a task to a person
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - person_id
+          properties:
+            person_id:
+              type: string
+              format: uuid
+              example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The task
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010 Animation
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                example: [f24a6ea4-ce75-4665-a070-57453082c250]
+    400:
+      description: The person does not exist
+    403:
+      description: You cannot assign this task, or the person is a bot
+    404:
+      description: The task does not exist
+  description: Add a person to the assignees of a task. The route also adds
+    the person to the team of the project. An administrator or a manager of the
+    project can assign all the tasks. A supervisor without department can
+    assign all the tasks. A supervisor with departments can assign the tasks
+    of their departments, to a person of one of their departments. Other
+    users can assign themselves to the tasks of their departments. You cannot
+    assign a bot, except when the project enables bot collaboration.
+
+TaskCommentResource_delete:
+  summary: Delete a comment of a task
+  tags:
+    - Tasks
+  description: Delete a comment of a task. A manager of the project can delete
+    all the comments. Other users can delete their own comments only.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: comment_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+  responses:
+    204:
+      description: The comment is deleted
+    403:
+      description: You cannot delete this comment
+    404:
+      description: The comment does not exist
+
+TaskCommentResource_get:
+  summary: Get a comment of a task
+  tags:
+    - Tasks
+  description: Get a comment of a task. Managers and supervisors of the
+    project can read all the comments. Other users, except clients, cannot
+    read the comments that clients wrote. A client can read the comments for
+    clients and the comments of clients. If the project isolates the
+    clients, a client reads only the comments for clients and their own
+    comments.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+    - in: path
+      name: comment_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the comment
+  responses:
+    200:
+      description: The comment
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              object_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              person_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              text:
+                type: string
+                example: Review completed successfully
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T10:30:00Z'
+              updated_at:
+                type: string
+                format: date-time
+                example: '2024-01-15T11:00:00Z'
+    403:
+      description: You cannot read this comment
+    404:
+      description: The comment does not exist, or it is not on this task
+
+TaskCommentsResource_get:
+  summary: Get the comments of a task
+  tags:
+    - Tasks
+  description: Get the comments of a task, the newest first. Managers and
+    supervisors get all the comments. Other users, except clients, do not get
+    the comments that clients wrote. A client gets the comments for clients
+    and the comments of clients. If the project isolates the clients, a client
+    gets only their own comments of clients. A client also gets the other
+    comments that have a preview, without their text, attachments, checklist
+    and replies.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  responses:
+    200:
+      description: The list of comments
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                object_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                text:
+                  type: string
+                  example: This task is progressing well
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+                updated_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T11:00:00Z'
+    403:
+      description: You do not have access to this task
+
+TaskForEntityResource_get:
+  summary: Get the tasks of an entity for a task type
+  tags:
+    - Tasks
+  description: Get the tasks of an entity that have a task type.
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the entity
+    - in: path
+      name: task_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task type
+  responses:
+    200:
+      description: The list of tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: [f24a6ea4-ce75-4665-a070-57453082c250]
+    403:
+      description: You do not have access to this project or to this entity
+    404:
+      description: The entity does not exist
+
+TaskFullResource_get:
+  summary: Get a task with all its data
+  description: Get a task with the details of its assignees, its task type,
+    its task status, its entity and its project. A manager gets all the
+    fields of the assignees and of the assigner. Other users get the minimal
+    fields. A client gets a reduced task, without the assignees and the
+    assigner.
+  tags:
+    - Tasks
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  responses:
+    200:
+      description: The task
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                example: SH010 Animation
+              task_type_id:
+                type: string
+                format: uuid
+                example: b24a6ea4-ce75-4665-a070-57453082c250
+              task_status_id:
+                type: string
+                format: uuid
+                example: c24a6ea4-ce75-4665-a070-57453082c250
+              entity_id:
+                type: string
+                format: uuid
+                example: d24a6ea4-ce75-4665-a070-57453082c250
+              project_id:
+                type: string
+                format: uuid
+                example: e24a6ea4-ce75-4665-a070-57453082c250
+              assignees:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: f24a6ea4-ce75-4665-a070-57453082c250
+                    first_name:
+                      type: string
+                      example: John
+                    last_name:
+                      type: string
+                      example: Doe
+              task_type:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: Animation
+              task_status:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    example: In Progress
+    403:
+      description: You do not have access to this project
+    404:
+      description: The task does not exist
+
+TaskPreviewsResource_get:
+  summary: Get the previews of a task
+  tags:
+    - Tasks
+  description: Get the preview files of a task. A client does not get the
+    rejected previews.
+  parameters:
+    - in: path
+      name: task_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the task
+  responses:
+    200:
+      description: The list of preview files
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                task_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                revision:
+                  type: integer
+                  example: 1
+                comment_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                person_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                created_at:
+                  type: string
+                  format: date-time
+                  example: '2024-01-15T10:30:00Z'
+    403:
+      description: You do not have access to this task
+
+TasksAssignResource_put:
+  summary: Assign tasks to a person
+  tags:
+    - Tasks
+  description: Add a person to the assignees of each task of the list. The
+    unknown task identifiers are skipped. The tasks that you cannot assign are
+    skipped. If a task was assigned, the route also adds the person to the
+    team of its project. An administrator or a manager of the
+    project can assign all the tasks. A supervisor without department can
+    assign all the tasks. A supervisor with departments can assign the tasks
+    of their departments, to a person of one of their departments. Other
+    users can assign themselves to the tasks of their departments. You cannot
+    assign a bot, except when the project enables bot collaboration.
+  parameters:
+    - in: path
+      name: person_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the person
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_ids
+          properties:
+            task_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              example: [a24a6ea4-ce75-4665-a070-57453082c250,
+                    b24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    200:
+      description: The updated tasks
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SH010 Animation
+                task_type_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                task_status_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                entity_id:
+                  type: string
+                  format: uuid
+                  example: d24a6ea4-ce75-4665-a070-57453082c250
+                project_id:
+                  type: string
+                  format: uuid
+                  example: e24a6ea4-ce75-4665-a070-57453082c250
+                assignees:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: [f24a6ea4-ce75-4665-a070-57453082c250]
+    400:
+      description: The person does not exist

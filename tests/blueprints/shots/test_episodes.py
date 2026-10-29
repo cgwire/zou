@@ -71,6 +71,11 @@ class EpisodeTestCase(ApiDBTestCase):
             f"data/episodes/{self.episode_id}/sequences"
         )
 
+    def test_get_shots_for_episode_with_vendor(self):
+        self.assert_the_listing_opens_on_assignment(
+            f"data/episodes/{self.episode_id}/shots"
+        )
+
     def test_get_episodes(self):
         episodes = self.get("data/episodes")
         self.assertEqual(len(episodes), 3)

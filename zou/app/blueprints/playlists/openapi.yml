@@ -1,0 +1,1025 @@
+BuildJobResource_delete:
+  summary: Delete a build job
+  description: Delete a build job of a playlist. You must be a manager of the
+    project, or a client when the playlist is for clients. Supervisors,
+    artists and vendors cannot use this route.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: build_job_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Build job unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    204:
+      description: The build job is deleted
+    403:
+      description: You are not a manager of the project, or you are a client
+        and the playlist is not for clients
+    404:
+      description: The playlist or the build job does not exist
+
+BuildJobResource_get:
+  summary: Get a build job
+  description: Get a build job of a playlist. A build job makes a movie of the
+    playlist. You must be a manager of the project, or a client when the
+    playlist is for clients. Supervisors, artists and vendors cannot use this
+    route.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: build_job_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Build job unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The build job
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Build job unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              status:
+                type: string
+                description: Build job status
+                example: succeeded
+              created_at:
+                type: string
+                format: date-time
+                description: Build job creation timestamp
+                example: '2022-07-12T10:30:00Z'
+    403:
+      description: You are not a manager of the project, or you are a client
+        and the playlist is not for clients
+    404:
+      description: The playlist or the build job does not exist
+
+BuildPlaylistMovieResource_get:
+  summary: Build the movie of a playlist
+  description: Start a build job that makes an MP4 movie of the playlist. If
+    the job queue is enabled, the job runs in the background. Else, the
+    response comes when the movie is ready. You must be a manager of the
+    project.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: full
+      required: false
+      schema:
+        type: boolean
+      description: Build the movie in full quality
+      example: true
+  responses:
+    200:
+      description: The build job
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Build job unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              status:
+                type: string
+                description: Build job status
+                example: pending
+              created_at:
+                type: string
+                format: date-time
+                description: Build job creation timestamp
+                example: '2022-07-12T10:30:00Z'
+    400:
+      description: The remote job queue needs the s3 or swift storage
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The playlist does not exist
+    409:
+      description: A build of this playlist is already in progress
+
+EntityPreviewsResource_get:
+  summary: Get the previews of an entity
+  description: Get the preview files of an entity. The response is a map of
+    task type identifiers to lists of previews. You must be a member of the
+    project. A vendor must have a task on the entity.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: entity_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Entity unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: A map of task type identifiers to lists of previews
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Preview file unique identifier
+                    example: a24a6ea4-ce75-4665-a070-57453082c250
+                  name:
+                    type: string
+                    description: Preview file name
+                    example: preview_v001.png
+    403:
+      description: You are not a member of the project, or you are a vendor
+        without a task on this entity
+    404:
+      description: The entity does not exist
+
+EpisodePlaylistsResource_get:
+  summary: Get the playlists of an episode
+  description: Get the playlists of an episode. Give main to get the playlists
+    that are in no episode. Give all to get the playlists of all the episodes.
+    A client gets only the playlists for clients. Vendors cannot use this
+    route.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: episode_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the episode, or main, or all
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: for_entity
+      required: false
+      schema:
+        type: string
+      description: 'Get only the playlists of this entity type: asset, shot, sequence,
+        edit or episode'
+      example: shot
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Each page has 20 playlists.
+      schema:
+        type: integer
+    - in: query
+      name: sort_by
+      required: false
+      description: Field to sort the playlists on, for example created_at
+      schema:
+        type: string
+    - in: query
+      name: task_type_id
+      required: false
+      description: Get only the playlists of this task type
+      schema:
+        type: string
+  responses:
+    200:
+      description: The list of playlists
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Playlist unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Playlist name
+                  example: Review Playlist
+                episode_id:
+                  type: string
+                  format: uuid
+                  description: Episode unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+    403:
+      description: You do not have access to this project, or you are a vendor
+    404:
+      description: The episode does not exist
+
+NotifyClientsResource_post:
+  summary: Notify the clients about a playlist
+  description: Send a notification to the clients of the project. The
+    notification tells that the playlist is ready for review. Give studio_id
+    or department_id to notify fewer clients. You must be a manager of the
+    project.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            studio_id:
+              type: string
+              format: uuid
+              description: Studio unique identifier to notify
+              example: b35b7fb5-df86-5776-b181-68564193d360
+            department_id:
+              type: string
+              format: uuid
+              description: Department unique identifier to notify
+              example: c46c80c6-e097-6887-c292-79675204e470
+  responses:
+    200:
+      description: The clients get the notification
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                description: Notification status
+                example: success
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The playlist does not exist
+
+PlaylistAddEntitiesResource_post:
+  summary: Add entities to a playlist
+  description: Add several couples of an entity and a preview to a playlist,
+    in one database write. The same entity can be in the playlist several
+    times, with different previews. A couple that is already in the playlist
+    is skipped. Without preview_file_id, or when the preview is not a preview
+    of the entity, the route uses the last preview of the entity for the task
+    type of the playlist. A manager of the project can change all the
+    playlists. A supervisor of the project can change the playlists that
+    the supervisor created and the playlists with no creator.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - entities
+          properties:
+            entities:
+              type: array
+              items:
+                type: object
+                required:
+                  - entity_id
+                properties:
+                  entity_id:
+                    type: string
+                    format: uuid
+                  preview_file_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+              description: Entity/preview couples to add to the playlist
+  responses:
+    200:
+      description: The updated playlist
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You cannot change this playlist
+    404:
+      description: The playlist does not exist
+
+PlaylistAddEntityResource_post:
+  summary: Add an entity to a playlist
+  description: Add an entity to a playlist, with a preview. Without
+    preview_file_id, or when the preview is not a preview of this entity, the
+    route uses the last preview of the entity for the task type of the
+    playlist. A manager of the project can change all the playlists. A
+    supervisor of the project can change the playlists that the supervisor
+    created and the playlists with no creator.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - entity_id
+          properties:
+            entity_id:
+              type: string
+              format: uuid
+              description: Entity unique identifier to add to playlist
+            preview_file_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Optional preview file identifier associated to the
+                entity
+  responses:
+    200:
+      description: The updated playlist
+      content:
+        application/json:
+          schema:
+            type: object
+    400:
+      description: The body is not valid
+    403:
+      description: You cannot change this playlist
+    404:
+      description: The playlist does not exist
+
+PlaylistDownloadResource_get:
+  summary: Download the movie of a playlist
+  description: Download the MP4 movie of a build job. A manager of the project
+    can use this route. A supervisor can use it for the playlists that the
+    supervisor can see. A client can use it for the playlists for clients.
+    Artists and vendors cannot use it.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: build_job_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Build job unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The MP4 file
+      content:
+        video/mp4:
+          schema:
+            type: string
+            format: binary
+    400:
+      description: The build is not finished. Try again later.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+                description: Error flag
+                example: true
+              message:
+                type: string
+                description: Error message
+                example: Build is not finished
+    403:
+      description: You cannot access this playlist
+    404:
+      description: The playlist or the build job does not exist
+
+PlaylistShareLinkInviteResource_post:
+  summary: Invite reviewers to a shared playlist
+  description: Send the URL of a share link by email. Give email addresses,
+    person identifiers, or both. Unknown persons and persons without an email
+    are skipped. You can add a message. You must be an administrator or a
+    manager of the project. The role held on the project team applies.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the playlist
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Token of the share link
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            emails:
+              type: array
+              items:
+                type: string
+                format: email
+            person_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+            message:
+              type: string
+  responses:
+    200:
+      description: The list of addresses that got the email
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              sent:
+                type: array
+                items:
+                  type: string
+    400:
+      description: An email address is not valid
+    403:
+      description: You are not an administrator or a manager of the project
+    404:
+      description: The playlist or the share link does not exist, the token
+        is for another playlist, or the link is revoked
+
+PlaylistShareLinkResource_delete:
+  summary: Revoke a share link
+  description: Disable a share link. The token must be a token of the playlist
+    of the path. You must be an administrator or a manager of the project. The
+    role held on the project team applies.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the playlist
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Token of the share link
+  responses:
+    200:
+      description: The revoked share link
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              is_active:
+                type: boolean
+                example: false
+    403:
+      description: You are not an administrator or a manager of the project
+    404:
+      description: The playlist or the share link does not exist, or the token
+        is for another playlist
+
+PlaylistShareLinksResource_get:
+  summary: Get the share links of a playlist
+  description: Get the active share links of a playlist. Revoked links are not
+    in the response. The response does not give the passwords. The
+    has_password field tells if a link has a password. You must be an
+    administrator or a manager of the project. The role held on the project
+    team applies.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the playlist
+  responses:
+    200:
+      description: The list of active share links
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                token:
+                  type: string
+                playlist_id:
+                  type: string
+                  format: uuid
+                created_by:
+                  type: string
+                  format: uuid
+                expiration_date:
+                  type: string
+                  format: date-time
+                  nullable: true
+                is_active:
+                  type: boolean
+                can_comment:
+                  type: boolean
+                has_password:
+                  type: boolean
+    403:
+      description: You are not an administrator or a manager of the project
+    404:
+      description: The playlist does not exist
+
+PlaylistShareLinksResource_post:
+  summary: Create a share link for a playlist
+  description: Create a link that guests can use to review the playlist
+    without an account. The link can expire, block comments and ask for a
+    password. You must be an administrator or a manager of the project. The
+    role held on the project team applies.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the playlist
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            expiration_date:
+              type: string
+              format: date-time
+              description: Date after which the link stops working
+              example: '2026-12-31'
+            can_comment:
+              type: boolean
+              default: true
+              description: Whether guests may comment and annotate
+            password:
+              type: string
+              description: Password guests must give to open the link
+  responses:
+    201:
+      description: The new share link, with its token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              token:
+                type: string
+              playlist_id:
+                type: string
+                format: uuid
+              expiration_date:
+                type: string
+                format: date-time
+                nullable: true
+              is_active:
+                type: boolean
+              can_comment:
+                type: boolean
+              has_password:
+                type: boolean
+    400:
+      description: The body is not valid
+    403:
+      description: You are not an administrator or a manager of the project
+    404:
+      description: The playlist does not exist
+
+PlaylistZipDownloadResource_get:
+  summary: Download a playlist as a ZIP file
+  description: Download a ZIP file with the preview files of a playlist. A
+    manager of the project can use this route. A supervisor can use it for the
+    playlists that the supervisor can see. A client can use it for the
+    playlists for clients. Artists and vendors cannot use it.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The ZIP file
+      content:
+        application/zip:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: You cannot access this playlist
+    404:
+      description: The playlist does not exist
+
+ProjectAllPlaylistsResource_get:
+  summary: Get all the playlists of a project
+  description: Get all the playlists of a project. Synchronization tools use
+    this route. You must be an administrator.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: page
+      required: false
+      description: Page to get. Without page, the response is the full list.
+        With page, the response is an object with data, total, nb_pages,
+        limit, offset and page.
+      schema:
+        type: integer
+  responses:
+    200:
+      description: The list of playlists
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Playlist unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Playlist name
+                  example: Review Playlist
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+    400:
+      description: page is not an integer
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+ProjectBuildJobsResource_get:
+  summary: Get the build jobs of a project
+  description: Get the build jobs of the playlists of a project.
+    Synchronization tools use this route. You must be an administrator.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The list of build jobs
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Build job unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                status:
+                  type: string
+                  description: Build job status
+                  example: succeeded
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Build job creation timestamp
+                  example: '2022-07-12T10:30:00Z'
+    403:
+      description: You are not an administrator
+    404:
+      description: The project does not exist
+
+ProjectPlaylistResource_get:
+  summary: Get a playlist
+  description: Get a playlist with the revisions of its preview files. All the
+    members of the project can read it, but vendors cannot. A client can read
+    only the playlists for clients.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: playlist_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Playlist unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The playlist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Playlist unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              name:
+                type: string
+                description: Playlist name
+                example: Review Playlist
+              project_id:
+                type: string
+                format: uuid
+                description: Project unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              shots:
+                type: array
+                description: List of shots with preview file revisions
+                items:
+                  type: object
+                  example: [{id: uuid, preview_file_id: uuid}]
+    403:
+      description: You cannot read this playlist
+    404:
+      description: The project has no playlist with this identifier
+
+ProjectPlaylistsResource_get:
+  summary: Get the playlists of a project
+  description: Get the playlists of a project, page by page. A client gets
+    only the playlists for clients. Vendors cannot use this route.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get. Each page has 20 playlists.
+      example: 1
+    - in: query
+      name: sort_by
+      required: false
+      schema:
+        type: string
+      description: Field to sort the playlists on, for example created_at
+      example: updated_at
+    - in: query
+      name: task_type_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Get only the playlists of this task type
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  responses:
+    200:
+      description: The list of playlists
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Playlist unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Playlist name
+                  example: Review Playlist
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project unique identifier
+                  example: b35b7fb5-df86-5776-b181-68564193d360
+    403:
+      description: You do not have access to this project, or you are a vendor
+
+TempPlaylistResource_post:
+  summary: Make a temporary playlist
+  description: Make a temporary playlist from tasks or entities. The playlist
+    is not saved. For each entity, the route uses the task of the entity that
+    has a preview. An entity with no task that has a preview is skipped. You
+    must have access to each task.
+  tags:
+    - Playlists
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: query
+      name: sort
+      required: false
+      schema:
+        type: boolean
+      description: Sort the entries of the playlist
+      example: true
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            task_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: List of task unique identifiers
+              example: [a24a6ea4-ce75-4665-a070-57453082c250]
+            entity_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: >
+                List of entity unique identifiers, each contributing
+                the task holding its current preview (or its first
+                task with a preview)
+              example: [a24a6ea4-ce75-4665-a070-57453082c250]
+  responses:
+    200:
+      description: The entries of the temporary playlist
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Preview file unique identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  description: Preview file name
+                  example: preview_v001.png
+    400:
+      description: An identifier is not valid
+    403:
+      description: You do not have access to this project or to a task
+    404:
+      description: A task does not exist

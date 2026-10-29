@@ -1,9 +1,11 @@
-from flasgger import swag_from
 from flask import abort
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import csv_utils, permissions
+from zou.app.utils.openapi import load_specs, swag_from
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 
 class BaseCsvExport(MethodView):
@@ -19,7 +21,7 @@ class BaseCsvExport(MethodView):
         pass
 
     @jwt_required()
-    @swag_from("openapi/BaseCsvExport_get.yml")
+    @swag_from(SPECS["BaseCsvExport_get"])
     def get(self):
         """
         Export csv

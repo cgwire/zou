@@ -22,6 +22,20 @@ from zou.app.services import (
 )
 from zou.app.utils import events, fields
 
+# Keys the built-in fields of an entity use in its data: the frame rate and
+# the size of its previews, its retake cap, its frame range, and its trim
+# handles. A column of the same field name would share their values. Kitsu
+# keeps the same list in src/lib/descriptors.js.
+BUILT_IN_ENTITY_DATA_FIELDS = (
+    "fps",
+    "frame_in",
+    "frame_out",
+    "handle_in",
+    "handle_out",
+    "max_retakes",
+    "resolution",
+)
+
 
 def _migrate_metadata_field_name(model, old_key, new_key):
     """
@@ -164,13 +178,30 @@ def build_metadata_descriptors_filter(descriptor_visibilities):
     return or_(*criteria)
 
 
+def check_metadata_descriptor_field_name(entity_type, field_name):
+    """
+    Refuse the key of a built-in field as the field name of a column whose
+    values live in the entity data. Project and task columns store theirs
+    in the project or the task data, where these keys mean nothing.
+    """
+    if (
+        entity_type not in ("Project", "Task")
+        and field_name in BUILT_IN_ENTITY_DATA_FIELDS
+    ):
+        raise WrongParameterException(
+            "Metadata descriptor name is used by a built-in field."
+        )
+
+
 def _check_metadata_descriptor_rename(descriptor, name, field_name):
     """
     Refuse a new name longer than the name or field name column holds, or
     that another descriptor of the same project, entity type and task type,
     the scope of the unique indexes, holds as its name or as its field
     name. The update of the descriptor would fail on it once the stored
-    values moved to the new key, overwriting any value already there.
+    values moved to the new key, overwriting any value already there. A
+    new field name must not be the key of a built-in field either, while a
+    column created on one before that check keeps it.
     """
     columns = MetadataDescriptor.__table__.c
     if (
@@ -178,6 +209,10 @@ def _check_metadata_descriptor_rename(descriptor, name, field_name):
         or len(field_name) > columns.field_name.type.length
     ):
         raise WrongParameterException("Metadata descriptor name is too long.")
+    if field_name != descriptor.field_name:
+        check_metadata_descriptor_field_name(
+            descriptor.entity_type, field_name
+        )
     query = MetadataDescriptor.query.filter(
         MetadataDescriptor.id != descriptor.id,
         MetadataDescriptor.project_id == descriptor.project_id,
@@ -213,6 +248,8 @@ def add_metadata_descriptor(
     """
     if not departments:
         departments = []
+    field_name = slugify.slugify(name, separator="_")
+    check_metadata_descriptor_field_name(entity_type, field_name)
 
     try:
         departments_objects = [
@@ -233,7 +270,7 @@ def add_metadata_descriptor(
             choices=choices,
             for_client=for_client,
             departments=departments_objects,
-            field_name=slugify.slugify(name, separator="_"),
+            field_name=field_name,
         )
     except IntegrityError:
         raise WrongParameterException("Metadata descriptor already exists.")

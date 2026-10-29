@@ -2,7 +2,7 @@ import datetime
 
 from tests.base import ApiDBTestCase
 from zou.app.models.studio import Studio
-from zou.app.services import tasks_service
+from zou.app.services import quotas_service, tasks_service, time_spents_service
 from zou.app.utils import fields
 
 
@@ -132,6 +132,210 @@ class ShotRoutesTestCase(ApiDBTestCase):
             },
         )
 
+    def test_weighted_quotas_keep_every_frame_of_the_shot(self):
+        """
+        10 frames over three working days: rounding the share of each day
+        on its own counted 3 a day, 9 in all.
+        """
+        self.shot.update({"nb_frames": 10})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {"2024-06-03": 3, "2024-06-04": 3, "2024-06-05": 4},
+        )
+
+    def test_weighted_quotas_spread_the_drawings_of_the_shot(self):
+        """
+        The drawings of a task without time spent are spread over its
+        working days like its frames, every drawing kept: they used to be
+        counted in full on each day, 30 for a 10-drawing task worked three
+        days.
+        """
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "nb_drawings": 10,
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["drawings"],
+            {"2024-06-03": 3, "2024-06-04": 3, "2024-06-05": 4},
+        )
+
+    def test_weighted_quotas_keep_every_frame_of_the_time_spents(self):
+        """
+        Three equal time spents on a 10-frame shot: rounded one by one,
+        each counted 3 frames, 9 in all. Its 10 drawings are shared out the
+        same way.
+        """
+        self.shot.update({"nb_frames": 10})
+        self.shot_task.update(
+            {
+                "nb_drawings": 10,
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+        for day in ["2024-06-03", "2024-06-04", "2024-06-05"]:
+            time_spents_service.create_or_update_time_spent(
+                str(self.shot_task.id), str(self.person.id), day, 120
+            )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["drawings"],
+            {"2024-06-03": 3, "2024-06-04": 4, "2024-06-05": 3},
+        )
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {"2024-06-03": 3, "2024-06-04": 4, "2024-06-05": 3},
+        )
+        # One shot, however many days were logged on it.
+        self.assertEqual(result["total"]["year"]["count"], {"2024": 1})
+
+    def test_weighted_quotas_share_a_shot_between_the_people_on_it(self):
+        """
+        Two people logged half of a 7-frame shot each. Shared out person by
+        person, each share was rounded on its own, 4 + 4 = 8. Shared out
+        together they add up to the shot, and a person reads the same share
+        on their own page as on the task type one.
+        """
+        self.shot.update({"nb_frames": 7})
+        self.shot_task.update(
+            {"end_date": datetime.datetime(2024, 6, 5, 10, 0)}
+        )
+        time_spents_service.create_or_update_time_spent(
+            str(self.shot_task.id), str(self.person.id), "2024-06-03", 300
+        )
+        time_spents_service.create_or_update_time_spent(
+            str(self.shot_task.id), self.user["id"], "2024-06-04", 300
+        )
+        # The days of each person are shared out in an order drawn for the
+        # task: the second person gets 3 frames, where their half read alone
+        # on their own page rounded up to 4.
+        second_id = max(
+            str(self.person.id),
+            self.user["id"],
+            key=lambda person_id: quotas_service._get_block_key(
+                self.shot_task.id, person_id
+            ),
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+        person_result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/persons/{second_id}?count_mode=weighted"
+        )
+
+        frames = result["total"]["day"]["frames"]
+        self.assertEqual(sorted(frames.values()), [3, 4])
+        self.assertEqual(result["total"]["year"]["count"], {"2024": 1})
+        self.assertEqual(result[second_id]["year"]["frames"], {"2024": 3})
+        task_type_id = str(self.task_type_animation.id)
+        self.assertEqual(
+            person_result[task_type_id]["year"]["frames"], {"2024": 3}
+        )
+
+    def test_weighted_quotas_count_a_task_that_never_went_wip(self):
+        """
+        A task sent to feedback without ever being WIP has no start date to
+        spread it from: it lands on its end day, as in the raw modes. The
+        weighted modes used to leave it out.
+        """
+        self.shot.update({"nb_frames": 10})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {"end_date": datetime.datetime(2024, 6, 5, 10, 0)}
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(result["total"]["day"]["frames"], {"2024-06-05": 10})
+        self.assertEqual(result["total"]["day"]["count"], {"2024-06-05": 1})
+
+    def test_weighted_quotas_leave_out_a_weekend_start(self):
+        """
+        A task started on a Saturday shares its frames between the working
+        days that follow. The Saturday used to take a share of its own that
+        no day was credited with.
+        """
+        self.shot.update({"nb_frames": 30})
+        tasks_service.assign_task(str(self.shot_task.id), str(self.person.id))
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 1, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 10, 0),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {"2024-06-03": 10, "2024-06-04": 10, "2024-06-05": 10},
+        )
+
+    def test_weighted_quotas_spread_the_shot_over_the_local_days(self):
+        """
+        Sent to feedback on Wednesday 22:30 UTC, Thursday 00:30 in Paris,
+        the timezone of the user: the shot is spread from Monday to
+        Thursday, not over the three days of UTC.
+        """
+        self.shot.update({"nb_frames": 12})
+        self.shot_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 5, 22, 30),
+            }
+        )
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/{self.task_type_animation.id}?count_mode=weighted"
+        )
+
+        self.assertEqual(
+            result["total"]["day"]["frames"],
+            {
+                "2024-06-03": 3,
+                "2024-06-04": 3,
+                "2024-06-05": 3,
+                "2024-06-06": 3,
+            },
+        )
+
     def test_get_project_quotas_of_a_studio(self):
         """
         The studio filter used to expand into one EXISTS per member of the
@@ -158,6 +362,25 @@ class ShotRoutesTestCase(ApiDBTestCase):
         person.
         """
         self.a_shot_closed_on("2024-06-12")
+
+        result = self.get(
+            f"/data/projects/{self.project.id}"
+            f"/quotas/persons/{self.person.id}?count_mode=feedback"
+        )
+
+        task_type_id = str(self.task_type_animation.id)
+        self.assertEqual(
+            result[task_type_id]["day"]["frames"], {"2024-06-12": 100}
+        )
+        self.assertEqual(result[task_type_id]["year"]["count"], {"2024": 1})
+
+    def test_get_project_person_quotas_count_a_shared_task_once(self):
+        """
+        A task shared with another assignee is one shot on the page of a
+        person, not one per assignee.
+        """
+        self.a_shot_closed_on("2024-06-12")
+        tasks_service.assign_task(str(self.shot_task.id), self.user["id"])
 
         result = self.get(
             f"/data/projects/{self.project.id}"

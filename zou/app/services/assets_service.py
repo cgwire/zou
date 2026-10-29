@@ -196,6 +196,7 @@ def prepare_assets_and_tasks(
     with_episode_ids=False,
     compact=False,
     only_user_projects=False,
+    for_client=None,
 ):
     """
     Run the with-tasks queries and return a generator yielding one asset
@@ -265,6 +266,7 @@ def prepare_assets_and_tasks(
         ASSETS_AND_TASKS_TASK_FIELDS,
         assigned_to=assigned_to,
         compact=compact,
+        for_client=for_client,
     )
 
     cast_in_episode_ids = {}
@@ -362,7 +364,10 @@ def prepare_assets_and_tasks(
 
 
 def get_assets_and_tasks(
-    criterions=None, with_episode_ids=False, only_user_projects=False
+    criterions=None,
+    with_episode_ids=False,
+    only_user_projects=False,
+    for_client=None,
 ):
     """
     Get all assets for given criterions with related tasks for each
@@ -373,6 +378,7 @@ def get_assets_and_tasks(
             criterions,
             with_episode_ids,
             only_user_projects=only_user_projects,
+            for_client=for_client,
         )
     )
 
@@ -463,7 +469,9 @@ def get_full_asset(asset_id):
     Return asset matching given id with additional information (project name,
     asset type name and tasks).
     """
-    assets = get_assets_and_tasks({"id": asset_id}, with_episode_ids=True)
+    assets = get_assets_and_tasks(
+        {"id": asset_id}, with_episode_ids=True, for_client=False
+    )
     if len(assets) == 0:
         raise AssetNotFoundException
 

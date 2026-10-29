@@ -3,7 +3,6 @@ import unicodedata
 from urllib.parse import quote
 
 import orjson as json
-from flasgger import swag_from
 from flask import (
     Response,
     current_app,
@@ -60,7 +59,10 @@ from zou.app.utils import (
     thumbnail as thumbnail_utils,
     validation as validation_utils,
 )
+from zou.app.utils.openapi import load_specs, swag_from
 from zou.utils import movie
+
+SPECS = load_specs(__file__, "openapi.yml")
 
 ALLOWED_PICTURE_EXTENSION = {"jpe", "jpeg", "jpg", "png"}
 ALLOWED_MOVIE_EXTENSION = {
@@ -814,7 +816,7 @@ class CreatePreviewFilePictureResource(
 ):
 
     @jwt_required()
-    @swag_from("openapi/CreatePreviewFilePictureResource_post.yml")
+    @swag_from(SPECS["CreatePreviewFilePictureResource_post"])
     def post(self, instance_id):
         """
         Create preview file
@@ -842,7 +844,7 @@ class CreatePreviewFilePictureResource(
             )
             raise PreviewFileReuploadNotAllowedException
 
-        permissions_service.check_task_action_access(preview_file["task_id"])
+        permissions_service.check_task_work_access(preview_file["task_id"])
         return True
 
 
@@ -954,7 +956,7 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
 class AddTaskBatchCommentResource(BaseBatchComment, MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AddTaskBatchCommentResource_post.yml")
+    @swag_from(SPECS["AddTaskBatchCommentResource_post"])
     def post(self, task_id):
         """
         Add task batch comments
@@ -965,7 +967,7 @@ class AddTaskBatchCommentResource(BaseBatchComment, MethodView):
 class AddTasksBatchCommentResource(BaseBatchComment, MethodView):
 
     @jwt_required()
-    @swag_from("openapi/AddTasksBatchCommentResource_post.yml")
+    @swag_from(SPECS["AddTasksBatchCommentResource_post"])
     def post(self):
         """
         Add tasks batch comments
@@ -999,7 +1001,7 @@ class PreviewFileMovieResource(BasePreviewFileResource):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileMovieResource_get.yml")
+    @swag_from(SPECS["PreviewFileMovieResource_get"])
     def get(self, instance_id):
         """
         Get preview movie
@@ -1026,7 +1028,7 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileLowMovieResource_get.yml")
+    @swag_from(SPECS["PreviewFileLowMovieResource_get"])
     def get(self, instance_id):
         """
         Get preview lowdef movie
@@ -1056,7 +1058,7 @@ class PreviewFileSourceMovieResource(BasePreviewFileResource):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileSourceMovieResource_get.yml")
+    @swag_from(SPECS["PreviewFileSourceMovieResource_get"])
     def get(self, instance_id):
         """
         Get preview source movie
@@ -1081,7 +1083,7 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileMovieDownloadResource_get.yml")
+    @swag_from(SPECS["PreviewFileMovieDownloadResource_get"])
     def get(self, instance_id):
         """
         Download preview movie
@@ -1109,7 +1111,7 @@ class PreviewFileResource(BasePreviewFileResource):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileResource_get.yml")
+    @swag_from(SPECS["PreviewFileResource_get"])
     def get(self, instance_id, extension):
         """
         Get preview file
@@ -1156,7 +1158,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileDownloadResource_get.yml")
+    @swag_from(SPECS["PreviewFileDownloadResource_get"])
     def get(self, instance_id):
         """
         Download preview file
@@ -1224,15 +1226,13 @@ class AttachmentThumbnailResource(MethodView):
                 self.attachment_file["chat_message_id"]
             )
             chat = chats_service.get_chat_by_id(message["chat_id"])
-            entity = entities_service.get_entity(chat["object_id"])
-            permissions_service.check_project_access(entity["project_id"])
-            permissions_service.check_entity_access(chat["object_id"])
+            permissions_service.check_chat_access(chat["object_id"])
         else:
             raise permissions.PermissionDenied
         return True
 
     @jwt_required()
-    @swag_from("openapi/AttachmentThumbnailResource_get.yml")
+    @swag_from(SPECS["AttachmentThumbnailResource_get"])
     def get(self, attachment_file_id):
         """
         Get attachment thumbnail
@@ -1265,7 +1265,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
         self.picture_type = picture_type
 
     @jwt_required()
-    @swag_from("openapi/BasePreviewPictureResource_get.yml")
+    @swag_from(SPECS["BasePreviewPictureResource_get"])
     def get(self, instance_id):
         """
         Get preview thumbnail
@@ -1321,7 +1321,7 @@ class PreviewFileTileResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "tiles")
 
     @jwt_required()
-    @swag_from("openapi/PreviewFileTileResource_get.yml")
+    @swag_from(SPECS["PreviewFileTileResource_get"])
     def get(self, instance_id):
         """
         Get the tile sheet of a movie preview
@@ -1393,7 +1393,7 @@ class BaseThumbnailResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/BaseThumbnailResource_post.yml")
+    @swag_from(SPECS["BaseThumbnailResource_post"])
     def post(self, instance_id):
         """
         Create thumbnail
@@ -1433,7 +1433,7 @@ class BaseThumbnailResource(MethodView):
         return {"thumbnail_path": thumbnail_url_path}, 201
 
     @jwt_required()
-    @swag_from("openapi/BaseThumbnailResource_get.yml")
+    @swag_from(SPECS["BaseThumbnailResource_get"])
     def get(self, instance_id):
         """
         Get thumbnail
@@ -1544,7 +1544,7 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/SetMainPreviewResource_put.yml")
+    @swag_from(SPECS["SetMainPreviewResource_put"])
     def put(self, preview_file_id):
         """
         Set main preview
@@ -1580,7 +1580,7 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/UpdatePreviewPositionResource_put.yml")
+    @swag_from(SPECS["UpdatePreviewPositionResource_put"])
     def put(self, preview_file_id):
         """
         Update preview position
@@ -1589,7 +1589,7 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
             PreviewFilePositionSchema
         )
         preview_file = files_service.get_preview_file(preview_file_id)
-        permissions_service.check_task_action_access(preview_file["task_id"])
+        permissions_service.check_task_work_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, body.position
         )
@@ -1598,7 +1598,7 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
 class UpdateAnnotationsResource(MethodView, ArgsMixin):
 
     @jwt_required()
-    @swag_from("openapi/UpdateAnnotationsResource_put.yml")
+    @swag_from(SPECS["UpdateAnnotationsResource_put"])
     def put(self, preview_file_id):
         """
         Update preview annotations
@@ -1644,7 +1644,7 @@ class RunningPreviewFiles(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/RunningPreviewFiles_get.yml")
+    @swag_from(SPECS["RunningPreviewFiles_get"])
     def get(self):
         """
         Get running preview files
@@ -1678,7 +1678,7 @@ class ExtractFrameFromPreview(MethodView, ArgsMixin):
     """
 
     @jwt_required()
-    @swag_from("openapi/ExtractFrameFromPreview_get.yml")
+    @swag_from(SPECS["ExtractFrameFromPreview_get"])
     def get(self, preview_file_id):
         """
         Extract frame from preview
@@ -1713,7 +1713,7 @@ class ExtractAnnotatedFrameFromPreview(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ExtractAnnotatedFrameFromPreview_get.yml")
+    @swag_from(SPECS["ExtractAnnotatedFrameFromPreview_get"])
     def get(self, preview_file_id):
         """
         Extract annotated frame from preview
@@ -1778,7 +1778,7 @@ class ExtractAllAnnotatedFramesFromPreview(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ExtractAllAnnotatedFramesFromPreview_get.yml")
+    @swag_from(SPECS["ExtractAllAnnotatedFramesFromPreview_get"])
     def get(self, preview_file_id):
         """
         Extract all annotated frames from preview as a zip
@@ -1798,7 +1798,7 @@ class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ExtractAllAnnotatedFramesAsPdfFromPreview_get.yml")
+    @swag_from(SPECS["ExtractAllAnnotatedFramesAsPdfFromPreview_get"])
     def get(self, preview_file_id):
         """
         Extract all annotated frames from preview as a PDF
@@ -1817,7 +1817,7 @@ class ExtractTileFromPreview(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/ExtractTileFromPreview_get.yml")
+    @swag_from(SPECS["ExtractTileFromPreview_get"])
     def get(self, preview_file_id):
         """
         Extract tile from preview
@@ -1855,7 +1855,7 @@ class CreatePreviewBackgroundFileResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/CreatePreviewBackgroundFileResource_post.yml")
+    @swag_from(SPECS["CreatePreviewBackgroundFileResource_post"])
     def post(self, instance_id):
         """
         Create preview background file
@@ -1987,7 +1987,7 @@ class PreviewBackgroundFileResource(MethodView):
     """
 
     @jwt_required()
-    @swag_from("openapi/PreviewBackgroundFileResource_get.yml")
+    @swag_from(SPECS["PreviewBackgroundFileResource_get"])
     def get(self, instance_id, extension):
         """
         Get preview background file

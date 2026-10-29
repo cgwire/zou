@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from tests.services.cases import AuthTestCase
-from zou.app import app
+from zou.app import app, db
 from zou.app.exceptions import (
     InactiveUserException,
     MissingOTPException,
@@ -206,6 +206,38 @@ class LoginLockoutTestCase(AuthTestCase):
         self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
         self.assertEqual(self.failed_attemps(), 2)
 
+    def test_wrong_passwords_in_parallel_all_count(self):
+        """
+        Each wrong password increments the stored count in the database,
+        so concurrent failures all count.
+        """
+        read_count = auth_service.check_login_failed_attempts
+
+        def read_then_two_failures_land(person):
+            count = read_count(person)
+            Person.query.filter(Person.id == self.person_id).update(
+                {"login_failed_attemps": count + 2},
+                synchronize_session=False,
+            )
+            return count
+
+        with mock.patch.object(
+            auth_service,
+            "check_login_failed_attempts",
+            side_effect=read_then_two_failures_land,
+        ):
+            self.assertRaises(
+                WrongPasswordException, self.authenticate, "wrong"
+            )
+        self.assertEqual(self.failed_attemps(), 3)
+
+    def test_a_count_left_empty_starts_from_zero(self):
+        Person.query.filter(Person.id == self.person_id).update(
+            {"login_failed_attemps": None}, synchronize_session=False
+        )
+        self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
+        self.assertEqual(self.failed_attemps(), 1)
+
     def test_a_right_password_clears_the_count(self):
         self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
         self.authenticate()
@@ -215,6 +247,21 @@ class LoginLockoutTestCase(AuthTestCase):
         self.lock()
         persons_service.clear_person_cache()
         # Even with the right password: that is the whole point.
+        self.assertRaises(TooManyLoginFailedAttempts, self.authenticate)
+
+    def test_the_lockout_reads_the_row_not_the_session_copy(self):
+        """
+        The lockout reads the failed login count from the database row,
+        not from the person object the request holds.
+        """
+        cached = Person.get(self.person_id)
+        db.session.refresh(cached)
+        db.session.expunge(cached)
+        self.lock()
+        persons_service.clear_person_cache()
+        # The request holds it as the current user until it ends.
+        identity = db.session.merge(cached, load=False)
+        self.assertEqual(identity.login_failed_attemps, 0)
         self.assertRaises(TooManyLoginFailedAttempts, self.authenticate)
 
     def test_an_elapsed_window_reopens_the_account(self):
@@ -279,6 +326,39 @@ class LoginLockoutTestCase(AuthTestCase):
         auth_service.update_login_failed_attempts(self.person_id, 3, moment)
         auth_service.update_login_failed_attempts(self.person_id, 0)
         self.assertIsNotNone(Person.get(self.person_id).last_login_failed)
+
+    def test_the_count_keeps_updated_at(self):
+        """
+        Kitsu versions the avatar URL with updated_at: the failed login
+        counter leaves it alone.
+        """
+        last_edit = datetime.datetime(2021, 1, 1, 12, 0)
+        Person.query.filter(Person.id == self.person_id).update(
+            {"updated_at": last_edit}
+        )
+
+        self.assertRaises(WrongPasswordException, self.authenticate, "wrong")
+        self.assertEqual(self.failed_attemps(), 1)
+        self.authenticate()
+        self.assertEqual(self.failed_attemps(), 0)
+        # The end of a lockout window clears the count through its own call.
+        auth_service.update_login_failed_attempts(
+            self.person_id,
+            auth_service.MAX_LOGIN_FAILED_ATTEMPS,
+            date_helpers.get_utc_now_datetime()
+            - auth_service.LOGIN_LOCKOUT_DELAY
+            - datetime.timedelta(seconds=1),
+        )
+        persons_service.clear_person_cache()
+        self.authenticate()
+        self.assertEqual(self.failed_attemps(), 0)
+
+        self.assertEqual(
+            Person.query.with_entities(Person.updated_at)
+            .filter(Person.id == self.person_id)
+            .scalar(),
+            last_edit,
+        )
 
 
 class TwoFactorMethodTestCase(AuthTestCase):
