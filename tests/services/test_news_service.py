@@ -9,7 +9,10 @@ from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
+    deletion_service,
+    files_service,
     news_service,
+    preview_files_service,
     projects_service,
 )
 
@@ -128,6 +131,126 @@ class NewsWritingTestCase(ApiDBTestCase):
             [(event["news_id"], event["project_id"]) for event in captured],
             [(news["id"], self.task_dict["project_id"])],
         )
+
+    def test_a_preview_added_to_the_comment_reaches_the_memoized_news(self):
+        """
+        A comment gets its news first and its preview after: the news the
+        feeds memoized in between has to take the preview.
+        """
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        project_id = self.task_dict["project_id"]
+        news_service.get_news(project_id, news["id"])
+
+        preview_file = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+
+        single_news = news_service.get_news(project_id, news["id"])["data"][0]
+        self.assertEqual(single_news["preview_file_id"], preview_file["id"])
+
+    def test_a_removed_preview_leaves_the_memoized_news(self):
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        project_id = self.task_dict["project_id"]
+        preview_file = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+        news_service.get_news(project_id, news["id"])
+
+        deletion_service.remove_preview_file(
+            files_service.get_preview_file_raw(preview_file["id"])
+        )
+
+        single_news = news_service.get_news(project_id, news["id"])["data"][0]
+        self.assertIsNone(single_news["preview_file_id"])
+
+    def test_the_single_news_carries_its_preview_files(self):
+        """
+        The feed plays the preview files of a news it loads on its own, as it
+        does for the news of its pages in previews mode.
+        """
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        preview_file = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+
+        single_news = news_service.get_news(
+            self.task_dict["project_id"], news["id"]
+        )["data"][0]
+
+        self.assertEqual(
+            [entry["id"] for entry in single_news["preview_files"]],
+            [preview_file["id"]],
+        )
+
+    def test_a_processed_preview_reaches_the_memoized_news(self):
+        """
+        A job builds the files of an uploaded preview: the news memoized while
+        it was processing has to take its new status.
+        """
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        project_id = self.task_dict["project_id"]
+        preview_file = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+        news_service.get_news(project_id, news["id"])
+
+        preview_files_service.update_preview_file(
+            preview_file["id"], {"status": "ready"}
+        )
+
+        single_news = news_service.get_news(project_id, news["id"])["data"][0]
+        self.assertEqual(
+            [entry["status"] for entry in single_news["preview_files"]],
+            ["ready"],
+        )
+
+    def test_removing_one_preview_of_several_reaches_the_memoized_news(self):
+        """
+        The news points at the last preview of its comment, and lists them
+        all: removing another one has to drop it too.
+        """
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        project_id = self.task_dict["project_id"]
+        first = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+        second = comments_service.add_preview_file_to_comment(
+            self.comment["id"], self.user["id"], self.task_dict["id"]
+        )
+        news_service.get_news(project_id, news["id"])
+
+        deletion_service.remove_preview_file(
+            files_service.get_preview_file_raw(first["id"])
+        )
+
+        single_news = news_service.get_news(project_id, news["id"])["data"][0]
+        self.assertEqual(
+            [entry["id"] for entry in single_news["preview_files"]],
+            [second["id"]],
+        )
+
+    def test_clearing_the_cache_of_the_news_of_a_comment(self):
+        news = news_service.create_news_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        project_id = self.task_dict["project_id"]
+        news_service.get_news(project_id, news["id"])
+        News.get(news["id"]).update({"change": True})
+
+        news_service.clear_comment_news_cache(self.comment["id"], project_id)
+
+        single_news = news_service.get_news(project_id, news["id"])["data"][0]
+        self.assertTrue(single_news["change"])
 
 
 # Frozen mid-day: the date filters below are built from now(), which flakes
