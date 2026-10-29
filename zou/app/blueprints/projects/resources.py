@@ -1020,6 +1020,27 @@ class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
         )
 
 
+class ProductionUntrackedScheduleItemsResource(MethodView, ArgsMixin):
+    """
+    Resource to retrieve untracked item schedule items for given task type.
+    """
+
+    @jwt_required()
+    @swag_from(SPECS["ProductionUntrackedScheduleItemsResource_get"])
+    def get(self, project_id, task_type_id):
+        """
+        Get untracked items schedule items
+        """
+        permissions_service.check_project_access(project_id)
+        permissions_service.block_access_to_vendor()
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(task_type_id)
+        episode_id = self.get_id_parameter("episode") or None
+        return schedule_service.get_untracked_schedule_items(
+            project_id, task_type_id, episode_id
+        )
+
+
 class ProductionBudgetsResource(MethodView, ArgsMixin):
 
     @jwt_required()

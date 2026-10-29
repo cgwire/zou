@@ -80,8 +80,8 @@ def is_episode(entity):
 def get_base_entity_type_name(entity_dict):
     """
     Return the entity type name of given entity, as the API names it:
-    Shot, Sequence, Episode, Edit, Concept, ConceptFolder, or Asset for
-    everything else.
+    Shot, Sequence, Episode, Edit, Concept, ConceptFolder, Untracked, or
+    Asset for everything else.
     """
     type_name = "Asset"
     if is_shot(entity_dict):
@@ -98,6 +98,8 @@ def get_base_entity_type_name(entity_dict):
         type_name = "Concept"
     elif is_concept_folder(entity_dict):
         type_name = "ConceptFolder"
+    elif is_untracked(entity_dict):
+        type_name = "Untracked"
 
     return type_name
 
@@ -127,8 +129,8 @@ def clear_asset_type_cache(asset_type_id=None):
 def get_temporal_type_ids():
     """
     Return the ids of the entity types that are not asset types: everything
-    positioned in time (shot, sequence, episode, edit, scene, concept) and
-    the folders the concepts are sorted in.
+    positioned in time (shot, sequence, episode, edit, scene, concept), the
+    folders the concepts are sorted in and the untracked schedule items.
     """
     shot_type = get_shot_type()
     scene_type = get_scene_type()
@@ -137,6 +139,7 @@ def get_temporal_type_ids():
     edit_type = get_edit_type()
     concept_type = get_concept_type()
     concept_folder_type = get_concept_folder_type()
+    untracked_type = get_untracked_type()
 
     return [
         shot_type["id"],
@@ -146,6 +149,7 @@ def get_temporal_type_ids():
         scene_type["id"],
         concept_type["id"],
         concept_folder_type["id"],
+        untracked_type["id"],
     ]
 
 
@@ -341,6 +345,24 @@ def is_concept_folder(entity):
     """
     concept_folder_type = get_concept_folder_type()
     return str(entity["entity_type_id"]) == concept_folder_type["id"]
+
+
+@cache.memoize_function(1200)
+def get_untracked_type():
+    """
+    Return the Untracked entity type: work planned in the schedule (sound
+    design, a rough department plan...) that is not an asset, a shot or an
+    edit, and is kept out of their lists.
+    """
+    return get_temporal_entity_type_by_name("Untracked")
+
+
+def is_untracked(entity):
+    """
+    Returns True if given entity has 'Untracked' as entity type
+    """
+    untracked_type = get_untracked_type()
+    return str(entity["entity_type_id"]) == untracked_type["id"]
 
 
 def clear_entity_type_cache(entity_type_id):
