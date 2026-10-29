@@ -117,6 +117,14 @@ MilestoneResource_put:
               type: string
               format: date
               example: '2024-04-30'
+            color:
+              type: string
+              nullable: true
+              pattern: '^#[0-9a-fA-F]{6}$'
+              example: '#00aa11'
+            milestone_type:
+              type: string
+              enum: [kickoff, review, approval, delivery, other]
   responses:
     200:
       description: The updated milestone
@@ -264,6 +272,14 @@ MilestonesResource_post:
               type: string
               format: date
               example: '2024-03-31'
+            color:
+              type: string
+              pattern: '^#[0-9a-fA-F]{6}$'
+              example: '#ff0000'
+            milestone_type:
+              type: string
+              enum: [kickoff, review, approval, delivery, other]
+              default: other
   responses:
     201:
       description: The new milestone

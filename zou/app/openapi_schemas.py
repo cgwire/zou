@@ -379,6 +379,19 @@ MilestoneSchema = {
             "description": "Milestone date of production schedule",
         },
         "name": {"type": "string", "description": "Name of milestone"},
+        "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "nullable": True,
+            "description": "Label color as a #RRGGBB hex string",
+            "example": "#ff0000",
+        },
+        "milestone_type": {
+            "type": "string",
+            "enum": ["kickoff", "review", "approval", "delivery", "other"],
+            "default": "other",
+            "description": "Kind of milestone",
+        },
         "task_type_id": {
             "type": "string",
             "format": "uuid",

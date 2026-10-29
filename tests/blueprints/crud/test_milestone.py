@@ -80,3 +80,110 @@ class MilestoneTestCase(ApiDBTestCase):
         milestones = self.get("data/milestones")
         self.assertEqual(len(milestones), 2)
         self.delete_404(f"data/milestones/{fields.gen_uuid()}")
+
+    def test_create_milestone_with_type_and_color(self):
+        milestone = self.post(
+            "data/milestones",
+            {
+                "name": "Client review",
+                "date": "2024-06-01",
+                "project_id": self.project_id,
+                "color": "#ff0000",
+                "milestone_type": "review",
+            },
+        )
+        self.assertEqual(milestone["color"], "#ff0000")
+        self.assertEqual(milestone["milestone_type"], "review")
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
+        self.assertEqual(milestone_again["milestone_type"], "review")
+
+    def test_create_milestone_defaults(self):
+        milestone = self.post(
+            "data/milestones",
+            {
+                "name": "Plain",
+                "date": "2024-06-01",
+                "project_id": self.project_id,
+            },
+        )
+        self.assertIsNone(milestone["color"])
+        self.assertEqual(milestone["milestone_type"], "other")
+
+    def test_update_milestone_type_and_color(self):
+        milestone = self.get_first("data/milestones")
+        self.put(
+            f"data/milestones/{milestone['id']}",
+            {
+                "color": "#00AA11",
+                "milestone_type": "delivery",
+            },
+        )
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
+        self.assertEqual(milestone_again["color"], "#00AA11")
+        self.assertEqual(milestone_again["milestone_type"], "delivery")
+        self.put(f"data/milestones/{milestone['id']}", {"color": None})
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
+        self.assertIsNone(milestone_again["color"])
+
+    def test_create_milestone_with_invalid_values(self):
+        base = {
+            "name": "Bad",
+            "date": "2024-06-01",
+            "project_id": self.project_id,
+        }
+        for invalid in [
+            {"milestone_type": "party"},
+            {"milestone_type": None},
+            {"color": "red"},
+            {"color": "#fff"},
+            {"color": "#gggggg"},
+            {"color": "#ff0000\n"},
+            {"color": 123},
+        ]:
+            self.post("data/milestones", {**base, **invalid}, 400)
+        self.assertEqual(len(self.get("data/milestones")), 3)
+
+    def test_update_milestone_with_invalid_values(self):
+        milestone = self.get_first("data/milestones")
+        for invalid in [
+            {"milestone_type": "party"},
+            {"milestone_type": None},
+            {"color": "#12345"},
+        ]:
+            self.put(f"data/milestones/{milestone['id']}", invalid, 400)
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
+        self.assertEqual(milestone_again["milestone_type"], "other")
+        self.assertIsNone(milestone_again["color"])
+
+    def test_milestones_on_same_date(self):
+        for name, milestone_type in [
+            ("Kickoff", "kickoff"),
+            ("Due", "delivery"),
+        ]:
+            self.post(
+                "data/milestones",
+                {
+                    "name": name,
+                    "date": "2024-09-01",
+                    "project_id": self.project_id,
+                    "milestone_type": milestone_type,
+                },
+            )
+        milestones = self.get(f"data/projects/{self.project_id}/milestones")
+        same_day = [m for m in milestones if m["date"] == "2024-09-01"]
+        self.assertEqual(
+            sorted(m["milestone_type"] for m in same_day),
+            ["delivery", "kickoff"],
+        )
+        self.assertEqual(
+            set(same_day[0].keys()),
+            {
+                "id",
+                "date",
+                "name",
+                "color",
+                "milestone_type",
+                "project_id",
+                "task_type_id",
+            },
+        )
