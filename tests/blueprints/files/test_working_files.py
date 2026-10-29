@@ -549,6 +549,31 @@ class WorkingFilesTestCase(ApiDBTestCase):
             f"/data/working-files/{other_working_file.id}/file", 403
         )
 
+    def test_assigned_artist_cannot_reassign_working_file_scope(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        working_file = self.generate_fixture_working_file()
+        other_task = self.generate_fixture_task(name="Other task")
+        self.log_in_cg_artist()
+
+        result = self.put(
+            f"/data/working-files/{working_file.id}",
+            {
+                "task_id": str(other_task.id),
+                "entity_id": str(other_task.entity_id),
+                "person_id": str(self.user["id"]),
+                "name": "renamed",
+            },
+        )
+
+        self.assertEqual(result["name"], "renamed")
+        self.assertEqual(result["task_id"], str(self.task_id))
+        self.assertEqual(result["entity_id"], str(self.asset.id))
+        self.assertEqual(result["person_id"], str(working_file.person_id))
+
     def test_entity_working_files_rejects_a_task_from_another_entity(self):
         first_task_id = self.task_id
         first_entity_id = self.asset.id

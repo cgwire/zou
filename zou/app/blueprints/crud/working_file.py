@@ -93,6 +93,10 @@ class WorkingFilesResource(BaseModelsResource):
 class WorkingFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, WorkingFile)
+        # A WorkingFile's task, entity, and person identify its security
+        # scope and owner. Generic CRUD updates must not be able to reassign
+        # those fields after permission checks have run against stored state.
+        self.protected_fields += ["task_id", "entity_id", "person_id"]
 
     def check_read_permissions(self, instance):
         working_file = files_service.get_working_file(instance["id"])
