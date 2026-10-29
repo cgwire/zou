@@ -44,30 +44,40 @@ from zou.app.utils.openapi import load_specs, swag_from
 SPECS = load_specs(__file__, "openapi.yml")
 
 
-def _get_project_department_ids_for_person_access(person_id):
+def _get_project_scope_for_person_access(person_id):
     """
-    Returns (project_ids, department_ids) for the current user when accessing
-    the given person_id. For admin or when person_id is the current user,
-    returns (None, None). For manager/supervisor returns (project_ids, department_ids).
-    Raises PermissionDenied otherwise.
+    Returns (project_ids, scope) for the current user when accessing the
+    given person_id. For admin or when person_id is the current user,
+    returns (None, None). For manager/supervisor returns the ids of these
+    projects and the task filter their roles grant. Raises PermissionDenied
+    otherwise.
     """
     if permissions.has_admin_permissions():
         return (None, None)
     current_user_id = persons_service.get_current_user()["id"]
     if current_user_id == person_id:
         return (None, None)
-    if not (
+    # Read per project: the role held on each project of the team.
+    roles = user_service.get_team_project_roles()
+    project_ids = [
+        project_id
+        for project_id, role in roles.items()
+        if role in ("manager", "supervisor")
+    ]
+    # A global manager or supervisor on no team yet is allowed, and scoped
+    # to nothing.
+    if not project_ids and not (
         permissions.has_manager_permissions()
         or permissions.has_supervisor_permissions()
     ):
         raise permissions.PermissionDenied
-    project_ids = [p["id"] for p in user_service.get_projects()]
-    department_ids = None
-    if permissions.has_supervisor_permissions():
+    department_ids = []
+    if "supervisor" in roles.values():
         department_ids = persons_service.get_current_user(relations=True).get(
             "departments", []
         )
-    return (project_ids, department_ids)
+    scope = user_service.build_supervision_scope_filter(roles, department_ids)
+    return (project_ids, scope)
 
 
 def _check_day_off_read_access(person_id):
@@ -172,16 +182,14 @@ class TimeSpentsResource(MethodView, ArgsMixin):
         Get time spents
         """
         permissions_service.check_person_is_not_bot(person_id)
-        project_ids, department_ids = (
-            _get_project_department_ids_for_person_access(person_id)
-        )
+        project_ids, scope = _get_project_scope_for_person_access(person_id)
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         if not start_date and not end_date:
             return time_spents_service.get_time_spents(
                 person_id,
                 project_ids=project_ids,
-                department_ids=department_ids,
+                scope=scope,
             )
 
         if None in [start_date, end_date]:
@@ -196,7 +204,7 @@ class TimeSpentsResource(MethodView, ArgsMixin):
                 start_date,
                 end_date,
                 project_ids=project_ids,
-                department_ids=department_ids,
+                scope=scope,
             )
         except WrongDateFormatException:
             raise WrongParameterException(
@@ -213,15 +221,13 @@ class DateTimeSpentsResource(MethodView):
         Get time spents for date
         """
         permissions_service.check_person_is_not_bot(person_id)
-        project_ids, department_ids = (
-            _get_project_department_ids_for_person_access(person_id)
-        )
+        project_ids, scope = _get_project_scope_for_person_access(person_id)
         try:
             return time_spents_service.get_time_spents(
                 person_id,
                 date,
                 project_ids=project_ids,
-                department_ids=department_ids,
+                scope=scope,
             )
         except WrongDateFormatException:
             raise WrongParameterException("Invalid month or year.")
@@ -247,9 +253,7 @@ class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
 
     def get_project_department_arguments(self, person_id):
         project_id = self.get_project_id()
-        project_ids, department_ids = (
-            _get_project_department_ids_for_person_access(person_id)
-        )
+        project_ids, scope = _get_project_scope_for_person_access(person_id)
         if project_ids is not None:
             if project_id is None:
                 project_id = project_ids
@@ -257,7 +261,7 @@ class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
                 raise permissions.PermissionDenied
         return {
             "project_id": project_id,
-            "department_ids": department_ids,
+            "scope": scope,
         }
 
 
@@ -476,29 +480,38 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
         else:
             department_ids = None
         studio_id = self.get_text_parameter("studio_id")
+        scope = None
         if not permissions.has_admin_permissions():
-            if (
-                permissions.has_manager_permissions()
-                or permissions.has_supervisor_permissions()
-            ):
-                project_ids = [
-                    project["id"] for project in user_service.get_projects()
-                ]
+            # Read per project: the role held on each project of the team.
+            roles = user_service.get_team_project_roles()
+            project_ids = [
+                project_id
+                for project_id, role in roles.items()
+                if role in ("manager", "supervisor")
+            ]
+            if project_ids:
                 if project_id is None:
                     project_id = project_ids
+                    is_supervising = "supervisor" in roles.values()
                 elif project_id not in project_ids:
                     raise permissions.PermissionDenied
-                if permissions.has_supervisor_permissions():
+                else:
+                    is_supervising = roles[project_id] == "supervisor"
+                persons_departments = []
+                if is_supervising:
                     persons_departments = persons_service.get_current_user(
                         relations=True
                     )["departments"]
-                    if department_id is not None:
-                        if department_id not in persons_departments:
-                            raise WrongParameterException(
-                                "Supervisor not allowed to access this department"
-                            )
-                    else:
-                        department_ids = persons_departments
+                    if (
+                        department_id is not None
+                        and department_id not in persons_departments
+                    ):
+                        raise WrongParameterException(
+                            "Supervisor not allowed to access this department"
+                        )
+                scope = user_service.build_supervision_scope_filter(
+                    roles, persons_departments
+                )
             else:
                 person_id = persons_service.get_current_user()["id"]
 
@@ -506,6 +519,7 @@ class TimeSpentDurationResource(MethodView, ArgsMixin):
             "person_id": person_id,
             "project_id": project_id,
             "department_ids": department_ids,
+            "scope": scope,
             "studio_id": studio_id,
         }
 
@@ -635,13 +649,29 @@ def _readable_day_offs(list_period, *period):
     with the descriptions of the ones the caller may read in full.
     """
     readable = permissions_service.get_day_off_readable_person_ids()
-    if readable is None:
-        return list_period(*period)
-    day_offs = list_period(*period, person_ids=list(readable.keys()))
+    try:
+        if readable is None:
+            return list_period(*period)
+        day_offs = list_period(*period, person_ids=list(readable.keys()))
+    except WrongDateFormatException:
+        raise WrongParameterException("Wrong date format.")
     return [
         day_off if readable[day_off["person_id"]] else _dates_only(day_off)
         for day_off in day_offs
     ]
+
+
+def _person_day_offs(list_period, person_id, *period):
+    """
+    The day offs of the person for the period, with their descriptions when
+    the caller may read them.
+    """
+    with_description = _check_day_off_read_access(person_id)
+    try:
+        day_offs = list_period(person_id, *period)
+    except WrongDateFormatException:
+        raise WrongParameterException("Wrong date format.")
+    return _shape_day_offs(day_offs, with_description)
 
 
 class PersonWeekDayOffResource(MethodView, ArgsMixin):
@@ -652,12 +682,11 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
         """
         Get person week day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_week(
-                person_id, year, week
-            ),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_week,
+            person_id,
+            year,
+            week,
         )
 
 
@@ -669,12 +698,11 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
         """
         Get person month day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_month(
-                person_id, year, month
-            ),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_month,
+            person_id,
+            year,
+            month,
         )
 
 
@@ -686,10 +714,8 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
         """
         Get person year day offs
         """
-        with_description = _check_day_off_read_access(person_id)
-        return _shape_day_offs(
-            time_spents_service.get_person_day_offs_for_year(person_id, year),
-            with_description,
+        return _person_day_offs(
+            time_spents_service.get_person_day_offs_for_year, person_id, year
         )
 
 

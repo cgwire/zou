@@ -468,7 +468,6 @@ class PlaylistShareLinksResource(MethodView):
         """
         List the share links of a playlist
         """
-        permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
             playlist["project_id"]
@@ -483,7 +482,6 @@ class PlaylistShareLinksResource(MethodView):
         """
         Create a share link for a playlist
         """
-        permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
             playlist["project_id"]
@@ -511,7 +509,6 @@ class PlaylistShareLinkResource(MethodView):
         """
         Revoke a share link
         """
-        permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
             playlist["project_id"]
@@ -543,7 +540,6 @@ class PlaylistShareLinkInviteResource(MethodView):
         """
         Invite reviewers to a shared playlist
         """
-        permissions.check_manager_permissions()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_manager_project_access(
             playlist["project_id"]

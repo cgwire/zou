@@ -64,6 +64,11 @@ class PreviewFileTestCase(ApiDBTestCase):
         projects_service.add_team_member(self.project2.id, self.user_vendor_id)
         tasks_service.assign_task(self.task2_2.id, self.user_vendor_id)
 
+    def test_task_id_is_protected(self):
+        path = f"data/preview-files/{self.preview_file1_1.id}"
+        self.put(path, {"task_id": str(self.task2_1.id)})
+        self.assertEqual(self.get(path)["task_id"], str(self.task1_1.id))
+
     def test_get_preview_files(self):
         preview_files = self.get("data/preview-files")
         self.assertEqual(len(preview_files), 6)
@@ -166,6 +171,12 @@ class PreviewFileTestCase(ApiDBTestCase):
         assignees_ids = [str(assignee.id) for assignee in task.assignees]
         self.assertIn(self.user_vendor_id, assignees_ids)
         self.get(route2_1, code=403)
+
+        # Assigned but off the team: no more.
+        projects_service.remove_team_member(
+            self.project2.id, self.user_vendor_id
+        )
+        self.get(route2_2, code=403)
 
     def test_get_preview_file_for_admin(self):
         """

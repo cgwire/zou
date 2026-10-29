@@ -33,7 +33,13 @@ class AssetInstancesResource(BaseModelsResource):
 class AssetInstanceResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, AssetInstance)
-        self.protected_fields.append("number")
+        # The update check reads the project off the stored asset.
+        self.protected_fields += [
+            "number",
+            "asset_id",
+            "scene_id",
+            "target_asset_id",
+        ]
 
     @jwt_required()
     @swag_from(SPECS["AssetInstanceResource_get"])
@@ -74,6 +80,7 @@ class AssetInstanceResource(BaseModelResource):
             return True
         else:
             asset = assets_service.get_asset(asset_instance["asset_id"])
-            permissions_service.check_project_access(asset["project_id"])
-            permissions_service.check_entity_access(asset["id"])
+            permissions_service.check_project_edition_access(
+                asset["project_id"]
+            )
             return True

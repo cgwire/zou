@@ -45,7 +45,7 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 
 class SharedPlaylistResource(MethodView):
-    @require_valid_playlist_share_link(with_password=True)
+    @require_valid_playlist_share_link()
     @swag_from(SPECS["SharedPlaylistResource_get"])
     def get(self, token):
         """
@@ -89,7 +89,7 @@ class SharedPlaylistGuestResource(MethodView):
 
 
 class SharedPlaylistCommentsResource(MethodView):
-    @require_valid_playlist_share_link(with_password=True)
+    @require_valid_playlist_share_link()
     @swag_from(SPECS["SharedPlaylistCommentsResource_get"])
     def get(self, token):
         """
@@ -116,7 +116,7 @@ class SharedPlaylistCommentsResource(MethodView):
                 )
         return comments
 
-    @require_valid_playlist_share_link(with_password=True)
+    @require_valid_playlist_share_link()
     @swag_from(SPECS["SharedPlaylistCommentsResource_post"])
     def post(self, token):
         """
@@ -335,6 +335,7 @@ class SharedPlaylistAnnotationsResource(MethodView):
             additions=additions,
             updates=updates,
             deletions=deletions,
+            only_own_objects=True,
         )
 
 
@@ -524,7 +525,7 @@ class SharedPlaylistPreviewFileDownloadResource(MethodView):
 
 
 class SharedPlaylistContextResource(MethodView):
-    @require_valid_playlist_share_link(with_password=True)
+    @require_valid_playlist_share_link()
     @swag_from(SPECS["SharedPlaylistContextResource_get"])
     def get(self, token):
         """

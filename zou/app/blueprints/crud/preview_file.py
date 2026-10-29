@@ -87,18 +87,18 @@ class PreviewFilesResource(BaseModelsResource):
 class PreviewFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, PreviewFile)
+        # The update check reads the project off the stored task.
+        self.protected_fields.append("task_id")
 
     def check_read_permissions(self, preview_file):
         """
-        If it's a vendor, check if the user is working on the task.
-        If it's an artist, check if preview file belongs to user projects.
+        The preview file must belong to a project of the user, and a vendor
+        must also be working on its task.
         """
         task = tasks_service.get_task(preview_file["task_id"])
-        permissions_service.resolve_project_role(task["project_id"])
+        permissions_service.check_project_access(task["project_id"])
         if permissions.has_vendor_permissions():
             permissions_service.check_working_on_task(preview_file["task_id"])
-        else:
-            permissions_service.check_project_access(task["project_id"])
         return True
 
     @jwt_required()

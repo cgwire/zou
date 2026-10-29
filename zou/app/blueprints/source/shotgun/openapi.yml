@@ -2011,15 +2011,6 @@ ShotgunImportErrorResource_delete:
   responses:
     204:
       description: The import error is deleted
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              deletion_success:
-                type: boolean
-                description: Whether deletion was successful
-                example: true
     403:
       description: You are not an administrator
     404:

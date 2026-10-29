@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
 from zou.app.models.preview_file import PreviewFile
+from zou.app.services import projects_service
 
 
 class PreviewRevisionTestCase(ApiDBTestCase):
@@ -39,6 +40,19 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         )
         data = {"revision": revision} if revision else {}
         return self.post(path, data)
+
+    def test_a_client_adds_no_preview(self):
+        comment = self.create_comment()
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project.id, self.user_client["id"]
+        )
+        self.log_in_client()
+        path = (
+            f"/actions/tasks/{self.task_id}/comments/{comment['id']}"
+            "/add-preview"
+        )
+        self.post(path, {}, 403)
 
     def add_extra_preview(self, comment_id, preview_file_id):
         """

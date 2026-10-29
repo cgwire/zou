@@ -26,7 +26,6 @@ from zou.app.blueprints.projects.schemas import (
     ScheduleVersionCopySchema,
 )
 from zou.app.exceptions import (
-    BudgetNotFoundException,
     TaskTypeNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
@@ -1043,10 +1042,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         permissions_service.check_manager_project_access(project_id)
-        budget = budget_service.get_budget(budget_id)
-        if budget["project_id"] != project_id:
-            raise BudgetNotFoundException
-        return budget
+        return budget_service.get_budget(budget_id, project_id)
 
     @jwt_required()
     @swag_from(SPECS["ProductionBudgetResource_put"])
@@ -1057,6 +1053,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         permissions_service.check_manager_project_access(project_id)
+        budget_service.get_budget(budget_id, project_id)
         body = validation.validate_request_body(BudgetUpdateSchema)
         return budget_service.update_budget(
             budget_id, name=body.name, currency=body.currency
@@ -1071,6 +1068,7 @@ class ProductionBudgetResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         permissions_service.check_manager_project_access(project_id)
+        budget_service.get_budget(budget_id, project_id)
         budget_service.delete_budget(budget_id)
         return "", 204
 
@@ -1086,6 +1084,7 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         permissions_service.check_manager_project_access(project_id)
+        budget_service.get_budget(budget_id, project_id)
         return budget_service.get_budget_entries(budget_id)
 
     @jwt_required()
@@ -1097,6 +1096,7 @@ class ProductionBudgetEntriesResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         permissions_service.check_manager_project_access(project_id)
+        budget_service.get_budget(budget_id, project_id)
         body = validation.validate_request_body(BudgetEntrySchema)
         return budget_service.create_budget_entry(
             budget_id,
@@ -1122,10 +1122,8 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
-        budget = budget_service.get_budget(budget_id)
-        if budget["project_id"] != project_id:
-            raise BudgetNotFoundException
-        return budget_service.get_budget_entry(entry_id)
+        budget_service.get_budget(budget_id, project_id)
+        return budget_service.get_budget_entry(entry_id, budget_id)
 
     @jwt_required()
     @swag_from(SPECS["ProductionBudgetEntryResource_put"])
@@ -1137,6 +1135,8 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
+        budget_service.get_budget(budget_id, project_id)
+        budget_service.get_budget_entry(entry_id, budget_id)
         body = validation.validate_request_body(BudgetEntryUpdateSchema)
         return budget_service.update_budget_entry(entry_id, body.model_dump())
 
@@ -1150,6 +1150,8 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
         permissions_service.check_manager_project_access(project_id)
+        budget_service.get_budget(budget_id, project_id)
+        budget_service.get_budget_entry(entry_id, budget_id)
         budget_service.delete_budget_entry(entry_id)
         return "", 204
 

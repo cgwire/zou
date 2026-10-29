@@ -357,6 +357,19 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.task_id))
 
+    def test_a_manager_of_this_project_only_gets_the_tasks_to_check(self):
+        feedback_status = task_types_service.get_or_create_task_status(
+            "Waiting For Approval", "wfa", is_feedback_request=True
+        )
+        tasks_service.update_task(
+            self.task_id, {"task_status_id": feedback_status["id"]}
+        )
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project_id, artist_id, "manager")
+        self.log_in_cg_artist()
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual([task["id"] for task in tasks], [str(self.task_id)])
+
     def test_get_tasks_to_check_paginated(self):
         feedback_status = task_types_service.get_or_create_task_status(
             "Waiting For Approval", "wfa", is_feedback_request=True
@@ -542,6 +555,39 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(result["stats"]["total"], 1)
         self.assertEqual(result["data"][0]["id"], str(self.task_id))
 
+    def test_a_supervisor_checks_every_department_where_they_manage(self):
+        feedback_status = self.feedback_task_ids()
+        other = Project.create(
+            name="Other", project_status_id=self.open_status.id
+        )
+        Task.create(
+            name="Other",
+            project_id=other.id,
+            task_type_id=self.task_type_animation.id,
+            task_status_id=feedback_status["id"],
+            entity_id=self.shot.id,
+        )
+        self.generate_fixture_user_supervisor()
+        supervisor = Person.get(self.user_supervisor["id"])
+        supervisor.departments = [self.department]
+        supervisor.save()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        projects_service.add_team_member(
+            other.id, self.user_supervisor["id"], "manager"
+        )
+        self.log_in_supervisor()
+
+        # the shot task of the supervised project belongs to the animation
+        # department, the task of the managed project too
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual(
+            {task["project_id"] for task in tasks},
+            {str(self.project_id), str(other.id)},
+        )
+        self.assertEqual(len(tasks), 2)
+
     def test_get_tasks_to_check_filter_values_skips_entity_less_tasks(self):
         feedback_status = self.feedback_task_ids()
         task = Task.create(
@@ -665,6 +711,9 @@ class UserNotificationTestCase(UserContextTestCase):
         self.assertEqual(logs[0]["person_id"], str(self.user_id))
         self.assertEqual(logs[0]["date"], date_2)
 
+        self.post(path, {"date": "2024-06-10T10:00:00.123456"})
+        self.post(path, {"date": "not a date"}, 400)
+
     def test_get_notifications(self):
         person_id = str(self.person.id)
         tasks_service.assign_task(self.task.id, self.user_id)
@@ -677,6 +726,21 @@ class UserNotificationTestCase(UserContextTestCase):
         notifications = self.get(path)
         self.assertEqual(len(notifications), 1)
         self.assertEqual(notifications[0]["author_id"], person_id)
+
+    def test_a_client_of_this_project_only_has_its_comment_blanked(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        person_id = str(self.person.id)
+        projects_service.add_team_member(self.project_id, artist_id)
+        projects_service.add_team_member(self.project_id, person_id, "client")
+        tasks_service.assign_task(self.task.id, artist_id)
+        self.generate_fixture_comment()
+        notifications_service.create_notifications_for_task_and_comment(
+            self.task.serialize(relations=True), self.comment
+        )
+        self.log_in_cg_artist()
+        (notification,) = self.get("/data/user/notifications")
+        self.assertEqual(notification["author_id"], person_id)
+        self.assertEqual(notification["comment_text"], "")
 
     def test_get_notification(self):
         tasks_service.assign_task(self.task.id, self.user_id)

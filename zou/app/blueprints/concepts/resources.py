@@ -46,12 +46,7 @@ class ConceptResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         concept = concepts_service.get_concept(concept_id)
-        if concept["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(concept["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                concept["project_id"]
-            )
+        permissions_service.check_entity_delete_access(concept)
         cascade_deletion_service.remove_concept(concept_id, force=force)
         return "", 204
 

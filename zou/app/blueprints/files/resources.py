@@ -35,7 +35,7 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.stores import file_store
-from zou.app.utils import date_helpers, fs, validation
+from zou.app.utils import date_helpers, fs, permissions, validation
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -378,6 +378,9 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             task = tasks_service.get_task(task_id)
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
+            # Only a manager of the project files on behalf of someone else.
+            if not permissions.has_manager_permissions():
+                person_id = persons_service.get_current_user()["id"]
             software = files_service.get_software(software_id)
             tasks_service.assign_task(
                 task_id, persons_service.get_current_user()["id"]
@@ -446,7 +449,7 @@ class ModifiedFileResource(MethodView):
         Update working file modification date
         """
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_work_access(working_file["task_id"])
         working_file = files_service.update_working_file(
             working_file_id,
             {"updated_at": date_helpers.get_utc_now_datetime()},
@@ -465,7 +468,7 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(WorkingFileCommentSchema)
 
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_task_work_access(working_file["task_id"])
         working_file = self.update_comment(working_file_id, body.comment)
         return working_file
 

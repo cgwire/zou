@@ -48,6 +48,18 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
         self.assertEqual(working_files["wip"], working_file_wip.serialize())
 
+    def test_an_artist_files_as_themselves(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project.id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        working_file = self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "theirs", "person_id": self.user["id"]},
+        )
+        self.assertEqual(working_file["person_id"], self.user_cg_artist["id"])
+
     def test_new_working_file(self):
         task = Task.get(self.task_id)
         self.assertEqual(len(task.assignees), 1)

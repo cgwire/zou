@@ -597,6 +597,8 @@ DesktopLoginLogsResource_post:
                 format: date-time
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
+    400:
+      description: The date is not valid
     403:
       description: You use a bot token
 
@@ -662,8 +664,10 @@ DoneResource_get:
 
 FilterGroupResource_delete:
   summary: Delete a filter group
-  description: Delete a filter group. The filter must be yours. An
-    administrator can use the filters of all the users.
+  description: Delete a filter group. The filter group must be yours. The
+    route also deletes your filters in the group. In a shared group, the
+    filters of the other users stay, out of the group. An administrator can
+    use the filters of all the users.
   tags:
     - User
   parameters:
@@ -2953,8 +2957,8 @@ ToChecksFilterValuesResource_get:
   summary: Get the filter values of my tasks to check
   description: Get the distinct project, task type, task status, episode and
     assignee identifiers of the tasks that wait for feedback in your scope.
-    The scope is the one of the tasks-to-check route. If you are a user, a
-    client or a vendor, each list is empty. The filters of the list use these
+    The scope is the one of the tasks-to-check route. If you do not manage or
+    supervise a project, each list is empty. The filters of the list use these
     values.
   tags:
     - User
@@ -2998,10 +3002,11 @@ ToChecksResource_get:
   summary: Get my tasks to check
   description: Get the tasks that wait for feedback. An administrator gets the
     tasks of all the open projects. A manager gets the tasks of the open
-    projects of their teams. A supervisor gets the tasks of the open projects
-    of their teams, in their departments only. A user, a client or a vendor
-    gets an empty list. Without page, the response is a list without order.
-    With page, the response is a page of tasks.
+    projects they manage. A supervisor gets the tasks of the open projects
+    they supervise, in their departments only. The manager and supervisor
+    roles are the roles held on the project team. If you do not manage or
+    supervise a project, you get an empty list. Without page, the response is
+    a list without order. With page, the response is a page of tasks.
   tags:
     - User
   parameters:

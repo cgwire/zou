@@ -424,6 +424,8 @@ ProductionBudgetEntriesResource_get:
       description: An identifier is not a valid UUID
     403:
       description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
 
 ProductionBudgetEntriesResource_post:
   summary: Create a budget entry
@@ -511,6 +513,8 @@ ProductionBudgetEntriesResource_post:
       description: The body is not valid
     403:
       description: You are not a manager of the project
+    404:
+      description: The budget does not exist in this project
 
 ProductionBudgetEntryResource_delete:
   summary: Delete a budget entry
@@ -551,7 +555,8 @@ ProductionBudgetEntryResource_delete:
     403:
       description: You are not a manager of the project
     404:
-      description: The budget entry does not exist in this budget
+      description: The budget does not exist in this project, or the entry
+        does not exist in this budget
 
 ProductionBudgetEntryResource_get:
   summary: Get a budget entry
@@ -595,7 +600,8 @@ ProductionBudgetEntryResource_get:
     403:
       description: You are not a manager of the project
     404:
-      description: The budget entry does not exist in this budget
+      description: The budget does not exist in this project, or the entry
+        does not exist in this budget
 
 ProductionBudgetEntryResource_put:
   summary: Update a budget entry
@@ -684,7 +690,8 @@ ProductionBudgetEntryResource_put:
     403:
       description: You are not a manager of the project
     404:
-      description: The budget entry does not exist in this budget
+      description: The budget does not exist in this project, or the entry
+        does not exist in this budget
 
 ProductionBudgetResource_delete:
   summary: Delete a budget

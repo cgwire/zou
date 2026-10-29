@@ -90,12 +90,7 @@ class ShotResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         shot = shots_service.get_shot(shot_id)
-        if shot["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(shot["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                shot["project_id"]
-            )
+        permissions_service.check_entity_delete_access(shot)
         cascade_deletion_service.remove_shot(shot_id, force=force)
         return "", 204
 
@@ -119,12 +114,7 @@ class SceneResource(MethodView):
         Delete scene
         """
         scene = shots_service.get_scene(scene_id)
-        if scene["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(scene["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                scene["project_id"]
-            )
+        permissions_service.check_entity_delete_access(scene)
         cascade_deletion_service.remove_scene(scene_id)
         return "", 204
 
@@ -268,12 +258,13 @@ class EpisodeShotsResource(MethodView, ArgsMixin):
         """
         episode = shots_service.get_episode(episode_id)
         permissions_service.check_project_access(episode["project_id"])
-        permissions_service.check_entity_access(episode["id"])
         relations = self.get_relations()
         return permissions_service.mask_metadata_for_vendor(
             "Shot",
-            shots_service.get_shots_for_episode(
-                episode_id, relations=relations
+            permissions_service.keep_entities_a_vendor_reaches(
+                shots_service.get_shots_for_episode(
+                    episode_id, relations=relations
+                )
             ),
         )
 
@@ -635,12 +626,7 @@ class EpisodeResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
-        if episode["created_by"] == persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(episode["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                episode["project_id"]
-            )
+        permissions_service.check_entity_delete_access(episode)
         cascade_deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
@@ -742,12 +728,7 @@ class SequenceResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
-        if sequence["created_by"] != persons_service.get_current_user()["id"]:
-            permissions_service.check_belong_to_project(sequence["project_id"])
-        else:
-            permissions_service.check_manager_project_access(
-                sequence["project_id"]
-            )
+        permissions_service.check_entity_delete_access(sequence)
         cascade_deletion_service.remove_sequence(sequence_id, force=force)
         return "", 204
 
@@ -844,7 +825,10 @@ class SequenceScenesResource(MethodView):
         permissions_service.check_project_access(sequence["project_id"])
         permissions_service.check_entity_access(sequence_id)
         return permissions_service.mask_metadata_for_vendor(
-            "Scene", shots_service.get_scenes_for_sequence(sequence_id)
+            "Scene",
+            permissions_service.keep_entities_a_vendor_reaches(
+                shots_service.get_scenes_for_sequence(sequence_id)
+            ),
         )
 
 
@@ -895,8 +879,10 @@ class SceneShotsResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddShotToSceneSchema)
 
         scene = shots_service.get_scene(scene_id)
-        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_edition_access(scene["project_id"])
         shot = shots_service.get_shot(str(body.shot_id))
+        if shot["project_id"] != scene["project_id"]:
+            raise permissions.PermissionDenied
         return scenes_service.add_shot_to_scene(scene, shot), 201
 
 
@@ -908,8 +894,10 @@ class RemoveShotFromSceneResource(MethodView):
         Delete given shot from given scene.
         """
         scene = shots_service.get_scene(scene_id)
-        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_edition_access(scene["project_id"])
         shot = shots_service.get_shot(shot_id)
+        if shot["project_id"] != scene["project_id"]:
+            raise permissions.PermissionDenied
         scenes_service.remove_shot_from_scene(scene, shot)
         return "", 204
 

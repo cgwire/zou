@@ -41,7 +41,7 @@ AckCommentResource_post:
     403:
       description: You do not have access to this task
     404:
-      description: The comment does not exist
+      description: The comment does not exist, or it is not on this task
 
 AddAttachmentToCommentResource_post:
   summary: Add attachments to a comment
@@ -484,7 +484,8 @@ CopyClientCommentsResource_post:
 
 DeleteReplyCommentResource_delete:
   summary: Delete a comment reply
-  description: Delete a reply of a comment. Only the author of the reply or an
+  description: Delete a reply of a comment. The comment must be on the task,
+    and you must have access to the task. Only the author of the reply or an
     administrator can delete it.
   tags:
     - Comments
@@ -517,9 +518,11 @@ DeleteReplyCommentResource_delete:
     200:
       description: The comment without the reply
     403:
-      description: You cannot delete this reply
+      description: You do not have access to the task, or you cannot delete
+        this reply
     404:
-      description: The comment or the reply does not exist
+      description: The comment or the reply does not exist, or the comment
+        is not on this task
 
 DownloadAttachmentResource_get:
   summary: Download an attachment
@@ -675,12 +678,13 @@ ProjectAttachmentFiles_get:
 
 ReplyCommentResource_post:
   summary: Reply to a comment
-  description: Add a reply to a comment. The author of the comment can reply.
-    Other users must be able to do actions on the task, or be mentioned on
-    it. A client cannot reply to a client of another studio. A client can see
-    some threads. These are the comments for the client and the comments of
-    a client. In these threads, only the managers and the clients can reply.
-    Send multipart form data to attach files.
+  description: Add a reply to a comment. You must have access to the task. The
+    author of the comment can reply. Other users must be able to do actions on
+    the task, or be mentioned on it. A client cannot reply to a client of
+    another studio. A client can see some threads. These are the comments for
+    the client and the comments of a client. In these threads, only the
+    managers and the clients can reply. Send multipart form data to attach
+    files.
   tags:
     - Comments
   parameters:
@@ -733,9 +737,9 @@ ReplyCommentResource_post:
                 description: Creation timestamp
                 example: '2023-01-01T12:00:00Z'
     403:
-      description: The comment is not on this task, you cannot do actions on
-        the task and you are not mentioned on it, or you cannot reply in this
-        thread
+      description: The comment is not on this task, you do not have access
+        to the task, you cannot do actions on the task and you are not
+        mentioned on it, or you cannot reply in this thread
     404:
       description: The comment does not exist
   requestBody:

@@ -1,6 +1,10 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
-from zou.app.services import scenes_service
+from zou.app.services import (
+    entities_service,
+    projects_service,
+    scenes_service,
+)
 
 
 class SceneTestCase(ApiDBTestCase):
@@ -131,6 +135,23 @@ class SceneTestCase(ApiDBTestCase):
         self.assertEqual(len(shots), 2)
         self.assertEqual(shots[0]["id"], self.serialized_shot["id"])
         self.assertEqual(shots[1]["id"], self.serialized_shot_02["id"])
+
+    def test_a_shot_link_takes_a_team_member_and_the_scene_project(self):
+        path = f"data/scenes/{self.scene_id}/shots"
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        # The fixture moves self.project_id onto the new project.
+        other_project_id = self.generate_fixture_project("Other").id
+        entities_service.get_entity_raw(self.serialized_shot_02["id"]).update(
+            {"project_id": other_project_id}
+        )
+        self.post(path, {"shot_id": self.serialized_shot_02["id"]}, 403)
+
+        self.log_in_client()
+        self.post(path, {"shot_id": self.serialized_shot["id"]}, 403)
+        self.delete(f"{path}/{self.serialized_shot['id']}", 403)
 
     def test_remove_shot_from_scene(self):
         scenes_service.add_shot_to_scene(

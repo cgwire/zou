@@ -1,5 +1,6 @@
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
@@ -54,18 +55,38 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         return super().get()
 
     def add_project_permission_filter(self, query):
-        if permissions.has_vendor_permissions():
-            query = query.filter(persons_service.build_assignee_filter())
-        elif not permissions.has_admin_permissions():
+        if not permissions.has_admin_permissions():
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
+            # Each task follows the role held on its own project.
+            vendor_project_ids = user_service.get_project_ids_with_roles(
+                "vendor"
+            )
+            if vendor_project_ids:
+                query = query.filter(
+                    or_(
+                        Task.project_id.not_in(vendor_project_ids),
+                        persons_service.build_assignee_filter(),
+                    )
+                )
         return query
 
     def serialize_list(self, entries, relations=False):
-        return entities_service.blank_tasks_for_current_user(
-            super().serialize_list(entries, relations=relations)
+        tasks = super().serialize_list(entries, relations=relations)
+        client_project_ids = set(
+            user_service.get_project_ids_with_roles("client")
         )
+        if not client_project_ids:
+            return tasks
+        return [
+            (
+                entities_service.blank_task_for_client(task)
+                if task["project_id"] in client_project_ids
+                else task
+            )
+            for task in tasks
+        ]
 
     def build_filters(self, options):
         (
@@ -128,6 +149,11 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
             task_type = task_types_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
+            permissions_service.check_manager_project_access(
+                entity["project_id"]
+            )
+            # The body project_id is not trusted: the task follows its entity.
+            data["project_id"] = entity["project_id"]
             if task_type["for_entity"] == "Asset":
                 if not entity_types_service.is_asset_dict(entity):
                     raise WrongTaskTypeForEntityException(

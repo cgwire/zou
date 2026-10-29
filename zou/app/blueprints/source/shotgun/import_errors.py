@@ -59,4 +59,4 @@ class ShotgunImportErrorResource(MethodView):
             raise NotFound
         error.delete()
 
-        return {"deletion_success": True}, 204
+        return "", 204

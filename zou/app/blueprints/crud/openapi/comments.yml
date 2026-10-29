@@ -4,8 +4,9 @@ CommentResource_delete:
     - Crud
   description: Delete a comment. After the deletion, the task gets the status
     and the data of its last comment. An administrator or a manager of the
-    project can delete all the comments of the project. Other users can delete
-    their own comments only.
+    project can delete all the comments of the project. You can always delete
+    your own comments, also if you are not in the team. Other users cannot
+    delete the comments of other persons.
   parameters:
     - in: path
       name: instance_id
@@ -112,7 +113,7 @@ CommentResource_put:
   tags:
     - Crud
   description: Update the fields of a comment. Send only the fields to change.
-    You cannot change id, created_at, updated_at, mentions and
+    You cannot change id, created_at, updated_at, object_id, mentions and
     department_mentions. Dates use the ISO 8601 format. The mentions are
     computed again from the text. You become the editor of the comment. An
     administrator can change all the fields. Other users must be in the team

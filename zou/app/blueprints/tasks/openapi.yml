@@ -4,11 +4,12 @@ AddExtraPreviewResource_delete:
     - Tasks
   description: Delete a preview of a comment of a task. The preview must be on
     the comment, and the comment must be on the task. Administrators and the
-    managers of the project can use this route. Other users must be
-    assignees of the task, supervisors of its department, or creators of
-    its entity. You must also be able to read the comment. Use force=true to
-    delete the files from the storage now. Else, the purge deletes them
-    later. Only an administrator or a manager of the project can use force.
+    managers of the project can use this route. Other users must be assignees
+    of the task, supervisors of its department, or creators of its entity. You
+    must also be able to read the comment. A client of the project cannot use
+    this route. Use force=true to delete the files from the storage now. Else,
+    the purge deletes them later. Only an administrator or a manager of the
+    project can use force.
   parameters:
     - in: path
       name: task_id
@@ -61,7 +62,9 @@ AddExtraPreviewResource_post:
     as the preview preview_file_id. A comment can have several previews in the
     same revision. The route creates the metadata only. Upload the file after,
     with the preview file upload route. Administrators and the managers of the
-    project can use this route. Other users must be assignees of the task, supervisors of its department, or creators of its entity.
+    project can use this route. Other users must be assignees of the task,
+    supervisors of its department, or creators of its entity. A client of the
+    project cannot use this route.
   parameters:
     - in: path
       name: task_id
@@ -128,9 +131,10 @@ AddPreviewResource_post:
     - Tasks
   description: Create a preview file for a comment of a task. Upload the file
     of the preview after. If you do not give the revision, the route uses the
-    last revision plus 1. Administrators and the managers of the project
-    can use this route. Other users must be assignees of the task,
-    supervisors of its department, or creators of its entity.
+    last revision plus 1. Administrators and the managers of the project can
+    use this route. Other users must be assignees of the task, supervisors of
+    its department, or creators of its entity. A client of the project cannot
+    use this route.
   parameters:
     - in: path
       name: task_id
@@ -276,11 +280,12 @@ AddTimeSpentResource_post:
     404:
       description: The task or the person does not exist
   description: Add a duration to the time spent of a person on a task for a
-    date. If the time spent does not exist, the route creates it. The person
-    must be an assignee of the task. The person can add time for themselves.
-    An administrator or a manager of the project can add time for the
-    assignees. You cannot add time for a bot, except when the project enables
-    bot collaboration.
+    date. If the time spent does not exist, the route creates it. An
+    administrator can add time for all the persons. For other users, the
+    person must be an assignee of the task. The person can add time for
+    themselves. A manager of the project can add time for the assignees. You
+    cannot add time for a bot, except when the project enables bot
+    collaboration.
 
 ClearAssignationResource_put:
   summary: Remove the assignees of tasks
@@ -2021,7 +2026,7 @@ SetTimeSpentResource_delete:
       example: a24a6ea4-ce75-4665-a070-57453082c250
       description: Unique identifier of the person
   responses:
-    201:
+    200:
       description: The deleted time spent
       content:
         application/json:
@@ -2058,10 +2063,11 @@ SetTimeSpentResource_delete:
         a bot
     404:
       description: The task, the person or the time spent does not exist
-  description: Delete the time spent of a person on a task for a date. The
+  description: Delete the time spent of a person on a task for a date. An
+    administrator can change the time of all the persons. For other users, the
     person must be an assignee of the task. The person can change their own
-    time. An administrator or a manager of the project can change the time of
-    the assignees. You cannot change the time of a bot.
+    time. A manager of the project can change the time of the assignees. You
+    cannot change the time of a bot.
 
 SetTimeSpentResource_post:
   summary: Set a time spent
@@ -2141,11 +2147,11 @@ SetTimeSpentResource_post:
     404:
       description: The task or the person does not exist
   description: Set the time spent of a person on a task for a date. The
-    duration replaces the current duration. The person must be an assignee of
-    the task. The person can change their own time. An administrator or a
-    manager of the project can change the time of the assignees. You cannot
-    change the time of a bot, except when the project enables bot
-    collaboration.
+    duration replaces the current duration. An administrator can change the
+    time of all the persons. For other users, the person must be an assignee
+    of the task. The person can change their own time. A manager of the
+    project can change the time of the assignees. You cannot change the time
+    of a bot, except when the project enables bot collaboration.
 
 TaskAssignResource_put:
   summary: Assign a task to a person

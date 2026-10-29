@@ -92,6 +92,7 @@ class AckCommentResource(MethodView):
         """
         Acknowledge comment
         """
+        comments_service.get_task_comment(task_id, comment_id)
         permissions_service.check_task_access(task_id)
         return comments_service.acknowledge_comment(comment_id)
 
@@ -331,6 +332,9 @@ class ReplyCommentResource(MethodView, ArgsMixin):
         comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
+        # The author answers their own thread, as long as they are still on
+        # the project.
+        permissions_service.check_task_access(task_id)
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
             try:
@@ -380,6 +384,8 @@ class DeleteReplyCommentResource(MethodView):
         """
         Delete comment reply
         """
+        comments_service.get_task_comment(task_id, comment_id)
+        permissions_service.check_task_access(task_id)
         reply = comments_service.get_reply(comment_id, reply_id)
         current_user = persons_service.get_current_user()
         if reply["person_id"] != current_user["id"]:

@@ -68,7 +68,7 @@ class AddPreviewResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(CommentPreviewSchema)
 
-        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_work_access(task_id)
 
         person = persons_service.get_current_user()
         preview_file = comments_service.add_preview_file_to_comment(
@@ -85,7 +85,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         """
         Add preview to comment
         """
-        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_work_access(task_id)
         comments_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
@@ -106,7 +106,7 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         self.check_id_parameter(comment_id)
         self.check_id_parameter(preview_file_id)
         task = tasks_service.get_task(task_id)
-        permissions_service.check_task_action_access(task_id)
+        permissions_service.check_task_work_access(task_id)
         comments_service.get_comment_preview_file(
             task_id, comment_id, preview_file_id
         )
@@ -637,7 +637,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
                 person_id,
                 datetime.datetime.strptime(date, "%Y-%m-%d"),
             )
-            return time_spent, 201
+            return time_spent, 200
         except ValueError:
             raise WrongParameterException("Invalid date format.")
         except WrongDateFormatException:

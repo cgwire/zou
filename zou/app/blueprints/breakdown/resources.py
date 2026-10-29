@@ -204,7 +204,7 @@ class ShotAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddAssetInstanceSchema)
 
         shot = shots_service.get_shot(shot_id)
-        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_edition_access(shot["project_id"])
         shot = breakdown_service.add_asset_instance_to_shot(
             shot_id, str(body.asset_instance_id)
         )
@@ -219,7 +219,7 @@ class RemoveShotAssetInstanceResource(MethodView, ArgsMixin):
         Remove shot asset instance
         """
         shot = shots_service.get_shot(shot_id)
-        permissions_service.check_project_access(shot["project_id"])
+        permissions_service.check_project_edition_access(shot["project_id"])
         shot = breakdown_service.remove_asset_instance_for_shot(
             shot_id, asset_instance_id
         )
@@ -247,7 +247,7 @@ class SceneAssetInstancesResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(AddSceneAssetInstanceSchema)
 
         scene = shots_service.get_scene(scene_id)
-        permissions_service.check_project_access(scene["project_id"])
+        permissions_service.check_project_edition_access(scene["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_scene(
             scene_id, str(body.asset_id), body.description
         )

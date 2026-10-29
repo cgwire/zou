@@ -211,6 +211,7 @@ class PersonsResource(BaseModelsResource):
         return True
 
     def check_create_permissions(self, data):
+        permissions.check_admin_permissions()
         if (
             not data.get("is_bot", False)
             and data.get("active", True)
@@ -222,7 +223,7 @@ class PersonsResource(BaseModelsResource):
                     "limit": organisation_service.get_user_limit(),
                 },
             )
-        return permissions.check_admin_permissions()
+        return True
 
     def check_creation_integrity(self, data):
         if "role" in data and data["role"] not in [

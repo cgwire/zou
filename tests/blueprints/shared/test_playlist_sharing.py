@@ -18,6 +18,7 @@ from zou.app.services import (
     comments_service,
     playlist_sharing_service,
     preview_file_states_service as states_service,
+    projects_service,
     tasks_service,
 )
 from zou.app.stores import file_store
@@ -130,6 +131,14 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
             self.share_path(link["token"]),
             403,
         )
+
+    def test_a_manager_of_this_project_only_handles_its_share_links(self):
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, "manager")
+        self.log_in_cg_artist()
+        link = self.post(self.share_path(), {"can_comment": True}, 201)
+        self.assertEqual(len(self.get(self.share_path())), 1)
+        self.delete(self.share_path(link["token"]), 200)
 
     def test_revoke_share_link_rejects_mismatched_playlist(self):
         """
@@ -657,6 +666,22 @@ class GuestTestCase(PlaylistSharingTestCase):
             200,
         )
         self.assertEqual(guest["id"], guest2["id"])
+
+    def test_the_same_name_makes_another_guest(self):
+        link = self.post(self.share_path(), {}, 201)
+        self.log_out()
+        path = self.shared_path(link["token"], "/guest")
+        guest = self.post(path, {"first_name": "John"}, 201)
+        impostor = self.post(path, {"first_name": "John"}, 201)
+        self.assertNotEqual(guest["id"], impostor["id"])
+
+    def test_a_protected_link_takes_its_password_on_every_route(self):
+        link = self.post(self.share_path(), {"password": "topsecret123"}, 201)
+        self.log_out()
+        path = self.shared_path(link["token"], "/guest")
+        self.post(path, {"first_name": "John"}, 404)
+        self.post(f"{path}?password=wrong", {"first_name": "John"}, 404)
+        self.post(f"{path}?password=topsecret123", {"first_name": "John"}, 201)
 
     def test_create_guest_same_name_different_link(self):
         """

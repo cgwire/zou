@@ -736,6 +736,39 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]["department_id"], str(self.department.id))
 
+    def test_a_budget_answers_only_under_its_project_and_budget(self):
+        self.generate_fixture_department()
+        budget = self._create_budget()
+        entry_data = {
+            "department_id": str(self.department.id),
+            "start_date": "2024-01-01",
+            "months_duration": 6,
+            "daily_salary": 500,
+        }
+        path = f"/data/projects/{self.project_id}/budgets/{budget['id']}"
+        entry = self.post(f"{path}/entries", entry_data, 200)
+
+        other_budget = self._create_budget("Other")
+        wrong_budget = (
+            f"/data/projects/{self.project_id}/budgets/{other_budget['id']}"
+        )
+        self.get(f"{wrong_budget}/entries/{entry['id']}", 404)
+        self.put(f"{wrong_budget}/entries/{entry['id']}", entry_data, 404)
+        self.delete(f"{wrong_budget}/entries/{entry['id']}", 404)
+
+        other_project_id = self.generate_fixture_project("Other").id
+        wrong_project = (
+            f"/data/projects/{other_project_id}/budgets/{budget['id']}"
+        )
+        self.get(wrong_project, 404)
+        self.put(wrong_project, {"name": "Taken"}, 404)
+        self.delete(wrong_project, 404)
+        self.get(f"{wrong_project}/entries", 404)
+        self.post(f"{wrong_project}/entries", entry_data, 404)
+
+        self.assertEqual(self.get(path)["name"], "Test Budget")
+        self.assertEqual(len(self.get(f"{path}/entries")), 1)
+
     def test_update_budget_entry(self):
         self.generate_fixture_department()
         self.generate_fixture_person()

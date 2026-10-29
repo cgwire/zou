@@ -30,8 +30,15 @@ class OutputFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, OutputFile)
 
+    @jwt_required()
+    @swag_from(SPECS["OutputFilesResource_get"])
+    def get(self):
+        """
+        Get output files
+        """
+        return super().get()
+
     def check_read_permissions(self, options=None):
-        permissions_service.block_access_to_vendor()
         return True
 
     def update_data(self, data):
@@ -48,6 +55,14 @@ class OutputFilesResource(BaseModelsResource):
                 .join(Project)
                 .filter(user_service.build_related_projects_filter())
             )
+            # A vendor reads no output file, on the projects they are one.
+            vendor_project_ids = user_service.get_project_ids_with_roles(
+                "vendor"
+            )
+            if vendor_project_ids:
+                query = query.filter(
+                    Entity.project_id.not_in(vendor_project_ids)
+                )
             return query
 
     def emit_create_event(self, instance_dict):
@@ -97,6 +112,22 @@ class OutputFileResource(BaseModelResource):
 
         except ValueError:
             raise WrongParameterException("Invalid value.")
+
+    @jwt_required()
+    @swag_from(SPECS["OutputFileResource_put"])
+    def put(self, instance_id):
+        """
+        Update output file
+        """
+        return super().put(instance_id)
+
+    @jwt_required()
+    @swag_from(SPECS["OutputFileResource_delete"])
+    def delete(self, instance_id):
+        """
+        Delete output file
+        """
+        return super().delete(instance_id)
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)

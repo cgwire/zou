@@ -68,7 +68,9 @@ class AttachmentFileResource(BaseModelResource):
             comment = comments_service.get_comment(
                 attachment_file["comment_id"]
             )
-            permissions_service.check_task_access(comment["object_id"])
+            permissions_service.check_comment_access(
+                comment["id"], comment=comment
+            )
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 attachment_file["chat_message_id"]

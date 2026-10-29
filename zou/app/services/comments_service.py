@@ -1129,6 +1129,17 @@ def get_comment(comment_id, relations=False):
     return get_comment_raw(comment_id).serialize(relations=relations)
 
 
+def get_task_comment(task_id, comment_id):
+    """
+    Return the comment matching given id as a dict, provided it is on given
+    task. Raise CommentNotFoundException otherwise.
+    """
+    comment = get_comment(comment_id)
+    if comment["object_id"] != str(task_id):
+        raise CommentNotFoundException
+    return comment
+
+
 def get_comment_preview_file(task_id, comment_id, preview_file_id):
     """
     Return given preview file as a dict, provided it is attached to given
