@@ -133,7 +133,7 @@ class OutputFileResource(BaseModelResource):
         Get output file
         """
         try:
-            output_file = files_service.get_output_file(instance_id)
+            output_file = dict(files_service.get_output_file(instance_id))
             self.check_read_permissions(output_file)
             source_file_id = output_file.get("source_file_id")
             if source_file_id is not None:
