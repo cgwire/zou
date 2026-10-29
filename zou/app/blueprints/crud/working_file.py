@@ -110,6 +110,9 @@ class WorkingFileResource(BaseModelResource):
             working_file["task_id"], require_assigned_artist=True
         )
 
+    def check_delete_permissions(self, instance_dict):
+        raise permissions.PermissionDenied
+
     @jwt_required()
     @swag_from(SPECS["WorkingFileResource_put"])
     def put(self, instance_id):

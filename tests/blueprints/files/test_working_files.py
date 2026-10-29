@@ -489,6 +489,9 @@ class WorkingFilesTestCase(ApiDBTestCase):
 
     def test_admin_can_read_but_cannot_submit_working_files(self):
         self.get(f"/data/tasks/{self.task_id}/working-files")
+        working_file = self.generate_fixture_working_file()
+        self.delete(f"/data/working-files/{working_file.id}", 403)
+        self.get(f"/data/working-files/{working_file.id}")
         self.post(
             f"/data/tasks/{self.task_id}/working-files/new",
             {"name": "main", "description": "description test"},
