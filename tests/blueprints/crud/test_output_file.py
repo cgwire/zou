@@ -112,6 +112,33 @@ class OutputFileTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_output_file_relations_hide_inaccessible_working_file(self):
+        self.generate_fixture_user_cg_artist()
+        user_id = self.user_cg_artist["id"]
+        projects_service.add_team_member(self.project_id, user_id)
+
+        output_file_id = self.get_first("data/output-files")["id"]
+        working_file = self.generate_fixture_working_file()
+        output_file = OutputFile.get(output_file_id)
+        output_file.update(source_file_id=working_file.id)
+
+        self.log_in_cg_artist()
+        output_files = self.get("data/output-files?relations=true")
+        output_file_data = next(
+            item for item in output_files if item["id"] == output_file_id
+        )
+        self.assertIsNone(output_file_data["source_file"])
+        self.assertIsNone(output_file_data["source_file_id"])
+
+        tasks_service.assign_task(str(self.task.id), user_id)
+        output_files = self.get("data/output-files?relations=true")
+        output_file_data = next(
+            item for item in output_files if item["id"] == output_file_id
+        )
+        self.assertEqual(
+            output_file_data["source_file"]["id"], str(working_file.id)
+        )
+
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
         data = {"name": "Super modeling output_file 2"}

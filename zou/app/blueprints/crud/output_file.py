@@ -34,6 +34,22 @@ class OutputFilesResource(BaseModelsResource):
         permissions_service.block_access_to_vendor()
         return True
 
+    def serialize_list(self, entries, relations=False):
+        output_files = super().serialize_list(entries, relations=relations)
+        if relations:
+            for output_file, serialized in zip(entries, output_files):
+                working_file = output_file.source_file
+                if working_file is None:
+                    continue
+                try:
+                    permissions_service.check_working_file_access(
+                        working_file.task_id
+                    )
+                except permissions.PermissionDenied:
+                    serialized["source_file"] = None
+                    serialized["source_file_id"] = None
+        return output_files
+
     def update_data(self, data):
         data = super().update_data(data)
         check_quality(data)
