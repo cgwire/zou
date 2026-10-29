@@ -526,6 +526,9 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
                 working_file = files_service.get_working_file(
                     args["working_file_id"]
                 )
+                permissions_service.check_working_file_access(
+                    working_file["task_id"]
+                )
                 working_file_id = working_file["id"]
             except WorkingFileNotFoundException:
                 working_file_id = None
@@ -642,6 +645,9 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             try:
                 working_file = files_service.get_working_file(
                     args["working_file_id"]
+                )
+                permissions_service.check_working_file_access(
+                    working_file["task_id"]
                 )
                 working_file_id = working_file["id"]
             except WorkingFileNotFoundException:

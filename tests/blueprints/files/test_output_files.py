@@ -1,8 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.output_type import OutputType
-from zou.app.services import (
-    files_service,
-)
+from zou.app.services import files_service, projects_service
 
 
 class OutputFileTestCase(ApiDBTestCase):
@@ -107,6 +105,24 @@ class NewOutputFileTestCase(OutputFileTestCase):
         return self.new_output(
             {key: value for key, value in data.items() if value is not None},
             code,
+        )
+
+    def test_unassigned_artist_cannot_reference_another_tasks_working_file(
+        self,
+    ):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        self.new_output(
+            {
+                "output_type_id": self.tx_type_id,
+                "task_type_id": self.task_type_id,
+                "working_file_id": self.working_file_id,
+            },
+            403,
         )
 
     def test_publishing_twice_takes_the_next_revision(self):
@@ -265,6 +281,31 @@ class AssetInstanceOutputFileTestCase(OutputFileTestCase):
     An instance carries its own revision count, per temporal entity
     it is placed in.
     """
+
+    def test_unassigned_artist_cannot_reference_working_file_in_instance_output(
+        self,
+    ):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/"
+            f"{self.shot.id}/output-files/new",
+            {
+                "output_type_id": self.cache_type_id,
+                "task_type_id": self.task_type_id,
+                "working_file_id": self.working_file_id,
+            },
+            403,
+        )
 
     def test_new_instance_output(self):
         self.generate_fixture_scene()
