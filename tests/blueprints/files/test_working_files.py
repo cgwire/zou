@@ -364,6 +364,26 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
         self.assert_working_file_upload_denied()
 
+    def test_assigned_vendor_cannot_read_or_submit_working_files(self):
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
+        )
+        self.assign_task(self.task_id, self.user_vendor["id"])
+        self.log_in_vendor()
+
+        self.get(f"/data/tasks/{self.task_id}/working-files", 403)
+        self.get(f"/data/working-files/{self.working_file.id}", 403)
+        self.get(
+            f"/data/working-files/{self.working_file.id}/file", 403
+        )
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.assert_working_file_upload_denied()
+
     def test_project_manager_can_read_but_cannot_submit_working_files(self):
         self.generate_fixture_user_manager()
         projects_service.add_team_member(
