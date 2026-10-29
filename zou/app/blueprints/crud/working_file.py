@@ -31,11 +31,21 @@ class WorkingFilesResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         """
-        Overriding so that people without admin credentials can still access
-        this resource.
+        Require a task or entity scope for non-admin working-file queries.
         """
-        permissions_service.block_access_to_vendor()
-        return True
+        if permissions.has_admin_permissions():
+            return True
+
+        options = options or {}
+        task_id = options.get("task_id")
+        entity_id = options.get("entity_id")
+        if task_id:
+            return permissions_service.check_working_file_access(task_id)
+        if entity_id:
+            return permissions_service.check_working_file_entity_access(
+                entity_id
+            )
+        raise permissions.PermissionDenied
 
     @jwt_required()
     @swag_from(SPECS["WorkingFilesResource_get"])
@@ -44,6 +54,12 @@ class WorkingFilesResource(BaseModelsResource):
         Get working files
         """
         return super().get()
+
+    def check_create_permissions(self, data):
+        """
+        Require the task-scoped action to create a WorkingFile revision.
+        """
+        raise permissions.PermissionDenied
 
     @jwt_required()
     @swag_from(SPECS["WorkingFilesResource_post"])
@@ -80,13 +96,15 @@ class WorkingFileResource(BaseModelResource):
 
     def check_read_permissions(self, instance):
         working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_access(working_file["task_id"])
-        return True
+        return permissions_service.check_working_file_access(
+            working_file["task_id"]
+        )
 
     def check_update_permissions(self, instance, data):
         working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_action_access(working_file["task_id"])
-        return True
+        return permissions_service.check_working_file_access(
+            working_file["task_id"], require_assigned_artist=True
+        )
 
     @jwt_required()
     @swag_from(SPECS["WorkingFileResource_put"])

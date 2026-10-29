@@ -1,6 +1,8 @@
 import datetime
 
 from tests.base import ApiDBTestCase
+
+from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.services import projects_service
 
@@ -49,9 +51,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(working_files["wip"], working_file_wip.serialize())
 
     def test_new_working_file(self):
-        task = Task.get(self.task_id)
-        self.assertEqual(len(task.assignees), 1)
-        self.assertNotEqual(self.user["id"], str(task.assignees[0].id))
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
 
         path = f"/data/tasks/{self.task_id}/working-files/new"
         working_file = self.post(
@@ -65,10 +70,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(working_file["revision"], 1)
         task = Task.get(self.task_id)
 
-        assignees = [person.serialize() for person in task.assignees]
-        assignees = sorted(assignees, key=lambda x: x["last_name"])
-
-        self.assertEqual(self.user["id"], assignees[0]["id"])
+        self.assertEqual(len(task.assignees), 2)
 
         task = Task.get(self.task_id)
         path = f"/data/tasks/{self.task_id}/working-files/new"
@@ -114,6 +116,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
 
     def test_create_same_working_file(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
         path = f"/data/tasks/{self.task_id}/working-files/new"
         self.post(
             path,
@@ -136,6 +144,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
 
     def test_update_modification_date(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.working_file.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
         path = f"/actions/working-files/{self.working_file.id}/modified"
         past = datetime.datetime.now(tz=datetime.timezone.utc).replace(
             microsecond=0, tzinfo=None
@@ -176,6 +190,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.get(path)
 
     def test_comment_working_file(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.working_file.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
         comment_data = {"comment": "test working file comment"}
         self.put(
             f"/actions/working-files/{self.working_file.id}/comment",
@@ -237,6 +257,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         import os
 
         working_file = self.generate_fixture_working_file()
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(working_file.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
         path = f"/data/working-files/{working_file.id}/file"
         fixture = self.get_fixture_file_path(
             os.path.join("thumbnails", "th01.png")
@@ -256,9 +282,292 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.get(f"/data/working-files/{working_file.id}/file", 404)
 
     def test_working_file_needs_task_access(self):
+        import os
+
         working_file = self.generate_fixture_working_file()
         path = f"/data/working-files/{working_file.id}/file"
 
         self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
         self.log_in_cg_artist()
         self.get(path, 403)
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        self.upload_file(path, fixture, 403)
+
+    def test_unassigned_project_artist_cannot_read_or_submit_working_files(
+        self,
+    ):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        three_ds_max_count = Software.query.filter_by(name="3ds Max").count()
+        self.get(
+            f"/data/tasks/{self.task_id}/working-files", 403
+        )
+        self.get(
+            f"/data/tasks/{self.task_id}/working-files/last-revisions", 403
+        )
+        self.get(f"/data/entities/{self.asset.id}/working-files", 403)
+        self.get(f"/data/working-files?entity_id={self.asset.id}", 403)
+        self.post(
+            f"/data/tasks/{self.task_id}/working-file-path",
+            {"name": "unauthorized"},
+            403,
+        )
+        self.assertEqual(
+            Software.query.filter_by(name="3ds Max").count(),
+            three_ds_max_count,
+        )
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.assertNotIn(
+            self.user_cg_artist["id"],
+            [str(person.id) for person in Task.get(self.task_id).assignees],
+        )
+
+    def assert_working_file_upload_denied(self):
+        import os
+
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        path = f"/data/working-files/{self.working_file.id}/file"
+        self.upload_file(path, fixture, 403)
+
+    def test_client_cannot_read_or_submit_working_files(self):
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+        self.get(
+            f"/data/tasks/{self.task_id}/working-files", 403
+        )
+        self.get(
+            f"/data/tasks/{self.task_id}/working-files/last-revisions", 403
+        )
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.assert_working_file_upload_denied()
+
+    def test_project_manager_can_read_but_cannot_submit_working_files(self):
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+
+        self.get("/data/working-files", 403)
+        self.assertEqual(
+            self.get(f"/data/tasks/{self.task_id}/working-files"), []
+        )
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.assert_working_file_upload_denied()
+
+    def test_supervisor_without_task_assignment_is_denied(self):
+        self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        self.log_in_supervisor()
+
+        self.get(f"/data/tasks/{self.task_id}/working-files", 403)
+        self.get(f"/data/working-files?entity_id={self.asset.id}", 403)
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.assert_working_file_upload_denied()
+
+    def test_assigned_supervisor_can_read_but_cannot_write_working_files(
+        self,
+    ):
+        import os
+
+        working_file = self.generate_fixture_working_file()
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        file_path = f"/data/working-files/{working_file.id}/file"
+        self.upload_file(file_path, fixture)
+
+        self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        self.assign_task(self.task_id, self.user_supervisor["id"])
+        self.log_in_supervisor()
+
+        self.get(f"/data/tasks/{self.task_id}/working-files")
+        self.get(f"/data/working-files/{working_file.id}")
+        response = self.app.get(file_path, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        with open(fixture, "rb") as file_handle:
+            self.assertEqual(response.data, file_handle.read())
+        self.put(
+            f"/data/working-files/{working_file.id}",
+            {"comment": "supervisor write denied"},
+            403,
+        )
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.assert_working_file_upload_denied()
+
+    def test_admin_can_read_but_cannot_submit_working_files(self):
+        self.get(f"/data/tasks/{self.task_id}/working-files")
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "description": "description test"},
+            403,
+        )
+        self.post(
+            "/data/working-files",
+            {"task_id": self.task_id, "entity_id": self.asset.id},
+            403,
+        )
+        self.assert_working_file_upload_denied()
+
+    def test_assigned_artist_can_read_and_create_without_auto_assignment(
+        self,
+    ):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
+
+        self.assertEqual(
+            self.get(f"/data/tasks/{self.task_id}/working-files"), []
+        )
+        self.assertEqual(
+            self.get(
+                f"/data/entities/{self.asset.id}/working-files"
+                f"?task_id={self.task_id}"
+            ),
+            [],
+        )
+        path_result = self.post(
+            f"/data/tasks/{self.task_id}/working-file-path",
+            {"name": "main"},
+        )
+        self.assertIn("path", path_result)
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {
+                "name": "main",
+                "description": "description test",
+                "person_id": self.user_cg_artist["id"],
+            },
+        )
+        self.assertEqual(len(Task.get(self.task_id).assignees), 2)
+
+    def test_assigned_artist_cannot_spoof_working_file_owner(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
+
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {
+                "name": "main",
+                "description": "description test",
+                "person_id": self.user["id"],
+            },
+            403,
+        )
+
+    def test_working_file_id_is_authorized_against_its_own_task(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.generate_fixture_task(name="Other task")
+        other_working_file = self.generate_fixture_working_file(name="other")
+        self.log_in_cg_artist()
+
+        self.get(f"/data/files/{other_working_file.id}", 403)
+        self.get(f"/data/working-files/{other_working_file.id}", 403)
+        self.put(
+            f"/data/working-files/{other_working_file.id}",
+            {"comment": "cross-task update"},
+            403,
+        )
+        self.get(
+            f"/data/working-files/{other_working_file.id}/file", 403
+        )
+
+    def test_generic_working_file_api_requires_task_assignment_scope(self):
+        working_file = self.generate_fixture_working_file()
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        self.get("/data/working-files", 403)
+        self.get(f"/data/working-files?task_id={self.task_id}", 403)
+        self.get(f"/data/working-files/{working_file.id}", 403)
+        self.put(
+            f"/data/working-files/{working_file.id}",
+            {"comment": "unauthorized"},
+            403,
+        )
+
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.get("/data/working-files", 403)
+        self.get(f"/data/working-files?task_id={self.task_id}")
+        self.get(f"/data/working-files/{working_file.id}")
+
+    def test_manager_can_query_working_files_by_entity(self):
+        self.generate_fixture_working_file()
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+
+        self.get(f"/data/working-files?entity_id={self.asset.id}")
+
+    def test_client_cannot_query_generic_working_file_api(self):
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+        self.get("/data/working-files", 403)
+        self.get(f"/data/working-files?task_id={self.task_id}", 403)
+        self.get(f"/data/working-files/{self.working_file.id}", 403)

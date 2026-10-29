@@ -26,9 +26,9 @@ WorkingFileResource_get:
   summary: Get a working file
   tags:
     - Crud
-  description: Get a working file. You must be an administrator or a member of
-    the project team of the task. A vendor must also have a task assigned on the
-    entity of the task.
+  description: Get a working file. Assigned artists, project managers, and
+    administrators may read it. Supervisors may read it when assigned to the
+    task. Clients, vendors, and unassigned artists are denied.
   parameters:
     - in: path
       name: instance_id
@@ -76,14 +76,10 @@ WorkingFileResource_put:
   summary: Update a working file
   tags:
     - Crud
-  description: Update the fields of a working file. Send only the fields to
-    change. You cannot change id, created_at, updated_at. Dates use the ISO 8601
-    format. The validation_status must be validated, rejected or neutral. You
-    must be an administrator, or a manager of the project. Other
-    members of the project can change it if they are an assignee of the task or
-    the creator of the entity. A supervisor of the project can also change it
-    if they have no department, or if the task type is in one of their
-    departments.
+  description: Update the fields of a working file. Only an artist assigned to
+    the working file's task may update it. You cannot change id, created_at, or
+    updated_at directly. Dates use the ISO 8601 format. The validation_status
+    must be validated, rejected or neutral.
   parameters:
     - in: path
       name: instance_id
@@ -156,13 +152,13 @@ WorkingFilesResource_get:
   summary: Get working file rows
   tags:
     - Crud
-  description: Get the working file rows. Add a query parameter for each column
-    to filter on, for example name=Modeling. The name filter does not make a
-    difference between upper case and lower case. To get the rows that have one
-    value of a list, give the list in JSON, for example
-    task_status_id=["<id1>","<id2>"]. All users can read them, except vendors.
-    An administrator gets all the rows. Other users get the working files of the
-    projects of their team, open or closed.
+  description: Get working file rows. Non-admin users must scope the request by
+    task_id or entity_id. Assigned artists, assigned supervisors, and project
+    managers can query a task; project managers can query an entity.
+    Administrators may query without a scope. Clients, vendors, and unassigned
+    artists are denied. Additional query parameters filter rows, such as
+    name=Modeling. List values can be supplied as JSON, for example
+    task_status_id=["<id1>","<id2>"].
   parameters:
     - in: query
       name: page
@@ -195,6 +191,20 @@ WorkingFilesResource_get:
       example: id,name
       schema:
         type: string
+    - in: query
+      name: task_id
+      required: false
+      description: Restrict the result to a task the current user may access
+      schema:
+        type: string
+        format: uuid
+    - in: query
+      name: entity_id
+      required: false
+      description: Restrict the result to an entity a project manager may access
+      schema:
+        type: string
+        format: uuid
   responses:
     200:
       description: The list of working file rows, or a page of rows if you
@@ -231,15 +241,15 @@ WorkingFilesResource_get:
     400:
       description: A filter is not valid
     403:
-      description: You are a vendor
+      description: A required task or entity scope is missing or access is denied
 
 WorkingFilesResource_post:
   summary: Create a working file
   tags:
     - Crud
-  description: Create a working file. Send the fields of the new row in JSON.
-    The validation_status must be validated, rejected or neutral. You must be an
-    administrator.
+  description: Generic WorkingFile creation is disabled. Create a revision via
+    POST /data/tasks/{task_id}/working-files/new so task assignment, revision
+    numbering, and the server-generated path are checked together.
   requestBody:
     required: true
     content:
@@ -304,4 +314,4 @@ WorkingFilesResource_post:
       description: The body is not valid, or a field breaks a database
         constraint
     403:
-      description: You are not an administrator
+      description: Generic WorkingFile creation is disabled

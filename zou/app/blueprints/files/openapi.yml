@@ -363,8 +363,10 @@ EntityOutputTypesResource_get:
 
 EntityWorkingFilesResource_get:
   summary: Get the working files of an entity
-  description: Get the working files of the tasks of an entity, with all their
-    revisions.
+  description: Get the working files of an entity with all revisions. When
+    task_id is provided, it must belong to entity_id and the caller must have
+    access to that task. Without task_id, only project managers and administrators
+    may query the entity's WorkingFiles.
   tags:
     - Files
   parameters:
@@ -1258,6 +1260,8 @@ LastInstanceOutputFilesResource_get:
 LastWorkingFilesResource_get:
   summary: Get the last working files of a task
   description: Get the last revision of each working file of a task, by name.
+    Only an assigned artist may request it. Clients, vendors, supervisors,
+    managers, administrators, and unassigned artists are denied.
   tags:
     - Files
   parameters:
@@ -1628,13 +1632,12 @@ NewInstanceOutputFileResource_post:
 
 NewWorkingFileResource_post:
   summary: Create a working file
-  description: Create a working file for a task. A working file is a revision
-    of a file that an artist uses to make output files. The route uses the
-    file tree of the project to make the path. If revision is 0, the route
-    uses the next revision. The task is assigned to the current user. A
-    vendor must have a task on the entity of the task. If software_id is not
-    given, the route uses the Blender software and creates it if it does not
-    exist. If person_id is not given, the author is the current user.
+  description: Create a working file revision for a task. Only an artist
+    assigned to that task may create it. The route uses the project file tree
+    to generate the path and uses the next revision when revision is 0. It does
+    not assign the task. person_id, when supplied, must match the authenticated
+    user; otherwise the authenticated user is recorded as author. If software_id
+    is omitted, Blender is used and created if necessary.
   tags:
     - Files
   parameters:
@@ -1837,7 +1840,9 @@ ProjectOutputFilesResource_get:
 
 TaskWorkingFilesResource_get:
   summary: Get the working files of a task
-  description: Get the working files of a task, with all their revisions.
+  description: Get the working files of a task with all revisions. Assigned
+    artists and project managers may read them. Supervisors must be assigned to
+    the task. Clients, vendors, and unassigned artists are denied.
   tags:
     - Files
   parameters:
@@ -1889,7 +1894,9 @@ TaskWorkingFilesResource_get:
 
 WorkingFileFileResource_get:
   summary: Download a working file
-  description: Download the file of a working file from the storage.
+  description: Download a WorkingFile binary. Assigned artists and project
+    managers may read it. Supervisors must be assigned to the task. Clients,
+    vendors, and unassigned artists are denied.
   tags:
     - Files
   parameters:
@@ -1936,8 +1943,8 @@ WorkingFileFileResource_get:
 
 WorkingFileFileResource_post:
   summary: Upload a working file
-  description: Upload the file of a working file to the storage. Send the file
-    in a multipart form.
+  description: Upload a WorkingFile binary. Only an artist assigned to the
+    WorkingFile's task may upload it. Send the file in a multipart form.
   tags:
     - Files
   parameters:
@@ -2012,11 +2019,11 @@ WorkingFileFileResource_post:
 
 WorkingFilePathResource_post:
   summary: Get the path of a working file
-  description: Get the folder path and the file name of a working file of a
-    task. The route uses the file tree of the project to make the path. If
-    revision is 0, the route uses the next revision. A vendor must have a
-    task on the entity of the task. If software_id is not given, the route
-    uses the 3ds Max software and creates it if it does not exist.
+  description: Get a WorkingFile path for a task. Only an assigned artist may
+    request it. Clients, vendors, supervisors, managers, administrators, and
+    unassigned artists are denied. The route uses the project file
+    tree and chooses the next revision when revision is 0. If software_id is
+    omitted, 3ds Max is used and created if necessary.
   tags:
     - Files
   parameters:

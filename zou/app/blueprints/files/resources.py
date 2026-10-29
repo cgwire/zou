@@ -1,6 +1,6 @@
 import os
 
-from flask import current_app, request, send_file as flask_send_file
+from flask import abort, current_app, request, send_file as flask_send_file
 from flask.views import MethodView
 from flask_fs.errors import FileNotFound
 from flask_jwt_extended import jwt_required
@@ -102,9 +102,12 @@ def send_storage_file(
 
 class WorkingFileFileResource(MethodView):
 
-    def check_access(self, working_file_id):
+    def check_access(self, working_file_id, require_assigned_artist=False):
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_access(working_file["task_id"])
+        permissions_service.check_working_file_access(
+            working_file["task_id"],
+            require_assigned_artist=require_assigned_artist,
+        )
         return working_file
 
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
@@ -135,7 +138,9 @@ class WorkingFileFileResource(MethodView):
         """
         Store working file
         """
-        working_file = self.check_access(working_file_id)
+        working_file = self.check_access(
+            working_file_id, require_assigned_artist=True
+        )
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
         )
@@ -154,19 +159,19 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
         """
         Generate working file path
         """
-        (
-            name,
-            mode,
-            software_id,
-            comment,
-            revision,
-            separator,
-        ) = self.get_arguments()
-
         try:
             task = tasks_service.get_task(task_id)
-            permissions_service.check_project_access(task["project_id"])
-            permissions_service.check_entity_access(task["entity_id"])
+            permissions_service.check_working_file_access(
+                task_id, require_assigned_artist=True
+            )
+            (
+                name,
+                mode,
+                software_id,
+                comment,
+                revision,
+                separator,
+            ) = self.get_arguments()
 
             software = files_service.get_software(software_id)
             is_revision_set_by_user = revision != 0
@@ -334,7 +339,7 @@ class LastWorkingFilesResource(MethodView):
         Get last working files
         """
         result = {}
-        permissions_service.check_task_access(task_id)
+        permissions_service.check_working_file_access(task_id)
         result = files_service.get_last_working_files_for_task(task_id)
 
         return result
@@ -349,7 +354,7 @@ class TaskWorkingFilesResource(MethodView):
         Get task working files
         """
         result = {}
-        permissions_service.check_task_access(task_id)
+        permissions_service.check_working_file_access(task_id)
         result = files_service.get_working_files_for_task(task_id)
 
         return result
@@ -363,6 +368,9 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
         """
         Create new working file
         """
+        permissions_service.check_working_file_access(
+            task_id, require_assigned_artist=True
+        )
         (
             name,
             mode,
@@ -376,12 +384,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
 
         try:
             task = tasks_service.get_task(task_id)
-            permissions_service.check_project_access(task["project_id"])
-            permissions_service.check_entity_access(task["entity_id"])
             software = files_service.get_software(software_id)
-            tasks_service.assign_task(
-                task_id, persons_service.get_current_user()["id"]
-            )
 
             if revision == 0:
                 revision = files_service.get_next_working_revision(
@@ -417,7 +420,9 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
         person = persons_service.get_current_user()
         body = validation.validate_request_body(NewWorkingFileSchema)
 
-        person_id = body.person_id if body.person_id else person["id"]
+        if body.person_id and str(body.person_id) != str(person["id"]):
+            abort(403)
+        person_id = person["id"]
         software_id = body.software_id
         if software_id is None:
             default_soft = files_service.get_or_create_software(
@@ -446,7 +451,9 @@ class ModifiedFileResource(MethodView):
         Update working file modification date
         """
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_working_file_access(
+            working_file["task_id"], require_assigned_artist=True
+        )
         working_file = files_service.update_working_file(
             working_file_id,
             {"updated_at": date_helpers.get_utc_now_datetime()},
@@ -465,7 +472,9 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(WorkingFileCommentSchema)
 
         working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_action_access(working_file["task_id"])
+        permissions_service.check_working_file_access(
+            working_file["task_id"], require_assigned_artist=True
+        )
         working_file = self.update_comment(working_file_id, body.comment)
         return working_file
 
@@ -1022,8 +1031,10 @@ class FileResource(MethodView):
         """
         try:
             file_dict = files_service.get_working_file(file_id)
-            task = tasks_service.get_task(file_dict["task_id"])
-            project_id = task["project_id"]
+            permissions_service.check_working_file_access(
+                file_dict["task_id"]
+            )
+            return file_dict
         except WorkingFileNotFoundException:
             file_dict = files_service.get_output_file(file_id)
             entity = entities_service.get_entity(file_dict["entity_id"])
@@ -1050,8 +1061,13 @@ class EntityWorkingFilesResource(MethodView, ArgsMixin):
 
         relations = self.get_relations()
 
-        entity = entities_service.get_entity(entity_id)
-        permissions_service.check_project_access(entity["project_id"])
+        if args["task_id"]:
+            task = tasks_service.get_task(args["task_id"])
+            if str(task["entity_id"]) != str(entity_id):
+                abort(403)
+            permissions_service.check_working_file_access(args["task_id"])
+        else:
+            permissions_service.check_working_file_entity_access(entity_id)
 
         return files_service.get_working_files_for_entity(
             entity_id,

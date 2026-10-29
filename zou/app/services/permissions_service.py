@@ -314,6 +314,52 @@ def check_task_access(task_id):
     return True
 
 
+def check_working_file_access(task_id, require_assigned_artist=False):
+    """
+    Allow project managers to read working files and assigned artists to
+    read them. Only an assigned artist may create or upload a working file.
+    """
+    task = tasks_service.get_task(task_id, relations=True)
+    check_project_access(task["project_id"])
+
+    user = persons_service.get_current_user()
+    is_assigned = str(user["id"]) in [
+        str(assignee["id"] if isinstance(assignee, dict) else assignee)
+        for assignee in task["assignees"]
+    ]
+    if permissions.has_artist_permissions() and is_assigned:
+        return True
+
+    if (
+        not require_assigned_artist
+        and permissions.has_admin_permissions()
+    ):
+        return True
+
+    if (
+        not require_assigned_artist
+        and permissions.has_supervisor_permissions()
+        and is_assigned
+    ):
+        return True
+
+    if not require_assigned_artist and permissions.has_manager_permissions():
+        return True
+
+    raise permissions.PermissionDenied
+
+
+def check_working_file_entity_access(entity_id):
+    """
+    Limit entity-wide working file listings to project managers.
+    """
+    entity = entities_service.get_entity(entity_id)
+    check_project_access(entity["project_id"])
+    if permissions.has_manager_permissions() or permissions.has_admin_permissions():
+        return True
+    raise permissions.PermissionDenied
+
+
 def check_task_action_access(task_id):
     """
     Return true if current user can have access to a task action.
