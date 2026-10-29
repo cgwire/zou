@@ -46,12 +46,12 @@ def send_storage_file(
     as_attachment=False,
     max_age=config.CLIENT_CACHE_MAX_AGE,
     last_modified=None,
+    prefix="working",
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
     a temporary folder before sending it. It accepts conditional headers.
     """
-    prefix = "working"
     extension = "tmp"
     get_local_path = file_store.get_local_file_path
     open_file = file_store.open_file
@@ -86,7 +86,7 @@ def send_storage_file(
         return (
             {
                 "error": True,
-                "message": f"Working file not found for: {working_file_id}",
+                "message": f"File not found for: {working_file_id}",
             },
             404,
         )
@@ -94,7 +94,7 @@ def send_storage_file(
         return (
             {
                 "error": True,
-                "message": f"Working file not found for: {working_file_id}",
+                "message": f"File not found for: {working_file_id}",
             },
             404,
         )
@@ -121,7 +121,14 @@ class WorkingFileFileResource(MethodView):
         """
         Download working file
         """
-        working_file = self.check_access(working_file_id)
+        working_file = files_service.get_working_file(working_file_id)
+        task = tasks_service.get_task(working_file["task_id"])
+        permissions_service.check_project_access(task["project_id"])
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        permissions_service.check_assigned_or_cast_entity_access(
+            task["entity_id"]
+        )
         return send_storage_file(
             working_file_id,
             last_modified=date_helpers.get_datetime_from_string(
@@ -135,15 +142,91 @@ class WorkingFileFileResource(MethodView):
         """
         Store working file
         """
-        working_file = self.check_access(working_file_id)
+        self.check_access(working_file_id)
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
         )
         try:
             file_store.add_file("working", working_file_id, file_path)
+            size = os.path.getsize(file_path)
         finally:
             os.remove(file_path)
+        working_file = files_service.update_working_file(
+            working_file_id, uploaded_data(size)
+        )
         return working_file, 201
+
+
+def uploaded_data(size):
+    """
+    The fields that an upload sets on a working file or an output file.
+    """
+    return {
+        "uploaded_at": date_helpers.get_utc_now_datetime(),
+        "size": size,
+    }
+
+
+class OutputFileFileResource(MethodView):
+
+    def check_access(self, output_file_id):
+        output_file = files_service.get_output_file(output_file_id)
+        entity = entities_service.get_entity(output_file["entity_id"])
+        permissions_service.check_project_access(entity["project_id"])
+        return output_file, entity
+
+    def check_upload_access(self, output_file_id):
+        """
+        A manager of the project, or an assignee of the entity, stores the
+        content of an output file. A client never does.
+        """
+        _, entity = self.check_access(output_file_id)
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        if not permissions_service.has_manager_project_access(
+            entity["project_id"]
+        ):
+            permissions_service.check_working_on_entity(entity["id"])
+
+    @jwt_required()
+    @swag_from(SPECS["OutputFileFileResource_get"])
+    def get(self, output_file_id):
+        """
+        Download output file
+        """
+        output_file, entity = self.check_access(output_file_id)
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        permissions_service.check_assigned_or_cast_entity_access(entity["id"])
+        return send_storage_file(
+            output_file_id,
+            last_modified=date_helpers.get_datetime_from_string(
+                output_file["updated_at"]
+            ),
+            prefix="output",
+        )
+
+    @jwt_required()
+    @swag_from(SPECS["OutputFileFileResource_post"])
+    def post(self, output_file_id):
+        """
+        Store output file
+        """
+        self.check_upload_access(output_file_id)
+        uploaded_file = request.files["file"]
+        file_path = os.path.join(
+            current_app.config["TMP_DIR"], f"output-file-{output_file_id}"
+        )
+        uploaded_file.save(file_path)
+        try:
+            file_store.add_file("output", output_file_id, file_path)
+            size = os.path.getsize(file_path)
+        finally:
+            os.remove(file_path)
+        output_file = files_service.update_output_file(
+            output_file_id, uploaded_data(size)
+        )
+        return output_file, 201
 
 
 class WorkingFilePathResource(MethodView, ArgsMixin):

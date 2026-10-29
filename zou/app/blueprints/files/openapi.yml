@@ -1892,7 +1892,11 @@ TaskWorkingFilesResource_get:
 
 WorkingFileFileResource_get:
   summary: Download a working file
-  description: Download the file of a working file from the storage.
+  description: Download the file of a working file from the storage. You must
+    be in the project team. A client cannot download it. A manager or a
+    supervisor of the project downloads every working file of the project. An
+    artist or a vendor downloads the working files of the entities they have
+    a task on, and of the assets cast in these entities.
   tags:
     - Files
   parameters:
@@ -2089,3 +2093,78 @@ WorkingFilePathResource_post:
         without a task on this entity
     404:
       description: The task or the software does not exist
+OutputFileFileResource_get:
+  summary: Download an output file
+  description: Download the file of an output file from the storage. You must
+    be in the project team. A client cannot download it. A manager or a
+    supervisor of the project downloads every output file of the project. An
+    artist or a vendor downloads the output files of the entities they have a
+    task on, and of the assets cast in these entities.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: output_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Output file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  responses:
+    200:
+      description: The file
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+            description: Binary file content
+            example: binary data
+    403:
+      description: You do not have access to this output file
+    404:
+      description: The output file or its file does not exist
+OutputFileFileResource_post:
+  summary: Upload an output file
+  description: Upload the file of an output file to the storage. Send the file
+    in a multipart form. You must be in the project team, and be a manager of
+    the project or have a task on the entity of the output file. A client
+    cannot upload it. The upload sets the size and the upload date of the
+    output file.
+  tags:
+    - Files
+  parameters:
+    - in: path
+      name: output_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Output file unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - file
+          properties:
+            file:
+              type: string
+              format: binary
+              description: File to upload
+              example: file content
+  responses:
+    201:
+      description: The output file, with its new size and upload date
+      content:
+        application/json:
+          schema:
+            type: object
+    403:
+      description: You do not have access to this output file
+    404:
+      description: The output file does not exist
