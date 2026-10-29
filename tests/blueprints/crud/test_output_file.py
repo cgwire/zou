@@ -129,15 +129,22 @@ class OutputFileTestCase(ApiDBTestCase):
         )
         self.assertIsNone(output_file_data["source_file"])
         self.assertIsNone(output_file_data["source_file_id"])
+        output_files = self.get("data/output-files")
+        output_file_data = next(
+            item for item in output_files if item["id"] == output_file_id
+        )
+        self.assertIsNone(output_file_data["source_file_id"])
+        output_file_data = self.get(f"data/output-files/{output_file_id}")
+        self.assertIsNone(output_file_data["source_file_id"])
 
         tasks_service.assign_task(str(self.task.id), user_id)
         output_files = self.get("data/output-files?relations=true")
         output_file_data = next(
             item for item in output_files if item["id"] == output_file_id
         )
-        self.assertEqual(
-            output_file_data["source_file"]["id"], str(working_file.id)
-        )
+        self.assertEqual(output_file_data["source_file"]["id"], str(working_file.id))
+        output_file_data = self.get(f"data/output-files/{output_file_id}")
+        self.assertEqual(output_file_data["source_file_id"], str(working_file.id))
 
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")

@@ -7,6 +7,7 @@ from zou.app.exceptions import WrongParameterException
 from zou.app.models.entity import Entity
 from zou.app.models.output_file import QUALITIES, OutputFile
 from zou.app.models.project import Project
+from zou.app.models.working_file import WorkingFile
 from zou.app.services import (
     entities_service,
     files_service,
@@ -36,22 +37,35 @@ class OutputFilesResource(BaseModelsResource):
 
     def serialize_list(self, entries, relations=False):
         output_files = super().serialize_list(entries, relations=relations)
-        if relations:
-            working_file_access = {}
-            for output_file, serialized in zip(entries, output_files):
-                working_file = output_file.source_file
-                if working_file is None:
-                    continue
-                task_id = str(working_file.task_id)
-                if task_id not in working_file_access:
-                    try:
-                        permissions_service.check_working_file_access(task_id)
-                        working_file_access[task_id] = True
-                    except permissions.PermissionDenied:
-                        working_file_access[task_id] = False
-                if not working_file_access[task_id]:
+        source_file_ids = {
+            output_file.source_file_id
+            for output_file in entries
+            if output_file.source_file_id is not None
+        }
+        working_files = {}
+        if source_file_ids:
+            working_files = {
+                working_file.id: working_file
+                for working_file in WorkingFile.query.filter(
+                    WorkingFile.id.in_(source_file_ids)
+                ).all()
+            }
+        working_file_access = {}
+        for output_file, serialized in zip(entries, output_files):
+            working_file = working_files.get(output_file.source_file_id)
+            if working_file is None:
+                continue
+            task_id = str(working_file.task_id)
+            if task_id not in working_file_access:
+                try:
+                    permissions_service.check_working_file_access(task_id)
+                    working_file_access[task_id] = True
+                except permissions.PermissionDenied:
+                    working_file_access[task_id] = False
+            if not working_file_access[task_id]:
+                serialized["source_file_id"] = None
+                if "source_file" in serialized:
                     serialized["source_file"] = None
-                    serialized["source_file_id"] = None
         return output_files
 
     def update_data(self, data):
@@ -121,6 +135,13 @@ class OutputFileResource(BaseModelResource):
         try:
             output_file = files_service.get_output_file(instance_id)
             self.check_read_permissions(output_file)
+            source_file_id = output_file.get("source_file_id")
+            if source_file_id is not None:
+                working_file = WorkingFile.get(source_file_id)
+                try:
+                    permissions_service.check_working_file_access(working_file.task_id)
+                except permissions.PermissionDenied:
+                    output_file["source_file_id"] = None
             return self.clean_get_result(output_file)
 
         except StatementError as exception:
