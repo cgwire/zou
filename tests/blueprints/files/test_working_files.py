@@ -488,11 +488,30 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assert_working_file_upload_denied()
 
     def test_admin_can_read_but_cannot_submit_working_files(self):
-        self.get(f"/data/tasks/{self.task_id}/working-files")
+        import os
+
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
         working_file = self.generate_fixture_working_file()
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        file_path = f"/data/working-files/{working_file.id}/file"
+        self.upload_file(file_path, fixture)
+
+        self.log_in_admin()
+        self.get(f"/data/tasks/{self.task_id}/working-files")
+        self.get(f"/data/working-files/{working_file.id}")
+        response = self.app.get(file_path, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        with open(fixture, "rb") as file_handle:
+            self.assertEqual(response.data, file_handle.read())
         self.delete(f"/data/working-files/{working_file.id}", 403)
         self.delete(f"/data/working-files/{working_file.id}/file", 405)
-        self.get(f"/data/working-files/{working_file.id}")
         self.post(
             f"/data/tasks/{self.task_id}/working-files/new",
             {"name": "main", "description": "description test"},
