@@ -115,6 +115,32 @@ class WorkingFilesTestCase(ApiDBTestCase):
             "blender/cosmos_landromat_props_tree_shaders_main_v066",
         )
 
+    def test_new_working_file_request_is_idempotent(self):
+        self.generate_fixture_user_cg_artist()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.assign_task(self.task_id, self.user_cg_artist["id"])
+        self.log_in_cg_artist()
+
+        path = f"/data/tasks/{self.task_id}/working-files/new"
+        payload = {
+            "name": "main",
+            "description": "description test",
+            "comment": "comment test",
+            "request_id": "c46c80c6-e097-6887-c292-79675204e470",
+        }
+        first = self.post(path, payload)
+        replay = self.post(path, payload)
+
+        self.assertEqual(replay["id"], first["id"])
+        self.assertEqual(replay["revision"], first["revision"])
+        self.assertEqual(
+            len(self.get(f"/data/tasks/{self.task_id}/working-files")), 1
+        )
+
+        self.post(path, {**payload, "comment": "different payload"}, 409)
+
     def test_create_same_working_file(self):
         self.generate_fixture_user_cg_artist()
         projects_service.add_team_member(

@@ -3,6 +3,7 @@ Pydantic schemas for request body validation in the files blueprint.
 """
 
 from typing import Optional
+from uuid import UUID
 
 from pydantic import Field
 
@@ -50,6 +51,7 @@ class NewWorkingFileSchema(BaseSchema):
     software_id: Optional[str] = None
     revision: int = 0
     sep: str = "/"
+    request_id: Optional[UUID] = None
 
 
 class WorkingFileCommentSchema(BaseSchema):

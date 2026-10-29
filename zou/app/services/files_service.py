@@ -6,7 +6,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.sql.expression import and_
 
-from zou.app import config
+from zou.app import config, db
 from zou.app.exceptions import (
     EntryAlreadyExistsException,
     NoOutputFileException,
@@ -15,6 +15,7 @@ from zou.app.exceptions import (
     PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
     SoftwareNotFoundException,
+    WorkingFileCreateIdempotencyConflictException,
     WorkingFileNotFoundException,
 )
 from zou.app.models.entity import Entity
@@ -26,6 +27,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
+from zou.app.models.working_file_create_request import WorkingFileCreateRequest
 from zou.app.services import (
     entities_service,
 )
@@ -286,33 +288,91 @@ def create_new_working_revision(
     path="",
     comment="",
     revision=0,
+    request_id=None,
+    request_payload_hash=None,
 ):
     """
     Create a new working file revision for given task. An author (user) and
     a software are required.
     """
     task = Task.get(task_id)
+
+    if request_id is not None:
+        existing_request = WorkingFileCreateRequest.get_by(
+            task_id=task_id,
+            person_id=person_id,
+            request_id=request_id,
+        )
+        if existing_request is not None:
+            if existing_request.payload_hash != request_payload_hash:
+                raise WorkingFileCreateIdempotencyConflictException(
+                    "The idempotency key was already used for another request."
+                )
+            working_file = WorkingFile.get(existing_request.working_file_id)
+            if working_file is None:
+                raise EntryAlreadyExistsException
+            return working_file.serialize()
+
     if revision == 0:
         revision = get_next_working_revision(task_id, name)
 
     try:
-        working_file = WorkingFile.create(
-            comment=comment,
-            name=name,
-            revision=revision,
-            path=path,
-            task_id=task.id,
-            software_id=software_id,
-            entity_id=task.entity_id,
-            person_id=person_id,
-        )
-        events.emit(
-            "working-file:new",
-            {"working_file_id": working_file.id},
-            project_id=str(task.project_id),
-        )
+        if request_id is None:
+            working_file = WorkingFile.create(
+                comment=comment,
+                name=name,
+                revision=revision,
+                path=path,
+                task_id=task.id,
+                software_id=software_id,
+                entity_id=task.entity_id,
+                person_id=person_id,
+            )
+        else:
+            working_file = WorkingFile.create_no_commit(
+                comment=comment,
+                name=name,
+                revision=revision,
+                path=path,
+                task_id=task.id,
+                software_id=software_id,
+                entity_id=task.entity_id,
+                person_id=person_id,
+            )
+            db.session.flush()
+            WorkingFileCreateRequest.create_no_commit(
+                task_id=task.id,
+                person_id=person_id,
+                request_id=request_id,
+                payload_hash=request_payload_hash,
+                working_file_id=working_file.id,
+            )
+            db.session.commit()
     except IntegrityError:
+        db.session.rollback()
+        if request_id is not None:
+            existing_request = WorkingFileCreateRequest.get_by(
+                task_id=task_id,
+                person_id=person_id,
+                request_id=request_id,
+            )
+            if existing_request is not None:
+                if existing_request.payload_hash != request_payload_hash:
+                    raise WorkingFileCreateIdempotencyConflictException(
+                        "The idempotency key was already used for another request."
+                    )
+                working_file = WorkingFile.get(
+                    existing_request.working_file_id
+                )
+                if working_file is not None:
+                    return working_file.serialize()
         raise EntryAlreadyExistsException
+
+    events.emit(
+        "working-file:new",
+        {"working_file_id": working_file.id},
+        project_id=str(task.project_id),
+    )
 
     return working_file.serialize()
 

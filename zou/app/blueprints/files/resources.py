@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 
 from flask import abort, current_app, request, send_file as flask_send_file
@@ -380,7 +382,26 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             software_id,
             revision,
             sep,
+            request_id,
         ) = self.get_arguments()
+
+        request_payload_hash = hashlib.sha256(
+            json.dumps(
+                {
+                    "task_id": str(task_id),
+                    "name": name,
+                    "mode": mode,
+                    "description": description,
+                    "comment": comment,
+                    "person_id": str(person_id),
+                    "software_id": str(software_id),
+                    "revision": revision,
+                    "sep": sep,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
 
         try:
             task = tasks_service.get_task(task_id)
@@ -401,6 +422,8 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
                 path=path,
                 comment=comment,
                 revision=revision,
+                request_id=request_id,
+                request_payload_hash=request_payload_hash,
             )
         except EntryAlreadyExistsException:
             return {"error": "The given working file already exists."}, 400
@@ -439,6 +462,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             software_id,
             body.revision,
             body.sep,
+            body.request_id,
         )
 
 

@@ -5,3 +5,4 @@
 # always get created.
 from zou.app.models import preview_file_storage_state  # noqa: F401
 from zou.app.models import stored_file  # noqa: F401
+from zou.app.models import working_file_create_request  # noqa: F401

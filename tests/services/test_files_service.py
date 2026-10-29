@@ -13,6 +13,7 @@ from zou.app.exceptions import (
     PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
     SoftwareNotFoundException,
+    WorkingFileCreateIdempotencyConflictException,
     WorkingFileNotFoundException,
 )
 from zou.app.models.file_status import FileStatus
@@ -270,6 +271,48 @@ class WorkingFileTestCase(FilesTestCase):
             self.task.id, self.person.id, self.software.id, "main", "/path"
         )
         self.assertEqual(len(captured), 1)
+
+    def test_create_request_replay_returns_same_revision_without_event(self):
+        self.working_file.delete()
+        captured = self.capture_events("working-file:new")
+        request_id = "c46c80c6-e097-6887-c292-79675204e470"
+        request_hash = "a" * 64
+
+        first = files_service.create_new_working_revision(
+            self.task.id,
+            self.person.id,
+            self.software.id,
+            name="main",
+            path="/path/main_v001.blend",
+            request_id=request_id,
+            request_payload_hash=request_hash,
+        )
+        replay = files_service.create_new_working_revision(
+            self.task.id,
+            self.person.id,
+            self.software.id,
+            name="main",
+            path="/path/main_v002.blend",
+            request_id=request_id,
+            request_payload_hash=request_hash,
+        )
+
+        self.assertEqual(replay["id"], first["id"])
+        self.assertEqual(replay["revision"], first["revision"])
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(
+            len(files_service.get_working_files_for_task(self.task.id)), 1
+        )
+        with pytest.raises(WorkingFileCreateIdempotencyConflictException):
+            files_service.create_new_working_revision(
+                self.task.id,
+                self.person.id,
+                self.software.id,
+                name="other",
+                path="/path/other_v001.blend",
+                request_id=request_id,
+                request_payload_hash="b" * 64,
+            )
 
     def test_the_revisions_of_an_entity_are_narrowed_by_task_and_name(self):
         asset_working_file_id = str(self.working_file.id)

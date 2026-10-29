@@ -1694,6 +1694,11 @@ NewWorkingFileResource_post:
               description: Path separator
               default: /
               example: /
+            request_id:
+              type: string
+              format: uuid
+              description: Idempotency key for retrying a create request
+              example: c46c80c6-e097-6887-c292-79675204e470
   responses:
     201:
       description: The new working file
@@ -1734,6 +1739,8 @@ NewWorkingFileResource_post:
                 format: date-time
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
+    409:
+      description: Idempotency key was reused with different request data
     400:
       description: The body is not valid, or the working file already exists
     403:
