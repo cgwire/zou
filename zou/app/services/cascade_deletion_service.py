@@ -52,6 +52,7 @@ from zou.app.services import (
     playlists_service,
     search_filters_service,
     shots_service,
+    untracked_service,
 )
 from zou.app.utils import events
 
@@ -169,6 +170,7 @@ def remove_episode(episode_id, force=False):
         EntityConceptLink.delete_all_by(entity_in_id=episode_id)
         EntityConceptLink.delete_all_by(entity_out_id=episode_id)
         deletion_service.remove_output_files_for_entity(episode_id)
+    untracked_service.unlink_untracked_items(episode_id)
     try:
         episode.delete()
         events.emit(
@@ -467,6 +469,7 @@ def remove_shot(shot_id, force=False):
         EntityConceptLink.delete_all_by(entity_in_id=shot_id)
         EntityConceptLink.delete_all_by(entity_out_id=shot_id)
         deletion_service.remove_output_files_for_entity(shot_id)
+        untracked_service.unlink_untracked_items(shot_id)
 
         shot.delete()
         events.emit(
@@ -528,6 +531,7 @@ def remove_sequence(sequence_id, force=False):
 
         deletion_service.remove_tasks_for_entity(sequence_id)
         deletion_service.remove_output_files_for_entity(sequence_id)
+    untracked_service.unlink_untracked_items(sequence_id)
     try:
         sequence.delete()
         events.emit(

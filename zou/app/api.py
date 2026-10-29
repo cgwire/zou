@@ -34,6 +34,7 @@ BLUEPRINT_MODULES = [
     "edits",
     "search",
     "concepts",
+    "untracked",
 ]
 
 
