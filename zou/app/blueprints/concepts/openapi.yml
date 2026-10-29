@@ -239,6 +239,7 @@ ConceptResource_delete:
     the creator is in the project team. Other users must be managers of the
     project. If the concept has tasks, the concept is only marked as canceled.
     Use force=true to delete the concept and all its related data.
+    Only a manager of the project can use force=true.
   tags:
     - Concepts
   parameters:

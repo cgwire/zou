@@ -117,7 +117,7 @@ class ProjectDeleteEntitiesResource(MethodView, ArgsMixin):
             except EntityNotFoundException:
                 # Nothing to authorize for an entity that is already gone.
                 continue
-            permissions_service.check_entity_delete_access(entity)
+            permissions_service.check_entity_delete_access(entity, force=force)
 
         return (
             cascade_deletion_service.remove_entities(

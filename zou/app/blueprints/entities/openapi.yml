@@ -321,6 +321,7 @@ ProjectDeleteEntitiesResource_post:
     the entities are deleted with their tasks. The creator of an entity can
     delete it if the creator is in the project team. For the other entities,
     you must be a manager of the project.
+    Only a manager of the project can use force=true.
   tags:
     - Entities
   parameters:

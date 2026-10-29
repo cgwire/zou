@@ -186,6 +186,7 @@ EpisodeResource_delete:
     to it. If sequences, assets or tasks are still linked, the route returns
     400. With force=true, the sequences, the shots, the assets and the tasks
     of the episode are deleted too.
+    Only a manager of the project can use force=true.
   parameters:
     - in: path
       name: episode_id
@@ -1815,6 +1816,7 @@ SequenceResource_delete:
     to it. If shots, scenes or tasks are still linked, the route returns 400.
     With force=true, the shots, the scenes and the tasks of the sequence are
     deleted too.
+    Only a manager of the project can use force=true.
   parameters:
     - in: path
       name: sequence_id
@@ -2338,6 +2340,7 @@ ShotResource_delete:
     creator is in the project team. Other users must be managers of the
     project. If the shot has tasks, the shot is only marked as canceled. Use
     force=true to delete the shot and all its related data.
+    Only a manager of the project can use force=true.
   parameters:
     - in: path
       name: shot_id

@@ -46,7 +46,7 @@ class ConceptResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
         concept = concepts_service.get_concept(concept_id)
-        permissions_service.check_entity_delete_access(concept)
+        permissions_service.check_entity_delete_access(concept, force=force)
         cascade_deletion_service.remove_concept(concept_id, force=force)
         return "", 204
 

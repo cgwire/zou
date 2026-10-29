@@ -75,7 +75,7 @@ class AssetResource(MethodView, ArgsMixin):
         force = self.get_force()
 
         asset = assets_service.get_full_asset(asset_id)
-        permissions_service.check_entity_delete_access(asset)
+        permissions_service.check_entity_delete_access(asset, force=force)
 
         cascade_deletion_service.remove_asset(asset_id, force=force)
         return "", 204

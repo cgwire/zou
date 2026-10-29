@@ -136,6 +136,7 @@ EditResource_delete:
     creator is in the project team. Other users must be managers of the
     project. If the edit has tasks, the edit is only marked as canceled. Use
     force=true to delete the edit and all its related data.
+    Only a manager of the project can use force=true.
   tags:
     - Edits
   parameters:
