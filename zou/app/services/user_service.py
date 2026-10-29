@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import aliased, selectinload
 
@@ -875,6 +875,27 @@ def get_project_ids_with_roles(*roles):
         for project_id, role in get_team_project_roles().items()
         if role in roles
     ]
+
+
+def build_supervision_scope_filter(roles, department_ids):
+    """
+    Return the task filter the manager and supervisor roles of given team
+    roles grant on other people's work: every task of a managed project,
+    the tasks of given departments on a supervised one. The department
+    restriction is read per project, so a supervisor of one project reads
+    every department of the projects they manage.
+    """
+    return or_(
+        Task.project_id.in_(
+            [pid for pid, role in roles.items() if role == "manager"]
+        ),
+        and_(
+            Task.project_id.in_(
+                [pid for pid, role in roles.items() if role == "supervisor"]
+            ),
+            TaskType.department_id.in_(department_ids),
+        ),
+    )
 
 
 def get_context():

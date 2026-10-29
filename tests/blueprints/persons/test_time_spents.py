@@ -79,6 +79,7 @@ class PersonTimeSpentsTestCase(ApiDBTestCase):
             f"/actions/tasks/{other_task.id}/time-spents/2018-06-05/persons/{self.person_id}",
             {"duration": 100},
         )
+        return str(other.id)
 
     def _get_range(self, code=200):
         return self.get(
@@ -117,6 +118,25 @@ class PersonTimeSpentsTestCase(ApiDBTestCase):
         self.assertEqual(entries[0]["duration"], 300)
         self.assertEqual(
             entries[0]["task_type_id"], str(self.task_type_animation.id)
+        )
+
+    def test_range_for_a_supervisor_reads_every_department_where_they_manage(
+        self,
+    ):
+        from zou.app.services import persons_service, projects_service
+
+        other_id = self._log_time_on_another_project()
+        supervisor = self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(self.project.id, supervisor["id"])
+        projects_service.add_team_member(other_id, supervisor["id"], "manager")
+        persons_service.add_to_department(
+            str(self.department_animation.id), supervisor["id"]
+        )
+        self.log_in_supervisor()
+        entries = self._get_range()
+        self.assertEqual(
+            {(entry["project_id"], entry["duration"]) for entry in entries},
+            {(str(self.project.id), 300), (other_id, 100)},
         )
 
     def test_range_is_forbidden_to_an_artist_on_someone_else(self):

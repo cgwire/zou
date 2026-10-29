@@ -32,16 +32,22 @@ from zou.app.utils import date_helpers, events, fields, query as query_utils
 
 
 def _apply_time_spent_filters(
-    query, person_id=None, project_id=None, department_ids=None, studio_id=None
+    query,
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    studio_id=None,
+    scope=None,
 ):
     """
     Apply the scoping filters shared by the yearly and monthly time spent
-    queries. project_id accepts a single id or a list of ids.
+    queries. project_id accepts a single id or a list of ids, scope a task
+    filter such as user_service.build_supervision_scope_filter returns.
     """
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
 
-    if project_id is not None or department_ids is not None:
+    if project_id is not None or department_ids or scope is not None:
         query = query.join(Task)
 
     if project_id is not None:
@@ -50,10 +56,14 @@ def _apply_time_spent_filters(
         else:
             query = query.filter(Task.project_id == project_id)
 
+    if department_ids or scope is not None:
+        query = query.join(TaskType)
+
     if department_ids:
-        query = query.join(TaskType).filter(
-            TaskType.department_id.in_(department_ids)
-        )
+        query = query.filter(TaskType.department_id.in_(department_ids))
+
+    if scope is not None:
+        query = query.filter(scope)
 
     if studio_id is not None:
         query = query.join(Person, Person.id == TimeSpent.person_id).filter(
@@ -64,7 +74,7 @@ def _apply_time_spent_filters(
 
 
 def _get_interval_time_spents(
-    person_id, start, end, project_id=None, department_ids=None
+    person_id, start, end, project_id=None, department_ids=None, scope=None
 ):
     """
     Return aggregated time spents at task level for given person, over the
@@ -76,6 +86,7 @@ def _get_interval_time_spents(
         TimeSpent.date < func.cast(end, TimeSpent.date.type),
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
     )
     return build_results(entries)
 
@@ -93,7 +104,11 @@ def get_time_spents_for_entity(entity_id):
 
 
 def get_year_table(
-    person_id=None, project_id=None, department_ids=None, studio_id=None
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    scope=None,
+    studio_id=None,
 ):
     """
     Return a table giving time spent by user and by month for given year.
@@ -104,12 +119,18 @@ def get_year_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
 
 
 def get_month_table(
-    year, person_id=None, project_id=None, department_ids=None, studio_id=None
+    year,
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    scope=None,
+    studio_id=None,
 ):
     """
     Return a table giving time spent by user and by month for given year.
@@ -119,12 +140,18 @@ def get_month_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
 
 
 def get_week_table(
-    year, person_id=None, project_id=None, department_ids=None, studio_id=None
+    year,
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    scope=None,
+    studio_id=None,
 ):
     """
     Return a table giving time spent by user and by week for given year.
@@ -135,6 +162,7 @@ def get_week_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
 
@@ -145,6 +173,7 @@ def get_day_table(
     person_id=None,
     project_id=None,
     department_ids=None,
+    scope=None,
     studio_id=None,
 ):
     """
@@ -157,6 +186,7 @@ def get_day_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
     return get_table_from_time_spents(time_spents, "day")
@@ -168,6 +198,7 @@ def get_yearly_table(
     person_id=None,
     project_id=None,
     department_ids=None,
+    scope=None,
     studio_id=None,
 ):
     """
@@ -180,6 +211,7 @@ def get_yearly_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
     return get_table_from_time_spents(time_spents, detail_level)
@@ -190,6 +222,7 @@ def get_time_spents_for_year(
     person_id=None,
     project_id=None,
     department_ids=None,
+    scope=None,
     studio_id=None,
 ):
     """
@@ -212,6 +245,7 @@ def get_time_spents_for_year(
         query,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
     return query.all()
@@ -223,6 +257,7 @@ def get_time_spents_for_month(
     person_id=None,
     project_id=None,
     department_ids=None,
+    scope=None,
     studio_id=None,
 ):
     """
@@ -242,6 +277,7 @@ def get_time_spents_for_month(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
         studio_id=studio_id,
     )
     return query.all()
@@ -270,26 +306,25 @@ def get_table_from_time_spents(time_spents, detail_level="month"):
     return result
 
 
-def get_time_spents(
-    person_id, date=None, project_ids=None, department_ids=None
-):
+def get_time_spents(person_id, date=None, project_ids=None, scope=None):
     """
     Return time spents for given person and date, all dates if none given.
+    The rows can be restricted to some projects and to a task filter such as
+    user_service.build_supervision_scope_filter returns.
     """
     try:
         query = TimeSpent.query.filter_by(person_id=person_id)
         if date is not None:
             query = query.filter_by(date=func.cast(date, TimeSpent.date.type))
 
-        if project_ids is not None or department_ids is not None:
+        if project_ids is not None or scope is not None:
             query = query.join(Task)
 
         if project_ids is not None:
             query = query.filter(Task.project_id.in_(project_ids))
 
-        if department_ids:
-            query = query.join(TaskType)
-            query = query.filter(TaskType.department_id.in_(department_ids))
+        if scope is not None:
+            query = query.join(TaskType).filter(scope)
 
         # Inside the try: the query is lazy, so a date the driver rejects
         # raises here and not while the filters are being stacked.
@@ -300,12 +335,17 @@ def get_time_spents(
 
 
 def get_time_spents_range(
-    person_id, start_date, end_date, project_ids=None, department_ids=None
+    person_id,
+    start_date,
+    end_date,
+    project_ids=None,
+    scope=None,
 ):
     """
     Returns time spents for person and date range, with the project and the
     task type of their task. The rows can be restricted to some projects and
-    some departments.
+    to a task filter such as user_service.build_supervision_scope_filter
+    returns.
     """
     try:
         query = (
@@ -323,9 +363,9 @@ def get_time_spents_range(
         if project_ids is not None:
             query = query.filter(Task.project_id.in_(project_ids))
 
-        if department_ids:
+        if scope is not None:
             query = query.join(TaskType, TaskType.id == Task.task_type_id)
-            query = query.filter(TaskType.department_id.in_(department_ids))
+            query = query.filter(scope)
 
         rows = query.all()
     except DataError:
@@ -372,7 +412,7 @@ def get_day_off(person_id, date):
 
 
 def get_year_time_spents(
-    person_id, year, project_id=None, department_ids=None
+    person_id, year, project_id=None, department_ids=None, scope=None
 ):
     """
     Return aggregated time spents at task level for given person and month.
@@ -384,11 +424,12 @@ def get_year_time_spents(
         end,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
     )
 
 
 def get_month_time_spents(
-    person_id, year, month, project_id=None, department_ids=None
+    person_id, year, month, project_id=None, department_ids=None, scope=None
 ):
     """
     Return aggregated time spents at task level for given person and month.
@@ -400,11 +441,12 @@ def get_month_time_spents(
         end,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
     )
 
 
 def get_week_time_spents(
-    person_id, year, week, project_id=None, department_ids=None
+    person_id, year, week, project_id=None, department_ids=None, scope=None
 ):
     """
     Return aggregated time spents at task level for given person and week.
@@ -416,11 +458,18 @@ def get_week_time_spents(
         end,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
     )
 
 
 def get_day_time_spents(
-    person_id, year, month, day, project_id=None, department_ids=None
+    person_id,
+    year,
+    month,
+    day,
+    project_id=None,
+    department_ids=None,
+    scope=None,
 ):
     """
     Return aggregated time spents at task level for given person and day.
@@ -432,11 +481,12 @@ def get_day_time_spents(
         end,
         project_id=project_id,
         department_ids=department_ids,
+        scope=scope,
     )
 
 
 def get_person_time_spent_entries(
-    person_id, *args, project_id=None, department_ids=None
+    person_id, *args, project_id=None, department_ids=None, scope=None
 ):
     """
     Return aggregated time spents at task level for given person and
@@ -480,10 +530,14 @@ def get_person_time_spent_entries(
         else:
             query = query.filter(Task.project_id == project_id)
 
+    if department_ids or scope is not None:
+        query = query.join(TaskType, TaskType.id == Task.task_type_id)
+
     if department_ids:
-        query = query.join(TaskType, TaskType.id == Task.task_type_id).filter(
-            TaskType.department_id.in_(department_ids)
-        )
+        query = query.filter(TaskType.department_id.in_(department_ids))
+
+    if scope is not None:
+        query = query.filter(scope)
 
     for arg in args:
         query = query.filter(arg)

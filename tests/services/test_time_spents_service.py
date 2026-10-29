@@ -17,6 +17,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     time_spents_service,
+    user_service,
 )
 
 
@@ -343,7 +344,10 @@ class TimeSpentLookupTestCase(TimeSpentsTestCase):
         time_spents = time_spents_service.get_time_spents(
             self.person_id,
             "2018-06-04",
-            department_ids=[str(self.department_animation.id)],
+            scope=user_service.build_supervision_scope_filter(
+                {str(self.task.project_id): "supervisor"},
+                [str(self.department_animation.id)],
+            ),
         )
         self.assertEqual([entry["duration"] for entry in time_spents], [300])
 
@@ -398,7 +402,10 @@ class TimeSpentLookupTestCase(TimeSpentsTestCase):
             "2018-06-01",
             "2018-06-30",
             project_ids=[str(self.task.project_id)],
-            department_ids=[str(self.department_animation.id)],
+            scope=user_service.build_supervision_scope_filter(
+                {str(self.task.project_id): "supervisor"},
+                [str(self.department_animation.id)],
+            ),
         )
         self.assertEqual(
             [entry["task_id"] for entry in in_animation],

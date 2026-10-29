@@ -555,6 +555,39 @@ class UserWorkloadTestCase(UserContextTestCase):
         self.assertEqual(result["stats"]["total"], 1)
         self.assertEqual(result["data"][0]["id"], str(self.task_id))
 
+    def test_a_supervisor_checks_every_department_where_they_manage(self):
+        feedback_status = self.feedback_task_ids()
+        other = Project.create(
+            name="Other", project_status_id=self.open_status.id
+        )
+        Task.create(
+            name="Other",
+            project_id=other.id,
+            task_type_id=self.task_type_animation.id,
+            task_status_id=feedback_status["id"],
+            entity_id=self.shot.id,
+        )
+        self.generate_fixture_user_supervisor()
+        supervisor = Person.get(self.user_supervisor["id"])
+        supervisor.departments = [self.department]
+        supervisor.save()
+        projects_service.add_team_member(
+            self.project_id, self.user_supervisor["id"]
+        )
+        projects_service.add_team_member(
+            other.id, self.user_supervisor["id"], "manager"
+        )
+        self.log_in_supervisor()
+
+        # the shot task of the supervised project belongs to the animation
+        # department, the task of the managed project too
+        tasks = self.get("data/user/tasks-to-check")
+        self.assertEqual(
+            {task["project_id"] for task in tasks},
+            {str(self.project_id), str(other.id)},
+        )
+        self.assertEqual(len(tasks), 2)
+
     def test_get_tasks_to_check_filter_values_skips_entity_less_tasks(self):
         feedback_status = self.feedback_task_ids()
         task = Task.create(
