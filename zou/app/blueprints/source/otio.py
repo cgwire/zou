@@ -38,6 +38,38 @@ mapping_substitutions_to_regex = {
 }
 
 
+def get_timecode_rate(fps):
+    """
+    OTIO reads timecodes at SMPTE rates only, and a production stores an
+    NTSC rate rounded: 29.97 for 30000/1001, 23.976 or 23.98 for
+    24000/1001. A rate within a hundredth of an SMPTE rate is read at it.
+    Any other rate stays as is and OTIO refuses it: reading it at the
+    nearest SMPTE rate would count its frames at another rate.
+    """
+    import opentimelineio as otio
+
+    rate = otio.opentime.RationalTime.nearest_smpte_timecode_rate(fps)
+    return rate if abs(rate - fps) < 0.01 else fps
+
+
+def check_drop_frame_separators(file_path, rate):
+    """
+    OTIO skips the FCM line of an EDL and counts drop-frame timecodes from
+    their ';' separator only: at 30000/1001 or 60000/1001 fps, the drop-frame
+    rates, a drop-frame EDL written with ':' would be read as non-drop-frame,
+    18 frames off every 10 minutes at 29.97 fps.
+    """
+    if rate not in (30000 / 1001, 60000 / 1001):
+        return
+    with open(file_path, encoding="utf-8", errors="replace") as edl_file:
+        edl = edl_file.read()
+    is_drop_frame = re.search(r"^\s*FCM:\s*DROP FRAME", edl, re.I | re.M)
+    if is_drop_frame and not re.search(r"\d\d:\d\d:\d\d;\d\d", edl):
+        raise ValueError(
+            "the EDL declares drop frame without HH:MM:SS;FF timecodes"
+        )
+
+
 class OTIOBaseResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -153,7 +185,10 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         try:
             kwargs = {}
             if suffix == "edl":
-                kwargs["rate"] = projects_service.get_project_fps(project_id)
+                kwargs["rate"] = get_timecode_rate(
+                    projects_service.get_project_fps(project_id)
+                )
+                check_drop_frame_separators(file_path, kwargs["rate"])
                 kwargs["ignore_timecode_mismatch"] = True
             timeline = otio.adapters.read_from_file(file_path, **kwargs)
         except Exception as e:

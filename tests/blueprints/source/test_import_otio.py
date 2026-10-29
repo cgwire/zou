@@ -18,12 +18,17 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         self.generate_fixture_project(name="TestProject")
         self.project.update({"fps": "25"})
 
-    def import_edl(self, edl_filename):
+    def set_fps(self, fps):
+        # The project is memoized: drop it so the next import reads the fps.
+        self.project.update({"fps": fps})
+        projects_service.clear_project_cache(str(self.project.id))
+
+    def import_edl(self, edl_filename, code=201):
         path = f"/import/otio/projects/{self.project.id}"
         file_path = self.get_fixture_file_path(
             os.path.join("edl", edl_filename)
         )
-        self.upload_file(path, file_path)
+        return self.upload_file(path, file_path, code)
 
     def imported_cuts(self):
         """
@@ -66,6 +71,107 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         sequences = shots_service.get_sequences()
         sequence_names = {s["name"] for s in sequences}
         self.assertEqual(sequence_names, {"SQ010", "SQ020"})
+
+    def test_import_edl_at_29_97_fps(self):
+        """
+        A production at 30000/1001 fps stores 29.97, a rate OTIO refuses to
+        read timecodes at: every edl import of such a production answered a
+        400. Non-drop-frame timecodes count 30 frames a second at that rate:
+        the first cut lasts 00:00:05:10, that is 5 * 30 + 10 frames.
+        """
+        self.set_fps("29.97")
+        self.import_edl("ntsc.edl")
+
+        self.assertEqual(
+            self.imported_cuts(),
+            [("sc010", 160, 0, 159), ("sc020", 72, 160, 231)],
+        )
+
+    def test_import_edl_at_59_94_fps(self):
+        # The same cuts at 60000/1001 fps count 60 frames a second.
+        self.set_fps("59.94")
+        self.import_edl("ntsc.edl")
+
+        self.assertEqual(
+            self.imported_cuts(),
+            [("sc010", 310, 0, 309), ("sc020", 132, 310, 441)],
+        )
+
+    def test_import_edl_at_23_976_fps(self):
+        # The same cuts at 24000/1001 fps count 24 frames a second.
+        for fps in ("23.976", "23.98"):
+            with self.subTest(fps=fps):
+                self.set_fps(fps)
+                self.import_edl("ntsc.edl")
+
+                self.assertEqual(
+                    self.imported_cuts(),
+                    [("sc010", 130, 0, 129), ("sc020", 60, 130, 189)],
+                )
+
+    def test_import_edl_reads_drop_frame_timecodes_at_29_97_fps(self):
+        """
+        Drop-frame timecodes exist at the exact NTSC rate only: OTIO refuses
+        them at 30 fps. 00:01:00;02 is the frame 1800, since the frame
+        numbers 00:01:00;00 and 00:01:00;01 are skipped.
+        """
+        self.set_fps("29.97")
+        self.import_edl("df.edl")
+
+        self.assertEqual(
+            self.imported_cuts(),
+            [("sc010", 1800, 0, 1799), ("sc020", 300, 1800, 2099)],
+        )
+
+    def test_import_edl_reads_drop_frame_timecodes_at_59_94_fps(self):
+        # At 60000/1001 fps, 00:01:00;04 is the frame 3600: the minute skips
+        # 4 frame numbers.
+        self.set_fps("59.94")
+        self.import_edl("df_59_94.edl")
+
+        self.assertEqual(
+            self.imported_cuts(),
+            [("sc010", 3600, 0, 3599), ("sc020", 600, 3600, 4199)],
+        )
+
+    def test_import_edl_refuses_drop_frame_without_semicolons(self):
+        """
+        OTIO skips the FCM line and reads a drop-frame timecode written with
+        ':' as non-drop-frame, 18 frames off every 10 minutes at 29.97 fps:
+        the import refuses such a file rather than store wrong frames. OTIO
+        reads an indented FCM line as well.
+        """
+        with open(
+            self.get_fixture_file_path(os.path.join("edl", "df_colon.edl"))
+        ) as edl_file:
+            indented_edl = edl_file.read().replace("FCM:", "  FCM:")
+        for fps in ("29.97", "59.94"):
+            self.set_fps(fps)
+            with self.subTest(fps=fps):
+                result = self.import_edl("df_colon.edl", 400)
+                self.assertIn("drop frame", result["message"])
+            with self.subTest(fps=fps, fcm="indented"):
+                result = self._upload_bad_file(".edl", indented_edl)
+                self.assertIn("drop frame", result["message"])
+
+        self.assertEqual(shots_service.get_shots(), [])
+
+    def test_import_edl_refuses_a_rate_far_from_every_timecode_rate(self):
+        # Reading the edl at the nearest timecode rate, 24000/1001 fps for
+        # 20, 30000/1001 for 29.9 and 60 fps for 120, would store frames
+        # counted at another rate. A drop-frame edl is refused for that
+        # rate too, not for its separators.
+        for fps in ("20", "29.9", "120"):
+            self.set_fps(fps)
+            for edl_filename in ("ntsc.edl", "df_colon.edl"):
+                with self.subTest(fps=fps, edl=edl_filename):
+                    result = self.import_edl(edl_filename, 400)
+
+                    self.assertIn(
+                        "Failed to parse OTIO file", result["message"]
+                    )
+                    self.assertNotIn("drop frame", result["message"])
+                    self.assertEqual(shots_service.get_shots(), [])
 
     def _upload_bad_file(self, suffix, content):
         path = f"/import/otio/projects/{self.project.id}"
