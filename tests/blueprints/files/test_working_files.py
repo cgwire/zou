@@ -533,8 +533,12 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.post(
             f"/data/tasks/{self.task_id}/working-files/new",
             {
+                "task_id": self.task_id,
                 "name": "main",
+                "mode": "working",
+                "revision": 0,
                 "description": "description test",
+                "comment": "Gazu-compatible create payload",
                 "person_id": self.user_cg_artist["id"],
             },
         )
