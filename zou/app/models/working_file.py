@@ -20,7 +20,7 @@ class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     description = db.Column(db.Text())
     comment = db.Column(db.Text())
     revision = db.Column(db.Integer())
-    size = db.Column(db.Integer())
+    size = db.Column(db.BigInteger())
     checksum = db.Column(db.Integer())
     path = db.Column(db.String(400))
     data = db.Column(JSONB)

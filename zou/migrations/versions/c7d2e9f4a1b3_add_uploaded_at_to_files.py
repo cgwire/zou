@@ -1,4 +1,5 @@
-"""Add the upload date of the working files and the output files
+"""Add the upload date of the working files and the output files, and
+turn their size into a big integer for files over 2 GB
 
 Revision ID: c7d2e9f4a1b3
 Revises: b8e3d1f6a2c9
@@ -24,9 +25,21 @@ def upgrade():
             batch_op.add_column(
                 sa.Column("uploaded_at", sa.DateTime(), nullable=True)
             )
+            batch_op.alter_column(
+                "size",
+                existing_type=sa.Integer(),
+                type_=sa.BigInteger(),
+                existing_nullable=True,
+            )
 
 
 def downgrade():
     for table in reversed(TABLES):
         with op.batch_alter_table(table, schema=None) as batch_op:
+            batch_op.alter_column(
+                "size",
+                existing_type=sa.BigInteger(),
+                type_=sa.Integer(),
+                existing_nullable=True,
+            )
             batch_op.drop_column("uploaded_at")

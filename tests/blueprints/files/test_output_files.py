@@ -722,6 +722,16 @@ class OutputFileFileTestCase(OutputFileTestCase):
         with open(fixture, "rb") as f:
             self.assertEqual(response.data, f.read())
 
+    def test_an_output_file_stores_a_size_over_2_gb(self):
+        from zou.app.services import files_service
+
+        output_file = self.new_output_file()
+        size = 3 * 1024**3
+        updated = files_service.update_output_file(
+            output_file["id"], {"size": size}
+        )
+        self.assertEqual(updated["size"], size)
+
     def test_an_output_file_without_binary_is_a_404(self):
         output_file = self.new_output_file()
         self.get(f"/data/output-files/{output_file['id']}/file", 404)

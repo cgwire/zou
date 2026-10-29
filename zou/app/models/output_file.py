@@ -24,7 +24,7 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
 
     name = db.Column(db.String(250), nullable=False)
     canceled = db.Column(db.Boolean(), default=False, nullable=False)
-    size = db.Column(db.Integer())
+    size = db.Column(db.BigInteger())
     checksum = db.Column(db.String(32))
     description = db.Column(db.Text())
     comment = db.Column(db.Text())
