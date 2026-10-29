@@ -120,6 +120,14 @@ class PersonTimeSpentsTestCase(ApiDBTestCase):
             entries[0]["task_type_id"], str(self.task_type_animation.id)
         )
 
+    def test_range_for_a_supervisor_without_department_reads_every_one(self):
+        from zou.app.services import projects_service
+
+        supervisor = self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(self.project.id, supervisor["id"])
+        self.log_in_supervisor()
+        self.assertEqual(len(self._get_range()), 3)
+
     def test_range_for_a_supervisor_reads_every_department_where_they_manage(
         self,
     ):
