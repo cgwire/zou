@@ -91,6 +91,27 @@ class OutputFileTestCase(ApiDBTestCase):
         tasks_service.assign_task(str(self.task.id), user_cg_artist_id)
         self.put(f"data/output-files/{output_file['id']}", data)
 
+    def test_update_source_file_requires_working_file_access(self):
+        self.generate_fixture_user_cg_artist()
+        user_id = self.user_cg_artist["id"]
+        projects_service.add_team_member(self.project_id, user_id)
+        tasks_service.assign_task(str(self.task.id), user_id)
+
+        output_file_id = self.get_first("data/output-files")["id"]
+        assigned_working_file = self.generate_fixture_working_file()
+        self.log_in_cg_artist()
+        self.put(
+            f"data/output-files/{output_file_id}",
+            {"source_file_id": str(assigned_working_file.id)},
+        )
+
+        unassigned_working_file = self.generate_fixture_shot_working_file()
+        self.put(
+            f"data/output-files/{output_file_id}",
+            {"source_file_id": str(unassigned_working_file.id)},
+            403,
+        )
+
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
         data = {"name": "Super modeling output_file 2"}

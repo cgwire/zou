@@ -74,11 +74,23 @@ class OutputFileResource(BaseModelResource):
         if permissions_service.has_manager_project_access(
             entity["project_id"]
         ):
-            return True
+            has_output_access = True
         else:
-            return permissions_service.check_working_on_entity(
+            has_output_access = permissions_service.check_working_on_entity(
                 output_file["temporal_entity_id"] or output_file["entity_id"]
             )
+
+        # Updating an output file must not let a user attach a Working file
+        # from a task they cannot read. Existing clients may update this
+        # optional relation, so retain the API shape and validate the target.
+        working_file_id = data.get("source_file_id")
+        if working_file_id is not None:
+            working_file = files_service.get_working_file(working_file_id)
+            permissions_service.check_working_file_access(
+                working_file["task_id"]
+            )
+
+        return has_output_access
 
     @jwt_required()
     @swag_from(SPECS["OutputFileResource_get"])
