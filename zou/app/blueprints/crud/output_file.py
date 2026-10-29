@@ -37,15 +37,19 @@ class OutputFilesResource(BaseModelsResource):
     def serialize_list(self, entries, relations=False):
         output_files = super().serialize_list(entries, relations=relations)
         if relations:
+            working_file_access = {}
             for output_file, serialized in zip(entries, output_files):
                 working_file = output_file.source_file
                 if working_file is None:
                     continue
-                try:
-                    permissions_service.check_working_file_access(
-                        working_file.task_id
-                    )
-                except permissions.PermissionDenied:
+                task_id = str(working_file.task_id)
+                if task_id not in working_file_access:
+                    try:
+                        permissions_service.check_working_file_access(task_id)
+                        working_file_access[task_id] = True
+                    except permissions.PermissionDenied:
+                        working_file_access[task_id] = False
+                if not working_file_access[task_id]:
                     serialized["source_file"] = None
                     serialized["source_file_id"] = None
         return output_files
