@@ -518,6 +518,39 @@ class OutputFileListingTestCase(OutputFileTestCase):
     output type and by instance.
     """
 
+    def test_output_listings_hide_unreadable_working_file_references(self):
+        from zou.app.services import projects_service, tasks_service
+
+        output_type = self.generate_fixture_output_type()
+        output_file = self.generate_fixture_output_file(output_type, 1)
+        output_file.update(source_file_id=self.working_file.id)
+        self.generate_fixture_user_cg_artist()
+        user_id = self.user_cg_artist["id"]
+        projects_service.add_team_member(self.project_id, user_id)
+        self.log_in_cg_artist()
+
+        paths = [
+            f"/data/entities/{self.asset.id}/output-files",
+            f"/data/entities/{self.asset.id}/output-files/last-revisions",
+            f"/data/entities/{self.asset.id}/output-types/{output_type.id}/output-files",
+        ]
+        for path in paths:
+            result = self.get(path)
+            item = next(
+                entry for entry in result if entry["id"] == str(output_file.id)
+            )
+            self.assertIsNone(item["source_file_id"])
+
+        tasks_service.assign_task(str(self.task.id), user_id)
+        for path in paths:
+            result = self.get(path)
+            item = next(
+                entry for entry in result if entry["id"] == str(output_file.id)
+            )
+            self.assertEqual(
+                item["source_file_id"], str(self.working_file.id)
+            )
+
     def test_get_last_output_files(self):
         self.generate_output_files()
         output_files = self.get(

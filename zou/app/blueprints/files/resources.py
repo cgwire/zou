@@ -25,6 +25,7 @@ from zou.app.exceptions import (
     WorkingFileNotFoundException,
 )
 from zou.app.mixin import ArgsMixin
+from zou.app.models.working_file import WorkingFile
 from zou.app.services import (
     assets_service,
     breakdown_service,
@@ -37,10 +38,44 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.stores import file_store
-from zou.app.utils import date_helpers, fs, validation
+from zou.app.utils import date_helpers, fs, permissions, validation
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
+
+
+def hide_inaccessible_output_file_sources(output_files):
+    """Hide Working references outside the caller's task access boundary."""
+    source_file_ids = {
+        output_file.get("source_file_id")
+        for output_file in output_files
+        if output_file.get("source_file_id") is not None
+    }
+    if not source_file_ids:
+        return output_files
+
+    working_files = {
+        str(working_file.id): working_file
+        for working_file in WorkingFile.query.filter(
+            WorkingFile.id.in_(source_file_ids)
+        ).all()
+    }
+    access_by_task = {}
+    for output_file in output_files:
+        source_file_id = output_file.get("source_file_id")
+        working_file = working_files.get(str(source_file_id))
+        if working_file is None:
+            continue
+        task_id = str(working_file.task_id)
+        if task_id not in access_by_task:
+            try:
+                permissions_service.check_working_file_access(task_id)
+                access_by_task[task_id] = True
+            except permissions.PermissionDenied:
+                access_by_task[task_id] = False
+        if not access_by_task[task_id]:
+            output_file["source_file_id"] = None
+    return output_files
 
 
 def send_storage_file(
@@ -830,13 +865,15 @@ class LastEntityOutputFilesResource(MethodView, ArgsMixin):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
 
-        return files_service.get_last_output_files_for_entity(
-            entity["id"],
-            output_type_id=args["output_type_id"],
-            task_type_id=args["task_type_id"],
-            representation=args["representation"],
-            file_status_id=args["file_status_id"],
-            name=args["name"],
+        return hide_inaccessible_output_file_sources(
+            files_service.get_last_output_files_for_entity(
+                entity["id"],
+                output_type_id=args["output_type_id"],
+                task_type_id=args["task_type_id"],
+                representation=args["representation"],
+                file_status_id=args["file_status_id"],
+                name=args["name"],
+            )
         )
 
 
@@ -864,14 +901,16 @@ class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
         entity = entities_service.get_entity(asset_instance["asset_id"])
         permissions_service.check_project_access(entity["project_id"])
 
-        return files_service.get_last_output_files_for_instance(
-            asset_instance["id"],
-            temporal_entity_id,
-            output_type_id=args["output_type_id"],
-            task_type_id=args["task_type_id"],
-            representation=args["representation"],
-            file_status_id=args["file_status_id"],
-            name=args["name"],
+        return hide_inaccessible_output_file_sources(
+            files_service.get_last_output_files_for_instance(
+                asset_instance["id"],
+                temporal_entity_id,
+                output_type_id=args["output_type_id"],
+                task_type_id=args["task_type_id"],
+                representation=args["representation"],
+                file_status_id=args["file_status_id"],
+                name=args["name"],
+            )
         )
 
 
@@ -925,7 +964,7 @@ class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
             )
         )
 
-        return output_files
+        return hide_inaccessible_output_file_sources(output_files)
 
 
 class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
@@ -945,7 +984,7 @@ class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
         permissions_service.check_project_access(asset["project_id"])
 
         files_service.get_output_type(output_type_id)
-        return (
+        return hide_inaccessible_output_file_sources(
             files_service.get_output_files_for_output_type_and_asset_instance(
                 asset_instance_id,
                 temporal_entity_id,
@@ -974,13 +1013,15 @@ class ProjectOutputFilesResource(MethodView, ArgsMixin):
         )
         permissions_service.check_manager_project_access(project_id)
 
-        return files_service.get_output_files_for_project(
-            project_id,
-            task_type_id=args["task_type_id"],
-            output_type_id=args["output_type_id"],
-            name=args["name"],
-            representation=args["representation"],
-            file_status_id=args["file_status_id"],
+        return hide_inaccessible_output_file_sources(
+            files_service.get_output_files_for_project(
+                project_id,
+                task_type_id=args["task_type_id"],
+                output_type_id=args["output_type_id"],
+                name=args["name"],
+                representation=args["representation"],
+                file_status_id=args["file_status_id"],
+            )
         )
 
 
@@ -1005,13 +1046,15 @@ class EntityOutputFilesResource(MethodView, ArgsMixin):
         entity = entities_service.get_entity(entity_id)
         permissions_service.check_project_access(entity["project_id"])
 
-        return files_service.get_output_files_for_entity(
-            entity["id"],
-            task_type_id=args["task_type_id"],
-            output_type_id=args["output_type_id"],
-            name=args["name"],
-            representation=args["representation"],
-            file_status_id=args["file_status_id"],
+        return hide_inaccessible_output_file_sources(
+            files_service.get_output_files_for_entity(
+                entity["id"],
+                task_type_id=args["task_type_id"],
+                output_type_id=args["output_type_id"],
+                name=args["name"],
+                representation=args["representation"],
+                file_status_id=args["file_status_id"],
+            )
         )
 
 
@@ -1040,14 +1083,16 @@ class InstanceOutputFilesResource(MethodView, ArgsMixin):
         asset = assets_service.get_asset(asset_instance["asset_id"])
         permissions_service.check_project_access(asset["project_id"])
 
-        return files_service.get_output_files_for_instance(
-            asset_instance["id"],
-            temporal_entity_id=args["temporal_entity_id"],
-            task_type_id=args["task_type_id"],
-            output_type_id=args["output_type_id"],
-            name=args["name"],
-            representation=args["representation"],
-            file_status_id=args["file_status_id"],
+        return hide_inaccessible_output_file_sources(
+            files_service.get_output_files_for_instance(
+                asset_instance["id"],
+                temporal_entity_id=args["temporal_entity_id"],
+                task_type_id=args["task_type_id"],
+                output_type_id=args["output_type_id"],
+                name=args["name"],
+                representation=args["representation"],
+                file_status_id=args["file_status_id"],
+            )
         )
 
 
