@@ -81,7 +81,7 @@ class MilestoneTestCase(ApiDBTestCase):
         self.assertEqual(len(milestones), 2)
         self.delete_404(f"data/milestones/{fields.gen_uuid()}")
 
-    def test_create_milestone_with_type_color_and_status(self):
+    def test_create_milestone_with_type_and_color(self):
         milestone = self.post(
             "data/milestones",
             {
@@ -90,15 +90,12 @@ class MilestoneTestCase(ApiDBTestCase):
                 "project_id": self.project_id,
                 "color": "#ff0000",
                 "milestone_type": "review",
-                "status": "wfa",
             },
         )
         self.assertEqual(milestone["color"], "#ff0000")
         self.assertEqual(milestone["milestone_type"], "review")
-        self.assertEqual(milestone["status"], "wfa")
         milestone_again = self.get(f"data/milestones/{milestone['id']}")
         self.assertEqual(milestone_again["milestone_type"], "review")
-        self.assertEqual(milestone_again["status"], "wfa")
 
     def test_create_milestone_defaults(self):
         milestone = self.post(
@@ -111,22 +108,19 @@ class MilestoneTestCase(ApiDBTestCase):
         )
         self.assertIsNone(milestone["color"])
         self.assertEqual(milestone["milestone_type"], "other")
-        self.assertEqual(milestone["status"], "todo")
 
-    def test_update_milestone_type_color_and_status(self):
+    def test_update_milestone_type_and_color(self):
         milestone = self.get_first("data/milestones")
         self.put(
             f"data/milestones/{milestone['id']}",
             {
                 "color": "#00AA11",
                 "milestone_type": "delivery",
-                "status": "done",
             },
         )
         milestone_again = self.get(f"data/milestones/{milestone['id']}")
         self.assertEqual(milestone_again["color"], "#00AA11")
         self.assertEqual(milestone_again["milestone_type"], "delivery")
-        self.assertEqual(milestone_again["status"], "done")
         self.put(f"data/milestones/{milestone['id']}", {"color": None})
         milestone_again = self.get(f"data/milestones/{milestone['id']}")
         self.assertIsNone(milestone_again["color"])
@@ -140,7 +134,6 @@ class MilestoneTestCase(ApiDBTestCase):
         for invalid in [
             {"milestone_type": "party"},
             {"milestone_type": None},
-            {"status": "wip"},
             {"color": "red"},
             {"color": "#fff"},
             {"color": "#gggggg"},
@@ -154,14 +147,12 @@ class MilestoneTestCase(ApiDBTestCase):
         milestone = self.get_first("data/milestones")
         for invalid in [
             {"milestone_type": "party"},
-            {"status": None},
-            {"status": "wip"},
+            {"milestone_type": None},
             {"color": "#12345"},
         ]:
             self.put(f"data/milestones/{milestone['id']}", invalid, 400)
         milestone_again = self.get(f"data/milestones/{milestone['id']}")
         self.assertEqual(milestone_again["milestone_type"], "other")
-        self.assertEqual(milestone_again["status"], "todo")
         self.assertIsNone(milestone_again["color"])
 
     def test_milestones_on_same_date(self):
@@ -192,7 +183,6 @@ class MilestoneTestCase(ApiDBTestCase):
                 "name",
                 "color",
                 "milestone_type",
-                "status",
                 "project_id",
                 "task_type_id",
             },

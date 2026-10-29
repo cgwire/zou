@@ -5,7 +5,6 @@ from flask_jwt_extended import jwt_required
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.milestone import (
-    MILESTONE_STATUSES,
     MILESTONE_TYPES,
     Milestone,
 )
@@ -16,13 +15,12 @@ SPECS = load_specs(__file__, "openapi/milestone.yml")
 
 HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
 MILESTONE_TYPE_CODES = [code for code, _ in MILESTONE_TYPES]
-MILESTONE_STATUS_CODES = [code for code, _ in MILESTONE_STATUSES]
 
 
 def check_milestone_fields(data):
     """
-    Reject a color that is not #RRGGBB and a type or status outside the
-    allowed choices. ChoiceType would store an unknown code and fail only
+    Reject a color that is not #RRGGBB and a type outside the allowed
+    choices. ChoiceType would store an unknown code and fail only
     when the row is read back.
     """
     color = data.get("color")
@@ -38,11 +36,6 @@ def check_milestone_fields(data):
         raise WrongParameterException(
             "Milestone type must be one of: "
             f"{', '.join(MILESTONE_TYPE_CODES)}."
-        )
-    if "status" in data and data["status"] not in MILESTONE_STATUS_CODES:
-        raise WrongParameterException(
-            "Milestone status must be one of: "
-            f"{', '.join(MILESTONE_STATUS_CODES)}."
         )
     return data
 

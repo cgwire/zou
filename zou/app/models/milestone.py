@@ -13,12 +13,6 @@ MILESTONE_TYPES = [
     ("other", "Other"),
 ]
 
-MILESTONE_STATUSES = [
-    ("todo", "Todo"),
-    ("wfa", "Waiting For Approval"),
-    ("done", "Done"),
-]
-
 
 class Milestone(db.Model, BaseMixin, SerializerMixin):
     """
@@ -30,9 +24,6 @@ class Milestone(db.Model, BaseMixin, SerializerMixin):
     color = db.Column(db.String(7))
     milestone_type = db.Column(
         ChoiceType(MILESTONE_TYPES), default="other", nullable=False
-    )
-    status = db.Column(
-        ChoiceType(MILESTONE_STATUSES), default="todo", nullable=False
     )
 
     project_id = db.Column(
@@ -50,7 +41,6 @@ class Milestone(db.Model, BaseMixin, SerializerMixin):
                 "name": self.name,
                 "color": self.color,
                 "milestone_type": self.milestone_type,
-                "status": self.status,
                 "project_id": self.project_id,
                 "task_type_id": self.task_type_id,
             }

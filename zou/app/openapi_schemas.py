@@ -392,13 +392,6 @@ MilestoneSchema = {
             "default": "other",
             "description": "Kind of milestone",
         },
-        "status": {
-            "type": "string",
-            "enum": ["todo", "wfa", "done"],
-            "default": "todo",
-            "description": "Progress of the milestone (wfa: waiting for "
-            "approval)",
-        },
         "task_type_id": {
             "type": "string",
             "format": "uuid",

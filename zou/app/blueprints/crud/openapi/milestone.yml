@@ -125,9 +125,6 @@ MilestoneResource_put:
             milestone_type:
               type: string
               enum: [kickoff, review, approval, delivery, other]
-            status:
-              type: string
-              enum: [todo, wfa, done]
   responses:
     200:
       description: The updated milestone
@@ -283,10 +280,6 @@ MilestonesResource_post:
               type: string
               enum: [kickoff, review, approval, delivery, other]
               default: other
-            status:
-              type: string
-              enum: [todo, wfa, done]
-              default: todo
   responses:
     201:
       description: The new milestone

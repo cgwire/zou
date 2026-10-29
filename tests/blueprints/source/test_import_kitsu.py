@@ -74,9 +74,8 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         self._post_kitsu("/import/kitsu/milestones", payload)
         milestone = Milestone.get(new_id)
         self.assertEqual(milestone.milestone_type.code, "other")
-        self.assertEqual(milestone.status.code, "todo")
 
-    def test_import_milestones_with_type_color_and_status(self):
+    def test_import_milestones_with_type_and_color(self):
         new_id = str(fields.gen_uuid())
         payload = [
             {
@@ -86,17 +85,15 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
                 "date": "2026-06-01",
                 "color": "#ff0000",
                 "milestone_type": "delivery",
-                "status": "done",
             }
         ]
         self._post_kitsu("/import/kitsu/milestones", payload)
         milestone = Milestone.get(new_id).serialize()
         self.assertEqual(milestone["color"], "#ff0000")
         self.assertEqual(milestone["milestone_type"], "delivery")
-        self.assertEqual(milestone["status"], "done")
-        payload[0]["status"] = "wfa"
+        payload[0]["milestone_type"] = "review"
         self._post_kitsu("/import/kitsu/milestones", payload)
-        self.assertEqual(Milestone.get(new_id).status.code, "wfa")
+        self.assertEqual(Milestone.get(new_id).milestone_type.code, "review")
 
     def test_import_schedule_items(self):
         new_id = str(fields.gen_uuid())
