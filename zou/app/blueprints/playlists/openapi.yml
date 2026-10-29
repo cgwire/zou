@@ -479,9 +479,8 @@ PlaylistShareLinkInviteResource_post:
   summary: Invite reviewers to a shared playlist
   description: Send the URL of a share link by email. Give email addresses,
     person identifiers, or both. Unknown persons and persons without an email
-    are skipped. You can add a message. You must be an administrator, or have
-    the manager role in your account and be a manager of the project. A
-    manager role given only on the project is not enough.
+    are skipped. You can add a message. You must be an administrator or a
+    manager of the project. The role held on the project team applies.
   tags:
     - Playlists
   parameters:
@@ -532,8 +531,7 @@ PlaylistShareLinkInviteResource_post:
     400:
       description: An email address is not valid
     403:
-      description: Your account role is not manager or administrator, or you
-        are not a manager of the project
+      description: You are not an administrator or a manager of the project
     404:
       description: The playlist or the share link does not exist, the token
         is for another playlist, or the link is revoked
@@ -541,9 +539,8 @@ PlaylistShareLinkInviteResource_post:
 PlaylistShareLinkResource_delete:
   summary: Revoke a share link
   description: Disable a share link. The token must be a token of the playlist
-    of the path. You must be an administrator, or have the manager role
-    in your account and be a manager of the project. A manager role given
-    only on the project is not enough.
+    of the path. You must be an administrator or a manager of the project. The
+    role held on the project team applies.
   tags:
     - Playlists
   parameters:
@@ -576,8 +573,7 @@ PlaylistShareLinkResource_delete:
                 type: boolean
                 example: false
     403:
-      description: Your account role is not manager or administrator, or you
-        are not a manager of the project
+      description: You are not an administrator or a manager of the project
     404:
       description: The playlist or the share link does not exist, or the token
         is for another playlist
@@ -587,8 +583,8 @@ PlaylistShareLinksResource_get:
   description: Get the active share links of a playlist. Revoked links are not
     in the response. The response does not give the passwords. The
     has_password field tells if a link has a password. You must be an
-    administrator, or have the manager role in your account and be a manager
-    of the project. A manager role given only on the project is not enough.
+    administrator or a manager of the project. The role held on the project
+    team applies.
   tags:
     - Playlists
   parameters:
@@ -632,8 +628,7 @@ PlaylistShareLinksResource_get:
                 has_password:
                   type: boolean
     403:
-      description: Your account role is not manager or administrator, or you
-        are not a manager of the project
+      description: You are not an administrator or a manager of the project
     404:
       description: The playlist does not exist
 
@@ -641,9 +636,8 @@ PlaylistShareLinksResource_post:
   summary: Create a share link for a playlist
   description: Create a link that guests can use to review the playlist
     without an account. The link can expire, block comments and ask for a
-    password. You must be an administrator, or have the manager role
-    in your account and be a manager of the project. A manager role given
-    only on the project is not enough.
+    password. You must be an administrator or a manager of the project. The
+    role held on the project team applies.
   tags:
     - Playlists
   parameters:
@@ -703,8 +697,7 @@ PlaylistShareLinksResource_post:
     400:
       description: The body is not valid
     403:
-      description: Your account role is not manager or administrator, or you
-        are not a manager of the project
+      description: You are not an administrator or a manager of the project
     404:
       description: The playlist does not exist
 

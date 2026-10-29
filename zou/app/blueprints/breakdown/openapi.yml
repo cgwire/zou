@@ -576,7 +576,8 @@ ProjectEntityLinksResource_get:
 
 RemoveShotAssetInstanceResource_delete:
   summary: Remove an asset instance from a shot
-  description: Remove an asset instance from a shot.
+  description: Remove an asset instance from a shot. A client or a vendor of
+    the project cannot use this route.
   tags:
     - Breakdown
   parameters:
@@ -600,7 +601,8 @@ RemoveShotAssetInstanceResource_delete:
     204:
       description: The asset instance is removed from the shot
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a
+        client or a vendor
     404:
       description: The shot or the asset instance does not exist
 
@@ -658,7 +660,8 @@ SceneAssetInstancesResource_get:
 
 SceneAssetInstancesResource_post:
   summary: Add an asset instance to a scene
-  description: Make an instance of an asset in a scene.
+  description: Make an instance of an asset in a scene. A client or a vendor
+    of the project cannot use this route.
   tags:
     - Breakdown
   parameters:
@@ -722,7 +725,8 @@ SceneAssetInstancesResource_post:
     400:
       description: The body is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a
+        client or a vendor
     404:
       description: The scene does not exist
 
@@ -961,7 +965,8 @@ ShotAssetInstancesResource_get:
 
 ShotAssetInstancesResource_post:
   summary: Add an asset instance to a shot
-  description: Add an asset instance to a shot.
+  description: Add an asset instance to a shot. A client or a vendor of the
+    project cannot use this route.
   tags:
     - Breakdown
   parameters:
@@ -1022,6 +1027,7 @@ ShotAssetInstancesResource_post:
     400:
       description: The body is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a
+        client or a vendor
     404:
       description: The shot or the asset instance does not exist

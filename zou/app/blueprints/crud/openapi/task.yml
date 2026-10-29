@@ -220,13 +220,14 @@ TasksResource_get:
     - Crud
   description: Get the task rows. Add a query parameter for each column to
     filter on, for example name=Modeling. The name filter does not make a
-    difference between upper case and lower case. To get the rows that have one
-    value of a list, give the list in JSON, for example
+    difference between upper case and lower case. To get the rows that have
+    one value of a list, give the list in JSON, for example
     task_status_id=["<id1>","<id2>"]. Add episode_id to get the tasks of the
-    shots of this episode. An administrator gets all the tasks. A vendor gets
-    only the tasks assigned to them. Other users get the tasks of the open
-    projects of their team. A client gets the studio fields blank, for example
-    assignees, duration, estimation and dates.
+    shots of this episode. An administrator gets all the tasks. Other users
+    get the tasks of the open projects of their team. On a project where you
+    are a vendor, you get only the tasks assigned to you. On a project where
+    you are a client, the studio fields are blank, for example assignees,
+    duration, estimation and dates. The role held on the project team applies.
   parameters:
     - in: query
       name: episode_id
@@ -310,7 +311,8 @@ TasksResource_post:
     The task type must be for the type of the entity. The default name is
     main. You can give assignees, a list of person identifiers. A bot made for
     previews cannot be an assignee. You must be an administrator or a manager
-    of the project of the entity.
+    of the project of the entity. The task gets the project of the entity. The
+    route ignores the project_id of the body.
   requestBody:
     required: true
     content:

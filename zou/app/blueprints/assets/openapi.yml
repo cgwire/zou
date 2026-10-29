@@ -133,7 +133,7 @@ AssetAssetInstancesResource_get:
 AssetAssetInstancesResource_post:
   summary: Add an asset instance to an asset
   description: Make an instance of an asset and put it in the asset of the
-    path.
+    path. A client or a vendor of the project cannot use this route.
   tags:
     - Assets
   parameters:
@@ -200,7 +200,8 @@ AssetAssetInstancesResource_post:
                 description: Creation timestamp
                 example: '2023-01-01T12:00:00Z'
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, or you are a
+        client or a vendor
     404:
       description: The asset does not exist
 

@@ -8,7 +8,8 @@ EntitiesResource_get:
     one value of a list, give the list in JSON, for example
     task_status_id=["<id1>","<id2>"]. An administrator gets all the entities.
     Other users get the entities of the open projects where they are in the
-    team. A vendor gets only the entities with a task assigned to them. Each
+    team. On a project where you are a vendor, you get only the entities with
+    a task assigned to you. The role held on the project team applies. Each
     row has a type field, for example Asset or Shot.
   parameters:
     - in: query

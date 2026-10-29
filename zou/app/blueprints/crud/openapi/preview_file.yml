@@ -109,10 +109,10 @@ PreviewFileResource_put:
     change. You must be in the team of the project of its task, or an
     administrator. If you are not a manager, the task must be assigned to you,
     or you must be a supervisor in the team with the department of the task
-    type, or with no department. You cannot change id,
-    created_at, updated_at. For a main preview (position 1), the new revision
-    must be unique for the task. The extra previews of the same revision get
-    the new revision too. Dates use the ISO 8601 format.
+    type, or with no department. You cannot change id, created_at, updated_at
+    and task_id. For a main preview (position 1), the new revision must be
+    unique for the task. The extra previews of the same revision get the new
+    revision too. Dates use the ISO 8601 format.
   parameters:
     - in: path
       name: instance_id

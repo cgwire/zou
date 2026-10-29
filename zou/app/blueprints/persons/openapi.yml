@@ -153,11 +153,12 @@ DateTimeSpentsResource_get:
   summary: Get the time spents of a person for a date
   description: Get the time spent entries of a person for one date. An
     administrator and the person get all the entries. A manager gets the
-    entries of the projects they are a team member of. A supervisor gets the
-    entries of these projects, for the task types of their departments. A
+    entries of the projects they manage. A supervisor gets the entries of the
+    projects they supervise, for the task types of their departments. A
     supervisor without department gets all the task types. Other users cannot
     read the time spents of other persons. You cannot read the time spents of
-    a bot.
+    a bot. The manager and supervisor roles are the roles held on the project
+    team.
   tags:
     - Persons
   parameters:
@@ -250,6 +251,8 @@ DayOffForMonthResource_get:
             type: array
             items:
               type: object
+    400:
+      description: The year or the month is not valid
 
 DayOffForYearResource_get:
   summary: Get the day offs of a year
@@ -277,6 +280,8 @@ DayOffForYearResource_get:
             type: array
             items:
               type: object
+    400:
+      description: The year is not valid
 
 DayOffResource_get:
   summary: Get the day off of a person for a date
@@ -670,11 +675,12 @@ PersonDayTimeSpentsResource_get:
   description: Get the time spent of a person for a day, with one entry per
     task. Give project_id to keep the tasks of one project. An administrator
     and the person get all the tasks. A manager gets the tasks of the projects
-    they are a team member of. A supervisor gets the tasks of these projects,
+    they manage. A supervisor gets the tasks of the projects they supervise,
     for the task types of their departments. A supervisor without department
     gets all the task types. A manager or a supervisor who gives a project_id
     of another project gets a 403. Other users cannot read the time spents of
-    other persons. You cannot read the time spents of a bot.
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -861,6 +867,8 @@ PersonMonthDayOffResource_get:
             type: array
             items:
               type: object
+    400:
+      description: The year or the month is not valid
     403:
       description: You cannot read the day offs of this person, or the person
         is a bot
@@ -958,11 +966,12 @@ PersonMonthTimeSpentsResource_get:
   description: Get the time spent of a person for a month, with one entry per
     task. Give project_id to keep the tasks of one project. An administrator
     and the person get all the tasks. A manager gets the tasks of the projects
-    they are a team member of. A supervisor gets the tasks of these projects,
+    they manage. A supervisor gets the tasks of the projects they supervise,
     for the task types of their departments. A supervisor without department
     gets all the task types. A manager or a supervisor who gives a project_id
     of another project gets a 403. Other users cannot read the time spents of
-    other persons. You cannot read the time spents of a bot.
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -1092,6 +1101,8 @@ PersonWeekDayOffResource_get:
             type: array
             items:
               type: object
+    400:
+      description: The year or the week is not valid
     403:
       description: You cannot read the day offs of this person, or the person
         is a bot
@@ -1189,11 +1200,12 @@ PersonWeekTimeSpentsResource_get:
   description: Get the time spent of a person for a week, with one entry per
     task. Give project_id to keep the tasks of one project. An administrator
     and the person get all the tasks. A manager gets the tasks of the projects
-    they are a team member of. A supervisor gets the tasks of these projects,
+    they manage. A supervisor gets the tasks of the projects they supervise,
     for the task types of their departments. A supervisor without department
     gets all the task types. A manager or a supervisor who gives a project_id
     of another project gets a 403. Other users cannot read the time spents of
-    other persons. You cannot read the time spents of a bot.
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -1314,6 +1326,8 @@ PersonYearDayOffResource_get:
             type: array
             items:
               type: object
+    400:
+      description: The year is not valid
     403:
       description: You cannot read the day offs of this person, or the person
         is a bot
@@ -1325,11 +1339,12 @@ PersonYearTimeSpentsResource_get:
   description: Get the time spent of a person for a year, with one entry per
     task. Give project_id to keep the tasks of one project. An administrator
     and the person get all the tasks. A manager gets the tasks of the projects
-    they are a team member of. A supervisor gets the tasks of these projects,
+    they manage. A supervisor gets the tasks of the projects they supervise,
     for the task types of their departments. A supervisor without department
     gets all the task types. A manager or a supervisor who gives a project_id
     of another project gets a 403. Other users cannot read the time spents of
-    other persons. You cannot read the time spents of a bot.
+    other persons. You cannot read the time spents of a bot. The manager and
+    supervisor roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -1510,13 +1525,14 @@ TimeSpentMonthResource_get:
   description: Get a table of the time spent of each person for each day of a
     month. Add project_id, department_id or studio_id to filter the table. An
     administrator gets the time spent of all persons. A manager gets the time
-    spent logged on the tasks of the projects they are a team member of, for
-    all persons. A supervisor gets the same, for the task types of their
-    departments. A supervisor without department gets all the task types. A
-    manager or a supervisor who gives a project_id of another project gets a
-    403. A supervisor who gives a department_id that is not one of their
-    departments gets a 400. Other users get their own time spent only. The
-    filters still apply to them.
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -1576,13 +1592,14 @@ TimeSpentMonthsResource_get:
   description: Get a table of the time spent of each person for each month of
     a year. Add project_id, department_id or studio_id to filter the table. An
     administrator gets the time spent of all persons. A manager gets the time
-    spent logged on the tasks of the projects they are a team member of, for
-    all persons. A supervisor gets the same, for the task types of their
-    departments. A supervisor without department gets all the task types. A
-    manager or a supervisor who gives a project_id of another project gets a
-    403. A supervisor who gives a department_id that is not one of their
-    departments gets a 400. Other users get their own time spent only. The
-    filters still apply to them.
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -1633,13 +1650,14 @@ TimeSpentWeekResource_get:
   description: Get a table of the time spent of each person for each week of a
     year. Add project_id, department_id or studio_id to filter the table. An
     administrator gets the time spent of all persons. A manager gets the time
-    spent logged on the tasks of the projects they are a team member of, for
-    all persons. A supervisor gets the same, for the task types of their
-    departments. A supervisor without department gets all the task types. A
-    manager or a supervisor who gives a project_id of another project gets a
-    403. A supervisor who gives a department_id that is not one of their
-    departments gets a 400. Other users get their own time spent only. The
-    filters still apply to them.
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
   tags:
     - Persons
   parameters:
@@ -1690,13 +1708,14 @@ TimeSpentYearsResource_get:
   description: Get a table of the time spent of each person for each year. Add
     project_id, department_id or studio_id to filter the table. An
     administrator gets the time spent of all persons. A manager gets the time
-    spent logged on the tasks of the projects they are a team member of, for
-    all persons. A supervisor gets the same, for the task types of their
-    departments. A supervisor without department gets all the task types. A
-    manager or a supervisor who gives a project_id of another project gets a
-    403. A supervisor who gives a department_id that is not one of their
-    departments gets a 400. Other users get their own time spent only. The
-    filters still apply to them.
+    spent logged on the tasks of the projects they manage, for all persons. A
+    supervisor gets the time spent of the projects they supervise, for the
+    task types of their departments. A supervisor without department gets all
+    the task types. A manager or a supervisor who gives a project_id of
+    another project gets a 403. A supervisor who gives a department_id that is
+    not one of their departments gets a 400. Other users get their own time
+    spent only. The filters still apply to them. The manager and supervisor
+    roles are the roles held on the project team.
   tags:
     - Persons
   responses:
@@ -1737,13 +1756,14 @@ TimeSpentYearsResource_get:
 TimeSpentsResource_get:
   summary: Get the time spents of a person
   description: Get the time spent entries of a person for a period. Give both
-    start_date and end_date. Without them, the route returns an empty list. An
-    administrator and the person get all the entries. A manager gets the
-    entries of the projects they are a team member of. A supervisor gets the
-    entries of these projects, for the task types of their departments. A
+    start_date and end_date. Without them, the route returns all the entries.
+    An administrator and the person get all the entries. A manager gets the
+    entries of the projects they manage. A supervisor gets the entries of the
+    projects they supervise, for the task types of their departments. A
     supervisor without department gets all the task types. Other users cannot
     read the time spents of other persons. You cannot read the time spents of
-    a bot.
+    a bot. The manager and supervisor roles are the roles held on the project
+    team.
   tags:
     - Persons
   parameters:

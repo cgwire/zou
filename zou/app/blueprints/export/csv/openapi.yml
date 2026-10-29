@@ -138,7 +138,8 @@ PersonsCsvExport_get:
   description: Get a CSV file with the persons of the studio, without the
     bots. Each row gives the name, email, phone, role, departments, studio,
     country, contract type, position, seniority, daily salary and active
-    status. You must be a manager.
+    status. Only an administrator gets the daily salary column. You must be a
+    manager.
   responses:
     200:
       description: The CSV file

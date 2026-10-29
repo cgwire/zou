@@ -337,7 +337,8 @@ CreatePreviewFilePictureResource_post:
     thumbnail and a preview picture. For a movie, the route normalizes the
     movie and makes the thumbnails. Use normalize=false to keep the movie as
     it is. You cannot upload a file again for a preview that already has a
-    file. You must be able to do actions on the task.
+    file. You must be able to do actions on the task. A client of the project
+    cannot use this route.
   tags:
     - Previews
   parameters:
@@ -1125,7 +1126,8 @@ UpdateAnnotationsResource_put:
 UpdatePreviewPositionResource_put:
   summary: Change the position of a preview
   description: Change the position of a preview in its revision. A revision
-    can have several previews. You must be able to do actions on the task.
+    can have several previews. You must be able to do actions on the task. A
+    client of the project cannot use this route.
   tags:
     - Previews
   parameters:

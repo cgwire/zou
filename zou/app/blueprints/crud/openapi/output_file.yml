@@ -146,8 +146,9 @@ OutputFilesResource_get:
     filter on, for example entity_id=<id>. To get the rows that have one value
     of a list, give the list in JSON, for example
     output_type_id=["<id1>","<id2>"]. An administrator gets every output
-    file, anybody else the ones of the projects they belong to. A vendor
-    cannot use this route.
+    file, anybody else the ones of the projects they belong to. You get no
+    output file of a project where you are a vendor. The role held on the
+    project team applies.
   parameters:
     - in: query
       name: page
@@ -215,5 +216,3 @@ OutputFilesResource_get:
                     example: 1
     400:
       description: A filter is not valid
-    403:
-      description: You are a vendor

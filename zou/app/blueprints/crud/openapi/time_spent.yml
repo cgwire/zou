@@ -3,8 +3,9 @@ TimeSpentResource_delete:
   tags:
     - Crud
   description: Delete a time spent. The task duration becomes the sum of its
-    time spents. The person of the time spent must be an assignee of the task.
-    Then you must be this person, an administrator or a manager of the project.
+    time spents. An administrator can delete all the time spents. For other
+    users, the person of the time spent must be an assignee of the task. Then
+    you must be this person or a manager of the project.
   parameters:
     - in: path
       name: instance_id
@@ -21,7 +22,7 @@ TimeSpentResource_delete:
       description: Other data uses this row
     403:
       description: The person is not an assignee of the task, or you are not
-        this person, an administrator or a manager of the project
+        this person or a manager of the project
     404:
       description: The time spent does not exist
 

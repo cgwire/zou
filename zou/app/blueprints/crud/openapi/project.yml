@@ -205,8 +205,9 @@ ProjectResource_put:
                 format: date-time
                 example: '2024-01-15T11:00:00Z'
     400:
-      description: The body is not valid, a date is not valid, or a field
-        breaks a database constraint
+      description: The body is not valid, a date is not valid, a field
+        breaks a database constraint, or a preview background file is not
+        one of the preview background files of the project
     403:
       description: You are not a manager in the team of the project
     404:

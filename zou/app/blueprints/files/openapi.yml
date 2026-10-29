@@ -1,6 +1,7 @@
 CommentWorkingFileResource_put:
   summary: Change the comment of a working file
-  description: Change the comment of a working file.
+  description: Change the comment of a working file. You must be able to do
+    actions on the task. A client of the project cannot use this route.
   tags:
     - Files
   parameters:
@@ -1305,7 +1306,8 @@ LastWorkingFilesResource_get:
 ModifiedFileResource_put:
   summary: Mark a working file as modified
   description: Set the modification date of a working file to the current
-    date.
+    date. You must be able to do actions on the task. A client of the project
+    cannot use this route.
   tags:
     - Files
   parameters:
@@ -1634,7 +1636,8 @@ NewWorkingFileResource_post:
     uses the next revision. The task is assigned to the current user. A
     vendor must have a task on the entity of the task. If software_id is not
     given, the route uses the Blender software and creates it if it does not
-    exist. If person_id is not given, the author is the current user.
+    exist. Only a manager of the project can give person_id to set another
+    author. For other users, the author is always the current user.
   tags:
     - Files
   parameters:

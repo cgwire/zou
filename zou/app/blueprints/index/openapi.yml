@@ -212,7 +212,8 @@ StatusResourcesResource_get:
 TestEventsResource_get:
   summary: Send a test event
   description: Send a main:test event to the event stream. Use this route to
-    test an event listener, for example the Python client. Admins only.
+    test an event listener, for example the Python client. You must be an
+    administrator.
   tags:
     - Index
   responses:
@@ -225,6 +226,8 @@ TestEventsResource_get:
             properties:
               success:
                 type: boolean
+    403:
+      description: You are not an administrator
 
 TxtStatusResource_get:
   summary: Get the status of the services as text

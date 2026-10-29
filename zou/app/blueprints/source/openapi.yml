@@ -2,12 +2,12 @@ BaseImportKitsuResource_post:
   summary: Import rows from another Kitsu instance
   tags:
     - Import
-  description: 'Import rows, for example preview files, time spents, playlists,
-    milestones, notifications or attachment files, from another Kitsu instance.
-    Synchronization tools use this route to copy data from another Kitsu instance.
-    Send a JSON list of rows, with their identifiers. A row that exists is updated.
-    Else, it is created. Only an administrator can import: for other users, the
-    route skips all the rows and returns an empty list.'
+  description: 'Import rows, for example preview files, time spents,
+    playlists, milestones, notifications or attachment files, from another
+    Kitsu instance. Synchronization tools use this route to copy data from
+    another Kitsu instance. Send a JSON list of rows, with their identifiers.
+    A row that exists is updated. Else, it is created. You must be an
+    administrator.'
   requestBody:
     required: true
     content:
@@ -60,6 +60,8 @@ BaseImportKitsuResource_post:
     400:
       description: The body is not a list, or a row breaks a database
         constraint
+    403:
+      description: You are not an administrator
   parameters:
     - in: query
       name: silent
@@ -72,11 +74,10 @@ BaseImportKitsuResource_post:
 
 ImportKitsuCommentsResource_post:
   summary: Import comments from another Kitsu instance
-  description: 'Import comments from another Kitsu instance. Synchronization tools
-    use this route to copy data from another Kitsu instance. Send a JSON list of
-    rows, with their identifiers. A row that exists is updated. Else, it is created.
-    Only an administrator can import: for other users, the route skips all the rows
-    and returns an empty list.'
+  description: 'Import comments from another Kitsu instance. Synchronization
+    tools use this route to copy data from another Kitsu instance. Send a JSON
+    list of rows, with their identifiers. A row that exists is updated. Else,
+    it is created. You must be an administrator.'
   tags:
     - Import
   requestBody:
@@ -144,6 +145,8 @@ ImportKitsuCommentsResource_post:
     400:
       description: The body is not a list, or a row breaks a database
         constraint
+    403:
+      description: You are not an administrator
   parameters:
     - in: query
       name: silent
@@ -156,11 +159,11 @@ ImportKitsuCommentsResource_post:
 
 ImportKitsuEntitiesResource_post:
   summary: Import entities from another Kitsu instance
-  description: 'Import entities: assets, shots, sequences, episodes, edits and concepts,
-    from another Kitsu instance. Synchronization tools use this route to copy data
-    from another Kitsu instance. Send a JSON list of rows, with their identifiers.
-    A row that exists is updated. Else, it is created. Only an administrator can
-    import: for other users, the route skips all the rows and returns an empty list.'
+  description: 'Import entities: assets, shots, sequences, episodes, edits and
+    concepts, from another Kitsu instance. Synchronization tools use this
+    route to copy data from another Kitsu instance. Send a JSON list of rows,
+    with their identifiers. A row that exists is updated. Else, it is created.
+    You must be an administrator.'
   tags:
     - Import
   requestBody:
@@ -228,6 +231,8 @@ ImportKitsuEntitiesResource_post:
     400:
       description: The body is not a list, or a row breaks a database
         constraint
+    403:
+      description: You are not an administrator
   parameters:
     - in: query
       name: silent
@@ -240,11 +245,10 @@ ImportKitsuEntitiesResource_post:
 
 ImportKitsuEntityLinksResource_post:
   summary: Import casting links from another Kitsu instance
-  description: 'Import casting links from another Kitsu instance. Synchronization
-    tools use this route to copy data from another Kitsu instance. Send a JSON
-    list of rows, with their identifiers. A row that exists is updated. Else, it
-    is created. Only an administrator can import: for other users, the route skips
-    all the rows and returns an empty list.'
+  description: 'Import casting links from another Kitsu instance.
+    Synchronization tools use this route to copy data from another Kitsu
+    instance. Send a JSON list of rows, with their identifiers. A row that
+    exists is updated. Else, it is created. You must be an administrator.'
   tags:
     - Import
   requestBody:
@@ -313,6 +317,8 @@ ImportKitsuEntityLinksResource_post:
     400:
       description: The body is not a list, or a row breaks a database
         constraint
+    403:
+      description: You are not an administrator
   parameters:
     - in: query
       name: silent
@@ -325,11 +331,10 @@ ImportKitsuEntityLinksResource_post:
 
 ImportKitsuProjectsResource_post:
   summary: Import projects from another Kitsu instance
-  description: 'Import projects from another Kitsu instance. Synchronization tools
-    use this route to copy data from another Kitsu instance. Send a JSON list of
-    rows, with their identifiers. A row that exists is updated. Else, it is created.
-    Only an administrator can import: for other users, the route skips all the rows
-    and returns an empty list.'
+  description: 'Import projects from another Kitsu instance. Synchronization
+    tools use this route to copy data from another Kitsu instance. Send a JSON
+    list of rows, with their identifiers. A row that exists is updated. Else,
+    it is created. You must be an administrator.'
   tags:
     - Import
   requestBody:
@@ -390,6 +395,8 @@ ImportKitsuProjectsResource_post:
     400:
       description: The body is not a list, or a row breaks a database
         constraint
+    403:
+      description: You are not an administrator
   parameters:
     - in: query
       name: silent
@@ -402,11 +409,10 @@ ImportKitsuProjectsResource_post:
 
 ImportKitsuTasksResource_post:
   summary: Import tasks from another Kitsu instance
-  description: 'Import tasks from another Kitsu instance. Synchronization tools
-    use this route to copy data from another Kitsu instance. Send a JSON list of
-    rows, with their identifiers. A row that exists is updated. Else, it is created.
-    Only an administrator can import: for other users, the route skips all the rows
-    and returns an empty list.'
+  description: 'Import tasks from another Kitsu instance. Synchronization
+    tools use this route to copy data from another Kitsu instance. Send a JSON
+    list of rows, with their identifiers. A row that exists is updated. Else,
+    it is created. You must be an administrator.'
   tags:
     - Import
   requestBody:
@@ -480,6 +486,8 @@ ImportKitsuTasksResource_post:
     400:
       description: The body is not a list, or a row breaks a database
         constraint
+    403:
+      description: You are not an administrator
   parameters:
     - in: query
       name: silent

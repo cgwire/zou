@@ -89,10 +89,11 @@ AssetInstanceResource_put:
   tags:
     - Crud
   description: Update the fields of an asset instance. Send only the fields to
-    change. You cannot change id, created_at, updated_at and number. Dates use
-    the ISO 8601 format. An administrator can update all the asset instances.
-    Other users must have access to the project of the asset. A vendor must
-    also have a task on the asset.
+    change. You cannot change id, created_at, updated_at, number, asset_id,
+    scene_id and target_asset_id. Dates use the ISO 8601 format. An
+    administrator can update all the asset instances. Other users must be in
+    the team of the project of the asset. A client or a vendor of the project
+    cannot update it.
   parameters:
     - in: path
       name: instance_id
@@ -143,8 +144,8 @@ AssetInstanceResource_put:
       description: The body is not valid, a date is not valid, or a field
         breaks a database constraint
     403:
-      description: You do not have access to the project of the asset, or you
-        are a vendor without a task on the asset
+      description: You do not have access to the project of the asset, or
+        you are a client or a vendor
     404:
       description: The asset instance does not exist
 

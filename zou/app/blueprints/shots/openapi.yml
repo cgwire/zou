@@ -409,8 +409,7 @@ EpisodeShotsResource_get:
                   format: uuid
                   example: c24a6ea4-ce75-4665-a070-57453082c250
     403:
-      description: You do not have access to this project, or you are a vendor
-        without a task on this entity
+      description: You do not have access to this project
     404:
       description: The episode does not exist
 
@@ -1380,10 +1379,13 @@ RemoveShotFromSceneResource_delete:
     204:
       description: The shot is removed from the scene
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, you are a client
+        or a vendor, or the shot is in another project
     404:
       description: The scene or the shot does not exist
-  description: Remove a shot from a scene. The shot is not deleted.
+  description: Remove a shot from a scene. The shot is not deleted. The shot
+    must be in the project of the scene. A client or a vendor of the project
+    cannot use this route.
 
 SceneAndTasksResource_get:
   summary: Get scenes with their tasks
@@ -1558,7 +1560,9 @@ SceneShotsResource_post:
   summary: Link a shot to a scene
   tags:
     - Shots
-  description: Mark a scene as the source of a shot.
+  description: Mark a scene as the source of a shot. The shot must be in the
+    project of the scene. A client or a vendor of the project cannot use this
+    route.
   parameters:
     - in: path
       name: scene_id
@@ -1600,7 +1604,8 @@ SceneShotsResource_post:
     400:
       description: The body is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, you are a client
+        or a vendor, or the shot is in another project
     404:
       description: The scene or the shot does not exist
 
