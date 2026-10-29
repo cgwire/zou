@@ -556,7 +556,13 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
         self.assign_task(self.task_id, self.user_cg_artist["id"])
         working_file = self.generate_fixture_working_file()
-        other_task = self.generate_fixture_task(name="Other task")
+        original_task_id = str(working_file.task_id)
+        original_entity_id = str(working_file.entity_id)
+        original_person_id = str(working_file.person_id)
+        other_asset = self.generate_fixture_asset(name="Other asset")
+        other_task = self.generate_fixture_task(
+            name="Other task", entity_id=other_asset.id
+        )
         self.log_in_cg_artist()
 
         result = self.put(
@@ -564,15 +570,15 @@ class WorkingFilesTestCase(ApiDBTestCase):
             {
                 "task_id": str(other_task.id),
                 "entity_id": str(other_task.entity_id),
-                "person_id": str(self.user["id"]),
+                "person_id": str(self.user_cg_artist["id"]),
                 "name": "renamed",
             },
         )
 
         self.assertEqual(result["name"], "renamed")
-        self.assertEqual(result["task_id"], str(self.task_id))
-        self.assertEqual(result["entity_id"], str(self.asset.id))
-        self.assertEqual(result["person_id"], str(working_file.person_id))
+        self.assertEqual(result["task_id"], original_task_id)
+        self.assertEqual(result["entity_id"], original_entity_id)
+        self.assertEqual(result["person_id"], original_person_id)
 
     def test_entity_working_files_rejects_a_task_from_another_entity(self):
         first_task_id = self.task_id
