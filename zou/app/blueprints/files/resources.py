@@ -1111,11 +1111,13 @@ class FileResource(MethodView):
             )
             return file_dict
         except WorkingFileNotFoundException:
-            file_dict = files_service.get_output_file(file_id)
+            file_dict = dict(files_service.get_output_file(file_id))
             entity = entities_service.get_entity(file_dict["entity_id"])
             project_id = entity["project_id"]
 
         permissions_service.check_project_access(project_id)
+        if "source_file_id" in file_dict:
+            hide_inaccessible_output_file_sources([file_dict])
         return file_dict
 
 

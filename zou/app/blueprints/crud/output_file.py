@@ -103,6 +103,18 @@ class OutputFileResource(BaseModelResource):
         permissions_service.check_entity_access(entity["id"])
         return True
 
+    def serialize_update_response(self, instance):
+        output_file = super().serialize_update_response(instance)
+        if instance.source_file_id is not None:
+            working_file = WorkingFile.get(instance.source_file_id)
+            try:
+                permissions_service.check_working_file_access(
+                    working_file.task_id
+                )
+            except permissions.PermissionDenied:
+                output_file["source_file_id"] = None
+        return output_file
+
     def check_update_permissions(self, output_file, data):
         entity = entities_service.get_entity(output_file["entity_id"])
         if permissions_service.has_manager_project_access(

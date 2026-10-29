@@ -136,6 +136,8 @@ class OutputFileTestCase(ApiDBTestCase):
         self.assertIsNone(output_file_data["source_file_id"])
         output_file_data = self.get(f"data/output-files/{output_file_id}")
         self.assertIsNone(output_file_data["source_file_id"])
+        output_file_data = self.get(f"data/files/{output_file_id}")
+        self.assertIsNone(output_file_data["source_file_id"])
 
         tasks_service.assign_task(str(self.task.id), user_id)
         output_files = self.get("data/output-files?relations=true")
@@ -145,6 +147,24 @@ class OutputFileTestCase(ApiDBTestCase):
         self.assertEqual(output_file_data["source_file"]["id"], str(working_file.id))
         output_file_data = self.get(f"data/output-files/{output_file_id}")
         self.assertEqual(output_file_data["source_file_id"], str(working_file.id))
+        output_file_data = self.get(f"data/files/{output_file_id}")
+        self.assertEqual(output_file_data["source_file_id"], str(working_file.id))
+
+    def test_output_file_update_response_hides_inaccessible_source_reference(self):
+        self.generate_fixture_user_cg_artist()
+        user_id = self.user_cg_artist["id"]
+        projects_service.add_team_member(self.project_id, user_id)
+        tasks_service.assign_task(str(self.task.id), user_id)
+
+        output_file = OutputFile.get(self.get_first("data/output-files")["id"])
+        working_file = self.generate_fixture_shot_working_file()
+        output_file.update(source_file_id=working_file.id)
+
+        self.log_in_cg_artist()
+        response = self.put(
+            f"data/output-files/{output_file.id}", {"quality": "low"}
+        )
+        self.assertIsNone(response["source_file_id"])
 
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
