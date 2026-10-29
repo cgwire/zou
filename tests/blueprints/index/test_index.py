@@ -10,7 +10,14 @@ class VersionTestCase(ApiTestCase):
     def test_version_route(self):
         data = self.get("/")
         self.assertEqual(
-            data, {"api": app.config["APP_NAME"], "version": __version__}
+            data,
+            {
+                "api": app.config["APP_NAME"],
+                "version": __version__,
+                "capabilities": {
+                    "working_file_create_idempotency": True,
+                },
+            },
         )
 
     def test_status_route(self):

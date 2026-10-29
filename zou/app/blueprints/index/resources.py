@@ -29,7 +29,13 @@ class IndexResource(MethodView):
         """
         Get API name and version
         """
-        return {"api": config.APP_NAME, "version": __version__}
+        return {
+            "api": config.APP_NAME,
+            "version": __version__,
+            "capabilities": {
+                "working_file_create_idempotency": True,
+            },
+        }
 
 
 class BaseStatusResource(MethodView):
