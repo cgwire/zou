@@ -121,7 +121,14 @@ class WorkingFileFileResource(MethodView):
         """
         Download working file
         """
-        working_file = self.check_access(working_file_id)
+        working_file = files_service.get_working_file(working_file_id)
+        task = tasks_service.get_task(working_file["task_id"])
+        permissions_service.check_project_access(task["project_id"])
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        permissions_service.check_assigned_or_cast_entity_access(
+            task["entity_id"]
+        )
         return send_storage_file(
             working_file_id,
             last_modified=date_helpers.get_datetime_from_string(
@@ -166,15 +173,31 @@ class OutputFileFileResource(MethodView):
         output_file = files_service.get_output_file(output_file_id)
         entity = entities_service.get_entity(output_file["entity_id"])
         permissions_service.check_project_access(entity["project_id"])
-        return output_file
+        return output_file, entity
+
+    def check_upload_access(self, output_file_id):
+        """
+        A manager of the project, or an assignee of the entity, stores the
+        content of an output file. A client never does.
+        """
+        _, entity = self.check_access(output_file_id)
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        if not permissions_service.has_manager_project_access(
+            entity["project_id"]
+        ):
+            permissions_service.check_working_on_entity(entity["id"])
 
     @jwt_required()
-    @swag_from("openapi/OutputFileFileResource_get.yml")
+    @swag_from(SPECS["OutputFileFileResource_get"])
     def get(self, output_file_id):
         """
         Download output file
         """
-        output_file = self.check_access(output_file_id)
+        output_file, entity = self.check_access(output_file_id)
+        if permissions.has_client_permissions():
+            raise permissions.PermissionDenied
+        permissions_service.check_assigned_or_cast_entity_access(entity["id"])
         return send_storage_file(
             output_file_id,
             last_modified=date_helpers.get_datetime_from_string(
@@ -184,12 +207,12 @@ class OutputFileFileResource(MethodView):
         )
 
     @jwt_required()
-    @swag_from("openapi/OutputFileFileResource_post.yml")
+    @swag_from(SPECS["OutputFileFileResource_post"])
     def post(self, output_file_id):
         """
         Store output file
         """
-        self.check_access(output_file_id)
+        self.check_upload_access(output_file_id)
         uploaded_file = request.files["file"]
         file_path = os.path.join(
             current_app.config["TMP_DIR"], f"output-file-{output_file_id}"

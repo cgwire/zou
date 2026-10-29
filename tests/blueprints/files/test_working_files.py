@@ -279,3 +279,44 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         self.get(path, 403)
+
+    def download_as_artist(self, role=None, task_id=None, cast=False):
+        import os
+
+        from zou.app.services import breakdown_service, tasks_service
+
+        working_file = self.generate_fixture_working_file()
+        path = f"/data/working-files/{working_file.id}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        self.upload_file(path, fixture)
+        if cast:
+            breakdown_service.update_casting(
+                self.shot.id, [{"asset_id": self.asset.id, "nb_occurences": 1}]
+            )
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, role)
+        if task_id is not None:
+            tasks_service.assign_task(task_id, artist_id)
+        self.log_in_cg_artist()
+        return self.app.get(path, headers=self.base_headers).status_code
+
+    def test_an_artist_downloads_the_working_file_of_their_entity(self):
+        self.assertEqual(self.download_as_artist(task_id=self.task.id), 200)
+
+    def test_an_artist_downloads_the_working_file_of_an_asset_cast(self):
+        self.assertEqual(
+            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+        )
+
+    def test_an_artist_downloads_no_working_file_out_of_their_tasks(self):
+        self.assertEqual(
+            self.download_as_artist(task_id=self.shot_task.id), 403
+        )
+
+    def test_a_client_downloads_no_working_file(self):
+        self.assertEqual(self.download_as_artist("client"), 403)
+
+    def test_a_supervisor_of_the_project_downloads_any_working_file(self):
+        self.assertEqual(self.download_as_artist("supervisor"), 200)

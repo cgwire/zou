@@ -29,6 +29,7 @@ from zou.app.models.comment import (
     department_mentions_table,
     mentions_table,
 )
+from zou.app.models.entity import EntityLink
 from zou.app.models.person import DepartmentLink
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
@@ -254,6 +255,32 @@ def check_entity_access(entity_id):
             raise permissions.PermissionDenied
         is_allowed = True
     return is_allowed
+
+
+def check_assigned_or_cast_entity_access(entity_id):
+    """
+    An administrator, a manager or a supervisor reaches every entity of the
+    resolved project. An artist or a vendor reaches the entities they hold a
+    task on, and the assets cast in these entities, to build the scene of a
+    shot. Resolve the project first.
+    """
+    if (
+        permissions.has_admin_permissions()
+        or permissions.has_at_least_supervisor_permissions()
+    ):
+        return True
+    assigned_tasks = Task.query.filter(persons_service.build_assignee_filter())
+    if assigned_tasks.filter(Task.entity_id == entity_id).count():
+        return True
+    if (
+        assigned_tasks.join(
+            EntityLink, EntityLink.entity_in_id == Task.entity_id
+        )
+        .filter(EntityLink.entity_out_id == entity_id)
+        .count()
+    ):
+        return True
+    raise permissions.PermissionDenied
 
 
 def keep_entities_a_vendor_reaches(entities):
