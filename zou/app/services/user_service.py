@@ -883,18 +883,21 @@ def build_supervision_scope_filter(roles, department_ids):
     roles grant on other people's work: every task of a managed project,
     the tasks of given departments on a supervised one. The department
     restriction is read per project, so a supervisor of one project reads
-    every department of the projects they manage.
+    every department of the projects they manage. A supervisor without
+    department reads every department of the projects they supervise.
     """
+    supervised = Task.project_id.in_(
+        [pid for pid, role in roles.items() if role == "supervisor"]
+    )
+    if department_ids:
+        supervised = and_(
+            supervised, TaskType.department_id.in_(department_ids)
+        )
     return or_(
         Task.project_id.in_(
             [pid for pid, role in roles.items() if role == "manager"]
         ),
-        and_(
-            Task.project_id.in_(
-                [pid for pid, role in roles.items() if role == "supervisor"]
-            ),
-            TaskType.department_id.in_(department_ids),
-        ),
+        supervised,
     )
 
 
