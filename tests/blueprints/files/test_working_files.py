@@ -510,6 +510,25 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(response.status_code, 200)
         with open(fixture, "rb") as file_handle:
             self.assertEqual(response.data, file_handle.read())
+
+        self.put(
+            f"/data/working-files/{working_file.id}",
+            {"comment": "admin write denied"},
+            403,
+        )
+        self.put(
+            f"/actions/working-files/{working_file.id}/comment",
+            {"comment": "admin comment denied"},
+            403,
+        )
+        self.put(
+            f"/actions/working-files/{working_file.id}/modified", {}, 403
+        )
+        self.post(
+            f"/data/tasks/{self.task_id}/working-file-path",
+            {"name": "main"},
+            403,
+        )
         self.delete(f"/data/working-files/{working_file.id}", 403)
         self.delete(f"/data/working-files/{working_file.id}/file", 405)
         self.post(
