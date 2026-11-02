@@ -26,6 +26,7 @@ from zou.app.models.task_type import TaskType
 from zou.app.services import (
     entities_service,
     files_service,
+    news_service,
     organisation_service,
     preview_file_states_service,
     projects_service,
@@ -193,8 +194,12 @@ def update_preview_file_raw(preview_file, data, silent=False):
         )
 
     files_service.clear_preview_file_cache(preview_file_id)
+    task = Task.get(preview_file.task_id)
+    # The single news shows these fields of the preview files of its comment.
+    if data.keys() & {"extension", "name", "position", "revision", "status"}:
+        for comment in preview_file.comments:
+            news_service.clear_comment_news_cache(comment.id, task.project_id)
     if not silent:
-        task = Task.get(preview_file.task_id)
         event_data = {"preview_file_id": preview_file_id}
         # The clients wait for the status to ask again for the pictures a
         # job builds in the background. A metadata refresh of a ready
