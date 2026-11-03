@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import threading
 from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
@@ -327,6 +328,42 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
         send_email.assert_called_once()
         self.assertIn(job["id"], send_email.call_args.args[1])
+
+    def test_build_playlist_job_mails_outside_the_app_context(self):
+        # KITSU-API-52H: the RQ worker runs the job without app context. A
+        # new thread has none either, unlike the test itself.
+        self.generate_fixture_preview_files()
+        self.generate_fixture_playlists()
+        playlist = self.playlist.serialize()
+        job = playlist_builds_service.start_build_job(playlist)
+        finished = {**job, "status": "succeeded"}
+        email = self.user["email"]
+        errors = []
+
+        def run_job():
+            try:
+                playlist_builds_service.build_playlist_job(
+                    playlist, job, [], None, email, False, False
+                )
+            except Exception as exception:
+                errors.append(exception)
+
+        with (
+            patch.object(
+                playlist_builds_service,
+                "build_playlist_movie_file",
+                return_value=finished,
+            ),
+            patch.object(
+                playlist_builds_service.emails, "send_email"
+            ) as send_email,
+        ):
+            thread = threading.Thread(target=run_job)
+            thread.start()
+            thread.join()
+
+        self.assertEqual(errors, [])
+        send_email.assert_called_once()
 
     def test_playlist_tmp_copies_keep_their_own_file(self):
         """

@@ -390,13 +390,17 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     # Just in case, since rq jobs which encounter an error raise an
     # exception in order to be flagged as failed.
     if job.get("status") == "succeeded":
-        person = persons_service.get_person_by_email_raw(email)
-        organisation = organisation_service.get_organisation()
-        playlist_url = (
-            f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
-            f"/api/data/playlists/{playlist['id']}/jobs/{job['id']}/build/mp4"
-        )
-        html = f"""<p>Hello {person.first_name},</p>
+        from zou.app import app
+
+        with app.app_context():
+            person = persons_service.get_person_by_email_raw(email)
+            organisation = organisation_service.get_organisation()
+            playlist_url = (
+                f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+                f"/api/data/playlists/{playlist['id']}/jobs/{job['id']}"
+                "/build/mp4"
+            )
+            html = f"""<p>Hello {person.first_name},</p>
 <p>Your playlist {playlist["name"]} build is available:
 </p>
 <p class="cta">
@@ -404,10 +408,10 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
 </p>
 """
 
-        subject = f"{organisation['name']} - Kitsu: playlist download"
-        title = "Playlist Download"
-        email_html_body = templates_service.generate_html_body(title, html)
-        emails.send_email(subject, email_html_body, email)
+            subject = f"{organisation['name']} - Kitsu: playlist download"
+            title = "Playlist Download"
+            email_html_body = templates_service.generate_html_body(title, html)
+            emails.send_email(subject, email_html_body, email)
 
 
 def get_playlist_download_context_name(project, playlist):
