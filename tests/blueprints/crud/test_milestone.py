@@ -185,5 +185,42 @@ class MilestoneTestCase(ApiDBTestCase):
                 "milestone_type",
                 "project_id",
                 "task_type_id",
+                "department_id",
             },
         )
+
+    def test_milestone_department(self):
+        self.spare_fixtures_from_rollbacks()
+        department_id = str(self.department_animation.id)
+        milestone = self.post(
+            "data/milestones",
+            {
+                "name": "Layout lock",
+                "date": "2024-06-01",
+                "project_id": self.project_id,
+                "department_id": department_id,
+            },
+        )
+        self.assertEqual(milestone["department_id"], department_id)
+        milestones = self.get(f"data/projects/{self.project_id}/milestones")
+        listed = next(m for m in milestones if m["id"] == milestone["id"])
+        self.assertEqual(listed["department_id"], department_id)
+        path = f"data/milestones/{milestone['id']}"
+        self.delete(f"data/departments/{department_id}", 400)
+        self.put(path, {"department_id": None})
+        self.assertIsNone(self.get(path)["department_id"])
+        self.put(path, {"department_id": department_id})
+        self.assertEqual(self.get(path)["department_id"], department_id)
+
+    def test_milestone_with_invalid_department(self):
+        self.spare_fixtures_from_rollbacks()
+        base = {
+            "name": "Bad",
+            "date": "2024-06-01",
+            "project_id": self.project_id,
+        }
+        milestone = self.get_first("data/milestones")
+        for department_id in [str(fields.gen_uuid()), "not-a-uuid"]:
+            invalid = {"department_id": department_id}
+            self.post("data/milestones", {**base, **invalid}, 400)
+            self.put(f"data/milestones/{milestone['id']}", invalid, 400)

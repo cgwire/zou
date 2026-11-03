@@ -125,6 +125,11 @@ MilestoneResource_put:
             milestone_type:
               type: string
               enum: [kickoff, review, approval, delivery, other]
+            department_id:
+              type: string
+              format: uuid
+              nullable: true
+              example: c24a6ea4-ce75-4665-a070-57453082c250
   responses:
     200:
       description: The updated milestone
@@ -280,6 +285,11 @@ MilestonesResource_post:
               type: string
               enum: [kickoff, review, approval, delivery, other]
               default: other
+            department_id:
+              type: string
+              format: uuid
+              nullable: true
+              example: c24a6ea4-ce75-4665-a070-57453082c250
   responses:
     201:
       description: The new milestone

@@ -397,6 +397,12 @@ MilestoneSchema = {
             "format": "uuid",
             "description": "Task type ID",
         },
+        "department_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": True,
+            "description": "Department ID",
+        },
         "project_id": {
             "type": "string",
             "format": "uuid",

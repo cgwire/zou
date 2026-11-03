@@ -95,6 +95,23 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         self._post_kitsu("/import/kitsu/milestones", payload)
         self.assertEqual(Milestone.get(new_id).milestone_type.code, "review")
 
+    def test_import_milestones_rejects_invalid_values(self):
+        for invalid in [
+            {"milestone_type": "party"},
+            {"color": "#ff00000000"},
+        ]:
+            payload = [
+                {
+                    "id": str(fields.gen_uuid()),
+                    "project_id": self.project_id,
+                    "name": "Bad",
+                    "date": "2026-06-01",
+                    **invalid,
+                }
+            ]
+            self._post_kitsu("/import/kitsu/milestones", payload, 400)
+        self.get(f"data/projects/{self.project_id}/milestones")
+
     def test_import_schedule_items(self):
         new_id = str(fields.gen_uuid())
         payload = [

@@ -32,6 +32,9 @@ class Milestone(db.Model, BaseMixin, SerializerMixin):
     task_type_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_type.id"), index=True
     )
+    department_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("department.id"), index=True
+    )
 
     def present(self):
         return fields.serialize_dict(
@@ -43,5 +46,6 @@ class Milestone(db.Model, BaseMixin, SerializerMixin):
                 "milestone_type": self.milestone_type,
                 "project_id": self.project_id,
                 "task_type_id": self.task_type_id,
+                "department_id": self.department_id,
             }
         )
