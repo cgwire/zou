@@ -1,11 +1,43 @@
+import re
+
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.models.milestone import Milestone
+from zou.app.exceptions import WrongParameterException
+from zou.app.models.milestone import (
+    MILESTONE_TYPES,
+    Milestone,
+)
 from zou.app.services import permissions_service, user_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/milestone.yml")
+
+HEX_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
+MILESTONE_TYPE_CODES = [code for code, _ in MILESTONE_TYPES]
+
+
+def check_milestone_fields(data):
+    """
+    Reject a color that is not #RRGGBB and a type outside the allowed
+    choices. ChoiceType would store an unknown code and fail only
+    when the row is read back.
+    """
+    color = data.get("color")
+    if color is not None and (
+        not isinstance(color, str) or not HEX_COLOR_RE.fullmatch(color)
+    ):
+        raise WrongParameterException(
+            "Color must be a hex string formatted as #RRGGBB."
+        )
+    if "milestone_type" in data and (
+        data["milestone_type"] not in MILESTONE_TYPE_CODES
+    ):
+        raise WrongParameterException(
+            "Milestone type must be one of: "
+            f"{', '.join(MILESTONE_TYPE_CODES)}."
+        )
+    return data
 
 
 class MilestonesResource(BaseModelsResource):
@@ -16,6 +48,9 @@ class MilestonesResource(BaseModelsResource):
         permissions_service.check_manager_project_access(
             milestone["project_id"]
         )
+
+    def check_creation_integrity(self, data):
+        return check_milestone_fields(data)
 
     @jwt_required()
     @swag_from(SPECS["MilestonesResource_get"])
@@ -65,6 +100,10 @@ class MilestoneResource(BaseModelResource):
         Delete milestone
         """
         return super().delete(instance_id)
+
+    def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
+        return check_milestone_fields(data)
 
     def check_update_permissions(self, milestone, data):
         return permissions_service.check_manager_project_access(

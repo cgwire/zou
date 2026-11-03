@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.blueprints.crud.base import build_db_error_message
+from zou.app.blueprints.crud.milestone import check_milestone_fields
 from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
@@ -81,6 +82,7 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
         instances = []
         for entry in kitsu_entries:
             try:
+                self.check_entry(entry)
                 instance, is_updated = self.model.create_from_import(entry)
                 if not silent:
                     if is_updated:
@@ -91,6 +93,9 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
                 raise WrongParameterException(build_db_error_message(exc))
             instances.append(instance)
         return fields.serialize_models(instances)
+
+    def check_entry(self, entry):
+        pass
 
     def emit_event(self, event_type, entry):
         pass
@@ -330,6 +335,9 @@ class ImportKitsuMilestonesResource(_ProjectScopedImportResource):
 
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Milestone)
+
+    def check_entry(self, entry):
+        check_milestone_fields(entry)
 
 
 class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
