@@ -36,7 +36,7 @@ from zou.app.models.comment import (
     Comment,
 )
 from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType, TaskTypeAssetTypeLink
+from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import (
@@ -658,7 +658,8 @@ def create_tasks_for_entity(entity, task_types=None):
     Create tasks of multiple types for a single entity in one batch.
     When task_types is empty or None, default to every task type valid
     for the entity: enabled in the project, in the asset-type workflow
-    (for assets), and whose for_entity matches the entity kind. When a
+    (for assets, the project one when set, else the studio one), and whose
+    for_entity matches the entity kind. When a
     list is provided, each task type is validated against those same
     constraints. An asset type with no configured workflow accepts every
     task type. Existing tasks for the same (entity, task_type,
@@ -684,12 +685,14 @@ def create_tasks_for_entity(entity, task_types=None):
     # on the asset type ("Includes all asset task types" in Kitsu).
     enabled_in_workflow = None
     if is_asset:
-        enabled_in_workflow = {
-            str(link.task_type_id)
-            for link in TaskTypeAssetTypeLink.query.filter(
-                TaskTypeAssetTypeLink.asset_type_id == entity["entity_type_id"]
-            ).all()
-        } or None
+        enabled_in_workflow = (
+            set(
+                projects_service.get_asset_type_workflow(
+                    project_id, entity["entity_type_id"]
+                )
+            )
+            or None
+        )
 
     if not task_types:
         candidate_ids = enabled_in_project

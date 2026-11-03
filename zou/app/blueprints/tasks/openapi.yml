@@ -338,7 +338,8 @@ CreateAssetTasksResource_post:
   description: Create a task of the task type for each asset of the list. If
     the body is empty, the route uses the assets of the project that match the
     query parameters, for example asset_type_id. The identifiers of assets of
-    another project are skipped. A task that exists is skipped. You must be a
+    another project are skipped. A task that exists is skipped, as well as
+    an asset whose asset type workflow excludes the task type. You must be a
     manager of the project.
   parameters:
     - in: path

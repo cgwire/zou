@@ -9,6 +9,7 @@ from zou.app.blueprints.projects.resources import (
     ProductionAssetTypeRemoveResource,
     ProductionAssetTypeResource,
     ProductionAssetTypesScheduleItemsResource,
+    ProductionAssetTypeWorkflowResource,
     ProductionBudgetEntriesResource,
     ProductionBudgetEntryResource,
     ProductionBudgetResource,
@@ -89,6 +90,10 @@ routes = [
     (
         "/data/projects/<project_id>/settings/asset-types/<asset_type_id>",
         ProductionAssetTypeRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/asset-types/<asset_type_id>/task-types",
+        ProductionAssetTypeWorkflowResource,
     ),
     (
         "/data/projects/<project_id>/settings/task-types",

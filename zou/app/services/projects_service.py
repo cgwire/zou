@@ -14,12 +14,13 @@ from zou.app.exceptions import (
 )
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
+from zou.app.models.entity_type import EntityType, TaskTypeAssetTypeLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.person import ROLE_TYPES, DepartmentLink, Person
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.project import (
     Project,
+    ProjectAssetTypeTaskTypeLink,
     ProjectPersonLink,
     ProjectTaskStatusLink,
     ProjectTaskTypeLink,
@@ -133,6 +134,7 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
         )
     task_types_by_project = _fetch_task_type_links_by_project(project_ids)
     task_statuses_by_project = _fetch_task_status_links_by_project(project_ids)
+    workflows_by_project = _fetch_asset_type_workflows_by_project(project_ids)
     tvshow_project_ids = [
         p.id for p in projects_list if p.production_type == "tvshow"
     ]
@@ -145,6 +147,7 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
             descriptors_by_project,
             task_types_by_project,
             task_statuses_by_project,
+            workflows_by_project,
             first_episodes_by_project,
         )
         for project in projects_list
@@ -184,6 +187,22 @@ def _fetch_task_status_links_by_project(project_ids):
             "is_client_allowed": link.is_client_allowed,
         }
     return task_statuses_by_project
+
+
+def _fetch_asset_type_workflows_by_project(project_ids):
+    """
+    Return the asset type workflows specific to given projects, grouped by
+    project then by asset type.
+    """
+    links = ProjectAssetTypeTaskTypeLink.query.filter(
+        ProjectAssetTypeTaskTypeLink.project_id.in_(project_ids)
+    ).all()
+    workflows_by_project = defaultdict(lambda: defaultdict(list))
+    for link in links:
+        workflows_by_project[link.project_id][str(link.asset_type_id)].append(
+            str(link.task_type_id)
+        )
+    return workflows_by_project
 
 
 def _fetch_first_episodes_by_project(project_ids):
@@ -256,6 +275,7 @@ def _build_project_dict_with_extra_data(
     descriptors_by_project,
     task_types_by_project,
     task_statuses_by_project,
+    workflows_by_project,
     first_episodes_by_project,
 ):
     """
@@ -275,6 +295,9 @@ def _build_project_dict_with_extra_data(
         for task_type_id, link in task_type_links.items()
     }
     project_dict["task_statuses_link"] = task_statuses_by_project.get(
+        project.id, {}
+    )
+    project_dict["asset_type_workflows"] = workflows_by_project.get(
         project.id, {}
     )
     if project.production_type == "tvshow":
@@ -567,6 +590,76 @@ def remove_asset_type_setting(project_id, asset_type_id):
     return _remove_from_list_attr(
         project_id, EntityType, asset_type_id, "asset_types"
     )
+
+
+def get_asset_type_workflow(project_id, asset_type_id):
+    """
+    Return the ids of the task types of an asset type workflow: the one of
+    the project when set, else the studio one. An empty list means that all
+    the asset task types are accepted.
+    """
+    links = ProjectAssetTypeTaskTypeLink.query.filter_by(
+        project_id=project_id, asset_type_id=asset_type_id
+    ).all()
+    if not links:
+        links = TaskTypeAssetTypeLink.query.filter_by(
+            asset_type_id=asset_type_id
+        ).all()
+    return [str(link.task_type_id) for link in links]
+
+
+def filter_assets_in_workflow(project_id, task_type_id, assets):
+    """
+    Return the given assets whose asset type workflow accepts the task type.
+    """
+    workflows = {}
+    result = []
+    for asset in assets:
+        asset_type_id = asset["entity_type_id"]
+        if asset_type_id not in workflows:
+            workflows[asset_type_id] = get_asset_type_workflow(
+                project_id, asset_type_id
+            )
+        workflow = workflows[asset_type_id]
+        if not workflow or str(task_type_id) in workflow:
+            result.append(asset)
+    return result
+
+
+def set_asset_type_workflow(project_id, asset_type_id, task_type_ids):
+    """
+    Replace the workflow of an asset type for given project. An empty list
+    removes it, so the asset type follows the studio workflow again.
+    """
+    project = get_project_raw(project_id)
+    if asset_type_id not in {str(at.id) for at in project.asset_types}:
+        raise WrongParameterException(
+            f"Asset type {asset_type_id} is not in project {project_id}."
+        )
+    asset_task_type_ids = {
+        str(task_type.id)
+        for task_type in project.task_types
+        if task_type.for_entity == "Asset"
+    }
+    wanted_ids = set(task_type_ids)
+    invalid_ids = wanted_ids - asset_task_type_ids
+    if invalid_ids:
+        raise WrongParameterException(
+            f"Not asset task types of project {project_id}: "
+            f"{', '.join(sorted(invalid_ids))}."
+        )
+    ProjectAssetTypeTaskTypeLink.query.filter_by(
+        project_id=project_id, asset_type_id=asset_type_id
+    ).delete()
+    db.session.add_all(
+        ProjectAssetTypeTaskTypeLink(
+            project_id=project_id,
+            asset_type_id=asset_type_id,
+            task_type_id=task_type_id,
+        )
+        for task_type_id in wanted_ids
+    )
+    return _save_project(project)
 
 
 def add_task_type_setting(

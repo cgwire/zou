@@ -29,6 +29,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         return super().post(project_id)
 
     def prepare_import(self, project_id):
+        self.project_id = project_id
         self.episodes = {}
         self.entity_types = {}
         self.descriptor_fields = self.get_descriptor_field_map(
@@ -344,8 +345,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_type_id = str(asset_type_id)
         if asset_type_id not in self.task_types_for_asset_type:
             task_type_ids = self.task_type_ids_in_project_for_assets
-            asset_type = entity_types_service.get_asset_type(asset_type_id)
-            type_task_type_ids = asset_type["task_types"]
+            type_task_type_ids = projects_service.get_asset_type_workflow(
+                self.project_id, asset_type_id
+            )
             if len(type_task_type_ids) > 0:
                 type_task_types_map = {
                     task_type_id: True for task_type_id in type_task_type_ids

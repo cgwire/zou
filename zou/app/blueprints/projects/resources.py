@@ -14,6 +14,7 @@ from zou.app.blueprints.projects.schemas import (
     MetadataDescriptorUpdateSchema,
     PreviewAccountOpenSchema,
     ProjectAssetTypeSchema,
+    ProjectAssetTypeWorkflowSchema,
     ProjectPreviewBackgroundSchema,
     ProjectSettingsBatchSchema,
     ProjectStatusAutomationSchema,
@@ -253,6 +254,23 @@ class ProductionAssetTypeRemoveResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
         return "", 204
+
+
+class ProductionAssetTypeWorkflowResource(MethodView):
+
+    @jwt_required()
+    @swag_from(SPECS["ProductionAssetTypeWorkflowResource_put"])
+    def put(self, project_id, asset_type_id):
+        """
+        Set the workflow of an asset type for a production
+        """
+        body = validation.validate_request_body(
+            ProjectAssetTypeWorkflowSchema
+        )
+        permissions_service.check_manager_project_access(project_id)
+        return projects_service.set_asset_type_workflow(
+            project_id, asset_type_id, body.task_type_ids
+        )
 
 
 class ProductionTaskTypesResource(MethodView, ArgsMixin):

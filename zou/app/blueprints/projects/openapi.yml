@@ -290,6 +290,55 @@ ProductionAssetTypeRemoveResource_delete:
     403:
       description: You are not a manager of the project
 
+ProductionAssetTypeWorkflowResource_put:
+  summary: Set the workflow of an asset type for a project
+  description: Replace the task types allowed for an asset type in a project,
+    instead of the studio workflow. An empty list restores the studio workflow.
+    Task types must be asset task types of the project. You must be a manager
+    of the project.
+  tags:
+    - Projects
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Project unique identifier
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+    - in: path
+      name: asset_type_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Asset type unique identifier
+      example: b35b7fb5-df86-5776-b181-68564193d360
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_ids
+          properties:
+            task_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task types of the workflow
+              example: ["c46c8fc6-e097-6887-c292-796752040e47"]
+  responses:
+    200:
+      description: The project
+    400:
+      description: The asset type or a task type is not valid for the project
+    403:
+      description: You are not a manager of the project
+
 ProductionAssetTypeResource_post:
   summary: Add an asset type to a project
   description: Add an asset type to the settings of a project. You must be a

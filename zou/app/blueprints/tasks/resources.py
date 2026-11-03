@@ -406,6 +406,9 @@ class CreateAssetTasksResource(MethodView):
             criterions["project_id"] = project_id
             assets = assets_service.get_assets(criterions)
 
+        assets = projects_service.filter_assets_in_workflow(
+            project_id, task_type_id, assets
+        )
         tasks = tasks_service.create_tasks(task_type, assets)
         return tasks, 201
 
