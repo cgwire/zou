@@ -19,6 +19,19 @@ from zou.app.utils import permissions
 
 logger = logging.getLogger(__name__)
 
+# The RQ integration sends the raw job arguments, and the default job
+# description repeats them: chat credentials, mail bodies and recipients.
+# The chat settings can also show up in the local variables of a frame.
+SENTRY_SCRUBBED_KEYS = [
+    "args",
+    "chat_token_discord",
+    "chat_token_slack",
+    "chat_webhook_mattermost",
+    "description",
+    "kwargs",
+    "webhook",
+]
+
 
 if config.SENTRY_ENABLED:
     try:
@@ -26,6 +39,7 @@ if config.SENTRY_ENABLED:
         from sentry_sdk.integrations.flask import FlaskIntegration
         from sentry_sdk.integrations.rq import RqIntegration
         from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+        from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
     except ModuleNotFoundError:
         logger.warning("sentry_sdk module not found.")
 
@@ -47,6 +61,10 @@ def init_monitoring(app):
                 SqlalchemyIntegration(),
             ],
             traces_sample_rate=config.SENTRY_SR,
+            event_scrubber=EventScrubber(
+                denylist=[*DEFAULT_DENYLIST, *SENTRY_SCRUBBED_KEYS],
+                recursive=True,
+            ),
             ignore_errors=[
                 NoAuthorizationError,
                 NotFound,
