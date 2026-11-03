@@ -31,6 +31,7 @@ class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
     expiration_date = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean(), default=True, nullable=False)
     can_comment = db.Column(db.Boolean(), default=True, nullable=False)
+    can_download = db.Column(db.Boolean(), default=False, nullable=False)
     password = db.Column(db.String(255), nullable=True)
 
     __table_args__ = (

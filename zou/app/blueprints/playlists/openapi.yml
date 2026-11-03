@@ -625,6 +625,8 @@ PlaylistShareLinksResource_get:
                   type: boolean
                 can_comment:
                   type: boolean
+                can_download:
+                  type: boolean
                 has_password:
                   type: boolean
     403:
@@ -665,6 +667,11 @@ PlaylistShareLinksResource_post:
               type: boolean
               default: true
               description: Whether guests may comment and annotate
+            can_download:
+              type: boolean
+              default: false
+              description: Whether guests may download the playlist as a ZIP
+                file
             password:
               type: string
               description: Password guests must give to open the link
@@ -691,6 +698,8 @@ PlaylistShareLinksResource_post:
               is_active:
                 type: boolean
               can_comment:
+                type: boolean
+              can_download:
                 type: boolean
               has_password:
                 type: boolean
