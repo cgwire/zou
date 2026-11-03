@@ -18,6 +18,7 @@ from zou.app.blueprints.shared.resources import (
     SharedPlaylistPreviewFileThumbnailResource,
     SharedPlaylistPreviewFileTileResource,
     SharedPlaylistResource,
+    SharedPlaylistZipDownloadResource,
 )
 from zou.app.utils.api import configure_api_from_blueprint
 
@@ -94,6 +95,10 @@ routes = [
         "/shared/playlists/<token>/preview-files/"
         "<preview_file_id>/download",
         SharedPlaylistPreviewFileDownloadResource,
+    ),
+    (
+        "/shared/playlists/<token>/download/zip",
+        SharedPlaylistZipDownloadResource,
     ),
     (
         "/shared/playlists/<token>/context",

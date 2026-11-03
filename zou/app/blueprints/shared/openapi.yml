@@ -516,6 +516,10 @@ SharedPlaylistContextResource_get:
                   can_comment:
                     type: boolean
                     description: True if the guests can comment and annotate
+                  can_download:
+                    type: boolean
+                    description: True if the guests can download the playlist
+                      as a ZIP file
               project:
                 type: object
                 description: Project of the playlist
@@ -727,6 +731,42 @@ SharedPlaylistPreviewFileDownloadResource_get:
     404:
       description: The link is not valid, has expired, or the password is
         missing or wrong, or the file does not exist
+
+SharedPlaylistZipDownloadResource_get:
+  summary: Download a shared playlist as a ZIP file
+  description: Download a ZIP file with the preview files of the shared
+    playlist. The link must allow downloads. You do not need an account. The
+    token of the link is the credential. If the link has a password, give it
+    in the password query parameter.
+  tags:
+    - Playlists
+  security: []
+  parameters:
+    - in: path
+      name: token
+      required: true
+      schema:
+        type: string
+      description: Share link token
+    - in: query
+      name: password
+      required: false
+      schema:
+        type: string
+      description: Password when the link is protected
+  responses:
+    200:
+      description: The ZIP file
+      content:
+        application/zip:
+          schema:
+            type: string
+            format: binary
+    403:
+      description: The link does not allow downloads
+    404:
+      description: The link is not valid, has expired, or the password is
+        missing or wrong
 
 SharedPlaylistPreviewFileExtensionResource_get:
   summary: Get the original file of a shared preview

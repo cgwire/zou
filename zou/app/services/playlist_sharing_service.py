@@ -71,6 +71,7 @@ def create_share_link(
     person_id,
     expiration_date=None,
     can_comment=True,
+    can_download=False,
     password=None,
 ):
     """
@@ -94,6 +95,7 @@ def create_share_link(
         created_by=person_id,
         expiration_date=_get_expiration_datetime(expiration_date),
         can_comment=can_comment,
+        can_download=can_download,
         password=password_hash,
     )
     return share_link.serialize()
@@ -916,7 +918,10 @@ def get_share_link_context(share_link):
     )
 
     return {
-        "share_link": {"can_comment": share_link["can_comment"]},
+        "share_link": {
+            "can_comment": share_link["can_comment"],
+            "can_download": share_link["can_download"],
+        },
         "project": {
             "id": project["id"],
             "name": project["name"],

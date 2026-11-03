@@ -118,6 +118,10 @@ class CreatePlaylistShareLinkSchema(BaseSchema):
         True,
         description="Whether guests are allowed to comment / annotate",
     )
+    can_download: bool = Field(
+        False,
+        description="Whether guests can download the playlist as a ZIP file",
+    )
     password: Optional[str] = Field(
         None,
         description="Optional password required to access the link",

@@ -44,6 +44,38 @@ from zou.utils.movie import EncodingParameters
 SPECS = load_specs(__file__, "openapi.yml")
 
 
+def send_playlist_zip(playlist):
+    """
+    Build the ZIP file of a playlist, send it as an attachment and remove it
+    once sent.
+    """
+    project = projects_service.get_project(playlist["project_id"])
+    zip_file_path = playlist_builds_service.build_playlist_zip_file(playlist)
+    context_name = playlist_builds_service.get_playlist_download_context_name(
+        project, playlist
+    )
+    download_name = (
+        f"{context_name}_"
+        f"{slugify.slugify(playlist['name'], separator='_')}.zip"
+    )
+
+    @after_this_request
+    def cleanup(response):
+        try:
+            os.remove(zip_file_path)
+        except OSError:
+            pass
+        return response
+
+    return flask_send_file(
+        zip_file_path,
+        conditional=True,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=download_name,
+    )
+
+
 class ProjectPlaylistsResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -317,35 +349,7 @@ class PlaylistZipDownloadResource(MethodView):
         permissions_service.check_playlist_access(
             playlist, supervisor_access=True
         )
-        project = projects_service.get_project(playlist["project_id"])
-        zip_file_path = playlist_builds_service.build_playlist_zip_file(
-            playlist
-        )
-        context_name = (
-            playlist_builds_service.get_playlist_download_context_name(
-                project, playlist
-            )
-        )
-        download_name = (
-            f"{context_name}_"
-            f"{slugify.slugify(playlist['name'], separator='_')}.zip"
-        )
-
-        @after_this_request
-        def cleanup(response):
-            try:
-                os.remove(zip_file_path)
-            except OSError:
-                pass
-            return response
-
-        return flask_send_file(
-            zip_file_path,
-            conditional=True,
-            mimetype="application/zip",
-            as_attachment=True,
-            download_name=download_name,
-        )
+        return send_playlist_zip(playlist)
 
 
 class BuildJobResource(MethodView):
@@ -493,6 +497,7 @@ class PlaylistShareLinksResource(MethodView):
             person["id"],
             expiration_date=body.expiration_date,
             can_comment=body.can_comment,
+            can_download=body.can_download,
             password=body.password,
         )
         return share_link, 201
