@@ -108,3 +108,28 @@ class RunJobTestCase(unittest.TestCase):
         self.ncli.job.get_summary.return_value = complete_summary()
         self.assertTrue(self.run_job(None))
         self.assertFalse(remote_job.is_resumed())
+
+
+class GetNomadJobLogsTestCase(unittest.TestCase):
+    def test_logs_longer_than_one_frame(self):
+        # KITSU-API-450: logs over 64 KiB come as several JSON frames, which
+        # hid the failure of the Nomad job behind a decoding error.
+        frame = b'{"Data":"","File":"stdout","Offset":0}'
+
+        def stream(alloc_id, task, type_, plain=False):
+            return f"{type_} logs\n" if plain else frame + frame
+
+        ncli = MagicMock()
+        ncli.job.get_allocations.return_value = [
+            {
+                "CreateIndex": 1,
+                "ID": "alloc-1",
+                "TaskStates": {"zou-tile": {"StartedAt": "now"}},
+            }
+        ]
+        ncli.client.stream_logs.stream.side_effect = stream
+
+        out, err = remote_job.get_nomad_job_logs(ncli, "job-1", "zou-tile")
+
+        self.assertEqual(out, "stdout logs")
+        self.assertEqual(err, "stderr logs")
