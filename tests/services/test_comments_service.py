@@ -19,6 +19,7 @@ from zou.app.services import (
     concepts_service,
     entities_service,
     exception,
+    news_service,
     persons_service,
     preview_file_states_service as states_service,
     preview_files_service,
@@ -1040,6 +1041,42 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
             os.path.exists(
                 file_store.get_local_movie_path("source", target_id)
             )
+        )
+
+    def test_copying_into_a_preview_reaches_the_memoized_news(self):
+        """
+        A copy ends like an upload: the feeds load the news of the comment
+        again, which the cache must not answer with the preview as it was.
+        """
+        original = self.generate_fixture_preview_file(name="original")
+        source_path = file_store.get_local_movie_path(
+            "source", str(original.id)
+        )
+        os.makedirs(os.path.dirname(source_path), exist_ok=True)
+        with open(source_path, "wb") as movie_file:
+            movie_file.write(b"\x00" * 512)
+        comment = comments_service.new_comment(
+            self.task.id, self.task.task_status_id, self.user_id, "c"
+        )
+        news = news_service.create_news_for_task_and_comment(
+            self.task.serialize(), comment
+        )
+        target = comments_service.add_preview_file_to_comment(
+            comment["id"], self.user_id, str(self.task.id)
+        )
+        news_service.get_news(self.project_id, news["id"])
+
+        comments_service.copy_preview_file_in_another_one(
+            str(original.id), target["id"]
+        )
+
+        single_news = news_service.get_news(self.project_id, news["id"])
+        self.assertEqual(
+            [
+                entry["status"]
+                for entry in single_news["data"][0]["preview_files"]
+            ],
+            ["ready"],
         )
 
 

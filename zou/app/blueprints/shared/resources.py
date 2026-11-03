@@ -2,6 +2,7 @@ from flask import current_app, g, request
 from flask.views import MethodView
 from flask_fs.errors import FileNotFound
 
+from zou.app.blueprints.playlists.resources import send_playlist_zip
 from zou.app.blueprints.previews.resources import (
     ALLOWED_FILE_EXTENSION,
     ALLOWED_PICTURE_EXTENSION,
@@ -522,6 +523,22 @@ class SharedPlaylistPreviewFileDownloadResource(MethodView):
                 )
         except FileNotFound:
             raise PreviewFileNotFoundException
+
+
+class SharedPlaylistZipDownloadResource(MethodView):
+    @require_valid_playlist_share_link()
+    @swag_from(SPECS["SharedPlaylistZipDownloadResource_get"])
+    def get(self, token):
+        """
+        Download shared playlist zip
+        """
+        if not g.playlist_share_link["can_download"]:
+            raise permissions.PermissionDenied
+        return send_playlist_zip(
+            playlists_service.get_playlist(
+                g.playlist_share_link["playlist_id"]
+            )
+        )
 
 
 class SharedPlaylistContextResource(MethodView):

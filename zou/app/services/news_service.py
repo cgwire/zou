@@ -178,6 +178,23 @@ def delete_news(news_list, project_id=None):
         events.emit("news:delete", {"news_id": news_id}, project_id=project_id)
 
 
+def clear_news_cache(news_list, project_id):
+    """
+    Drop given news from the get_news cache, after a write that changes what
+    the single-news route returns: the feeds reload a news through it on the
+    events that follow such a write.
+    """
+    for news in news_list:
+        cache.cache.delete_memoized(get_news, str(project_id), str(news.id))
+
+
+def clear_comment_news_cache(comment_id, project_id):
+    """
+    Drop the news of given comment from the get_news cache.
+    """
+    clear_news_cache(News.get_all_by(comment_id=comment_id), project_id)
+
+
 def get_last_news_for_project(
     filters=None, news_id=None, entity_id=None, page=1, limit=50
 ):
@@ -287,7 +304,8 @@ def get_last_news_for_project(
     for news in result:
         news["person"] = author_map.get(news["author_id"])
 
-    if filters.only_preview:
+    # The feed plays the preview files of a news it loads on its own too.
+    if filters.only_preview or news_id is not None:
         task_ids = [
             news["task_id"] for news in result if news["task_id"] is not None
         ]

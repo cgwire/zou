@@ -1,6 +1,8 @@
+import io
 import json
 import os
 import uuid
+from zipfile import ZipFile
 
 import pytest
 
@@ -369,9 +371,20 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         closed_link = self.post(self.share_path(), {"can_comment": False}, 201)
         self.log_out()
         result = self.get(self.shared_path(link["token"], "/context"))
-        self.assertEqual(result["share_link"], {"can_comment": True})
+        self.assertTrue(result["share_link"]["can_comment"])
         result = self.get(self.shared_path(closed_link["token"], "/context"))
-        self.assertEqual(result["share_link"], {"can_comment": False})
+        self.assertFalse(result["share_link"]["can_comment"])
+
+    def test_get_shared_playlist_context_sends_the_download_setting(self):
+        link = self.post(self.share_path(), {}, 201)
+        open_link = self.post(self.share_path(), {"can_download": True}, 201)
+        self.assertFalse(link["can_download"])
+        self.assertTrue(open_link["can_download"])
+        self.log_out()
+        result = self.get(self.shared_path(link["token"], "/context"))
+        self.assertFalse(result["share_link"]["can_download"])
+        result = self.get(self.shared_path(open_link["token"], "/context"))
+        self.assertTrue(result["share_link"]["can_download"])
 
 
 class SharedRevisionTestCase(PlaylistSharingTestCase):
@@ -1359,6 +1372,36 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, payload)
+
+    def test_shared_playlist_zip_download(self):
+        _, payload = self._attach_zip_preview_to_playlist()
+        link = self.post(self.share_path(), {"can_download": True}, 201)
+        self.log_out()
+        response = self.app.get(
+            self.shared_path(link["token"], "/download/zip")
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        self.assertIn(".zip", response.headers["Content-Disposition"])
+        with ZipFile(io.BytesIO(response.data)) as archive:
+            names = archive.namelist()
+            self.assertEqual(len(names), 1)
+            self.assertEqual(archive.read(names[0]), payload)
+
+    def test_shared_playlist_zip_download_needs_the_link_setting(self):
+        self._attach_zip_preview_to_playlist()
+        link = self.post(self.share_path(), {}, 201)
+        self.log_out()
+        response = self.app.get(
+            self.shared_path(link["token"], "/download/zip")
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_shared_playlist_zip_download_invalid_token(self):
+        response = self.app.get(
+            self.shared_path("not-a-token", "/download/zip")
+        )
+        self.assertEqual(response.status_code, 404)
 
     def test_shared_preview_file_download_invalid_token(self):
         preview_file, _ = self._attach_zip_preview_to_playlist()

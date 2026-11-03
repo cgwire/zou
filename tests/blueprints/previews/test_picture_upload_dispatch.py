@@ -4,8 +4,10 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
+from zou.app.models.news import News
 from zou.app.services import (
     files_service,
+    news_service,
     preview_files_service,
     tasks_service,
 )
@@ -134,6 +136,21 @@ class PictureUploadDispatchTestCase(BasePreviewDispatchTestCase):
         )
         preview_file = files_service.get_preview_file(preview_file_id)
         self.assertEqual(preview_file["status"], "ready")
+
+    def test_an_uploaded_picture_reaches_the_memoized_news(self):
+        # The previews mode of the feed loads the news again once the file
+        # is in: the news memoized before has no extension yet.
+        preview_file_id = self.create_preview_file()
+        news_id = str(News.get_by(preview_file_id=preview_file_id).id)
+        project_id = str(self.task.project_id)
+        news_service.get_news(project_id, news_id)
+
+        self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}", self.picture_path
+        )
+
+        single_news = news_service.get_news(project_id, news_id)["data"][0]
+        self.assertEqual(single_news["preview_file_extension"], "png")
 
     def test_an_uploaded_picture_names_the_task_of_its_comment(self):
         # Kitsu reloads an updated comment from the comments of its task:

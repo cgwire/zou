@@ -272,6 +272,11 @@ def remove_preview_file(preview_file, force=False, restore_main=True):
 
     if news is not None:
         news.update({"preview_file_id": None})
+        news_service.clear_news_cache([news], task.project_id)
+    # The news of a comment lists every preview file of its revision, the
+    # ones it does not point at too.
+    for comment in preview_file.comments:
+        news_service.clear_comment_news_cache(comment.id, task.project_id)
 
     preview_file_id = str(preview_file.id)
     extension = preview_file.extension

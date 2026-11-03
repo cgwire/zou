@@ -38,6 +38,7 @@ from zou.app.services import (
     deletion_service,
     entities_service,
     files_service,
+    news_service,
     organisation_service,
     permissions_service,
     persons_service,
@@ -703,6 +704,9 @@ class BaseNewPreviewFilePicture:
         comment_id = None
         if comment is not None:
             comment_id = comment["id"]
+            news_service.clear_comment_news_cache(
+                comment_id, task["project_id"]
+            )
             events.emit(
                 "comment:update",
                 {
