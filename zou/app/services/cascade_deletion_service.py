@@ -3,6 +3,7 @@ from sqlalchemy.orm import selectinload
 
 from zou.app import config
 from zou.app.exceptions import (
+    CommentNotFoundException,
     EntityNotFoundException,
     ModelWithRelationsDeletionException,
     PersonInProtectedAccounts,
@@ -268,8 +269,16 @@ def remove_person(person_id, force=True):
             "Can't delete this person it's a protected account."
         )
     if force:
-        for comment in Comment.get_all_by(person_id=person_id):
-            deletion_service.remove_comment(comment.id)
+        # Each removal commits, which expires the loaded comments: reading
+        # the id of one removed in the meantime would raise.
+        comment_ids = [
+            comment.id for comment in Comment.get_all_by(person_id=person_id)
+        ]
+        for comment_id in comment_ids:
+            try:
+                deletion_service.remove_comment(comment_id)
+            except CommentNotFoundException:
+                pass
         comments = Comment.query.filter(
             Comment.acknowledgements.contains(person)
         )
