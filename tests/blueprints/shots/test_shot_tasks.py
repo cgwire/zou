@@ -1,4 +1,5 @@
 from tests.base import ApiDBTestCase, rebuild_from_compact
+from zou.app.models.entity import Entity
 from zou.app.services import (
     metadata_descriptors_service,
     persons_service,
@@ -135,6 +136,46 @@ class ShotTasksTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(shots), 1)
         self.assertEqual(shots[0]["episode_name"], "E01")
+
+    def generate_shot_without_episode(self):
+        sequence = Entity.create(
+            name="S02",
+            project_id=self.project.id,
+            entity_type_id=self.sequence_type.id,
+        )
+        self.generate_fixture_shot("P02", sequence_id=sequence.id)
+        self.generate_fixture_shot_task(name="Main pack")
+
+    def test_get_shots_and_tasks_main_pack(self):
+        # KITSU-API-4VE: "main" passed the id check and reached the UUID bind.
+        self.generate_shot_without_episode()
+        shots = self.get(
+            f"data/shots/with-tasks?project_id={self.project.id}"
+            "&episode_id=main"
+        )
+        self.assertEqual([shot["name"] for shot in shots], ["P02"])
+
+    def test_get_sequences_and_tasks_main_pack(self):
+        self.generate_shot_without_episode()
+        sequences = self.get(
+            f"data/sequences/with-tasks?project_id={self.project.id}"
+            "&episode_id=main"
+        )
+        self.assertEqual([sequence["name"] for sequence in sequences], ["S02"])
+
+    def test_get_sequences_and_tasks_main_pack_as_vendor(self):
+        self.generate_shot_without_episode()
+        project_id = str(self.project.id)
+        self.generate_fixture_user_vendor()
+        vendor_id = self.user_vendor["id"]
+        projects_service.add_team_member(project_id, vendor_id)
+        tasks_service.assign_task(str(self.shot_task.id), vendor_id)
+        self.log_in_vendor()
+        sequences = self.get(
+            f"data/sequences/with-tasks?project_id={project_id}"
+            "&episode_id=main"
+        )
+        self.assertEqual([sequence["name"] for sequence in sequences], ["S02"])
 
     def test_get_sequences_and_tasks_all_episodes_as_vendor(self):
         project_id = str(self.project.id)

@@ -279,10 +279,11 @@ def prepare_shots_and_tasks(criterions=None, compact=False, for_client=None):
             query = query.filter(Entity.id == criterions["id"])
         if "project_id" in criterions:
             query = query.filter(Entity.project_id == criterions["project_id"])
-        if "episode_id" in criterions and criterions["episode_id"] != "all":
-            query = query.filter(
-                Sequence.parent_id == criterions["episode_id"]
-            )
+        episode_id = criterions.get("episode_id")
+        if episode_id == "main":
+            query = query.filter(Sequence.parent_id == None)
+        elif episode_id is not None and episode_id != "all":
+            query = query.filter(Sequence.parent_id == episode_id)
         if assigned_to:
             has_assigned_task = (
                 db.session.query(Task.id)
