@@ -1031,6 +1031,23 @@ class ProjectAssetTypeWorkflowTestCase(ApiDBTestCase):
             self.workflows(), {self.asset_type_id: [self.concept_id]}
         )
 
+    def test_removing_a_setting_with_a_malformed_id_is_refused(self):
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        for setting in [
+            "settings/task-types",
+            "settings/asset-types",
+            "settings/task-status",
+            "settings/status-automations",
+            "settings/preview-background-files",
+            "team",
+        ]:
+            self.delete(
+                f"/data/projects/{self.project_id}/{setting}/not-an-id", 400
+            )
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.shaders_id]}
+        )
+
     def test_set_workflow_requires_manager(self):
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()

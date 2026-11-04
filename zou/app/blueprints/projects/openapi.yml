@@ -289,6 +289,8 @@ ProductionAssetTypeRemoveResource_delete:
   responses:
     204:
       description: The asset type is removed from the project
+    400:
+      description: The identifier is not a UUID
     403:
       description: You are not a manager of the project
 
@@ -1757,6 +1759,8 @@ ProductionPreviewBackgroundFileRemoveResource_delete:
   responses:
     204:
       description: The preview background file is removed from the project
+    400:
+      description: The identifier is not a UUID
     403:
       description: You are not a manager of the project
 
@@ -2170,6 +2174,8 @@ ProductionStatusAutomationRemoveResource_delete:
   responses:
     204:
       description: The status automation is removed from the project
+    400:
+      description: The identifier is not a UUID
     403:
       description: You are not a manager of the project
 
@@ -2277,6 +2283,8 @@ ProductionTaskStatusRemoveResource_delete:
   responses:
     204:
       description: The task status is removed from the project
+    400:
+      description: The identifier is not a UUID
     403:
       description: You are not a manager of the project
 
@@ -2431,6 +2439,8 @@ ProductionTaskTypeRemoveResource_delete:
   responses:
     204:
       description: The task type is removed from the project
+    400:
+      description: The identifier is not a UUID
     403:
       description: You are not a manager of the project
 
@@ -2817,6 +2827,8 @@ ProductionTeamMemberResource_delete:
   responses:
     204:
       description: The person is removed from the team
+    400:
+      description: The identifier is not a UUID
     403:
       description: You are not a manager of the project
 

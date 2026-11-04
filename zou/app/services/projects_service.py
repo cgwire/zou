@@ -588,6 +588,7 @@ def remove_asset_type_setting(project_id, asset_type_id):
     Remove an asset type listed in database from the the project asset types,
     with its project workflow.
     """
+    _check_setting_id(asset_type_id)
     ProjectAssetTypeTaskTypeLink.query.filter_by(
         project_id=project_id, asset_type_id=asset_type_id
     ).delete()
@@ -715,6 +716,7 @@ def remove_task_type_setting(project_id, task_type_id):
     from the project workflows. A workflow left empty is gone: its asset type
     follows the studio workflow again.
     """
+    _check_setting_id(task_type_id)
     ProjectAssetTypeTaskTypeLink.query.filter_by(
         project_id=project_id, task_type_id=task_type_id
     ).delete()
@@ -900,10 +902,16 @@ def _add_to_list_attr(project_id, model_class, model_id, list_attr):
         return project.serialize()
 
 
+def _check_setting_id(model_id):
+    if not fields.is_valid_id(model_id):
+        raise WrongParameterException(f"{model_id} is not a valid id.")
+
+
 def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
     """
     Remove a row from one of the project settings lists, no-op when absent.
     """
+    _check_setting_id(model_id)
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
     try:
