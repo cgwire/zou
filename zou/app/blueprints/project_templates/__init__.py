@@ -4,6 +4,7 @@ from zou.app.blueprints.project_templates.resources import (
     ApplyProjectTemplateResource,
     ProjectTemplateAssetTypeResource,
     ProjectTemplateAssetTypesResource,
+    ProjectTemplateAssetTypeWorkflowResource,
     ProjectTemplateBackgroundResource,
     ProjectTemplateBackgroundsResource,
     ProjectTemplateDefaultBackgroundResource,
@@ -52,6 +53,10 @@ routes = [
     (
         "/data/project-templates/<project_template_id>/asset-types/<asset_type_id>",
         ProjectTemplateAssetTypeResource,
+    ),
+    (
+        "/data/project-templates/<project_template_id>/asset-types/<asset_type_id>/task-types",
+        ProjectTemplateAssetTypeWorkflowResource,
     ),
     (
         "/data/project-templates/<project_template_id>/status-automations",

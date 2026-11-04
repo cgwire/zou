@@ -84,6 +84,34 @@ class ProjectTemplateAssetTypeLink(db.Model):
     )
 
 
+class ProjectTemplateAssetTypeTaskTypeLink(db.Model):
+    """
+    Workflow of an asset type specific to a template, copied to and from
+    projects. Without rows for a template and asset type pair, the studio
+    workflow applies.
+    """
+
+    __tablename__ = "project_template_asset_type_task_type_link"
+    project_template_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project_template.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    asset_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("entity_type.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    task_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("task_type.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+
+
 class ProjectTemplateStatusAutomationLink(db.Model):
     __tablename__ = "project_template_status_automation_link"
     project_template_id = db.Column(

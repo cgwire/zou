@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.services import projects_service
 
 
 class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
@@ -492,4 +493,112 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             f"/default-preview-background-file",
             {"default_preview_background_file_id": str(background.id)},
             400,
+        )
+
+
+class ProjectTemplateWorkflowsTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_asset_type()
+        self.project_id = str(self.project.id)
+        self.asset_type_id = str(self.asset_type.id)
+        self.shaders_id = str(self.task_type.id)
+        self.modeling_id = str(self.task_type_modeling.id)
+
+    def create_template(self, name="Workflow setup"):
+        template = self.post("/data/project-templates", {"name": name})
+        path = f"/data/project-templates/{template['id']}"
+        self.post(
+            f"{path}/asset-types",
+            {"asset_type_id": self.asset_type_id},
+        )
+        for task_type_id in [self.shaders_id, self.modeling_id]:
+            self.post(f"{path}/task-types", {"task_type_id": task_type_id})
+        return template, f"{path}/asset-types/{self.asset_type_id}/task-types"
+
+    def template_workflow(self, template):
+        asset_types = self.get(
+            f"/data/project-templates/{template['id']}/asset-types"
+        )
+        return asset_types[0]["workflow"]
+
+    def project_workflows(self, project_id):
+        return self.get(f"/data/projects/{project_id}")["asset_type_workflows"]
+
+    def test_set_and_reset_workflow(self):
+        template, route = self.create_template()
+        self.assertEqual(self.template_workflow(template), [])
+        self.put(route, {"task_type_ids": [self.shaders_id]})
+        self.assertEqual(self.template_workflow(template), [self.shaders_id])
+        self.put(route, {"task_type_ids": []})
+        self.assertEqual(self.template_workflow(template), [])
+
+    def test_set_workflow_refuses_invalid_ids(self):
+        _, route = self.create_template()
+        self.put(route, {"task_type_ids": [self.project_id]}, 400)
+        self.put(route, {}, 400)
+        unknown = route.replace(self.asset_type_id, self.project_id)
+        self.put(unknown, {"task_type_ids": [self.shaders_id]}, 400)
+
+    def test_set_workflow_requires_admin(self):
+        _, route = self.create_template()
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.put(route, {"task_type_ids": [self.shaders_id]}, 403)
+
+    def test_template_from_project_copies_the_workflows(self):
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        projects_service.add_task_type_setting(
+            self.project_id, self.shaders_id
+        )
+        projects_service.set_asset_type_workflow(
+            self.project_id, self.asset_type_id, [self.shaders_id]
+        )
+        template = self.post(
+            f"/data/project-templates/from-project/{self.project_id}",
+            {"name": "From project"},
+        )
+        self.assertEqual(self.template_workflow(template), [self.shaders_id])
+
+    def test_apply_template_copies_the_workflows(self):
+        template, route = self.create_template()
+        self.put(route, {"task_type_ids": [self.shaders_id]})
+        self.post(
+            f"/data/projects/{self.project_id}"
+            f"/apply-template/{template['id']}",
+            {},
+            200,
+        )
+        self.assertEqual(
+            self.project_workflows(self.project_id),
+            {self.asset_type_id: [self.shaders_id]},
+        )
+
+    def test_apply_template_keeps_a_workflow_the_project_sets(self):
+        template, route = self.create_template()
+        self.put(route, {"task_type_ids": [self.shaders_id]})
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        projects_service.add_task_type_setting(
+            self.project_id, self.modeling_id
+        )
+        projects_service.set_asset_type_workflow(
+            self.project_id, self.asset_type_id, [self.modeling_id]
+        )
+        self.post(
+            f"/data/projects/{self.project_id}"
+            f"/apply-template/{template['id']}",
+            {},
+            200,
+        )
+        self.assertEqual(
+            self.project_workflows(self.project_id),
+            {self.asset_type_id: [self.modeling_id]},
         )
