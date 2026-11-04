@@ -270,12 +270,16 @@ def add_task_type_to_template(
 
 def remove_task_type_from_template(template_id, task_type_id):
     """
-    Unlink a task type from given template, no-op when not linked.
+    Unlink a task type from given template and from its workflows, no-op when
+    not linked.
     """
     link = ProjectTemplateTaskTypeLink.get_by(
         project_template_id=template_id, task_type_id=task_type_id
     )
     if link is not None:
+        ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+            project_template_id=template_id, task_type_id=task_type_id
+        ).delete()
         link.delete()
     _notify_template_change(template_id)
 
@@ -449,6 +453,21 @@ def set_template_asset_type_workflow(
     return {"id": asset_type_id, "workflow": sorted(wanted_ids)}
 
 
+def _links_in_settings(workflow_links, settings):
+    """
+    Return the workflow links whose asset type and task type are both in the
+    settings of given project or template: a stale link must not be copied.
+    """
+    asset_type_ids = {asset_type.id for asset_type in settings.asset_types}
+    task_type_ids = {task_type.id for task_type in settings.task_types}
+    return [
+        link
+        for link in workflow_links
+        if link.asset_type_id in asset_type_ids
+        and link.task_type_id in task_type_ids
+    ]
+
+
 def add_asset_type_to_template(template_id, asset_type_id):
     """
     Link an asset type to given template, no-op when already linked.
@@ -466,16 +485,20 @@ def add_asset_type_to_template(template_id, asset_type_id):
 
 def remove_asset_type_from_template(template_id, asset_type_id):
     """
-    Unlink an asset type from given template, no-op when not linked.
+    Unlink an asset type from given template with its workflow, no-op when
+    not linked.
     """
     template = _ensure_template_exists(template_id)
     asset_type = EntityType.get(asset_type_id)
     if asset_type is not None:
+        ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+            project_template_id=template_id, asset_type_id=asset_type_id
+        ).delete()
         try:
             template.asset_types.remove(asset_type)
-            template.save()
         except ValueError:
             pass
+        template.save()
     _notify_template_change(template_id)
 
 
@@ -727,9 +750,10 @@ def create_template_from_project(project_id, name, description=None):
             )
         )
 
-    for link in ProjectAssetTypeTaskTypeLink.query.filter_by(
-        project_id=project_id
-    ).all():
+    for link in _links_in_settings(
+        ProjectAssetTypeTaskTypeLink.query.filter_by(project_id=project_id),
+        project,
+    ):
         db.session.add(
             ProjectTemplateAssetTypeTaskTypeLink(
                 project_template_id=template.id,
@@ -895,9 +919,12 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
             project_id=project.id
         ).all()
     }
-    for link in ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
-        project_template_id=template.id
-    ).all():
+    for link in _links_in_settings(
+        ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+            project_template_id=template.id
+        ),
+        template,
+    ):
         if link.asset_type_id not in asset_types_with_workflow:
             db.session.add(
                 ProjectAssetTypeTaskTypeLink(

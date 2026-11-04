@@ -1,5 +1,8 @@
 from tests.base import ApiDBTestCase
+from zou.app import db
 from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.project_template import ProjectTemplateTaskTypeLink
 from zou.app.services import projects_service
 
 
@@ -549,6 +552,58 @@ class ProjectTemplateWorkflowsTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.put(route, {"task_type_ids": [self.shaders_id]}, 403)
+
+    def test_removing_a_task_type_removes_it_from_the_workflows(self):
+        template, route = self.create_template()
+        self.put(route, {"task_type_ids": [self.shaders_id, self.modeling_id]})
+        self.delete(
+            f"/data/project-templates/{template['id']}/task-types"
+            f"/{self.shaders_id}"
+        )
+        self.assertEqual(self.template_workflow(template), [self.modeling_id])
+
+    def test_removing_an_asset_type_removes_its_workflow(self):
+        template, route = self.create_template()
+        self.put(route, {"task_type_ids": [self.shaders_id]})
+        path = f"/data/project-templates/{template['id']}/asset-types"
+        self.delete(f"{path}/{self.asset_type_id}")
+        self.post(path, {"asset_type_id": self.asset_type_id})
+        self.assertEqual(self.template_workflow(template), [])
+
+    def test_stale_workflow_links_are_not_copied(self):
+        template, route = self.create_template()
+        self.put(route, {"task_type_ids": [self.shaders_id]})
+        ProjectTemplateTaskTypeLink.query.filter_by(
+            project_template_id=template["id"], task_type_id=self.shaders_id
+        ).delete()
+        db.session.commit()
+        self.post(
+            f"/data/projects/{self.project_id}"
+            f"/apply-template/{template['id']}",
+            {},
+            200,
+        )
+        self.assertEqual(self.project_workflows(self.project_id), {})
+
+    def test_stale_project_workflow_links_are_not_copied(self):
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        projects_service.add_task_type_setting(
+            self.project_id, self.shaders_id
+        )
+        projects_service.set_asset_type_workflow(
+            self.project_id, self.asset_type_id, [self.shaders_id]
+        )
+        ProjectTaskTypeLink.query.filter_by(
+            project_id=self.project_id, task_type_id=self.shaders_id
+        ).delete()
+        db.session.commit()
+        template = self.post(
+            f"/data/project-templates/from-project/{self.project_id}",
+            {"name": "From stale project"},
+        )
+        self.assertEqual(self.template_workflow(template), [])
 
     def test_template_from_project_copies_the_workflows(self):
         projects_service.add_asset_type_setting(

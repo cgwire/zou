@@ -206,8 +206,9 @@ EntityPreviewFilesResource_get:
 EntityTaskCreationResource_post:
   summary: Create tasks for an entity
   description: Create one task for each task type of the list. The project
-    must use each task type. For an asset, the workflow of the asset type must
-    also have each task type. If the list is empty, the route uses all the
+    must use each task type. For an asset, the workflow of the asset type (the
+    one of the project when set, else the studio one) must also have each task
+    type. If the list is empty, the route uses all the
     task types that are valid for the entity. If a task with the same task
     type exists, it is skipped. Clients and vendors cannot use this route.
   tags:

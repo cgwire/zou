@@ -931,9 +931,7 @@ class ProjectAssetTypeWorkflowTestCase(ApiDBTestCase):
     def workflows(self):
         projects = self.get("data/projects/open")
         return next(
-            project
-            for project in projects
-            if project["id"] == self.project_id
+            project for project in projects if project["id"] == self.project_id
         )["asset_type_workflows"]
 
     def created_task_type_ids(self):
@@ -983,6 +981,55 @@ class ProjectAssetTypeWorkflowTestCase(ApiDBTestCase):
             self.project_id, self.asset_type_id
         )
         self.put(self.route, {"task_type_ids": [self.shaders_id]}, 400)
+
+    def test_removing_a_task_type_removes_it_from_the_workflows(self):
+        self.put(
+            self.route, {"task_type_ids": [self.shaders_id, self.concept_id]}
+        )
+        self.delete(
+            f"/data/projects/{self.project_id}/settings/task-types"
+            f"/{self.shaders_id}"
+        )
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.concept_id]}
+        )
+
+    def test_removing_the_last_task_type_goes_back_to_studio_workflow(self):
+        self.asset_type.update({"task_types": [self.concept_id]})
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        self.delete(
+            f"/data/projects/{self.project_id}/settings/task-types"
+            f"/{self.shaders_id}"
+        )
+        self.assertEqual(self.workflows(), {})
+        self.assertEqual(self.created_task_type_ids(), {self.concept_id})
+
+    def test_removing_an_asset_type_removes_its_workflow(self):
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        self.delete(
+            f"/data/projects/{self.project_id}/settings/asset-types"
+            f"/{self.asset_type_id}"
+        )
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        self.assertEqual(self.workflows(), {})
+
+    def test_replacing_task_types_removes_them_from_the_workflows(self):
+        self.put(
+            self.route, {"task_type_ids": [self.shaders_id, self.concept_id]}
+        )
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {
+                "task_types": [{"task_type_id": self.concept_id}],
+                "replace_task_types": True,
+            },
+            200,
+        )
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.concept_id]}
+        )
 
     def test_set_workflow_requires_manager(self):
         self.generate_fixture_user_cg_artist()

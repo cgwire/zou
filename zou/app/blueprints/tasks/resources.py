@@ -379,6 +379,10 @@ class CreateEntityTasksResource(MethodView):
                 project_id, entity_type_dict["id"], episode_id=episode_id
             )
 
+        if entity_types_service.is_asset_type(entity_type_dict):
+            entities = projects_service.filter_assets_in_workflow(
+                project_id, task_type_id, entities
+            )
         tasks = tasks_service.create_tasks(task_type, entities)
         return tasks, 201
 

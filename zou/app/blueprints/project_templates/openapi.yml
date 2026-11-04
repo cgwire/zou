@@ -3,7 +3,8 @@ ApplyProjectTemplateResource_post:
   description: Apply the configuration of a project template to a project. The
     current links of the project stay. The links that the project already has
     are skipped. The production settings of the template are written to the
-    project. You must be an administrator.
+    project. The workflow of an asset type is copied unless the project already
+    sets one for this asset type. You must be an administrator.
   tags:
     - Project Templates
   parameters:
@@ -108,8 +109,26 @@ ProjectTemplateAssetTypeWorkflowResource_put:
   responses:
     200:
       description: The asset type and its workflow
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset type unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              workflow:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Task types of the workflow
+                example: ["c46c8fc6-e097-6887-c292-796752040e47"]
     400:
-      description: The asset type or a task type is not valid for the template
+      description: The body is not valid, or the asset type or a task type is
+        not valid for the template
     403:
       description: You are not an administrator
     404:
@@ -133,7 +152,9 @@ ProjectTemplateAssetTypesResource_get:
         format: uuid
   responses:
     200:
-      description: The list of asset types
+      description: The list of asset types. Each one gives id, name and
+        workflow, the task type ids of its workflow. An empty workflow means
+        that the asset type follows the studio workflow.
     403:
       description: You do not have the manager role
     404:
@@ -311,8 +332,8 @@ ProjectTemplateFromProjectResource_post:
   summary: Create a project template from a project
   description: Create a project template from the configuration of a project.
     The template gets the production settings, the task types, the task
-    statuses, the asset types, the status automations, the metadata
-    descriptors, the file tree and the free data. The template does not get
+    statuses, the asset types, the asset type workflows, the status
+    automations, the metadata descriptors, the file tree and the free data. The template does not get
     the team, the dates, the preview backgrounds, the project status or the
     production data. You must be an administrator.
   tags:

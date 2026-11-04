@@ -127,6 +127,19 @@ class CreateTasksTestCase(TaskTestCase):
         self.assertEqual(len(self.post(path, [self.asset_id])), 0)
         self.assertEqual(Task.query.count(), 0)
 
+    def test_create_entity_tasks_follows_the_workflow(self):
+        other_type = TaskType.create(
+            name="Rigging", short_name="rig", for_entity="Asset"
+        )
+        self.asset_type.update({"task_types": [str(other_type.id)]})
+        path = (
+            f"/actions/projects/{self.project.id}/task-types"
+            f"/{self.task_type_id}/create-tasks/{self.asset_type.name}"
+        )
+        self.assertEqual(len(self.post(path, {})), 0)
+        self.assertEqual(len(self.post(path, [self.asset_id])), 0)
+        self.assertEqual(Task.query.count(), 0)
+
     def test_create_shot_tasks(self):
         path = f"/actions/projects/{self.project.id}/task-types/{self.task_type_id}/shots/create-tasks"
         tasks = self.post(path, {})

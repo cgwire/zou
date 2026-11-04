@@ -585,8 +585,12 @@ def add_asset_type_setting(project_id, asset_type_id):
 
 def remove_asset_type_setting(project_id, asset_type_id):
     """
-    Remove an asset type listed in database from the the project asset types.
+    Remove an asset type listed in database from the the project asset types,
+    with its project workflow.
     """
+    ProjectAssetTypeTaskTypeLink.query.filter_by(
+        project_id=project_id, asset_type_id=asset_type_id
+    ).delete()
     return _remove_from_list_attr(
         project_id, EntityType, asset_type_id, "asset_types"
     )
@@ -707,8 +711,13 @@ def add_task_type_setting(
 
 def remove_task_type_setting(project_id, task_type_id):
     """
-    Remove a task status listed in database from the the project task types.
+    Remove a task type listed in database from the the project task types and
+    from the project workflows. A workflow left empty is gone: its asset type
+    follows the studio workflow again.
     """
+    ProjectAssetTypeTaskTypeLink.query.filter_by(
+        project_id=project_id, task_type_id=task_type_id
+    ).delete()
     return _remove_from_list_attr(
         project_id, TaskType, task_type_id, "task_types"
     )
@@ -785,6 +794,9 @@ def update_project_settings(
                 task_type = TaskType.get(task_type_id)
                 if task_type is not None:
                     project.task_types.remove(task_type)
+                ProjectAssetTypeTaskTypeLink.query.filter_by(
+                    project_id=project_id, task_type_id=task_type_id
+                ).delete()
 
     task_status_map = {
         str(status.id): status for status in project.task_statuses
