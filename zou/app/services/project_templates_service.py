@@ -1,6 +1,9 @@
+from collections import defaultdict
+
 import slugify
 from sqlalchemy.exc import IntegrityError, StatementError
 
+from zou.app import db
 from zou.app.exceptions import (
     ProjectTemplateNotFoundException,
     WrongParameterException,
@@ -11,6 +14,7 @@ from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.project_template import (
     ProjectTemplate,
     ProjectTemplateAssetTypeLink,
+    ProjectTemplateAssetTypeTaskTypeLink,
     ProjectTemplatePreviewBackgroundFileLink,
     ProjectTemplateStatusAutomationLink,
     ProjectTemplateTaskStatusLink,
@@ -266,12 +270,16 @@ def add_task_type_to_template(
 
 def remove_task_type_from_template(template_id, task_type_id):
     """
-    Unlink a task type from given template, no-op when not linked.
+    Unlink a task type from given template and from its workflows, no-op when
+    not linked.
     """
     link = ProjectTemplateTaskTypeLink.get_by(
         project_template_id=template_id, task_type_id=task_type_id
     )
     if link is not None:
+        ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+            project_template_id=template_id, task_type_id=task_type_id
+        ).delete()
         link.delete()
     _notify_template_change(template_id)
 
@@ -386,12 +394,77 @@ def set_template_task_status_priorities(template_id, task_status_ids):
 
 def get_template_asset_types(template_id):
     """
-    Return the asset types of given template, id and name only.
+    Return the asset types of given template: id, name and the workflow
+    specific to the template, empty when the studio one applies.
     """
     template = _ensure_template_exists(template_id)
+    workflows = defaultdict(list)
+    for link in ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+        project_template_id=template.id
+    ).all():
+        workflows[link.asset_type_id].append(str(link.task_type_id))
     return [
-        {"id": str(asset_type.id), "name": asset_type.name}
+        {
+            "id": str(asset_type.id),
+            "name": asset_type.name,
+            "workflow": workflows.get(asset_type.id, []),
+        }
         for asset_type in template.asset_types
+    ]
+
+
+def set_template_asset_type_workflow(
+    template_id, asset_type_id, task_type_ids
+):
+    """
+    Replace the workflow of an asset type for given template. An empty list
+    removes it, so the asset type follows the studio workflow again.
+    """
+    template = _ensure_template_exists(template_id)
+    if asset_type_id not in {str(at.id) for at in template.asset_types}:
+        raise WrongParameterException(
+            f"Asset type {asset_type_id} is not in template {template_id}."
+        )
+    asset_task_type_ids = {
+        str(task_type.id)
+        for task_type in template.task_types
+        if task_type.for_entity == "Asset"
+    }
+    wanted_ids = set(task_type_ids)
+    invalid_ids = wanted_ids - asset_task_type_ids
+    if invalid_ids:
+        raise WrongParameterException(
+            f"Not asset task types of template {template_id}: "
+            f"{', '.join(sorted(invalid_ids))}."
+        )
+    ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+        project_template_id=template_id, asset_type_id=asset_type_id
+    ).delete()
+    db.session.add_all(
+        ProjectTemplateAssetTypeTaskTypeLink(
+            project_template_id=template_id,
+            asset_type_id=asset_type_id,
+            task_type_id=task_type_id,
+        )
+        for task_type_id in wanted_ids
+    )
+    db.session.commit()
+    _notify_template_change(template_id)
+    return {"id": asset_type_id, "workflow": sorted(wanted_ids)}
+
+
+def _links_in_settings(workflow_links, settings):
+    """
+    Return the workflow links whose asset type and task type are both in the
+    settings of given project or template: a stale link must not be copied.
+    """
+    asset_type_ids = {asset_type.id for asset_type in settings.asset_types}
+    task_type_ids = {task_type.id for task_type in settings.task_types}
+    return [
+        link
+        for link in workflow_links
+        if link.asset_type_id in asset_type_ids
+        and link.task_type_id in task_type_ids
     ]
 
 
@@ -412,16 +485,20 @@ def add_asset_type_to_template(template_id, asset_type_id):
 
 def remove_asset_type_from_template(template_id, asset_type_id):
     """
-    Unlink an asset type from given template, no-op when not linked.
+    Unlink an asset type from given template with its workflow, no-op when
+    not linked.
     """
     template = _ensure_template_exists(template_id)
     asset_type = EntityType.get(asset_type_id)
     if asset_type is not None:
+        ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+            project_template_id=template_id, asset_type_id=asset_type_id
+        ).delete()
         try:
             template.asset_types.remove(asset_type)
-            template.save()
         except ValueError:
             pass
+        template.save()
     _notify_template_change(template_id)
 
 
@@ -639,6 +716,7 @@ def create_template_from_project(project_id, name, description=None):
 
     # Snapshot link tables
     from zou.app.models.project import (
+        ProjectAssetTypeTaskTypeLink,
         ProjectTaskStatusLink,
         ProjectTaskTypeLink,
     )
@@ -664,13 +742,23 @@ def create_template_from_project(project_id, name, description=None):
             is_client_allowed=link.is_client_allowed,
         )
 
-    from zou.app import db
-
     for asset_type in project.asset_types:
         db.session.add(
             ProjectTemplateAssetTypeLink(
                 project_template_id=template.id,
                 asset_type_id=asset_type.id,
+            )
+        )
+
+    for link in _links_in_settings(
+        ProjectAssetTypeTaskTypeLink.query.filter_by(project_id=project_id),
+        project,
+    ):
+        db.session.add(
+            ProjectTemplateAssetTypeTaskTypeLink(
+                project_template_id=template.id,
+                asset_type_id=link.asset_type_id,
+                task_type_id=link.task_type_id,
             )
         )
 
@@ -774,6 +862,7 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
 
     from zou.app.models.project import (
         ProjectAssetTypeLink,
+        ProjectAssetTypeTaskTypeLink,
         ProjectStatusAutomationLink,
         ProjectTaskStatusLink,
         ProjectTaskTypeLink,
@@ -820,9 +909,30 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
             new_link = ProjectAssetTypeLink(
                 project_id=project.id, asset_type_id=link.asset_type_id
             )
-            from zou.app import db
-
             db.session.add(new_link)
+
+    # Additive, like the other links: a workflow the project already sets
+    # for an asset type stays as it is.
+    asset_types_with_workflow = {
+        link.asset_type_id
+        for link in ProjectAssetTypeTaskTypeLink.query.filter_by(
+            project_id=project.id
+        ).all()
+    }
+    for link in _links_in_settings(
+        ProjectTemplateAssetTypeTaskTypeLink.query.filter_by(
+            project_template_id=template.id
+        ),
+        template,
+    ):
+        if link.asset_type_id not in asset_types_with_workflow:
+            db.session.add(
+                ProjectAssetTypeTaskTypeLink(
+                    project_id=project.id,
+                    asset_type_id=link.asset_type_id,
+                    task_type_id=link.task_type_id,
+                )
+            )
 
     for link in ProjectTemplateStatusAutomationLink.query.filter_by(
         project_template_id=template.id
@@ -836,8 +946,6 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 project_id=project.id,
                 status_automation_id=link.status_automation_id,
             )
-            from zou.app import db
-
             db.session.add(new_link)
 
     from zou.app.models.project import ProjectPreviewBackgroundFileLink
@@ -854,11 +962,7 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
                 project_id=project.id,
                 preview_background_file_id=link.preview_background_file_id,
             )
-            from zou.app import db
-
             db.session.add(new_link)
-
-    from zou.app import db
 
     db.session.commit()
 

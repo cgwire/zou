@@ -84,6 +84,62 @@ class CreateTasksTestCase(TaskTestCase):
         self.assertEqual(task["task_type_id"], self.task_type_id)
         self.assertEqual(task["entity_id"], self.asset_id)
 
+    def test_create_asset_tasks_follows_the_workflow(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        other_type = TaskType.create(
+            name="Rigging", short_name="rig", for_entity="Asset"
+        )
+        path = (
+            f"/actions/projects/{self.project.id}/task-types"
+            f"/{self.task_type_id}/assets/create-tasks"
+        )
+        self.asset_type.update({"task_types": [str(other_type.id)]})
+        self.assertEqual(len(self.post(path, {})), 1)
+        self.assertEqual(Task.query.count(), 1)
+        created_on = str(Task.query.first().entity_id)
+        self.assertEqual(created_on, str(self.asset_character.id))
+
+    def test_create_asset_tasks_follows_the_project_workflow(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        projects_service.add_task_type_setting(
+            str(self.project.id), self.task_type_id
+        )
+        projects_service.add_asset_type_setting(
+            str(self.project.id), str(self.asset_type.id)
+        )
+        other_type = TaskType.create(
+            name="Rigging", short_name="rig", for_entity="Asset"
+        )
+        projects_service.add_task_type_setting(
+            str(self.project.id), str(other_type.id)
+        )
+        projects_service.set_asset_type_workflow(
+            str(self.project.id),
+            str(self.asset_type.id),
+            [str(other_type.id)],
+        )
+        path = (
+            f"/actions/projects/{self.project.id}/task-types"
+            f"/{self.task_type_id}/assets/create-tasks"
+        )
+        self.assertEqual(len(self.post(path, [self.asset_id])), 0)
+        self.assertEqual(Task.query.count(), 0)
+
+    def test_create_entity_tasks_follows_the_workflow(self):
+        other_type = TaskType.create(
+            name="Rigging", short_name="rig", for_entity="Asset"
+        )
+        self.asset_type.update({"task_types": [str(other_type.id)]})
+        path = (
+            f"/actions/projects/{self.project.id}/task-types"
+            f"/{self.task_type_id}/create-tasks/{self.asset_type.name}"
+        )
+        self.assertEqual(len(self.post(path, {})), 0)
+        self.assertEqual(len(self.post(path, [self.asset_id])), 0)
+        self.assertEqual(Task.query.count(), 0)
+
     def test_create_shot_tasks(self):
         path = f"/actions/projects/{self.project.id}/task-types/{self.task_type_id}/shots/create-tasks"
         tasks = self.post(path, {})

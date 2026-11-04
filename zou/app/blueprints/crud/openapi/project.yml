@@ -40,8 +40,8 @@ ProjectResource_get:
     - Crud
   description: Get a project. You must be in the team of the project, or an
     administrator. The response gives project_status_name. With relations (the
-    default), it also gives the metadata descriptors, the task type priorities
-    and the task status links. A client gets only the descriptors shared with
+    default), it also gives the metadata descriptors, the task type priorities,
+    the task status links and the asset type workflows. A client gets only the descriptors shared with
     clients. A vendor gets only the descriptors of their departments.
   parameters:
     - in: path
@@ -102,6 +102,16 @@ ProjectResource_get:
                 type: object
                 description: Priority and board roles of each task status, by
                   id
+              asset_type_workflows:
+                type: object
+                description: Task type ids of the workflows that the project
+                  sets, by asset type id. An asset type without an entry
+                  follows the studio workflow.
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
               first_episode_id:
                 type: string
                 format: uuid
@@ -514,8 +524,8 @@ ProjectsResource_post:
   description: Create a project. Send the fields of the new row in JSON. You
     must be an administrator. A null production_style gives 2d3d. The route
     checks production_style, resolution and the movie bitrates. With
-    project_template_id, the route applies the template. The fields you send
-    override the template values. Without project_status_id, the project gets
+    project_template_id, the route applies the template, its asset type
+    workflows included. The fields you send override the template values. Without project_status_id, the project gets
     the open status. default_preview_background_file_id must be in
     preview_background_files. A tvshow project gets a first episode E01. The
     project gets a copy of the metadata descriptors set for all projects.

@@ -3,7 +3,8 @@ ApplyProjectTemplateResource_post:
   description: Apply the configuration of a project template to a project. The
     current links of the project stay. The links that the project already has
     are skipped. The production settings of the template are written to the
-    project. You must be an administrator.
+    project. The workflow of an asset type is copied unless the project already
+    sets one for this asset type. You must be an administrator.
   tags:
     - Project Templates
   parameters:
@@ -64,6 +65,75 @@ ProjectTemplateAssetTypeResource_delete:
     404:
       description: The project template does not exist
 
+ProjectTemplateAssetTypeWorkflowResource_put:
+  summary: Set the workflow of an asset type for a project template
+  description: Replace the task types allowed for an asset type in a project
+    template, instead of the studio workflow. An empty list restores the studio
+    workflow. The asset type and the task types must be in the template, and the
+    task types must be asset task types. You must be an administrator.
+  tags:
+    - Project Templates
+  parameters:
+    - in: path
+      name: project_template_id
+      required: true
+      description: Unique identifier of the project template
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+    - in: path
+      name: asset_type_id
+      required: true
+      description: Unique identifier of the asset type
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - task_type_ids
+          properties:
+            task_type_ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Task types of the workflow
+              example: ["c46c8fc6-e097-6887-c292-796752040e47"]
+  responses:
+    200:
+      description: The asset type and its workflow
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Asset type unique identifier
+                example: b35b7fb5-df86-5776-b181-68564193d360
+              workflow:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: Task types of the workflow
+                example: ["c46c8fc6-e097-6887-c292-796752040e47"]
+    400:
+      description: The body is not valid, or the asset type or a task type is
+        not valid for the template
+    403:
+      description: You are not an administrator
+    404:
+      description: The project template does not exist
+
 ProjectTemplateAssetTypesResource_get:
   summary: Get the asset types of a project template
   description: Get the asset types of a project template. A project template
@@ -82,7 +152,9 @@ ProjectTemplateAssetTypesResource_get:
         format: uuid
   responses:
     200:
-      description: The list of asset types
+      description: The list of asset types. Each one gives id, name and
+        workflow, the task type ids of its workflow. An empty workflow means
+        that the asset type follows the studio workflow.
     403:
       description: You do not have the manager role
     404:
@@ -260,8 +332,8 @@ ProjectTemplateFromProjectResource_post:
   summary: Create a project template from a project
   description: Create a project template from the configuration of a project.
     The template gets the production settings, the task types, the task
-    statuses, the asset types, the status automations, the metadata
-    descriptors, the file tree and the free data. The template does not get
+    statuses, the asset types, the asset type workflows, the status
+    automations, the metadata descriptors, the file tree and the free data. The template does not get
     the team, the dates, the preview backgrounds, the project status or the
     production data. You must be an administrator.
   tags:

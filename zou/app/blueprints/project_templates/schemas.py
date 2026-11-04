@@ -45,6 +45,15 @@ class AddTaskStatusSchema(BaseSchema):
     is_client_allowed: Optional[bool] = None
 
 
+class AssetTypeWorkflowSchema(BaseSchema):
+    """
+    Body for setting the workflow of an asset type on a template. An empty
+    list restores the studio workflow.
+    """
+
+    task_type_ids: List[str]
+
+
 class AddAssetTypeSchema(BaseSchema):
     """
     Body for attaching an asset type to a project template.

@@ -1,9 +1,12 @@
 from tests.base import ApiDBTestCase
+from zou.app.exceptions import WrongParameterException
 from zou.app.models.day_off import DayOff
 from zou.app.models.milestone import Milestone
 from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
     projects_service,
+    tasks_service,
     time_spents_service,
 )
 from zou.app.utils import events, fields
@@ -897,3 +900,155 @@ class ProjectSettingsEventsTestCase(ApiDBTestCase):
             200,
         )
         self.assertEqual(len(self.events), 1)
+
+
+class ProjectAssetTypeWorkflowTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.project_id = str(self.project.id)
+        self.asset_type_id = str(self.asset_type.id)
+        self.shaders_id = str(self.task_type.id)
+        self.concept_id = str(self.task_type_concept.id)
+        for task_type_id in [self.shaders_id, self.concept_id]:
+            projects_service.add_task_type_setting(
+                self.project_id, task_type_id
+            )
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        self.route = (
+            f"/data/projects/{self.project_id}/settings/asset-types"
+            f"/{self.asset_type_id}/task-types"
+        )
+
+    def workflows(self):
+        projects = self.get("data/projects/open")
+        return next(
+            project for project in projects if project["id"] == self.project_id
+        )["asset_type_workflows"]
+
+    def created_task_type_ids(self):
+        asset = self.asset.serialize(obj_type="Asset")
+        return {
+            task["task_type_id"]
+            for task in tasks_service.create_tasks_for_entity(asset)
+        }
+
+    def test_set_and_reset_workflow(self):
+        self.assertEqual(self.workflows(), {})
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.shaders_id]}
+        )
+        self.put(self.route, {"task_type_ids": []})
+        self.assertEqual(self.workflows(), {})
+
+    def test_project_workflow_replaces_studio_workflow(self):
+        self.asset_type.update({"task_types": [self.concept_id]})
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        self.assertEqual(self.created_task_type_ids(), {self.shaders_id})
+
+    def test_studio_workflow_applies_without_project_workflow(self):
+        self.asset_type.update({"task_types": [self.concept_id]})
+        self.assertEqual(self.created_task_type_ids(), {self.concept_id})
+
+    def test_explicit_task_type_outside_project_workflow_is_refused(self):
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        asset = self.asset.serialize(obj_type="Asset")
+        with self.assertRaises(WrongParameterException):
+            tasks_service.create_tasks_for_entity(
+                asset, [self.task_type_concept.serialize()]
+            )
+
+    def test_set_workflow_refuses_invalid_ids(self):
+        self.put(self.route, {"task_type_ids": ["not-a-task-type"]}, 400)
+        other_type = TaskType.create(
+            name="Layout", short_name="lay", for_entity="Shot"
+        )
+        projects_service.add_task_type_setting(
+            self.project_id, str(other_type.id)
+        )
+        self.put(self.route, {"task_type_ids": [str(other_type.id)]}, 400)
+        self.put(self.route, {}, 400)
+        projects_service.remove_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        self.put(self.route, {"task_type_ids": [self.shaders_id]}, 400)
+
+    def test_removing_a_task_type_removes_it_from_the_workflows(self):
+        self.put(
+            self.route, {"task_type_ids": [self.shaders_id, self.concept_id]}
+        )
+        self.delete(
+            f"/data/projects/{self.project_id}/settings/task-types"
+            f"/{self.shaders_id}"
+        )
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.concept_id]}
+        )
+
+    def test_removing_the_last_task_type_goes_back_to_studio_workflow(self):
+        self.asset_type.update({"task_types": [self.concept_id]})
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        self.delete(
+            f"/data/projects/{self.project_id}/settings/task-types"
+            f"/{self.shaders_id}"
+        )
+        self.assertEqual(self.workflows(), {})
+        self.assertEqual(self.created_task_type_ids(), {self.concept_id})
+
+    def test_removing_an_asset_type_removes_its_workflow(self):
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        self.delete(
+            f"/data/projects/{self.project_id}/settings/asset-types"
+            f"/{self.asset_type_id}"
+        )
+        projects_service.add_asset_type_setting(
+            self.project_id, self.asset_type_id
+        )
+        self.assertEqual(self.workflows(), {})
+
+    def test_replacing_task_types_removes_them_from_the_workflows(self):
+        self.put(
+            self.route, {"task_type_ids": [self.shaders_id, self.concept_id]}
+        )
+        self.post(
+            f"/data/projects/{self.project_id}/settings/batch",
+            {
+                "task_types": [{"task_type_id": self.concept_id}],
+                "replace_task_types": True,
+            },
+            200,
+        )
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.concept_id]}
+        )
+
+    def test_removing_a_setting_with_a_malformed_id_is_refused(self):
+        self.put(self.route, {"task_type_ids": [self.shaders_id]})
+        for setting in [
+            "settings/task-types",
+            "settings/asset-types",
+            "settings/task-status",
+            "settings/status-automations",
+            "settings/preview-background-files",
+            "team",
+        ]:
+            self.delete(
+                f"/data/projects/{self.project_id}/{setting}/not-an-id", 400
+            )
+        self.assertEqual(
+            self.workflows(), {self.asset_type_id: [self.shaders_id]}
+        )
+
+    def test_set_workflow_requires_manager(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.put(self.route, {"task_type_ids": [self.shaders_id]}, 403)

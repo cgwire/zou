@@ -8,6 +8,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import (
     ProjectAssetTypeLink,
+    ProjectAssetTypeTaskTypeLink,
     ProjectTaskTypeLink,
 )
 from zou.app.models.task import Task
@@ -170,6 +171,41 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             statuses[str(self.task_type_modeling.id)], default_status_id
+        )
+
+    def test_import_assets_follows_the_project_workflow(self):
+        self.link_asset_task_types_to_project()
+        self.generate_fixture_task_status_wip()
+        task_types_service.clear_task_status_cache(
+            str(self.task_status_wip.id)
+        )
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_task_statuses.csv")
+        )
+        asset_type = entity_types_service.get_or_create_asset_type("Prop")
+        db.session.add(
+            ProjectAssetTypeLink(
+                project_id=self.project_id, asset_type_id=asset_type["id"]
+            )
+        )
+        db.session.add(
+            ProjectAssetTypeTaskTypeLink(
+                project_id=self.project_id,
+                asset_type_id=asset_type["id"],
+                task_type_id=self.task_type_modeling.id,
+            )
+        )
+        db.session.commit()
+        self.upload_file(path, file_path_fixture)
+
+        asset = Entity.get_by(
+            name="Cassette Player", project_id=self.project_id
+        )
+        tasks = Task.query.filter_by(entity_id=asset.id).all()
+        self.assertEqual(
+            [task.task_type_id for task in tasks],
+            [self.task_type_modeling.id],
         )
 
     def test_import_assets_creates_tasks_of_rows_before_a_failing_one(self):

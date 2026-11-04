@@ -7,7 +7,8 @@ AssetsCsvImportResource_post:
     multipart form. The route finds the separator of the file. Each line is
     imported in order. If a line is not valid, the import stops. Without
     update=true, an asset that exists is not changed, but the route creates
-    the tasks it misses. You must be a manager of the project.
+    the tasks it misses. The route creates only the tasks that the workflow of
+    the asset type accepts. You must be a manager of the project.
   parameters:
     - in: path
       name: project_id

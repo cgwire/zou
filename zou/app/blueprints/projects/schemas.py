@@ -38,6 +38,15 @@ class ProjectAssetTypeSchema(BaseSchema):
     asset_type_id: str = Field(..., min_length=1)
 
 
+class ProjectAssetTypeWorkflowSchema(BaseSchema):
+    """
+    Body for setting the workflow of an asset type on a project. An empty
+    list restores the studio workflow.
+    """
+
+    task_type_ids: List[str]
+
+
 class ProjectTaskTypeSoftwareSchema(BaseSchema):
     """
     Body for linking a software to a task type of a project.

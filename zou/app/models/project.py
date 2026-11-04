@@ -151,6 +151,33 @@ class ProjectAssetTypeLink(db.Model):
     )
 
 
+class ProjectAssetTypeTaskTypeLink(db.Model):
+    """
+    Workflow of an asset type specific to a project. Without rows for a
+    project and asset type pair, the studio workflow applies.
+    """
+
+    __tablename__ = "project_asset_type_task_type_link"
+    project_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    asset_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("entity_type.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    task_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("task_type.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+
+
 class ProjectStatusAutomationLink(db.Model):
     __tablename__ = "project_status_automation_link"
     project_id = db.Column(

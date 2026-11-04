@@ -338,7 +338,8 @@ CreateAssetTasksResource_post:
   description: Create a task of the task type for each asset of the list. If
     the body is empty, the route uses the assets of the project that match the
     query parameters, for example asset_type_id. The identifiers of assets of
-    another project are skipped. A task that exists is skipped. You must be a
+    another project are skipped. A task that exists is skipped, as well as
+    an asset whose asset type workflow excludes the task type. You must be a
     manager of the project.
   parameters:
     - in: path
@@ -569,8 +570,9 @@ CreateEntityTasksResource_post:
   description: Create a task of the task type for each entity of the list. If
     the body is empty, the route uses all the entities of this type in the
     project, or of the episode episode_id. The entity type name is not case
-    sensitive. A task that exists is skipped. You must be a manager of the
-    project.
+    sensitive. A task that exists is skipped. For an asset type, an asset whose
+    workflow does not have the task type is skipped. You must be a manager of
+    the project.
   parameters:
     - in: path
       name: project_id

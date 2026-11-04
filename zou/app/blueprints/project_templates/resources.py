@@ -8,6 +8,7 @@ from zou.app.blueprints.project_templates.schemas import (
     AddStatusAutomationSchema,
     AddTaskStatusSchema,
     AddTaskTypeSchema,
+    AssetTypeWorkflowSchema,
     CreateTemplateFromProjectSchema,
     ReorderTaskStatusesSchema,
     ReorderTaskTypesSchema,
@@ -176,6 +177,25 @@ class ProjectTemplateAssetTypesResource(MethodView):
         except WrongParameterException as exception:
             return {"message": str(exception)}, 400
         return entry, 201
+
+
+class ProjectTemplateAssetTypeWorkflowResource(MethodView):
+    @jwt_required()
+    @swag_from(SPECS["ProjectTemplateAssetTypeWorkflowResource_put"])
+    def put(self, project_template_id, asset_type_id):
+        """
+        Set the workflow of an asset type for a project template.
+        """
+        permissions.check_admin_permissions()
+        data = validation.validate_request_body(AssetTypeWorkflowSchema)
+        try:
+            return project_templates_service.set_template_asset_type_workflow(
+                project_template_id, asset_type_id, data.task_type_ids
+            )
+        except ProjectTemplateNotFoundException:
+            return {"message": "Project template not found"}, 404
+        except WrongParameterException as exception:
+            return {"message": str(exception)}, 400
 
 
 class ProjectTemplateAssetTypeResource(MethodView):

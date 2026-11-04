@@ -275,7 +275,8 @@ ContextResource_get:
     open projects, with a reduced set of fields. A manager or an administrator
     gets all the persons with all their fields. Another role gets all the
     persons with a minimal set of fields. An administrator also gets
-    user_limit.
+    user_limit. Each project gives asset_type_workflows, the task type ids of
+    the workflows it sets, by asset type id.
   tags:
     - User
   responses:
@@ -1775,7 +1776,9 @@ OpenProjectsResource_get:
   description: Get the open projects of your teams. An administrator gets all
     the open projects. Give name to get the project with exactly this name.
     The case must match. The metadata descriptors of each project are reduced
-    to the ones your role on the project can read.
+    to the ones your role on the project can read. Each project gives
+    asset_type_workflows, the task type ids of the workflows it sets, by asset
+    type id.
   tags:
     - User
   parameters:
