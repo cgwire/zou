@@ -11,8 +11,10 @@ my-plugin/
 ├── models.py            # Optional: SQLAlchemy models
 ├── migrations/          # Optional: Alembic revisions only
 │   └── versions/        # Plugin's revision files (.py)
-└── frontend/            # Optional: Vue.js SPA
+└── frontend/            # Optional: Vue.js UI
     └── dist/
+        ├── index.html   # Iframe SPA entry (optional)
+        └── plugin.js    # Host-integration bundle (optional)
 ```
 
 > **Note** — plugins do **not** ship `env.py`, `alembic.ini` or `script.py.mako`. Zou owns those files under `zou/app/utils/plugin_alembic_template/` and points alembic at them via `script_location` while overriding `version_locations` to the plugin's own `migrations/versions/` directory. This avoids the "Table is already defined for this MetaData instance" class of bugs that comes from re-executing `models.py` from a plugin-owned `env.py` after the install hook has already imported the plugin module. See `zou/app/utils/plugins.py:_build_plugin_alembic_config` for the wiring.
@@ -74,9 +76,21 @@ Plugins are loaded at app startup in `zou/app/api.py` → `load_plugins(app)`. T
 2. Validates `manifest.toml` (semver version, SPDX license)
 3. Imports the module and reads `routes`
 4. Creates a Flask blueprint with prefix `/plugins/<id>`
-5. Serves frontend static files from `frontend/dist/`
+5. Serves frontend static files from `frontend/dist/` when the plugin exposes a UI (see Frontend)
 6. Logs errors without crashing the app
 
 ## Frontend
 
-If the plugin has a `frontend/dist/` directory, files are served as static resources. The `index.html` is the SPA entry point. Frontend flags in the manifest control where the plugin UI appears in Kitsu.
+Static `/frontend` routes depend on how the plugin exposes UI:
+
+- Iframe SPA (`frontend_project_enabled` or `frontend_studio_enabled`): `/plugins/<id>/frontend` (`index.html`) and `/plugins/<id>/frontend/<path>`
+- Host-integration bundle only (`frontend/dist/plugin.js`, no iframe flags): `/plugins/<id>/frontend/<path>` alone, so Kitsu can load `plugin.js`
+
+Previously only the iframe flags registered these routes.
+
+`Plugin.present()` exposes **`injected`: true** when the host-integration
+bundle (`frontend/dist/plugin.js`) is detected. Kitsu uses that field to load
+the bundle into the host instead of falling back to the iframe. It is derived
+from the filesystem (not stored in the database or the manifest), cached for
+the process, and invalidated on `install-plugin` / uninstall (otherwise
+restart after a manual copy of `plugin.js`).

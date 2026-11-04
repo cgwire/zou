@@ -27,6 +27,13 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     icon = db.Column(db.String(255), nullable=True)  # lucide-vue icon name
 
     def present(self):
+        """
+        Serialize for the user context. ``injected`` is true when the
+        host-integration bundle (`frontend/dist/plugin.js`) is detected
+        (filesystem, process-cached; not stored in the DB or manifest).
+        """
+        from zou.app.utils.plugins import has_plugin_js
+
         return {
             "id": self.id,
             "plugin_id": self.plugin_id,
@@ -37,5 +44,6 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
             "maintainer_email": self.maintainer_email,
             "frontend_project_enabled": self.frontend_project_enabled,
             "frontend_studio_enabled": self.frontend_studio_enabled,
+            "injected": has_plugin_js(self.plugin_id),
             "icon": self.icon,
         }

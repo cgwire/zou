@@ -17,8 +17,10 @@ from zou.app.utils.plugins import (
     create_plugin_package,
     create_plugin_skeleton,
     download_zip_url,
+    has_plugin_js,
     install_plugin_files,
     load_plugin,
+    plugin_js_path,
     uninstall_plugin_files,
 )
 
@@ -393,18 +395,67 @@ class PluginSkeletonTestCase(ApiDBTestCase):
         self.assertTrue(result.exists())
 
 
+class PluginIntegrationBundleTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def _write_plugin_js(self, plugin_id="test_plugin"):
+        dist = Path(self.temp_dir) / plugin_id / "frontend" / "dist"
+        dist.mkdir(parents=True)
+        plugin_js = dist / "plugin.js"
+        plugin_js.write_text("export default { activate() {} }")
+        return plugin_js
+
+    def test_plugin_js_path(self):
+        path = plugin_js_path(Path(self.temp_dir) / "tickets")
+        self.assertEqual(
+            path,
+            Path(self.temp_dir)
+            / "tickets"
+            / "frontend"
+            / "dist"
+            / "plugin.js",
+        )
+
+    def test_has_plugin_js_false_without_bundle(self):
+        self.assertFalse(has_plugin_js("missing", plugin_folder=self.temp_dir))
+
+    def test_has_plugin_js_true_with_bundle(self):
+        self._write_plugin_js("tickets")
+        self.assertTrue(has_plugin_js("tickets", plugin_folder=self.temp_dir))
+
+
 class PluginStaticRoutesTestCase(ApiDBTestCase):
-    def test_add_static_routes_with_frontend_enabled(self):
-        manifest_data = {
+    def setUp(self):
+        super().setUp()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        super().tearDown()
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def _manifest(self, **overrides):
+        data = {
             "id": "test_plugin",
             "name": "Test Plugin",
             "version": "0.1.0",
             "maintainer": "Test Author <test@example.com>",
             "license": "MIT",
-            "frontend_project_enabled": True,
+            "frontend_project_enabled": False,
             "frontend_studio_enabled": False,
         }
-        manifest = PluginManifest(manifest_data)
+        data.update(overrides)
+        return PluginManifest(data)
+
+    def test_add_static_routes_with_frontend_enabled(self):
+        manifest = self._manifest(frontend_project_enabled=True)
         routes = []
 
         add_static_routes(manifest, routes)
@@ -419,21 +470,32 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
                 self.assertEqual(instance.plugin_id, "test_plugin")
 
     def test_add_static_routes_without_frontend(self):
-        manifest_data = {
-            "id": "test_plugin",
-            "name": "Test Plugin",
-            "version": "0.1.0",
-            "maintainer": "Test Author <test@example.com>",
-            "license": "MIT",
-            "frontend_project_enabled": False,
-            "frontend_studio_enabled": False,
-        }
-        manifest = PluginManifest(manifest_data)
+        """
+        No iframe flags and no plugin.js: /frontend stays unregistered.
+        """
+        manifest = self._manifest()
         routes = []
 
-        add_static_routes(manifest, routes)
+        add_static_routes(manifest, routes, plugin_path=self.temp_dir)
 
         self.assertEqual(routes, [])
+
+    def test_add_static_routes_with_integration_bundle(self):
+        """
+        plugin.js alone registers only the filename route (no SPA index).
+        """
+        plugin_path = Path(self.temp_dir) / "test_plugin"
+        dist = plugin_path / "frontend" / "dist"
+        dist.mkdir(parents=True)
+        (dist / "plugin.js").write_text("export default {}")
+
+        manifest = self._manifest()
+        routes = []
+
+        add_static_routes(manifest, routes, plugin_path=plugin_path)
+
+        self.assertEqual(len(routes), 1)
+        self.assertEqual(routes[0][0], "/frontend/<path:filename>")
 
 
 class PluginLoadTestCase(ApiDBTestCase):

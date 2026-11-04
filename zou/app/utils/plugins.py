@@ -57,6 +57,58 @@ class StaticResource(MethodView):
         )
 
 
+def plugin_js_path(plugin_dir):
+    """
+    Path to the host-integration bundle (`frontend/dist/plugin.js`).
+    """
+    return Path(plugin_dir) / "frontend" / "dist" / "plugin.js"
+
+
+# Process-local cache for Plugin.present() / user-context: avoid a disk
+# stat on every login while still reflecting install/uninstall.
+_plugin_js_cache = {}
+
+
+def clear_plugin_js_cache(plugin_id=None):
+    """
+    Drop cached `injected` lookups. Call after install/uninstall of plugin
+    files. Without an id, clears the whole cache.
+    """
+    if plugin_id is None:
+        _plugin_js_cache.clear()
+    else:
+        _plugin_js_cache.pop(plugin_id, None)
+
+
+def has_plugin_js(plugin_id, plugin_folder=None):
+    """
+    True when the host-integration bundle (`frontend/dist/plugin.js`) is
+    detected on disk.
+
+    Exposed on the plugin payload as ``injected`` so Kitsu can load the
+    bundle into the host instead of the iframe SPA. Results are cached for
+    the process lifetime and invalidated via ``clear_plugin_js_cache``
+    (install/uninstall); a manual copy of ``plugin.js`` needs a restart
+    (or an explicit cache clear) to be seen.
+    """
+    if plugin_folder is None:
+        plugin_folder = current_app.config.get("PLUGIN_FOLDER", "plugins")
+        cache_key = plugin_id
+        use_cache = True
+    else:
+        # Explicit folder (tests): do not poison the process cache.
+        cache_key = None
+        use_cache = False
+
+    if use_cache and cache_key in _plugin_js_cache:
+        return _plugin_js_cache[cache_key]
+
+    found = plugin_js_path(Path(plugin_folder) / plugin_id).is_file()
+    if use_cache:
+        _plugin_js_cache[cache_key] = found
+    return found
+
+
 class PluginManifest(MutableMapping):
     def __init__(self, data):
         super().__setattr__("data", data)
@@ -158,7 +210,7 @@ def load_plugin(app, plugin_path, init_plugin=True):
     plugin_module = importlib.import_module(manifest["id"])
 
     routes = list(getattr(plugin_module, "routes", []))
-    add_static_routes(manifest, routes)
+    add_static_routes(manifest, routes, plugin_path=plugin_path)
     blueprint = Blueprint(manifest["id"], manifest["id"])
     configure_api_from_blueprint(blueprint, routes)
     app.register_blueprint(blueprint, url_prefix=f"/plugins/{manifest['id']}")
@@ -408,6 +460,7 @@ def install_plugin_files(files_path, installation_path):
             f"Plugin path '{files_path}' is not a valid zip file or a directory."
         )
 
+    clear_plugin_js_cache(installation_path.name)
     return installation_path
 
 
@@ -416,9 +469,12 @@ def uninstall_plugin_files(plugin_path):
     Uninstall plugin files.
     """
     plugin_path = Path(plugin_path)
+    plugin_id = plugin_path.name
     if plugin_path.exists():
         shutil.rmtree(plugin_path)
+        clear_plugin_js_cache(plugin_id)
         return True
+    clear_plugin_js_cache(plugin_id)
     return False
 
 
@@ -478,9 +534,17 @@ def clone_git_repo(git_url, temp_dir=None):
         )
 
 
-def add_static_routes(manifest, routes):
+def add_static_routes(manifest, routes, plugin_path=None):
     """
-    Add static routes to the manifest.
+    Register `/frontend` static routes when the plugin exposes a UI.
+
+    - Iframe SPA (`frontend_project_enabled` / `frontend_studio_enabled`):
+      `/frontend` (index.html) and `/frontend/<path:filename>`.
+    - Host-integration bundle (`frontend/dist/plugin.js`) alone: only
+      `/frontend/<path:filename>`, so Kitsu can load `plugin.js` without
+      enabling the iframe SPA flags.
+
+    Previously only the iframe flags registered these routes.
     """
 
     class PluginStaticResource(StaticResource):
@@ -495,11 +559,15 @@ def add_static_routes(manifest, routes):
             self.plugin_id = manifest.id
             super().__init__()
 
-    if (
-        manifest["frontend_project_enabled"]
-        or manifest["frontend_studio_enabled"]
-    ):
+    iframe_spa = manifest.get("frontend_project_enabled") or manifest.get(
+        "frontend_studio_enabled"
+    )
+    integration_bundle = (
+        plugin_path is not None and plugin_js_path(plugin_path).is_file()
+    )
+    if iframe_spa:
         routes.append(("/frontend", PluginIndexStaticResource))
+    if iframe_spa or integration_bundle:
         routes.append(("/frontend/<path:filename>", PluginStaticResource))
 
 
