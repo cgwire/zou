@@ -4,8 +4,9 @@ TaskTypeResource_delete:
     - Crud
   description: Delete a task type. If schedule items or projects use the task
     type, the request fails. With force=true, the schedule items of the task
-    type are deleted and the task type is removed from the projects. You must be
-    an administrator.
+    type are deleted and the task type is removed from the projects. If status
+    automations use the task type, archived ones included, the request fails
+    even with force=true. You must be an administrator.
   parameters:
     - in: path
       name: instance_id
@@ -28,8 +29,8 @@ TaskTypeResource_delete:
     204:
       description: The task type is deleted
     400:
-      description: Schedule items or projects use the task type, or other data
-        uses this row
+      description: Schedule items, projects or status automations use the task
+        type, or other data uses this row
     403:
       description: You are not an administrator
     404:

@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
+    status_automations_service,
     task_types_service,
 )
 from zou.app.utils.openapi import load_specs, swag_from
@@ -85,6 +86,14 @@ class TaskStatusResource(BaseModelResource):
 
     def post_update(self, instance_dict, data):
         task_types_service.clear_task_status_cache(instance_dict["id"])
+        return instance_dict
+
+    def pre_delete(self, instance_dict):
+        """
+        Refuse the delete with a clean 400 while a status automation uses
+        the status, instead of the generic foreign key message.
+        """
+        status_automations_service.guard_task_status_deletion(instance_dict)
         return instance_dict
 
     def post_delete(self, instance_dict):

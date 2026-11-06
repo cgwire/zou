@@ -1073,19 +1073,74 @@ SoftwareSchema = {
     },
 }
 
+StatusAutomationConditionSchema = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["task_type_id", "task_status_ids"],
+    "properties": {
+        "task_type_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Task type of the automation entity type",
+        },
+        "task_status_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "format": "uuid"},
+            "description": "Statuses meeting the condition",
+        },
+    },
+}
+
 StatusAutomationSchema = {
     "type": "object",
     "properties": {
-        "entity_type": {"type": "string", "default": "asset"},
+        "entity_type": {
+            "type": "string",
+            "default": "asset",
+            "description": "Entity type (asset, shot, sequence, episode, "
+            "edit)",
+        },
+        "in_conditions": {
+            "type": "object",
+            "nullable": True,
+            "additionalProperties": False,
+            "required": ["operator", "conditions"],
+            "description": "Trigger. The automation fires when a comment "
+            "changes a task status and turns this group from false to true. "
+            "A condition is met when every task of its task type on the "
+            "entity has one of its statuses, and a condition on a task type "
+            "the entity has no task of is ignored. With a status output, a "
+            "condition on a task type after the output in the production "
+            "never starts the automation: under and it still has to be met, "
+            "under or it is left out.",
+            "properties": {
+                "operator": {"type": "string", "enum": ["and", "or"]},
+                "conditions": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "items": StatusAutomationConditionSchema,
+                },
+            },
+        },
         "in_task_type_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Task type ID",
+            "nullable": True,
+            "deprecated": True,
+            "description": "Task type of a trigger made of one condition "
+            "with one status, null otherwise. Writing the pair sets such a "
+            "trigger, which is refused on an automation whose trigger has "
+            "several conditions or statuses.",
         },
         "in_task_status_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Task status ID",
+            "nullable": True,
+            "deprecated": True,
+            "description": "Status of a trigger made of one condition with "
+            "one status, null otherwise. See in_task_type_id.",
         },
         "out_field_type": {
             "type": "string",
@@ -1099,8 +1154,24 @@ StatusAutomationSchema = {
         "out_task_status_id": {
             "type": "string",
             "format": "uuid",
-            "description": "Task status ID",
+            "nullable": True,
+            "description": "Task status ID, null with a ready for output",
         },
+        "out_only_if_task_status_ids": {
+            "type": "array",
+            "nullable": True,
+            "items": {"type": "string", "format": "uuid"},
+            "description": "Status changes only: the change applies when "
+            "the target task is in one of these statuses. Empty or null "
+            "means always.",
+        },
+        "import_last_revision": {
+            "type": "boolean",
+            "description": "Attach the last revision of a trigger task to "
+            "the change: the task of the first condition the entity has with "
+            "and, the commented task with or",
+        },
+        "archived": {"type": "boolean"},
     },
 }
 

@@ -2181,8 +2181,9 @@ ProductionStatusAutomationRemoveResource_delete:
 
 ProductionStatusAutomationResource_get:
   summary: Get the status automations of a project
-  description: Get the status automations of a project. You must be a manager
-    of the project.
+  description: Get the status automations of a project, in the order they were
+    created. The automations fired by one status change apply in that order.
+    You must be a manager of the project.
   tags:
     - Projects
   parameters:

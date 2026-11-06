@@ -8,6 +8,7 @@ from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    status_automations_service,
     task_types_service,
 )
 from zou.app.utils import permissions
@@ -85,8 +86,10 @@ class TaskTypeResource(BaseModelResource):
         Refuse the delete with a clean 400 when the task type still has
         scheduled items or is attached to projects, unless ``force`` is
         set. With force, those rows are purged first so the deletion is
-        not blocked by their foreign keys.
+        not blocked by their foreign keys. A status automation using the
+        task type refuses it even with force.
         """
+        status_automations_service.guard_task_type_deletion(instance_dict)
         task_type_id = instance_dict["id"]
         if self.get_force():
             ScheduleItem.query.filter_by(task_type_id=task_type_id).delete()

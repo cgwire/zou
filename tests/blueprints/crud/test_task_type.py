@@ -1,5 +1,8 @@
+import json
+
 from tests.base import ApiDBTestCase
 from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_type import TaskType
 from zou.app.utils import fields
 
@@ -161,3 +164,38 @@ class TaskTypeTestCase(ApiDBTestCase):
             ).count(),
             0,
         )
+
+    def test_delete_task_type_used_by_an_automation(self):
+        """
+        An automation reading or writing the task type refuses its deletion,
+        with force too: dropping it would change when the automation fires.
+        """
+        self.generate_fixture_task_status()
+        in_type, out_type, _ = self.get("data/task-types")
+        automation = StatusAutomation.create(
+            entity_type="asset",
+            in_task_type_id=in_type["id"],
+            in_task_status_id=self.task_status.id,
+            out_field_type="status",
+            out_task_type_id=out_type["id"],
+            out_task_status_id=self.task_status.id,
+            archived=True,
+        )
+
+        for task_type in (in_type, out_type):
+            result = json.loads(
+                self.delete(
+                    f"data/task-types/{task_type['id']}?force=true", 400
+                )
+            )
+            self.assertEqual(
+                result["message"],
+                f"Task type {task_type['name']} is used by 1 status "
+                "automation (1 archived). Remove it from that automation "
+                "first.",
+            )
+            self.assertIsNotNone(TaskType.get(task_type["id"]))
+
+        automation.delete()
+        self.delete(f"data/task-types/{in_type['id']}")
+        self.assertIsNone(TaskType.get(in_type["id"]))

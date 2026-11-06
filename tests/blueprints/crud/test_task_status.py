@@ -1,4 +1,7 @@
+import json
+
 from tests.base import ApiDBTestCase
+from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import task_types_service
 from zou.app.utils import fields
@@ -43,6 +46,36 @@ class TaskStatusTestCase(ApiDBTestCase):
         task_statuss = self.get("data/task-status")
         self.assertEqual(len(task_statuss), 2)
         self.delete_404(f"data/task-status/{fields.gen_uuid()}")
+
+    def test_delete_task_status_used_by_an_automation(self):
+        """
+        The foreign keys of the automation used to refuse the deletion with
+        the generic conflict message.
+        """
+        self.generate_fixture_task_type()
+        in_status, out_status, _ = self.get("data/task-status")
+        automation = StatusAutomation.create(
+            entity_type="asset",
+            in_task_type_id=self.task_type_concept.id,
+            in_task_status_id=in_status["id"],
+            out_field_type="status",
+            out_task_type_id=self.task_type_modeling.id,
+            out_task_status_id=out_status["id"],
+        )
+
+        for task_status in (in_status, out_status):
+            result = json.loads(
+                self.delete(f"data/task-status/{task_status['id']}", 400)
+            )
+            self.assertEqual(
+                result["message"],
+                f"Task status {task_status['name']} is used by 1 status "
+                "automation. Remove it from that automation first.",
+            )
+
+        automation.delete()
+        self.delete(f"data/task-status/{in_status['id']}")
+        self.assertIsNone(TaskStatus.get(in_status["id"]))
 
     def test_update_default_task_status_drops_cached_default(self):
         TaskStatus.query.update({"is_default": False})

@@ -287,7 +287,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         "TaskType", secondary=ProjectTaskTypeLink.__table__
     )
     status_automations = db.relationship(
-        "StatusAutomation", secondary=ProjectStatusAutomationLink.__table__
+        "StatusAutomation",
+        secondary=ProjectStatusAutomationLink.__table__,
+        order_by="StatusAutomation.created_at, StatusAutomation.id",
     )
     preview_background_files = db.relationship(
         "PreviewBackgroundFile",

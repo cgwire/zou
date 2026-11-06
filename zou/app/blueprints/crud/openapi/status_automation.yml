@@ -3,7 +3,7 @@ StatusAutomationResource_delete:
   tags:
     - Crud
   description: Delete a status automation. You cannot delete an automation
-    that a project uses. You must be an administrator.
+    that a project or a project template uses. You must be an administrator.
   parameters:
     - in: path
       name: instance_id
@@ -17,7 +17,7 @@ StatusAutomationResource_delete:
     204:
       description: The status automation is deleted
     400:
-      description: A project uses this automation
+      description: A project or a project template uses this automation
     403:
       description: You are not an administrator
     404:
@@ -60,25 +60,54 @@ StatusAutomationResource_get:
               entity_type:
                 type: string
                 example: asset
+              in_conditions:
+                type: object
+                nullable: true
+                example:
+                  operator: and
+                  conditions:
+                    - task_type_id: b24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_ids:
+                        - c24a6ea4-ce75-4665-a070-57453082c250
+                    - task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_ids:
+                        - c24a6ea4-ce75-4665-a070-57453082c250
+                        - e24a6ea4-ce75-4665-a070-57453082c250
               in_task_type_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                deprecated: true
+                description: Set for a trigger of one condition with one status
+                  only
+                example: null
               in_task_status_id:
                 type: string
                 format: uuid
-                example: c24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                deprecated: true
+                description: Set for a trigger of one condition with one status
+                  only
+                example: null
               out_field_type:
                 type: string
                 example: status
               out_task_type_id:
                 type: string
                 format: uuid
-                example: d24a6ea4-ce75-4665-a070-57453082c250
+                example: f24a6ea4-ce75-4665-a070-57453082c250
               out_task_status_id:
                 type: string
                 format: uuid
-                example: e24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                example: a34a6ea4-ce75-4665-a070-57453082c250
+              out_only_if_task_status_ids:
+                type: array
+                nullable: true
+                items:
+                  type: string
+                  format: uuid
+                example: null
               import_last_revision:
                 type: boolean
                 example: false
@@ -106,7 +135,8 @@ StatusAutomationResource_put:
     - Crud
   description: Update the fields of a status automation. Send only the fields to
     change. You cannot change id, created_at, updated_at. Dates use the ISO 8601
-    format. You must be an administrator.
+    format. The automation is validated when you change its trigger, entity
+    type or output. You must be an administrator.
   parameters:
     - in: path
       name: instance_id
@@ -125,25 +155,89 @@ StatusAutomationResource_put:
           properties:
             entity_type:
               type: string
-              description: Type of entity of the tasks, for example asset or
-                shot
+              description: Type of entity of the tasks (asset, shot, sequence,
+                episode or edit). Empty means asset.
               default: asset
+            in_conditions:
+              type: object
+              description: >-
+                Conditions that start the automation. It runs when a comment
+                changes a task status and turns the group from false to true. A
+                condition is met when every task of its task type on the entity
+                has one of its statuses, and a condition on a task type that
+                the entity has no task of is ignored. Each task type appears
+                once and belongs to the entity type. With a status output, the
+                task type that the automation changes cannot be a condition,
+                and a condition on a task type after it in the production never
+                starts the automation: under and it still has to be met, under
+                or it is left out. Other keys are refused.
+              additionalProperties: false
+              required:
+                - operator
+                - conditions
+              properties:
+                operator:
+                  type: string
+                  enum:
+                    - and
+                    - or
+                conditions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - task_type_id
+                      - task_status_ids
+                    properties:
+                      task_type_id:
+                        type: string
+                        format: uuid
+                      task_status_ids:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                          format: uuid
+              example:
+                operator: and
+                conditions:
+                  - task_type_id: b24a6ea4-ce75-4665-a070-57453082c250
+                    task_status_ids:
+                      - c24a6ea4-ce75-4665-a070-57453082c250
+                  - task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
+                    task_status_ids:
+                      - c24a6ea4-ce75-4665-a070-57453082c250
+                      - e24a6ea4-ce75-4665-a070-57453082c250
             in_task_type_id:
               type: string
               format: uuid
-              description: Task type that starts the automation
+              nullable: true
+              deprecated: true
+              description: >-
+                Task type that starts the automation, with in_task_status_id,
+                when in_conditions is not given or sent back as stored. Both
+                null next to in_conditions, they are ignored. The pair cannot
+                clear the trigger: archive the automation instead. Refused on
+                an automation whose trigger has several conditions or statuses.
               example: a24a6ea4-ce75-4665-a070-57453082c250
             in_task_status_id:
               type: string
               format: uuid
-              description: Task status that starts the automation
+              nullable: true
+              deprecated: true
+              description: Task status that starts the automation, see
+                in_task_type_id
               example: a24a6ea4-ce75-4665-a070-57453082c250
             out_field_type:
               type: string
               enum:
                 - status
                 - ready_for
-              description: Field that the automation changes
+              description: Field that the automation changes. ready_for applies
+                to assets only.
             out_task_type_id:
               type: string
               format: uuid
@@ -152,11 +246,26 @@ StatusAutomationResource_put:
             out_task_status_id:
               type: string
               format: uuid
-              description: New task status
+              nullable: true
+              description: New task status, null with a ready for output
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            out_only_if_task_status_ids:
+              type: array
+              nullable: true
+              items:
+                type: string
+                format: uuid
+              description: With a status output, the change applies only to a
+                task in one of these statuses. Empty or null means always.
+              example: []
             import_last_revision:
               type: boolean
-              description: Copy the last preview to the changed task
+              description: Copy the last preview to the changed task, from the
+                task of the first condition the entity has with and, from the
+                commented task with or
+            archived:
+              type: boolean
+              example: false
   responses:
     200:
       description: The updated status automation
@@ -172,25 +281,54 @@ StatusAutomationResource_put:
               entity_type:
                 type: string
                 example: asset
+              in_conditions:
+                type: object
+                nullable: true
+                example:
+                  operator: and
+                  conditions:
+                    - task_type_id: b24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_ids:
+                        - c24a6ea4-ce75-4665-a070-57453082c250
+                    - task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_ids:
+                        - c24a6ea4-ce75-4665-a070-57453082c250
+                        - e24a6ea4-ce75-4665-a070-57453082c250
               in_task_type_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                deprecated: true
+                description: Set for a trigger of one condition with one status
+                  only
+                example: null
               in_task_status_id:
                 type: string
                 format: uuid
-                example: c24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                deprecated: true
+                description: Set for a trigger of one condition with one status
+                  only
+                example: null
               out_field_type:
                 type: string
                 example: status
               out_task_type_id:
                 type: string
                 format: uuid
-                example: d24a6ea4-ce75-4665-a070-57453082c250
+                example: f24a6ea4-ce75-4665-a070-57453082c250
               out_task_status_id:
                 type: string
                 format: uuid
-                example: e24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                example: a34a6ea4-ce75-4665-a070-57453082c250
+              out_only_if_task_status_ids:
+                type: array
+                nullable: true
+                items:
+                  type: string
+                  format: uuid
+                example: null
               import_last_revision:
                 type: boolean
                 example: false
@@ -206,8 +344,13 @@ StatusAutomationResource_put:
                 format: date-time
                 example: '2024-01-15T11:00:00Z'
     400:
-      description: The body is not valid, a date is not valid, or a field
-        breaks a database constraint
+      description: >-
+        The body is not valid, a date is not valid, a field breaks a database
+        constraint, or the automation is not valid, for example "Trigger
+        operator must be 'and' or 'or'.", "Task type Layout is not a task type
+        of assets.", "Task type Layout appears in two conditions: merge their
+        statuses into one." or "This automation has several trigger
+        conditions: update it through in_conditions."
     403:
       description: You are not an administrator
     404:
@@ -297,35 +440,102 @@ StatusAutomationsResource_post:
   tags:
     - Crud
   description: Create a status automation. Send the fields of the new row in
-    JSON. You must be an administrator.
+    JSON. Give the trigger in in_conditions, or in the deprecated
+    in_task_type_id and in_task_status_id pair. You must be an administrator.
   requestBody:
     required: true
     content:
       application/json:
         schema:
           type: object
+          anyOf:
+            - required:
+                - in_conditions
+            - required:
+                - in_task_type_id
+                - in_task_status_id
           properties:
             entity_type:
               type: string
-              description: Type of entity of the tasks, for example asset or
-                shot
+              description: Type of entity of the tasks (asset, shot, sequence,
+                episode or edit). Empty means asset.
               default: asset
+            in_conditions:
+              type: object
+              description: >-
+                Conditions that start the automation. It runs when a comment
+                changes a task status and turns the group from false to true. A
+                condition is met when every task of its task type on the entity
+                has one of its statuses, and a condition on a task type that
+                the entity has no task of is ignored. Each task type appears
+                once and belongs to the entity type. With a status output, the
+                task type that the automation changes cannot be a condition,
+                and a condition on a task type after it in the production never
+                starts the automation: under and it still has to be met, under
+                or it is left out. Other keys are refused.
+              additionalProperties: false
+              required:
+                - operator
+                - conditions
+              properties:
+                operator:
+                  type: string
+                  enum:
+                    - and
+                    - or
+                conditions:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - task_type_id
+                      - task_status_ids
+                    properties:
+                      task_type_id:
+                        type: string
+                        format: uuid
+                      task_status_ids:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: string
+                          format: uuid
+              example:
+                operator: and
+                conditions:
+                  - task_type_id: b24a6ea4-ce75-4665-a070-57453082c250
+                    task_status_ids:
+                      - c24a6ea4-ce75-4665-a070-57453082c250
+                  - task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
+                    task_status_ids:
+                      - c24a6ea4-ce75-4665-a070-57453082c250
+                      - e24a6ea4-ce75-4665-a070-57453082c250
             in_task_type_id:
               type: string
               format: uuid
-              description: Task type that starts the automation
+              nullable: true
+              deprecated: true
+              description: Task type that starts the automation, with
+                in_task_status_id, when in_conditions is not given.
               example: a24a6ea4-ce75-4665-a070-57453082c250
             in_task_status_id:
               type: string
               format: uuid
-              description: Task status that starts the automation
+              nullable: true
+              deprecated: true
+              description: Task status that starts the automation, see
+                in_task_type_id
               example: a24a6ea4-ce75-4665-a070-57453082c250
             out_field_type:
               type: string
               enum:
                 - status
                 - ready_for
-              description: Field that the automation changes
+              description: Field that the automation changes. ready_for applies
+                to assets only.
             out_task_type_id:
               type: string
               format: uuid
@@ -334,11 +544,23 @@ StatusAutomationsResource_post:
             out_task_status_id:
               type: string
               format: uuid
-              description: New task status
+              nullable: true
+              description: New task status, null with a ready for output
               example: a24a6ea4-ce75-4665-a070-57453082c250
+            out_only_if_task_status_ids:
+              type: array
+              nullable: true
+              items:
+                type: string
+                format: uuid
+              description: With a status output, the change applies only to a
+                task in one of these statuses. Empty or null means always.
+              example: []
             import_last_revision:
               type: boolean
-              description: Copy the last preview to the changed task
+              description: Copy the last preview to the changed task, from the
+                task of the first condition the entity has with and, from the
+                commented task with or
   responses:
     201:
       description: The new status automation
@@ -354,25 +576,54 @@ StatusAutomationsResource_post:
               entity_type:
                 type: string
                 example: asset
+              in_conditions:
+                type: object
+                nullable: true
+                example:
+                  operator: and
+                  conditions:
+                    - task_type_id: b24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_ids:
+                        - c24a6ea4-ce75-4665-a070-57453082c250
+                    - task_type_id: d24a6ea4-ce75-4665-a070-57453082c250
+                      task_status_ids:
+                        - c24a6ea4-ce75-4665-a070-57453082c250
+                        - e24a6ea4-ce75-4665-a070-57453082c250
               in_task_type_id:
                 type: string
                 format: uuid
-                example: b24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                deprecated: true
+                description: Set for a trigger of one condition with one status
+                  only
+                example: null
               in_task_status_id:
                 type: string
                 format: uuid
-                example: c24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                deprecated: true
+                description: Set for a trigger of one condition with one status
+                  only
+                example: null
               out_field_type:
                 type: string
                 example: status
               out_task_type_id:
                 type: string
                 format: uuid
-                example: d24a6ea4-ce75-4665-a070-57453082c250
+                example: f24a6ea4-ce75-4665-a070-57453082c250
               out_task_status_id:
                 type: string
                 format: uuid
-                example: e24a6ea4-ce75-4665-a070-57453082c250
+                nullable: true
+                example: a34a6ea4-ce75-4665-a070-57453082c250
+              out_only_if_task_status_ids:
+                type: array
+                nullable: true
+                items:
+                  type: string
+                  format: uuid
+                example: null
               import_last_revision:
                 type: boolean
                 example: false
@@ -388,7 +639,11 @@ StatusAutomationsResource_post:
                 format: date-time
                 example: '2024-01-15T10:30:00Z'
     400:
-      description: The body is not valid, or a field breaks a database
-        constraint
+      description: >-
+        The body is not valid, a field breaks a database constraint, or the
+        automation is not valid, for example "A trigger needs at least one
+        condition.", "Trigger operator must be 'and' or 'or'.", "Task type
+        Layout is not a task type of assets." or "Task type Layout appears in
+        two conditions: merge their statuses into one."
     403:
       description: You are not an administrator
