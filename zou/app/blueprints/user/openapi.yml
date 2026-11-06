@@ -759,10 +759,14 @@ FilterGroupResource_get:
 FilterGroupResource_put:
   summary: Update a filter group
   description: Update a filter group. The group must be yours. An
-    administrator can update the groups of all the users. To set is_shared to
-    true, give project_id in the body too. You must be a manager of this
-    project, or an administrator. Otherwise is_shared is set to false. If you
-    change is_shared, the filters of the group take the same value.
+    administrator can update the groups of all the users. Another project_id
+    moves the group, without its filters, to this project. A null project_id
+    changes nothing. After a new name or a move, the name must be free among
+    the groups of the owner with the same list_type, entity_type, and
+    project_id. To set is_shared to true, give project_id in the body too. You
+    must be a manager of this project, or an administrator. Otherwise is_shared
+    is set to false. If you change is_shared, the filters of the group take the
+    same value.
   tags:
     - User
   parameters:
@@ -855,7 +859,8 @@ FilterGroupResource_put:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     400:
-      description: The body is not valid
+      description: The body is not valid, or the name is already used in this
+        list
     403:
       description: You use a bot token
     404:
@@ -933,9 +938,10 @@ FilterGroupsResource_get:
 FilterGroupsResource_post:
   summary: Create a filter group
   description: Create a filter group. A filter group puts several filters
-    together. To share it, give project_id and set is_shared to true. You must
-    be a manager of this project, or an administrator. Otherwise the group is
-    created with is_shared set to false.
+    together. Its name must be free among your groups with the same list_type,
+    entity_type, and project_id. To share it, give project_id and set is_shared
+    to true. You must be a manager of this project, or an administrator.
+    Otherwise the group is created with is_shared set to false.
   tags:
     - User
   requestBody:
@@ -1032,7 +1038,8 @@ FilterGroupsResource_post:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     400:
-      description: The body is not valid
+      description: The body is not valid, or the name is already used in this
+        list
     403:
       description: You use a bot token
     404:
@@ -1064,10 +1071,13 @@ FilterResource_delete:
 FilterResource_put:
   summary: Update a filter
   description: Update a filter. The filter must be yours. An administrator can
-    update the filters of all the users. To set is_shared to true, give
-    project_id in the body too. You must be a manager of this project, or an
-    administrator. Otherwise is_shared is set to false. If the filter is in a
-    group, is_shared must keep the value of the group.
+    update the filters of all the users. Another project_id moves the filter
+    to this project. A null project_id changes nothing. After a new name or a
+    move, the name must be free among the filters of the owner with the same
+    list_type, entity_type, project_id, and search_filter_group_id. To set
+    is_shared to true, give project_id in the body too. You must be a manager
+    of this project, or an administrator. Otherwise is_shared is set to false.
+    If the filter is in a group, is_shared must keep the value of the group.
   tags:
     - User
   parameters:
@@ -1166,8 +1176,8 @@ FilterResource_put:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     400:
-      description: The body is not valid, or is_shared differs from the value
-        of the filter group
+      description: The body is not valid, the name is already used in this
+        list, or is_shared differs from the value of the filter group
     403:
       description: You use a bot token
     404:
@@ -1245,11 +1255,13 @@ FiltersResource_get:
 
 FiltersResource_post:
   summary: Create a filter
-  description: Create a filter. A filter keeps a search query for a list. To
-    share it, give project_id and set is_shared to true. You must be a manager
-    of this project, or an administrator. Otherwise the filter is created with
-    is_shared set to false. If you give search_filter_group_id, the filter
-    takes the same is_shared value as the group.
+  description: Create a filter. A filter keeps a search query for a list. Its
+    name must be free among your filters with the same list_type, entity_type,
+    project_id, and search_filter_group_id. To share it, give project_id and set
+    is_shared to true. You must be a manager of this project, or an
+    administrator. Otherwise the filter is created with is_shared set to false.
+    If you give search_filter_group_id, the filter takes the same is_shared
+    value as the group.
   tags:
     - User
   requestBody:
@@ -1353,8 +1365,8 @@ FiltersResource_post:
                 description: Last update timestamp
                 example: '2023-01-01T12:30:00Z'
     400:
-      description: The body is not valid, or is_shared differs from the value
-        of the filter group
+      description: The body is not valid, the name is already used in this
+        list, or is_shared differs from the value of the filter group
     403:
       description: You use a bot token
     404:

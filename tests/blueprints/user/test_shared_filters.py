@@ -1,4 +1,6 @@
 from tests.base import ApiDBTestCase
+from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.services import (
     persons_service,
     projects_service,
@@ -18,6 +20,7 @@ class SharedFilterMixin:
 
     path = None
     detail_path = None
+    model = None
 
     def clear_cache(self):
         raise NotImplementedError
@@ -189,10 +192,147 @@ class SharedFilterMixin:
         self.post(self.path, self.payload("n", entity_type="t" * 81), 400)
         self.assertEqual(self.visible_names(), [])
 
+    def test_a_name_used_in_the_list_is_refused(self):
+        self.create("wip")
+        self.post(self.path, self.payload("wip"), 400)
+        self.assertEqual(self.visible_names(), ["wip"])
+
+    def test_a_name_used_out_of_any_production_is_refused(self):
+        self.create("wip", project_id=None)
+        self.post(self.path, self.payload("wip", project_id=None), 400)
+        self.clear_cache()
+        names = [f["name"] for f in self.get(self.path)["asset"]["all"]]
+        self.assertEqual(names, ["wip"])
+
+    def test_renaming_to_a_name_used_in_the_list_is_refused(self):
+        self.create("wip")
+        other = self.create("other")
+        self.put(f"{self.path}{other['id']}", {"name": "wip"}, 400)
+        self.assertEqual(self.visible_names(), ["other", "wip"])
+
+    def test_a_name_stays_free_in_the_other_lists(self):
+        self.create("wip")
+        self.create("wip", list_type="shot")
+        self.create("wip", entity_type="Shot")
+        self.create("wip", project_id=None)
+        self.create(
+            "wip", project_id=str(self.generate_fixture_project("Other").id)
+        )
+
+    def test_two_people_can_use_the_same_name(self):
+        self.log_in_cg_artist()
+        self.create("wip")
+        self.log_in_admin()
+        self.create("wip")
+
+    def test_a_new_name_is_checked_among_the_rows_of_the_owner(self):
+        self.log_in_cg_artist()
+        self.create("used by the artist")
+        row = self.create("mine")
+        self.log_in_admin()
+        self.create("used by the admin")
+
+        path = f"{self.path}{row['id']}"
+        self.put(path, {"name": "used by the artist"}, 400)
+        self.put(path, {"name": "used by the admin"})
+
+    def test_a_new_name_is_checked_where_the_body_moves_the_row(self):
+        project_id = self.project_id
+        row = self.create("mine")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        self.create("wip", project_id=other_project_id)
+
+        path = f"{self.path}{row['id']}"
+        self.put(path, {"name": "wip", "project_id": other_project_id}, 400)
+        self.put(path, {"name": "wip", "project_id": project_id})
+
+    def test_a_new_name_stays_free_in_the_other_lists(self):
+        self.create("used in shots", list_type="shot")
+        self.create("used on shot tasks", entity_type="Shot")
+        row = self.create("mine")
+
+        path = f"{self.path}{row['id']}"
+        self.put(path, {"name": "used in shots"})
+        self.put(path, {"name": "used on shot tasks"})
+
+    def test_moving_a_row_onto_a_name_of_the_target_list_is_refused(self):
+        row = self.create("wip")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        self.create("wip", project_id=other_project_id)
+
+        path = f"{self.path}{row['id']}"
+        self.put(path, {"project_id": other_project_id}, 400)
+        self.put(path, {"name": "wip", "project_id": other_project_id}, 400)
+
+        stored = self.get(f"{self.detail_path}{row['id']}")
+        self.assertEqual(stored["project_id"], row["project_id"])
+
+    def test_moving_a_row_without_a_project_is_checked_too(self):
+        """
+        Kitsu used to send the current production for the lists out of any
+        production, which moved their rows.
+        """
+        row = self.create("wip", project_id=None)
+        self.create("wip")
+
+        self.put(
+            f"{self.path}{row['id']}", {"project_id": self.project_id}, 400
+        )
+
+    def test_a_null_project_leaves_a_row_where_it_is(self):
+        """
+        Kitsu sends one for the lists out of any production, whose rows
+        also stay editable when they share their name.
+        """
+        self.create("wip", project_id=None)
+        other = self.create("other", project_id=None)
+        self.model.get(other["id"]).update({"name": "wip"})
+        in_project = self.create("mine")
+
+        updated = self.put(
+            f"{self.path}{other['id']}", {"name": "wip", "project_id": None}
+        )
+        self.assertIsNone(updated["project_id"])
+
+        updated = self.put(
+            f"{self.path}{in_project['id']}", {"project_id": None}
+        )
+        self.assertEqual(updated["project_id"], self.project_id)
+
+    def test_moving_a_row_where_its_name_is_free_is_accepted(self):
+        row = self.create("wip")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": other_project_id}
+        )
+
+        self.assertEqual(updated["project_id"], other_project_id)
+
+    def test_a_row_can_keep_a_name_it_already_shares(self):
+        """
+        The rows saved before the name check stay editable: Kitsu sends the
+        name and the project with every other change.
+        """
+        self.create("wip")
+        other = self.create("other")
+        self.model.get(other["id"]).update({"name": "wip"})
+
+        self.put(
+            f"{self.path}{other['id']}",
+            {
+                "name": "wip",
+                "project_id": self.project_id,
+                "is_shared": False,
+                "department_id": None,
+            },
+        )
+
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filters/"
     detail_path = "data/search-filters/"
+    model = SearchFilter
 
     def clear_cache(self):
         search_filters_service.clear_filter_cache()
@@ -217,6 +357,85 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
         self.assertEqual(
             result["asset"][self.project_id][0]["search_query"], "props"
         )
+
+    def a_group(self, name="group"):
+        return self.post(
+            "data/user/filter-groups/",
+            {
+                "list_type": "asset",
+                "name": name,
+                "project_id": self.project_id,
+            },
+        )
+
+    def test_a_name_used_in_the_group_is_refused(self):
+        group_id = self.a_group()["id"]
+        self.create("wip", search_filter_group_id=group_id)
+
+        self.post(
+            self.path,
+            self.payload("wip", search_filter_group_id=group_id),
+            400,
+        )
+
+    def test_a_name_stays_free_in_another_group(self):
+        self.create("wip")
+        self.create("wip", search_filter_group_id=self.a_group("one")["id"])
+        self.create("wip", search_filter_group_id=self.a_group("two")["id"])
+
+    def test_a_new_name_is_checked_in_the_group_of_the_row(self):
+        group_id = self.a_group()["id"]
+        self.create("out of the group")
+        self.create("in the group", search_filter_group_id=group_id)
+        row = self.create("mine", search_filter_group_id=group_id)
+
+        path = f"{self.path}{row['id']}"
+        self.put(path, {"name": "in the group"}, 400)
+        self.put(path, {"name": "out of the group"})
+
+    def test_a_new_name_is_checked_in_the_group_the_body_names(self):
+        group_id = self.a_group()["id"]
+        self.create("in the group", search_filter_group_id=group_id)
+        row = self.create("mine")
+
+        path = f"{self.path}{row['id']}"
+        self.put(
+            path,
+            {"name": "in the group", "search_filter_group_id": group_id},
+            400,
+        )
+        self.put(path, {"name": "in the group"})
+
+    def test_a_new_name_is_checked_where_the_body_takes_the_row_out(self):
+        group_id = self.a_group()["id"]
+        self.create("out of the group")
+        row = self.create("mine", search_filter_group_id=group_id)
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {"name": "out of the group", "search_filter_group_id": None},
+            400,
+        )
+
+    def test_changing_group_under_the_same_name_is_accepted(self):
+        """
+        A duplicate made by taking a filter out of a group or by putting it
+        in one does no harm: only a new name or a new project is checked.
+        """
+        group_id = self.a_group()["id"]
+        self.create("wip")
+        in_group = self.create("wip", search_filter_group_id=group_id)
+
+        updated = self.put(
+            f"{self.path}{in_group['id']}", {"search_filter_group_id": None}
+        )
+        self.assertIsNone(updated["search_filter_group_id"])
+
+        updated = self.put(
+            f"{self.path}{in_group['id']}",
+            {"search_filter_group_id": group_id},
+        )
+        self.assertEqual(updated["search_filter_group_id"], group_id)
 
     def test_a_query_of_the_column_length_is_kept(self):
         self.create("long", query="q" * 500)
@@ -247,6 +466,7 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
 class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filter-groups/"
     detail_path = "data/search-filter-groups/"
+    model = SearchFilterGroup
 
     def clear_cache(self):
         search_filters_service.clear_filter_group_cache()
