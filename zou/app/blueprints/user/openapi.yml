@@ -864,7 +864,8 @@ FilterGroupResource_put:
     403:
       description: You use a bot token
     404:
-      description: You have no filter group with this identifier
+      description: You have no filter group with this identifier, or the
+        project or the department does not exist
 
 FilterGroupsResource_get:
   summary: Get my filter groups
@@ -1043,7 +1044,7 @@ FilterGroupsResource_post:
     403:
       description: You use a bot token
     404:
-      description: The department does not exist
+      description: The project or the department does not exist
 
 FilterResource_delete:
   summary: Delete a filter
@@ -1181,8 +1182,8 @@ FilterResource_put:
     403:
       description: You use a bot token
     404:
-      description: You have no filter with this identifier, or the filter
-        group or the department does not exist
+      description: You have no filter with this identifier, or the project,
+        the filter group, or the department does not exist
 
 FiltersResource_get:
   summary: Get my filters
@@ -1370,7 +1371,8 @@ FiltersResource_post:
     403:
       description: You use a bot token
     404:
-      description: The filter group or the department does not exist
+      description: The project, the filter group, or the department does not
+        exist
 
 HasSequenceSubscribedResource_get:
   summary: Check my subscription to a sequence

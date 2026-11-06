@@ -1,3 +1,5 @@
+import uuid
+
 from tests.base import ApiDBTestCase
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
@@ -34,6 +36,7 @@ class SharedFilterMixin:
         self.generate_fixture_department()
         self.generate_fixture_user_cg_artist()
         self.project_id = str(self.project.id)
+        self.unknown_id = str(uuid.uuid4())
 
     def create(self, name, **overrides):
         return self.post(self.path, self.payload(name, **overrides))
@@ -327,6 +330,45 @@ class SharedFilterMixin:
                 "department_id": None,
             },
         )
+
+    def test_a_project_of_no_row_is_refused(self):
+        self.post(
+            self.path, self.payload("wip", project_id=self.unknown_id), 404
+        )
+
+    def test_moving_a_row_to_a_project_of_no_row_is_refused(self):
+        row = self.create("wip")
+
+        self.put(
+            f"{self.path}{row['id']}", {"project_id": self.unknown_id}, 404
+        )
+        self.assertEqual(
+            str(self.model.get(row["id"]).project_id), self.project_id
+        )
+
+    def test_an_artist_gets_the_same_answer_for_a_project_of_no_row(self):
+        self.log_in_cg_artist()
+        row = self.create("wip", project_id=None)
+
+        self.post(
+            self.path, self.payload("new", project_id=self.unknown_id), 404
+        )
+        self.put(
+            f"{self.path}{row['id']}", {"project_id": self.unknown_id}, 404
+        )
+
+    def test_a_department_of_no_row_is_refused(self):
+        self.post(
+            self.path, self.payload("wip", department_id=self.unknown_id), 404
+        )
+
+    def test_setting_a_department_of_no_row_is_refused(self):
+        row = self.create("wip")
+
+        self.put(
+            f"{self.path}{row['id']}", {"department_id": self.unknown_id}, 404
+        )
+        self.assertIsNone(self.model.get(row["id"]).department_id)
 
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):

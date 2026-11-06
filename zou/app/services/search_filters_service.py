@@ -113,6 +113,7 @@ def create_filter(
     Add a new search filter to the database.
     """
     current_user = persons_service.get_current_user()
+    _check_project_and_department_exist(project_id, department_id)
     if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
@@ -125,13 +126,6 @@ def create_filter(
         if is_shared != search_filter_group.is_shared:
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
-            )
-
-    if department_id is not None:
-        department = departments_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
             )
 
     _check_name_is_free(
@@ -172,14 +166,9 @@ def update_filter(search_filter_id, data):
     if search_filter is None:
         raise SearchFilterNotFoundException
 
-    department_id = data.get("department_id", None)
-    if department_id is not None:
-        department = departments_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
-            )
-
+    _check_project_and_department_exist(
+        data.get("project_id"), data.get("department_id")
+    )
     _deny_sharing_without_manager_access(data, search_filter)
 
     if (
@@ -326,15 +315,9 @@ def create_filter_group(
     Add a new search filter group to the database.
     """
     current_user = persons_service.get_current_user()
+    _check_project_and_department_exist(project_id, department_id)
     if not permissions_service.can_share_filter(project_id):
         is_shared = False
-
-    if department_id is not None:
-        department = departments_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
-            )
 
     _check_name_is_free(
         SearchFilterGroup,
@@ -389,6 +372,9 @@ def update_filter_group(search_filter_group_id, data):
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
 
+    _check_project_and_department_exist(
+        data.get("project_id"), data.get("department_id")
+    )
     _deny_sharing_without_manager_access(data, search_filter_group)
     _check_new_name_is_free(search_filter_group, data)
 
@@ -489,6 +475,17 @@ def _deny_sharing_without_manager_access(data, instance):
         )
     ):
         data["is_shared"] = False
+
+
+def _check_project_and_department_exist(project_id, department_id):
+    """
+    Raise a not found exception for a project or a department of no row, which
+    would otherwise reach a foreign key and end in an internal error.
+    """
+    if project_id is not None:
+        projects_service.get_project_raw(project_id)
+    if department_id is not None:
+        departments_service.get_department(department_id)
 
 
 def _check_name_is_free(model, name, **list_scope):
