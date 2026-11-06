@@ -783,10 +783,13 @@ FilterGroupResource_put:
           properties:
             name:
               type: string
+              minLength: 1
+              maxLength: 200
               description: Filter group name
               example: Updated Filter Group
             color:
               type: string
+              maxLength: 8
               description: Filter group color
               example: '#00FF00'
             is_shared:
@@ -946,18 +949,23 @@ FilterGroupsResource_post:
           properties:
             name:
               type: string
+              minLength: 1
+              maxLength: 200
               description: Filter group name
               example: My Filter Group
             color:
               type: string
+              maxLength: 8
               description: Filter group color in hex format
               example: '#FF0000'
             list_type:
               type: string
+              maxLength: 80
               description: Type of list this filter group applies to
               example: todo
             entity_type:
               type: string
+              maxLength: 80
               description: Entity type this filter group applies to
               example: Asset
             is_shared:
@@ -1080,10 +1088,14 @@ FilterResource_put:
           properties:
             name:
               type: string
+              minLength: 1
+              maxLength: 200
               description: Filter name
               example: Updated Filter Name
             search_query:
               type: string
+              minLength: 1
+              maxLength: 500
               description: Updated filter query
               example: '{"status": "active"}'
             search_filter_group_id:
@@ -1252,18 +1264,24 @@ FiltersResource_post:
           properties:
             name:
               type: string
+              minLength: 1
+              maxLength: 200
               description: Filter name
               example: My Custom Filter
             query:
               type: string
+              minLength: 1
+              maxLength: 500
               description: Filter query as JSON string
               example: '{"project_id": "uuid"}'
             list_type:
               type: string
+              maxLength: 80
               description: Type of list this filter applies to
               example: todo
             entity_type:
               type: string
+              maxLength: 80
               description: Entity type this filter applies to
               example: Asset
             project_id:

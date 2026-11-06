@@ -156,6 +156,39 @@ class SharedFilterMixin:
         self.log_in_cg_artist()
         self.assertEqual(self.visible_names(), ["department", "team"])
 
+    def test_a_name_of_the_column_length_is_kept(self):
+        self.create("n" * 200)
+        self.assertEqual(self.visible_names(), ["n" * 200])
+
+    def test_a_name_longer_than_its_column_is_refused(self):
+        self.post(self.path, self.payload("n" * 201), 400)
+        self.assertEqual(self.visible_names(), [])
+
+    def test_renaming_beyond_the_column_length_is_refused(self):
+        created = self.create("before")
+        self.put(f"{self.path}{created['id']}", {"name": "n" * 201}, 400)
+        self.assertEqual(self.visible_names(), ["before"])
+
+    def test_renaming_to_nothing_is_refused(self):
+        created = self.create("before")
+        self.put(f"{self.path}{created['id']}", {"name": ""}, 400)
+        self.assertEqual(self.visible_names(), ["before"])
+
+    def test_a_list_type_of_the_column_length_is_kept(self):
+        self.create("n", list_type="t" * 80)
+
+    def test_a_list_type_longer_than_its_column_is_refused(self):
+        self.post(self.path, self.payload("n", list_type="t" * 81), 400)
+        self.assertEqual(self.visible_names(), [])
+
+    def test_an_entity_type_of_the_column_length_is_kept(self):
+        self.create("n", entity_type="t" * 80)
+        self.assertEqual(self.visible_names(), ["n"])
+
+    def test_an_entity_type_longer_than_its_column_is_refused(self):
+        self.post(self.path, self.payload("n", entity_type="t" * 81), 400)
+        self.assertEqual(self.visible_names(), [])
+
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filters/"
@@ -185,6 +218,31 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
             result["asset"][self.project_id][0]["search_query"], "props"
         )
 
+    def test_a_query_of_the_column_length_is_kept(self):
+        self.create("long", query="q" * 500)
+        self.assertEqual(self.visible_names(), ["long"])
+
+    def test_a_query_longer_than_its_column_is_refused(self):
+        self.post(self.path, self.payload("long", query="q" * 501), 400)
+        self.assertEqual(self.visible_names(), [])
+
+    def test_editing_a_query_beyond_the_column_length_is_refused(self):
+        created = self.create("mine")
+        self.put(
+            f"{self.path}{created['id']}", {"search_query": "q" * 501}, 400
+        )
+        self.assertEqual(self.saved_query(), "props")
+
+    def test_editing_a_query_to_nothing_is_refused(self):
+        created = self.create("mine")
+        self.put(f"{self.path}{created['id']}", {"search_query": ""}, 400)
+        self.assertEqual(self.saved_query(), "props")
+
+    def saved_query(self):
+        self.clear_cache()
+        result = self.get(self.path)
+        return result["asset"][self.project_id][0]["search_query"]
+
 
 class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filter-groups/"
@@ -201,3 +259,20 @@ class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
             "project_id": self.project_id,
             **overrides,
         }
+
+    def test_a_color_of_the_column_length_is_kept(self):
+        self.create("n", color="#ffffff0")
+        self.assertEqual(self.visible_names(), ["n"])
+
+    def test_a_color_longer_than_its_column_is_refused(self):
+        self.post(self.path, self.payload("n", color="#ffffff00"), 400)
+        self.assertEqual(self.visible_names(), [])
+
+    def test_editing_a_color_beyond_the_column_length_is_refused(self):
+        created = self.create("mine", color="#000000")
+        self.put(f"{self.path}{created['id']}", {"color": "#ffffff00"}, 400)
+        self.clear_cache()
+        result = self.get(self.path)
+        self.assertEqual(
+            result["asset"][self.project_id][0]["color"], "#000000"
+        )
