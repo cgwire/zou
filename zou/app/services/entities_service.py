@@ -37,6 +37,7 @@ TEMPORAL_ENTITY_TYPE_NAMES = [
     "Edit",
     "Concept",
     "ConceptFolder",
+    "Untracked",
     "Episode",
 ]
 

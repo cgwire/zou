@@ -1,0 +1,311 @@
+ProjectUntrackedResource_get:
+  summary: Get project untracked items
+  description: Retrieve the untracked items of a project, the schedule
+    work that is not an asset, a shot or an edit. Each item carries
+    the episode it belongs to through its link, if any. Not available
+    to vendors and clients.
+  tags:
+    - Untracked
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: Untracked items of the project, sorted by name
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Untracked item unique identifier
+                  example: e68e02e8-a219-8009-e514-91897426a691
+                name:
+                  type: string
+                  description: Untracked item name
+                  example: Sound design
+                description:
+                  type: string
+                  description: Untracked item description
+                  example: Foley and mix for the whole film
+                project_id:
+                  type: string
+                  format: uuid
+                  description: Project identifier
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                parent_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Episode, sequence or shot the item is
+                    linked to
+                  example: b35b7fb5-df86-5776-b181-68564193d36d
+                created_at:
+                  type: string
+                  format: date-time
+                  description: Creation timestamp
+                  example: '2023-01-01T12:00:00Z'
+                episode_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Episode the item belongs to through its
+                    link
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                link_name:
+                  type: string
+                  nullable: true
+                  description: Readable path of the link, from the episode
+                    down
+                  example: E01 / SQ01 / SH010
+
+ProjectUntrackedResource_post:
+  summary: Create untracked item
+  description: Create an untracked item for a project, optionally linked
+    to one of its episodes, sequences or shots. Reserved to the managers
+    of the project. An item already carrying this name and link is returned
+    as is. With create_task, its task is created along, with the task
+    type of the given department (or the one without department), which
+    is created and enabled in the production when needed.
+  tags:
+    - Untracked
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Untracked item name
+              example: Sound design
+            description:
+              type: string
+              description: Untracked item description
+              example: Foley and mix for the whole film
+            parent_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Episode, sequence or shot to link the item
+                to
+              example: b35b7fb5-df86-5776-b181-68564193d36d
+            create_task:
+              type: boolean
+              description: Create the task of the item along
+              example: true
+            department_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Department the task is planned for
+              example: d57d91d7-f108-7998-d403-80786315f580
+            color:
+              type: string
+              nullable: true
+              description: Colour of the row of the item in the schedule.
+                By default the one of the department, else a random
+                one
+              example: '#F06292'
+  responses:
+    201:
+      description: Untracked item successfully created, with its created
+        tasks under "tasks" when create_task is set
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Untracked item unique identifier
+                example: e68e02e8-a219-8009-e514-91897426a691
+              name:
+                type: string
+                description: Untracked item name
+                example: Sound design
+              description:
+                type: string
+                description: Untracked item description
+                example: Foley and mix for the whole film
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              parent_id:
+                type: string
+                format: uuid
+                nullable: true
+                description: Episode, sequence or shot the item is linked
+                  to
+                example: b35b7fb5-df86-5776-b181-68564193d36d
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: The link is not an episode, a sequence or a shot
+        of the project
+
+UntrackedResource_get:
+  summary: Get untracked item
+  description: Retrieve an untracked item. Not available to vendors
+    and clients.
+  tags:
+    - Untracked
+  parameters:
+    - in: path
+      name: untracked_id
+      required: true
+      example: e68e02e8-a219-8009-e514-91897426a691
+      description: Unique identifier of the untracked item
+      schema:
+        type: string
+        format: uuid
+  responses:
+    200:
+      description: Untracked item
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Untracked item unique identifier
+                example: e68e02e8-a219-8009-e514-91897426a691
+              name:
+                type: string
+                description: Untracked item name
+                example: Sound design
+              description:
+                type: string
+                description: Untracked item description
+                example: Foley and mix for the whole film
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              parent_id:
+                type: string
+                format: uuid
+                nullable: true
+                description: Episode, sequence or shot the item is linked
+                  to
+                example: b35b7fb5-df86-5776-b181-68564193d36d
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    404:
+      description: Untracked item not found
+
+UntrackedResource_put:
+  summary: Update untracked item
+  description: Rename an untracked item, change its description or its
+    link. A null parent_id removes the link, a missing one keeps it.
+    Reserved to the managers of the project.
+  tags:
+    - Untracked
+  parameters:
+    - in: path
+      name: untracked_id
+      required: true
+      example: e68e02e8-a219-8009-e514-91897426a691
+      description: Unique identifier of the untracked item
+      schema:
+        type: string
+        format: uuid
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Untracked item name
+              example: Sound design
+            description:
+              type: string
+              description: Untracked item description
+              example: Foley and mix for the whole film
+            parent_id:
+              type: string
+              format: uuid
+              nullable: true
+              description: Episode, sequence or shot to link the item
+                to
+              example: b35b7fb5-df86-5776-b181-68564193d36d
+  responses:
+    200:
+      description: Untracked item successfully updated
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Untracked item unique identifier
+                example: e68e02e8-a219-8009-e514-91897426a691
+              name:
+                type: string
+                description: Untracked item name
+                example: Sound design
+              description:
+                type: string
+                description: Untracked item description
+                example: Foley and mix for the whole film
+              project_id:
+                type: string
+                format: uuid
+                description: Project identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              parent_id:
+                type: string
+                format: uuid
+                nullable: true
+                description: Episode, sequence or shot the item is linked
+                  to
+                example: b35b7fb5-df86-5776-b181-68564193d36d
+              created_at:
+                type: string
+                format: date-time
+                description: Creation timestamp
+                example: '2023-01-01T12:00:00Z'
+    400:
+      description: Invalid link, or another item already carries this
+        name and link
+    404:
+      description: Untracked item not found
