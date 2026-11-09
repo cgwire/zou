@@ -334,6 +334,21 @@ class StatusChangeTestCase(CommentsTestCase):
             self.task_status.serialize(), self.task.serialize()
         )
 
+    def test_a_task_already_on_the_retake_status_is_not_capped(self):
+        """
+        A comment that leaves a task on its retake status adds no retake:
+        a task at its cap can still get one.
+        """
+        self.project.update({"max_retakes": 1})
+        retake_status = self.generate_fixture_task_status_retake().serialize()
+        self.task.update(
+            {"retake_count": 1, "task_status_id": retake_status["id"]}
+        )
+
+        comments_service._check_retake_capping(
+            retake_status, self.task.serialize()
+        )
+
 
 class CreateCommentTestCase(CommentsTestCase):
     """

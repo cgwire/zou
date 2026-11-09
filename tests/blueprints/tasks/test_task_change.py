@@ -88,6 +88,69 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
             400,
         )
 
+    def test_retake_cap_lets_a_comment_keep_the_status(self):
+        project_id = str(self.project.id)
+        task_id = str(self.task.id)
+        self.project.update({"max_retakes": 1})
+        self.post(
+            f"/actions/tasks/{task_id}/comment",
+            {"task_status_id": self.retake_status_id, "comment": "retake 1"},
+        )
+
+        self.post(
+            f"/actions/tasks/{task_id}/comment",
+            {"task_status_id": self.retake_status_id, "comment": "one note"},
+        )
+        self.post(
+            f"/actions/projects/{project_id}/tasks/comment-many",
+            [
+                {
+                    "task_status_id": self.retake_status_id,
+                    "comment": "another note",
+                    "object_id": task_id,
+                }
+            ],
+        )
+
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertEqual(task["retake_count"], 1)
+        comments = self.get(f"data/tasks/{task_id}/comments")
+        self.assertEqual(len(comments), 3)
+
+    def test_retake_cap_counts_a_comment_dated_earlier(self):
+        task_id = str(self.task.id)
+        self.project.update({"max_retakes": 1})
+        path = f"/actions/tasks/{task_id}/comment"
+        self.post(
+            path,
+            {
+                "task_status_id": self.wip_status_id,
+                "comment": "wip",
+                "created_at": "2026-01-02 10:00:00",
+            },
+        )
+        self.post(
+            path,
+            {
+                "task_status_id": self.retake_status_id,
+                "comment": "retake 1",
+                "created_at": "2026-01-03 10:00:00",
+            },
+        )
+
+        # Placed before the first comment, it would make a second retake.
+        self.post(
+            path,
+            {
+                "task_status_id": self.retake_status_id,
+                "comment": "older retake",
+                "created_at": "2026-01-01 10:00:00",
+            },
+            400,
+        )
+        task = self.get(f"data/tasks/{task_id}")
+        self.assertEqual(task["retake_count"], 1)
+
     def test_comment_many(self):
         project_id = str(self.project.id)
         task_id = str(self.task.id)
