@@ -113,6 +113,7 @@ def create_filter(
     Add a new search filter to the database.
     """
     current_user = persons_service.get_current_user()
+    _check_project_and_department_exist(project_id, department_id)
     if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
@@ -127,12 +128,15 @@ def create_filter(
                 "A search filter should have the same value for is_shared than its search filter group."
             )
 
-    if department_id is not None:
-        department = departments_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
-            )
+    _check_name_is_free(
+        SearchFilter,
+        name,
+        list_type=list_type,
+        entity_type=entity_type,
+        project_id=project_id,
+        person_id=current_user["id"],
+        search_filter_group_id=search_filter_group_id,
+    )
 
     search_filter = SearchFilter.create(
         list_type=list_type,
@@ -162,14 +166,9 @@ def update_filter(search_filter_id, data):
     if search_filter is None:
         raise SearchFilterNotFoundException
 
-    department_id = data.get("department_id", None)
-    if department_id is not None:
-        department = departments_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
-            )
-
+    _check_project_and_department_exist(
+        data.get("project_id"), data.get("department_id")
+    )
     _deny_sharing_without_manager_access(data, search_filter)
 
     if (
@@ -189,6 +188,10 @@ def update_filter(search_filter_id, data):
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
             )
+
+    _check_new_name_is_free(
+        search_filter, data, search_filter_group_id=search_filter_group_id
+    )
 
     search_filter.update(data)
     _clear_cache_after_sharing_change(
@@ -312,15 +315,18 @@ def create_filter_group(
     Add a new search filter group to the database.
     """
     current_user = persons_service.get_current_user()
+    _check_project_and_department_exist(project_id, department_id)
     if not permissions_service.can_share_filter(project_id):
         is_shared = False
 
-    if department_id is not None:
-        department = departments_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
-            )
+    _check_name_is_free(
+        SearchFilterGroup,
+        name,
+        list_type=list_type,
+        entity_type=entity_type,
+        project_id=project_id,
+        person_id=current_user["id"],
+    )
 
     search_filter_group = SearchFilterGroup.create(
         list_type=list_type,
@@ -366,7 +372,11 @@ def update_filter_group(search_filter_group_id, data):
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
 
+    _check_project_and_department_exist(
+        data.get("project_id"), data.get("department_id")
+    )
     _deny_sharing_without_manager_access(data, search_filter_group)
+    _check_new_name_is_free(search_filter_group, data)
 
     search_filter_group.update(data)
 
@@ -465,6 +475,49 @@ def _deny_sharing_without_manager_access(data, instance):
         )
     ):
         data["is_shared"] = False
+
+
+def _check_project_and_department_exist(project_id, department_id):
+    """
+    Raise a not found exception for a project or a department of no row, which
+    would otherwise reach a foreign key and end in an internal error.
+    """
+    if project_id is not None:
+        projects_service.get_project_raw(project_id)
+    if department_id is not None:
+        departments_service.get_department(department_id)
+
+
+def _check_name_is_free(model, name, **list_scope):
+    """
+    Refuse a name already given to a row of the same list. The scope holds
+    one owner: a shared row of someone else can be out of the sight of the
+    caller, who could not tell what the name clashes with.
+    """
+    if model.get_by(name=name, **list_scope) is not None:
+        raise WrongParameterException(
+            "This name is already used in this list."
+        )
+
+
+def _check_new_name_is_free(instance, data, **group_scope):
+    """
+    Same check for an update, which can change the name of the row as well
+    as its project. A row keeping both passes, even when it changes group,
+    so the ones saved before this rule stay editable.
+    """
+    name = data.get("name", instance.name)
+    project_id = data.get("project_id", instance.project_id)
+    if name != instance.name or str(project_id) != str(instance.project_id):
+        _check_name_is_free(
+            type(instance),
+            name,
+            list_type=instance.list_type,
+            entity_type=instance.entity_type,
+            project_id=project_id,
+            person_id=instance.person_id,
+            **group_scope,
+        )
 
 
 def _clear_cache_after_sharing_change(clear_cache, is_shared, user_id):

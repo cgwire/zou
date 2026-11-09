@@ -176,8 +176,6 @@ class SearchFilterTestCase(SavedSearchTestCase):
         self.assertIn("shot", self.filters_of(self.user_cg_artist))
 
     def test_create_filter_refuses_a_department_that_is_not_there(self):
-        # The WrongParameterException the service raises next to this one
-        # is unreachable: get_department raises rather than answering None.
         with self.as_user():
             with self.assertRaises(DepartmentNotFoundException):
                 self.a_filter(department_id=UNKNOWN)
