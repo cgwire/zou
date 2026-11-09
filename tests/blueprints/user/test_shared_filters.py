@@ -779,6 +779,80 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
         )
         self.assertEqual(updated["search_filter_group_id"], group_id)
 
+    def test_a_new_filter_cannot_join_a_group_of_another_project(self):
+        group_id = self.a_group()["id"]
+        other_project_id = str(self.generate_fixture_project("Other").id)
+
+        for project_id in [other_project_id, None]:
+            self.post(
+                self.path,
+                self.payload(
+                    "wip",
+                    project_id=project_id,
+                    search_filter_group_id=group_id,
+                ),
+                400,
+            )
+
+    def test_a_filter_cannot_join_a_group_of_another_project(self):
+        """
+        Sharing a group takes a manager of its project, and its filters follow
+        it: a filter of another project would reach a team beyond that right.
+        """
+        in_a_project = self.create("in a project")
+        out_of_any = self.create("out of any", project_id=None)
+        # The fixture moves self.project_id onto the new project.
+        self.generate_fixture_project("Other")
+        group_id = self.a_group()["id"]
+
+        for row in [in_a_project, out_of_any]:
+            self.put(
+                f"{self.path}{row['id']}",
+                {"search_filter_group_id": group_id},
+                400,
+            )
+            self.assertIsNone(
+                SearchFilter.get(row["id"]).search_filter_group_id
+            )
+
+    def test_a_filter_out_of_any_production_joins_a_group_out_of_any(self):
+        group_id = self.post(
+            "data/user/filter-groups/",
+            {"list_type": "asset", "name": "group"},
+        )["id"]
+        self.create("new", project_id=None, search_filter_group_id=group_id)
+        row = self.create("existing", project_id=None)
+
+        updated = self.put(
+            f"{self.path}{row['id']}", {"search_filter_group_id": group_id}
+        )
+
+        self.assertEqual(updated["search_filter_group_id"], group_id)
+
+    def test_a_filter_already_in_a_group_of_another_project_stays_editable(
+        self,
+    ):
+        """
+        A group could move without its filters before this rule, and gazu
+        sends the group of a filter back with every other change.
+        """
+        group_id = self.a_group()["id"]
+        row = self.create("wip", search_filter_group_id=group_id)
+        SearchFilterGroup.get(group_id).update(
+            {"project_id": str(self.generate_fixture_project("Other").id)}
+        )
+        path = f"{self.path}{row['id']}"
+
+        updated = self.put(
+            path, {"name": "renamed", "search_filter_group_id": group_id}
+        )
+        self.assertEqual(updated["name"], "renamed")
+
+        updated = self.put(path, {"search_filter_group_id": None})
+        self.assertIsNone(updated["search_filter_group_id"])
+
+        self.put(path, {"search_filter_group_id": group_id}, 400)
+
     def test_a_query_of_the_column_length_is_kept(self):
         self.create("long", query="q" * 500)
         self.assertEqual(self.visible_names(), ["long"])

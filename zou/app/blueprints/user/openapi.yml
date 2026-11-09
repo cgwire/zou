@@ -1078,7 +1078,8 @@ FilterResource_put:
     manager of this project or an administrator. Otherwise is_shared is set to
     false. A change of department on a filter that stays shared needs the same
     role. Otherwise it is ignored. If the filter is in a group, is_shared must
-    keep the value of the group.
+    keep the value of the group. A new group must be in the project of the
+    filter. A null search_filter_group_id takes the filter out of its group.
   tags:
     - User
   parameters:
@@ -1112,6 +1113,7 @@ FilterResource_put:
             search_filter_group_id:
               type: string
               format: uuid
+              nullable: true
               description: Filter group identifier
               example: b35b7fb5-df86-5776-b181-68564193d360
             is_shared:
@@ -1174,7 +1176,8 @@ FilterResource_put:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The body is not valid, the name is already used in this
-        list, or is_shared differs from the value of the filter group
+        list, the new filter group is in another project, or is_shared differs
+        from the value of the filter group
     403:
       description: You use a bot token
     404:
@@ -1257,8 +1260,8 @@ FiltersResource_post:
     project_id, and search_filter_group_id. To share it, give project_id and set
     is_shared to true. You must be a manager of this project, or an
     administrator. Otherwise the filter is created with is_shared set to false.
-    If you give search_filter_group_id, the filter takes the same is_shared
-    value as the group.
+    If you give search_filter_group_id, the group must be in the same project
+    and have the same is_shared value.
   tags:
     - User
   requestBody:
@@ -1363,7 +1366,8 @@ FiltersResource_post:
                 example: '2023-01-01T12:30:00Z'
     400:
       description: The body is not valid, the name is already used in this
-        list, or is_shared differs from the value of the filter group
+        list, the filter group is in another project, or is_shared differs from
+        the value of the filter group
     403:
       description: You use a bot token
     404:

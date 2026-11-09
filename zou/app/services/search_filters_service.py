@@ -123,6 +123,7 @@ def create_filter(
         )
         if search_filter_group is None:
             raise SearchFilterGroupNotFoundException
+        _check_group_is_in_project(search_filter_group, project_id)
         if is_shared != search_filter_group.is_shared:
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
@@ -181,6 +182,14 @@ def update_filter(search_filter_id, data):
         )
         if search_filter_group is None:
             raise SearchFilterGroupNotFoundException
+        # A row keeping its group passes, so the ones saved before this rule
+        # stay editable.
+        if str(search_filter_group_id) != str(
+            search_filter.search_filter_group_id
+        ):
+            _check_group_is_in_project(
+                search_filter_group, search_filter.project_id
+            )
         if (
             data.get("is_shared", search_filter.is_shared)
             != search_filter_group.is_shared
@@ -508,6 +517,17 @@ def _check_project_and_department_exist(project_id=None, department_id=None):
         projects_service.get_project_raw(project_id)
     if department_id is not None:
         departments_service.get_department(department_id)
+
+
+def _check_group_is_in_project(search_filter_group, project_id):
+    """
+    Sharing a group takes a manager of its project, and its filters follow it:
+    a filter of another project would reach a team beyond that right.
+    """
+    if str(search_filter_group.project_id) != str(project_id):
+        raise WrongParameterException(
+            "A search filter should be in the same project as its search filter group."
+        )
 
 
 def _check_name_is_free(model, name, **list_scope):
