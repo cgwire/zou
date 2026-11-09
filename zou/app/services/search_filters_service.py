@@ -80,8 +80,11 @@ def get_user_filters(current_user_id):
             department_id is not None
             and str(department_id) in current_user["departments"]
         )
+        # The department tells whom else a row reaches: its owner lists it
+        # whatever the department.
+        is_own = str(search_filter.person_id) == str(current_user_id)
 
-        if department_id is None or is_manager or is_in_departments:
+        if is_own or department_id is None or is_manager or is_in_departments:
             if search_filter.list_type not in result:
                 result[search_filter.list_type] = {}
             subresult = result[search_filter.list_type]
@@ -290,7 +293,8 @@ def get_user_filter_groups(current_user_id):
             department_id is not None
             and str(department_id) in current_user["departments"]
         )
-        if department_id is None or is_manager or is_in_departments:
+        is_own = str(search_filter_group.person_id) == str(current_user_id)
+        if is_own or department_id is None or is_manager or is_in_departments:
             subresult = result[search_filter_group.list_type]
 
             if search_filter_group.project_id is None:

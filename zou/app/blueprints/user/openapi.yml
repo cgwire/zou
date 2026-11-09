@@ -868,7 +868,8 @@ FilterGroupResource_put:
 FilterGroupsResource_get:
   summary: Get my filter groups
   description: Get your filter groups and the shared filter groups of your
-    open projects. A filter group linked to a department is listed only if you
+    open projects. Your own groups are listed whatever their department. A
+    filter group of someone else linked to a department is listed only if you
     are in this department or if you are a manager or an administrator. The
     response is an object. The first key is the list type. The second key is
     the project identifier, or all for the groups without project.
@@ -1187,7 +1188,8 @@ FilterResource_put:
 FiltersResource_get:
   summary: Get my filters
   description: Get your filters and the shared filters of your open projects.
-    A filter linked to a department is listed only if you are in this
+    Your own filters are listed whatever their department. A filter of
+    someone else linked to a department is listed only if you are in this
     department or if you are a manager or an administrator. The response is an
     object. The first key is the list type. The second key is the project
     identifier, or all for the filters without project.

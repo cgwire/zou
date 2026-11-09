@@ -172,6 +172,26 @@ class SharedFilterMixin:
         self.log_in_cg_artist()
         self.assertEqual(self.visible_names(), ["department", "team"])
 
+    def test_a_department_one_stays_in_the_list_of_its_owner(self):
+        """
+        The department tells whom else a row reaches: its owner lists it even
+        out of that department and with no manager role.
+        """
+        animation = str(self.department_animation.id)
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        for name, is_shared in [("private", False), ("shared", True)]:
+            row = self.create(
+                name, is_shared=is_shared, department_id=animation
+            )
+            # Sharing takes a manager, but the owner can lose that role.
+            self.model.get(row["id"]).update(
+                {"person_id": self.user_cg_artist["id"]}
+            )
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["private", "shared"])
+
     def test_a_name_of_the_column_length_is_kept(self):
         self.create("n" * 200)
         self.assertEqual(self.visible_names(), ["n" * 200])
@@ -709,6 +729,25 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
         self.assertIsNone(self.department_of(filter_id))
         self.log_in_cg_artist()
         self.assertEqual(self.listed_names(), ["wip"])
+
+    def test_a_filter_follows_its_group_and_stays_in_the_list_of_its_owner(
+        self,
+    ):
+        group_path, filter_id = self.a_shared_group_with_a_filter(None, None)
+        # Shared as a manager, by an owner who lost that role since.
+        SearchFilter.get(filter_id).update(
+            {"person_id": self.user_cg_artist["id"]}
+        )
+
+        self.put(
+            group_path, {"department_id": str(self.department_animation.id)}
+        )
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department_animation.id)
+        )
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["wip"])
 
     def test_a_filter_leaves_the_department_of_a_group_no_longer_shared(self):
         animation = str(self.department_animation.id)
