@@ -249,15 +249,19 @@ class SharedFilterMixin:
         self.put(path, {"name": "used by the artist"}, 400)
         self.put(path, {"name": "used by the admin"})
 
-    def test_a_new_name_is_checked_where_the_body_moves_the_row(self):
-        project_id = self.project_id
+    def test_a_new_name_is_checked_in_the_project_of_the_row(self):
         row = self.create("mine")
+        self.create("used here")
         other_project_id = str(self.generate_fixture_project("Other").id)
-        self.create("wip", project_id=other_project_id)
+        self.create("used elsewhere", project_id=other_project_id)
 
         path = f"{self.path}{row['id']}"
-        self.put(path, {"name": "wip", "project_id": other_project_id}, 400)
-        self.put(path, {"name": "wip", "project_id": project_id})
+        self.put(
+            path, {"name": "used here", "project_id": other_project_id}, 400
+        )
+        self.put(
+            path, {"name": "used elsewhere", "project_id": other_project_id}
+        )
 
     def test_a_new_name_stays_free_in_the_other_lists(self):
         self.create("used in shots", list_type="shot")
@@ -268,19 +272,32 @@ class SharedFilterMixin:
         self.put(path, {"name": "used in shots"})
         self.put(path, {"name": "used on shot tasks"})
 
-    def test_moving_a_row_onto_a_name_of_the_target_list_is_refused(self):
+    def test_another_project_leaves_a_row_where_it_is(self):
+        project_id = self.project_id
+        row = self.create("wip")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": other_project_id}
+        )
+
+        self.assertEqual(updated["project_id"], project_id)
+        self.assertEqual(str(self.model.get(row["id"]).project_id), project_id)
+
+    def test_another_project_holding_the_name_changes_nothing(self):
+        project_id = self.project_id
         row = self.create("wip")
         other_project_id = str(self.generate_fixture_project("Other").id)
         self.create("wip", project_id=other_project_id)
 
-        path = f"{self.path}{row['id']}"
-        self.put(path, {"project_id": other_project_id}, 400)
-        self.put(path, {"name": "wip", "project_id": other_project_id}, 400)
+        updated = self.put(
+            f"{self.path}{row['id']}",
+            {"name": "wip", "project_id": other_project_id},
+        )
 
-        stored = self.get(f"{self.detail_path}{row['id']}")
-        self.assertEqual(stored["project_id"], row["project_id"])
+        self.assertEqual(updated["project_id"], project_id)
 
-    def test_moving_a_row_without_a_project_is_checked_too(self):
+    def test_another_project_leaves_a_row_out_of_any_production(self):
         """
         Kitsu used to send the current production for the lists out of any
         production, which moved their rows.
@@ -288,9 +305,11 @@ class SharedFilterMixin:
         row = self.create("wip", project_id=None)
         self.create("wip")
 
-        self.put(
-            f"{self.path}{row['id']}", {"project_id": self.project_id}, 400
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": self.project_id}
         )
+
+        self.assertIsNone(updated["project_id"])
 
     def test_a_null_project_leaves_a_row_where_it_is(self):
         """
@@ -311,16 +330,6 @@ class SharedFilterMixin:
             f"{self.path}{in_project['id']}", {"project_id": None}
         )
         self.assertEqual(updated["project_id"], self.project_id)
-
-    def test_moving_a_row_where_its_name_is_free_is_accepted(self):
-        row = self.create("wip")
-        other_project_id = str(self.generate_fixture_project("Other").id)
-
-        updated = self.put(
-            f"{self.path}{row['id']}", {"project_id": other_project_id}
-        )
-
-        self.assertEqual(updated["project_id"], other_project_id)
 
     def test_a_row_can_keep_a_name_it_already_shares(self):
         """
@@ -346,25 +355,20 @@ class SharedFilterMixin:
             self.path, self.payload("wip", project_id=self.unknown_id), 404
         )
 
-    def test_moving_a_row_to_a_project_of_no_row_is_refused(self):
+    def test_an_update_ignores_a_project_of_no_row(self):
         row = self.create("wip")
 
-        self.put(
-            f"{self.path}{row['id']}", {"project_id": self.unknown_id}, 404
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": self.unknown_id}
         )
-        self.assertEqual(
-            str(self.model.get(row["id"]).project_id), self.project_id
-        )
+
+        self.assertEqual(updated["project_id"], self.project_id)
 
     def test_an_artist_gets_the_same_answer_for_a_project_of_no_row(self):
         self.log_in_cg_artist()
-        row = self.create("wip", project_id=None)
 
         self.post(
             self.path, self.payload("new", project_id=self.unknown_id), 404
-        )
-        self.put(
-            f"{self.path}{row['id']}", {"project_id": self.unknown_id}, 404
         )
 
     def test_a_department_of_no_row_is_refused(self):
@@ -506,28 +510,47 @@ class SharedFilterMixin:
 
     def test_a_row_shared_for_the_first_time_takes_its_department(self):
         department_id = str(self.department.id)
-        project_id = self.project_id
         self.generate_fixture_user_manager()
-        projects_service.add_team_member(project_id, self.user_manager["id"])
-        other_project_id = str(self.generate_fixture_project("Other").id)
-        self.log_in_admin()
-        row = self.create("wip", project_id=other_project_id)
-        self.model.get(row["id"]).update(
-            {"person_id": self.user_manager["id"]}
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
         )
         self.log_in_manager()
+        row = self.create("wip")
 
         self.put(
             f"{self.path}{row['id']}",
-            {
-                "is_shared": True,
-                "project_id": project_id,
-                "department_id": department_id,
-            },
+            {"is_shared": True, "department_id": department_id},
         )
 
         self.assertTrue(self.model.get(row["id"]).is_shared)
         self.assertEqual(self.department_of(row["id"]), department_id)
+
+    def test_naming_a_project_of_the_caller_does_not_share_the_row(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        row = self.create("wip")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        projects_service.add_team_member(
+            other_project_id, self.user_manager["id"]
+        )
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {"is_shared": True, "project_id": other_project_id},
+        )
+
+        self.assertFalse(self.model.get(row["id"]).is_shared)
+
+    def test_naming_a_project_does_not_share_a_row_out_of_any_production(self):
+        row = self.create("wip", project_id=None)
+
+        updated = self.put(
+            f"{self.path}{row['id']}",
+            {"is_shared": True, "project_id": self.project_id},
+        )
+
+        self.assertFalse(updated["is_shared"])
+        self.assertIsNone(updated["project_id"])
 
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
@@ -739,7 +762,7 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     def test_changing_group_under_the_same_name_is_accepted(self):
         """
         A duplicate made by taking a filter out of a group or by putting it
-        in one does no harm: only a new name or a new project is checked.
+        in one does no harm: only a new name is checked.
         """
         group_id = self.a_group()["id"]
         self.create("wip")

@@ -10004,12 +10004,12 @@
           {
             "lang": "bash",
             "label": "curl",
-            "source": "curl -X PUT \"http://api.example.com/data/user/filters/a24a6ea4-ce75-4665-a070-57453082c25\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Updated Filter Name\",\n  \"search_query\": \"{\\\"status\\\": \\\"active\\\"}\",\n  \"search_filter_group_id\": \"b35b7fb5-df86-5776-b181-68564193d36\",\n  \"is_shared\": true,\n  \"project_id\": \"c46c8gc6-eg97-6887-c292-79675204e47\",\n  \"department_id\": \"d57d9hd7-fh08-7998-d403-80786315f58\"\n}'"
+            "source": "curl -X PUT \"http://api.example.com/data/user/filters/a24a6ea4-ce75-4665-a070-57453082c25\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Updated Filter Name\",\n  \"search_query\": \"{\\\"status\\\": \\\"active\\\"}\",\n  \"search_filter_group_id\": \"b35b7fb5-df86-5776-b181-68564193d36\",\n  \"is_shared\": true,\n  \"department_id\": \"d57d9hd7-fh08-7998-d403-80786315f58\"\n}'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"http://api.example.com/data/user/filters/a24a6ea4-ce75-4665-a070-57453082c25\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"name\": \"Updated Filter Name\",\n    \"search_query\": \"{\\\"status\\\": \\\"active\\\"}\",\n    \"search_filter_group_id\": \"b35b7fb5-df86-5776-b181-68564193d36\",\n    \"is_shared\": true,\n    \"project_id\": \"c46c8gc6-eg97-6887-c292-79675204e47\",\n    \"department_id\": \"d57d9hd7-fh08-7998-d403-80786315f58\"\n}\n\nresponse = requests.put(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
+            "source": "import requests\n\nurl = \"http://api.example.com/data/user/filters/a24a6ea4-ce75-4665-a070-57453082c25\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"name\": \"Updated Filter Name\",\n    \"search_query\": \"{\\\"status\\\": \\\"active\\\"}\",\n    \"search_filter_group_id\": \"b35b7fb5-df86-5776-b181-68564193d36\",\n    \"is_shared\": true,\n    \"department_id\": \"d57d9hd7-fh08-7998-d403-80786315f58\"\n}\n\nresponse = requests.put(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
           }
         ]
       }
@@ -10078,12 +10078,12 @@
           {
             "lang": "bash",
             "label": "curl",
-            "source": "curl -X PUT \"http://api.example.com/data/user/filter-groups/a24a6ea4-ce75-4665-a070-57453082c25\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Updated Filter Group\",\n  \"color\": \"#00FF00\",\n  \"is_shared\": true,\n  \"project_id\": \"b35b7fb5-df86-5776-b181-68564193d36\",\n  \"department_id\": \"c46c8gc6-eg97-6887-c292-79675204e47\"\n}'"
+            "source": "curl -X PUT \"http://api.example.com/data/user/filter-groups/a24a6ea4-ce75-4665-a070-57453082c25\" \\\n  -H \"Authorization: Bearer YOUR_API_TOKEN\" \\\n  -H \"Accept: application/json\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Updated Filter Group\",\n  \"color\": \"#00FF00\",\n  \"is_shared\": true,\n  \"department_id\": \"c46c8gc6-eg97-6887-c292-79675204e47\"\n}'"
           },
           {
             "lang": "python",
             "label": "Python",
-            "source": "import requests\n\nurl = \"http://api.example.com/data/user/filter-groups/a24a6ea4-ce75-4665-a070-57453082c25\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"name\": \"Updated Filter Group\",\n    \"color\": \"#00FF00\",\n    \"is_shared\": true,\n    \"project_id\": \"b35b7fb5-df86-5776-b181-68564193d36\",\n    \"department_id\": \"c46c8gc6-eg97-6887-c292-79675204e47\"\n}\n\nresponse = requests.put(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
+            "source": "import requests\n\nurl = \"http://api.example.com/data/user/filter-groups/a24a6ea4-ce75-4665-a070-57453082c25\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_API_TOKEN\",\n    \"Accept\": \"application/json\",\n    \"Content-Type\": \"application/json\"\n}\nparams = {}\npayload = {\n    \"name\": \"Updated Filter Group\",\n    \"color\": \"#00FF00\",\n    \"is_shared\": true,\n    \"department_id\": \"c46c8gc6-eg97-6887-c292-79675204e47\"\n}\n\nresponse = requests.put(\n    url,\n    headers=headers,\n    params=params,\n    json=payload\n)\n\nresponse.raise_for_status()\n\nif response.content:\n    print(response.json())"
           }
         ]
       }

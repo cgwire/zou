@@ -167,7 +167,7 @@ def update_filter(search_filter_id, data):
         raise SearchFilterNotFoundException
 
     _check_project_and_department_exist(
-        data.get("project_id"), data.get("department_id")
+        department_id=data.get("department_id")
     )
     _deny_sharing_without_manager_access(data, search_filter)
 
@@ -373,7 +373,7 @@ def update_filter_group(search_filter_group_id, data):
         raise SearchFilterGroupNotFoundException
 
     _check_project_and_department_exist(
-        data.get("project_id"), data.get("department_id")
+        department_id=data.get("department_id")
     )
     _deny_sharing_without_manager_access(data, search_filter_group)
     _check_new_name_is_free(search_filter_group, data)
@@ -479,29 +479,27 @@ def clear_filter_cache(user_id=None):
 def _deny_sharing_without_manager_access(data, instance):
     """
     Silently turn off a sharing request the caller is not allowed to make:
-    sharing is a per project manager privilege, and a filter without a
-    project cannot be shared at all. The department of a row that stays
-    shared tells who it reaches, so changing it takes the same privilege, on
-    the project of the row. Mutates data in place.
+    sharing is a manager privilege on the project of the row, and a filter
+    without a project cannot be shared at all. The department of a row that
+    stays shared tells who it reaches, so changing it takes the same
+    privilege. Mutates data in place.
     """
+    if permissions_service.can_share_filter(instance.project_id):
+        return
     if (
         data.get("is_shared", None) is not None
         and instance.is_shared != data["is_shared"]
-        and not permissions_service.can_share_filter(
-            data.get("project_id", None)
-        )
     ):
         data["is_shared"] = False
     if (
         "department_id" in data
         and instance.is_shared
         and data.get("is_shared", True)
-        and not permissions_service.can_share_filter(instance.project_id)
     ):
         del data["department_id"]
 
 
-def _check_project_and_department_exist(project_id, department_id):
+def _check_project_and_department_exist(project_id=None, department_id=None):
     """
     Raise a not found exception for a project or a department of no row, which
     would otherwise reach a foreign key and end in an internal error.
@@ -526,19 +524,18 @@ def _check_name_is_free(model, name, **list_scope):
 
 def _check_new_name_is_free(instance, data, **group_scope):
     """
-    Same check for an update, which can change the name of the row as well
-    as its project. A row keeping both passes, even when it changes group,
-    so the ones saved before this rule stay editable.
+    Same check for an update, which can change the name of the row. A row
+    keeping it passes, even when it changes group, so the ones saved before
+    this rule stay editable.
     """
     name = data.get("name", instance.name)
-    project_id = data.get("project_id", instance.project_id)
-    if name != instance.name or str(project_id) != str(instance.project_id):
+    if name != instance.name:
         _check_name_is_free(
             type(instance),
             name,
             list_type=instance.list_type,
             entity_type=instance.entity_type,
-            project_id=project_id,
+            project_id=instance.project_id,
             person_id=instance.person_id,
             **group_scope,
         )

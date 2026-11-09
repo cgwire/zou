@@ -759,17 +759,16 @@ FilterGroupResource_get:
 FilterGroupResource_put:
   summary: Update a filter group
   description: Update a filter group. The group must be yours. An
-    administrator can update the groups of all the users. Another project_id
-    moves the group, without its filters, to this project. A null project_id
-    changes nothing. A null department_id removes the department. If the
-    department changes, the filters of the group on the former one follow it.
-    After a new name or a move, the name must be free among the groups of the
-    owner with the same list_type, entity_type, and project_id. To set
-    is_shared to true, give project_id in the body too. You must be a manager
-    of this project, or an administrator. Otherwise is_shared is set to false.
-    A change of department on a group that stays shared needs the same role,
-    on the project of the group. Otherwise it is ignored. If you change
-    is_shared, the filters of the group take the same value.
+    administrator can update the groups of all the users. The group stays in
+    its project. A project_id in the body is ignored. A null department_id
+    removes the department. If the department changes, the filters of the
+    group on the former one follow it. A new name must be free among the groups
+    of the owner with the same list_type, entity_type, and project_id. To set
+    is_shared to true, the group must have a project, and you must be a manager
+    of this project or an administrator. Otherwise is_shared is set to false. A
+    change of department on a group that stays shared needs the same role.
+    Otherwise it is ignored. If you change is_shared, the filters of the group
+    take the same value.
   tags:
     - User
   parameters:
@@ -803,11 +802,6 @@ FilterGroupResource_put:
               type: boolean
               description: Whether to share this filter group
               example: true
-            project_id:
-              type: string
-              format: uuid
-              description: Project identifier
-              example: b35b7fb5-df86-5776-b181-68564193d360
             department_id:
               type: string
               format: uuid
@@ -869,7 +863,7 @@ FilterGroupResource_put:
       description: You use a bot token
     404:
       description: You have no filter group with this identifier, or the
-        project or the department does not exist
+        department does not exist
 
 FilterGroupsResource_get:
   summary: Get my filter groups
@@ -1076,16 +1070,15 @@ FilterResource_delete:
 FilterResource_put:
   summary: Update a filter
   description: Update a filter. The filter must be yours. An administrator can
-    update the filters of all the users. Another project_id moves the filter
-    to this project. A null project_id changes nothing. A null department_id
-    removes the department. After a new name or a move, the name must be free
-    among the filters of the owner with the same list_type, entity_type,
-    project_id, and search_filter_group_id. To set is_shared to true, give
-    project_id in the body too. You must be a manager of this project, or an
-    administrator. Otherwise is_shared is set to false. A change of department
-    on a filter that stays shared needs the same role, on the project of the
-    filter. Otherwise it is ignored. If the filter is in a group, is_shared
-    must keep the value of the group.
+    update the filters of all the users. The filter stays in its project. A
+    project_id in the body is ignored. A null department_id removes the
+    department. A new name must be free among the filters of the owner with the
+    same list_type, entity_type, project_id, and search_filter_group_id. To set
+    is_shared to true, the filter must have a project, and you must be a
+    manager of this project or an administrator. Otherwise is_shared is set to
+    false. A change of department on a filter that stays shared needs the same
+    role. Otherwise it is ignored. If the filter is in a group, is_shared must
+    keep the value of the group.
   tags:
     - User
   parameters:
@@ -1125,11 +1118,6 @@ FilterResource_put:
               type: boolean
               description: Whether to share this filter
               example: true
-            project_id:
-              type: string
-              format: uuid
-              description: Project identifier
-              example: c46c80c6-e097-6887-c292-79675204e470
             department_id:
               type: string
               format: uuid
@@ -1190,8 +1178,8 @@ FilterResource_put:
     403:
       description: You use a bot token
     404:
-      description: You have no filter with this identifier, or the project,
-        the filter group, or the department does not exist
+      description: You have no filter with this identifier, or the filter
+        group or the department does not exist
 
 FiltersResource_get:
   summary: Get my filters

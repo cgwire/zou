@@ -339,8 +339,7 @@ class SearchFilterGroupTestCase(SavedSearchTestCase):
             group = self.a_group()
 
             shared = search_filters_service.update_filter_group(
-                group["id"],
-                {"is_shared": True, "project_id": self.project_id},
+                group["id"], {"is_shared": True}
             )
         self.assertFalse(shared["is_shared"])
 
@@ -353,8 +352,7 @@ class SearchFilterGroupTestCase(SavedSearchTestCase):
             )
 
             search_filters_service.update_filter_group(
-                group["id"],
-                {"is_shared": True, "project_id": self.project_id},
+                group["id"], {"is_shared": True}
             )
         self.assertEqual(self.sharings(group, search_filter), (True, True))
 
