@@ -317,6 +317,8 @@ class FilterResource(MethodView, ArgsMixin):
         data = body.model_dump(exclude_none=True)
         if "search_filter_group_id" in (body.model_fields_set or set()):
             data["search_filter_group_id"] = body.search_filter_group_id
+        if "department_id" in (body.model_fields_set or set()):
+            data["department_id"] = body.department_id
         user_filter = search_filters_service.update_filter(filter_id, data)
         return user_filter, 200
 
@@ -374,6 +376,8 @@ class FilterGroupResource(MethodView, ArgsMixin):
         """
         body = validation.validate_request_body(UpdateSearchFilterGroupSchema)
         data = body.model_dump(exclude_none=True)
+        if "department_id" in (body.model_fields_set or set()):
+            data["department_id"] = body.department_id
         user_filter = search_filters_service.update_filter_group(
             filter_group_id, data
         )

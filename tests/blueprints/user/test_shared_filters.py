@@ -47,6 +47,12 @@ class SharedFilterMixin:
         assertions do not depend on the order the route happens to return.
         """
         self.clear_cache()
+        return self.listed_names()
+
+    def listed_names(self):
+        """
+        The same names as the route gives them now, memoized or not.
+        """
         result = self.get(self.path)
         if not result:
             return []
@@ -369,6 +375,38 @@ class SharedFilterMixin:
             f"{self.path}{row['id']}", {"department_id": self.unknown_id}, 404
         )
         self.assertIsNone(self.model.get(row["id"]).department_id)
+
+    def test_a_null_department_opens_the_row_to_the_team(self):
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        self.create("team", is_shared=True)
+        # The artist belongs to self.department, not to this one.
+        scoped = self.create(
+            "department",
+            is_shared=True,
+            department_id=str(self.department_animation.id),
+        )
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["team"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{scoped['id']}", {"department_id": None})
+
+        self.assertIsNone(self.model.get(scoped["id"]).department_id)
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), ["department", "team"])
+
+    def test_a_body_without_a_department_keeps_it(self):
+        row = self.create(
+            "wip", is_shared=True, department_id=str(self.department.id)
+        )
+
+        self.put(f"{self.path}{row['id']}", {"name": "renamed"})
+
+        self.assertEqual(
+            str(self.model.get(row["id"]).department_id),
+            str(self.department.id),
+        )
 
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):

@@ -761,12 +761,12 @@ FilterGroupResource_put:
   description: Update a filter group. The group must be yours. An
     administrator can update the groups of all the users. Another project_id
     moves the group, without its filters, to this project. A null project_id
-    changes nothing. After a new name or a move, the name must be free among
-    the groups of the owner with the same list_type, entity_type, and
-    project_id. To set is_shared to true, give project_id in the body too. You
-    must be a manager of this project, or an administrator. Otherwise is_shared
-    is set to false. If you change is_shared, the filters of the group take the
-    same value.
+    changes nothing. A null department_id removes the department. After a new
+    name or a move, the name must be free among the groups of the owner with
+    the same list_type, entity_type, and project_id. To set is_shared to true,
+    give project_id in the body too. You must be a manager of this project, or
+    an administrator. Otherwise is_shared is set to false. If you change
+    is_shared, the filters of the group take the same value.
   tags:
     - User
   parameters:
@@ -808,6 +808,7 @@ FilterGroupResource_put:
             department_id:
               type: string
               format: uuid
+              nullable: true
               description: Department identifier
               example: c46c80c6-e097-6887-c292-79675204e470
   responses:
@@ -1073,12 +1074,13 @@ FilterResource_put:
   summary: Update a filter
   description: Update a filter. The filter must be yours. An administrator can
     update the filters of all the users. Another project_id moves the filter
-    to this project. A null project_id changes nothing. After a new name or a
-    move, the name must be free among the filters of the owner with the same
-    list_type, entity_type, project_id, and search_filter_group_id. To set
-    is_shared to true, give project_id in the body too. You must be a manager
-    of this project, or an administrator. Otherwise is_shared is set to false.
-    If the filter is in a group, is_shared must keep the value of the group.
+    to this project. A null project_id changes nothing. A null department_id
+    removes the department. After a new name or a move, the name must be free
+    among the filters of the owner with the same list_type, entity_type,
+    project_id, and search_filter_group_id. To set is_shared to true, give
+    project_id in the body too. You must be a manager of this project, or an
+    administrator. Otherwise is_shared is set to false. If the filter is in a
+    group, is_shared must keep the value of the group.
   tags:
     - User
   parameters:
@@ -1126,6 +1128,7 @@ FilterResource_put:
             department_id:
               type: string
               format: uuid
+              nullable: true
               description: Department identifier
               example: d57d91d7-f108-7998-d403-80786315f580
   responses:
