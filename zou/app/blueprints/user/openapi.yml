@@ -1596,8 +1596,8 @@ NotificationResource_get:
               created_at:
                 type: string
                 format: date-time
-                description: Creation timestamp
-                example: '2023-01-01T12:00:00Z'
+                description: Creation timestamp, with its microseconds
+                example: '2023-01-01T12:00:00.123456'
               updated_at:
                 type: string
                 format: date-time
@@ -1708,9 +1708,11 @@ NotificationsResource_get:
       required: false
       schema:
         type: string
-        format: date
-      description: Get the notifications before this date
-      example: '2023-12-31'
+        format: date-time
+      description: Get the notifications before this date, which can hold a
+        time. Give the created_at of the last notification of a page to get
+        the next page.
+      example: '2023-12-31T12:00:00.123456'
     - in: query
       name: task_type_id
       required: false
@@ -1792,8 +1794,8 @@ NotificationsResource_get:
                 created_at:
                   type: string
                   format: date-time
-                  description: Creation timestamp
-                  example: '2023-01-01T12:00:00Z'
+                  description: Creation timestamp, with its microseconds
+                  example: '2023-01-01T12:00:00.123456'
                 updated_at:
                   type: string
                   format: date-time

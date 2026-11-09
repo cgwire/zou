@@ -1,6 +1,9 @@
+import datetime
+
 import orjson as json
 
 from tests.base import ApiDBTestCase
+from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -758,6 +761,60 @@ class UserNotificationTestCase(UserContextTestCase):
         self.assertEqual(
             notification_again["full_entity_name"], "Props / Tree"
         )
+
+    def create_assignations(self, dates):
+        return [
+            str(
+                Notification.create(
+                    person_id=self.user_id,
+                    author_id=self.person.id,
+                    task_id=self.task.id,
+                    type="assignation",
+                    created_at=date,
+                ).id
+            )
+            for date in dates
+        ]
+
+    def test_the_pages_of_notifications_reach_every_row(self):
+        """
+        A page starts before the date of the last row of the previous one.
+        Tasks assigned in one batch share a second: the rows of that second
+        left out of a page must come with the next one.
+        """
+        batch_second = datetime.datetime(2026, 1, 1, 12, 0, 0)
+        ids = self.create_assignations(
+            [
+                batch_second + datetime.timedelta(seconds=index)
+                for index in range(1, 99)
+            ]
+            + [
+                batch_second + datetime.timedelta(microseconds=index)
+                for index in range(5)
+            ]
+        )
+
+        page = self.get("/data/user/notifications")
+        self.assertEqual(len(page), 100)
+        next_page = self.get(
+            f"/data/user/notifications?before={page[-1]['created_at']}"
+        )
+
+        self.assertCountEqual([row["id"] for row in page + next_page], ids)
+
+    def test_a_notification_date_keeps_its_format_on_a_round_second(self):
+        """
+        The clients sort these dates as strings, so they all need one format.
+        """
+        (notification_id,) = self.create_assignations(
+            [datetime.datetime(2026, 1, 1, 12, 0, 0)]
+        )
+        date = "2026-01-01T12:00:00.000000"
+
+        (notification,) = self.get("/data/user/notifications")
+        self.assertEqual(notification["created_at"], date)
+        notification = self.get(f"/data/user/notifications/{notification_id}")
+        self.assertEqual(notification["created_at"], date)
 
     def test_mark_all_notifications_as_read(self):
         tasks_service.assign_task(self.task.id, self.user_id)

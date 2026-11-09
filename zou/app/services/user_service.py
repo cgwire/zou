@@ -724,7 +724,11 @@ def _serialize_notification(
             "project_name": project_name,
             "comment_text": comment_text,
             "reply_text": reply_text,
-            "created_at": notification.created_at,
+            # Exact: the clients send it back as "before" for the next page,
+            # and cut to the second it would skip the rest of that second.
+            "created_at": fields.serialize_value(
+                notification.created_at, milliseconds=True
+            ),
             "read": notification.read,
             "change": notification.change,
             "full_entity_name": full_entity_name,
