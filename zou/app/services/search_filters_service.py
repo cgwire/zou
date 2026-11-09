@@ -378,7 +378,22 @@ def update_filter_group(search_filter_group_id, data):
     _deny_sharing_without_manager_access(data, search_filter_group)
     _check_new_name_is_free(search_filter_group, data)
 
+    former_department_id = search_filter_group.department_id
     search_filter_group.update(data)
+
+    if str(search_filter_group.department_id) != str(former_department_id):
+        # The filters on the department of the group follow it: left there,
+        # they would leave the group empty for those it reaches now. A filter
+        # set on another department stays on it.
+        if (
+            SearchFilter.query.filter_by(
+                search_filter_group_id=search_filter_group_id,
+                department_id=former_department_id,
+            ).update({"department_id": search_filter_group.department_id})
+            > 0
+        ):
+            SearchFilter.query.session.commit()
+            clear_filter_cache()
 
     if data.get("is_shared", None) is not None:
         # The group carries the authorized value by now, since

@@ -58,6 +58,10 @@ class SharedFilterMixin:
             return []
         return sorted(f["name"] for f in result["asset"][self.project_id])
 
+    def department_of(self, row_id):
+        department_id = self.model.get(row_id).department_id
+        return department_id and str(department_id)
+
     def put_join_the_team_and_the_department(self):
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
@@ -447,6 +451,124 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
                 "project_id": self.project_id,
             },
         )
+
+    def a_shared_group_with_a_filter(
+        self, group_department, filter_department
+    ):
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        group = self.post(
+            "data/user/filter-groups/",
+            {
+                "list_type": "asset",
+                "name": "group",
+                "project_id": self.project_id,
+                "is_shared": True,
+                "department_id": group_department,
+            },
+        )
+        row = self.create(
+            "wip",
+            is_shared=True,
+            search_filter_group_id=group["id"],
+            department_id=filter_department,
+        )
+        return f"data/user/filter-groups/{group['id']}", row["id"]
+
+    def test_a_filter_follows_its_group_to_a_new_department(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+
+        self.put(group_path, {"department_id": str(self.department.id)})
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department.id)
+        )
+
+    def test_a_filter_follows_its_group_into_a_first_department(self):
+        group_path, filter_id = self.a_shared_group_with_a_filter(None, None)
+
+        self.put(group_path, {"department_id": str(self.department.id)})
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department.id)
+        )
+
+    def test_a_filter_follows_its_group_out_of_its_department(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+        # The artist belongs to self.department, not to this one. The listing
+        # stays memoized from here on: the update has to clear it.
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), [])
+
+        self.log_in_admin()
+        self.put(group_path, {"department_id": None})
+
+        self.assertIsNone(self.department_of(filter_id))
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), ["wip"])
+
+    def test_a_filter_leaves_the_department_of_a_group_no_longer_shared(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+
+        self.put(group_path, {"is_shared": False, "department_id": None})
+
+        row = SearchFilter.get(filter_id)
+        self.assertFalse(row.is_shared)
+        self.assertIsNone(row.department_id)
+
+    def test_a_filter_on_another_department_stays_on_it(self):
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            str(self.department_animation.id), str(self.department.id)
+        )
+
+        self.put(group_path, {"department_id": None})
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department.id)
+        )
+
+    def test_a_filter_of_another_group_keeps_its_department(self):
+        animation = str(self.department_animation.id)
+        group_path, _ = self.a_shared_group_with_a_filter(animation, animation)
+        other_group = self.post(
+            "data/user/filter-groups/",
+            {
+                "list_type": "asset",
+                "name": "other group",
+                "project_id": self.project_id,
+                "is_shared": True,
+                "department_id": animation,
+            },
+        )
+        other = self.create(
+            "other",
+            is_shared=True,
+            search_filter_group_id=other_group["id"],
+            department_id=animation,
+        )
+
+        self.put(group_path, {"department_id": None})
+
+        self.assertEqual(self.department_of(other["id"]), animation)
+
+    def test_a_filter_keeps_its_department_when_its_group_keeps_its_own(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+
+        self.put(group_path, {"name": "renamed"})
+
+        self.assertEqual(self.department_of(filter_id), animation)
 
     def test_a_name_used_in_the_group_is_refused(self):
         group_id = self.a_group()["id"]

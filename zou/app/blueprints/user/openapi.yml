@@ -761,12 +761,13 @@ FilterGroupResource_put:
   description: Update a filter group. The group must be yours. An
     administrator can update the groups of all the users. Another project_id
     moves the group, without its filters, to this project. A null project_id
-    changes nothing. A null department_id removes the department. After a new
-    name or a move, the name must be free among the groups of the owner with
-    the same list_type, entity_type, and project_id. To set is_shared to true,
-    give project_id in the body too. You must be a manager of this project, or
-    an administrator. Otherwise is_shared is set to false. If you change
-    is_shared, the filters of the group take the same value.
+    changes nothing. A null department_id removes the department. If the
+    department changes, the filters of the group on the former one follow it.
+    After a new name or a move, the name must be free among the groups of the
+    owner with the same list_type, entity_type, and project_id. To set
+    is_shared to true, give project_id in the body too. You must be a manager
+    of this project, or an administrator. Otherwise is_shared is set to false.
+    If you change is_shared, the filters of the group take the same value.
   tags:
     - User
   parameters:
