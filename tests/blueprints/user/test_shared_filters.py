@@ -412,6 +412,123 @@ class SharedFilterMixin:
             str(self.department.id),
         )
 
+    def a_shared_row_of(self, person, department_id):
+        """
+        Sharing takes a manager, but the owner can lose that role afterwards.
+        """
+        self.log_in_admin()
+        row = self.create("wip", is_shared=True, department_id=department_id)
+        self.model.get(row["id"]).update({"person_id": person["id"]})
+        return f"{self.path}{row['id']}", row["id"]
+
+    def test_a_department_change_is_ignored_without_the_right_to_share(self):
+        animation = str(self.department_animation.id)
+        self.put_join_the_team_and_the_department()
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, animation)
+        self.log_in_cg_artist()
+
+        self.put(path, {"department_id": None})
+        self.assertEqual(self.department_of(row_id), animation)
+
+        self.put(path, {"department_id": str(self.department.id)})
+        self.assertEqual(self.department_of(row_id), animation)
+
+        # The whole form, as Kitsu sends it.
+        self.put(
+            path,
+            {
+                "is_shared": True,
+                "project_id": self.project_id,
+                "department_id": None,
+            },
+        )
+        self.assertEqual(self.department_of(row_id), animation)
+
+    def test_the_rest_of_a_body_applies_without_the_right_to_share(self):
+        animation = str(self.department_animation.id)
+        self.put_join_the_team_and_the_department()
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, animation)
+        self.log_in_cg_artist()
+
+        self.put(path, {"name": "renamed", "department_id": None})
+
+        self.assertEqual(self.model.get(row_id).name, "renamed")
+        self.assertEqual(self.department_of(row_id), animation)
+
+    def test_unsharing_drops_the_department_without_the_right_to_share(self):
+        animation = str(self.department_animation.id)
+        self.put_join_the_team_and_the_department()
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, animation)
+        self.log_in_cg_artist()
+
+        self.put(path, {"is_shared": False, "department_id": None})
+
+        self.assertFalse(self.model.get(row_id).is_shared)
+        self.assertIsNone(self.department_of(row_id))
+
+    def test_a_private_row_takes_a_department_without_the_right_to_share(self):
+        department_id = str(self.department.id)
+        self.put_join_the_team_and_the_department()
+        self.log_in_cg_artist()
+        row = self.create("wip")
+
+        self.put(f"{self.path}{row['id']}", {"department_id": department_id})
+
+        self.assertEqual(self.department_of(row["id"]), department_id)
+
+    def test_a_manager_of_the_project_changes_the_department(self):
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        path, row_id = self.a_shared_row_of(
+            self.user_manager, str(self.department_animation.id)
+        )
+        self.log_in_manager()
+
+        self.put(path, {"department_id": None})
+
+        self.assertIsNone(self.department_of(row_id))
+
+    def test_naming_a_project_of_the_caller_gives_no_right_on_the_row(self):
+        animation = str(self.department_animation.id)
+        self.generate_fixture_user_manager()
+        path, row_id = self.a_shared_row_of(self.user_manager, animation)
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        projects_service.add_team_member(
+            other_project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+
+        self.put(path, {"project_id": other_project_id, "department_id": None})
+
+        self.assertEqual(self.department_of(row_id), animation)
+
+    def test_a_row_shared_for_the_first_time_takes_its_department(self):
+        department_id = str(self.department.id)
+        project_id = self.project_id
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(project_id, self.user_manager["id"])
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        self.log_in_admin()
+        row = self.create("wip", project_id=other_project_id)
+        self.model.get(row["id"]).update(
+            {"person_id": self.user_manager["id"]}
+        )
+        self.log_in_manager()
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {
+                "is_shared": True,
+                "project_id": project_id,
+                "department_id": department_id,
+            },
+        )
+
+        self.assertTrue(self.model.get(row["id"]).is_shared)
+        self.assertEqual(self.department_of(row["id"]), department_id)
+
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filters/"

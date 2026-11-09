@@ -480,7 +480,9 @@ def _deny_sharing_without_manager_access(data, instance):
     """
     Silently turn off a sharing request the caller is not allowed to make:
     sharing is a per project manager privilege, and a filter without a
-    project cannot be shared at all. Mutates data in place.
+    project cannot be shared at all. The department of a row that stays
+    shared tells who it reaches, so changing it takes the same privilege, on
+    the project of the row. Mutates data in place.
     """
     if (
         data.get("is_shared", None) is not None
@@ -490,6 +492,13 @@ def _deny_sharing_without_manager_access(data, instance):
         )
     ):
         data["is_shared"] = False
+    if (
+        "department_id" in data
+        and instance.is_shared
+        and data.get("is_shared", True)
+        and not permissions_service.can_share_filter(instance.project_id)
+    ):
+        del data["department_id"]
 
 
 def _check_project_and_department_exist(project_id, department_id):
