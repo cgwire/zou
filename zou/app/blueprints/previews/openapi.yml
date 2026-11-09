@@ -1123,6 +1123,70 @@ UpdateAnnotationsResource_put:
     404:
       description: The preview file does not exist
 
+UpdatePreviewTrimResource_put:
+  summary: Set the in/out handles of a preview
+  description: Set the in/out frames of a preview. The extra previews of a
+    revision have their own timeline and keep their own trim, the main
+    preview uses the handle_in and handle_out of the shot data. Only the
+    sent keys change, null clears a handle. Managers and supervisors
+    without departments can use this route, like for the trim of a shot.
+  tags:
+    - Previews
+  parameters:
+    - in: path
+      name: preview_file_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique identifier of the preview file
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            handle_in:
+              type: integer
+              minimum: 0
+              nullable: true
+              description: First frame of the trim, null to clear it
+              example: 12
+            handle_out:
+              type: integer
+              minimum: 0
+              nullable: true
+              description: Last frame of the trim, null to clear it
+              example: 48
+  responses:
+    200:
+      description: The trim of the preview
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Preview file unique identifier
+                example: a24a6ea4-ce75-4665-a070-57453082c250
+              handle_in:
+                type: integer
+                nullable: true
+                example: 12
+              handle_out:
+                type: integer
+                nullable: true
+                example: 48
+    400:
+      description: A handle is negative or is not an integer
+    403:
+      description: You cannot edit the trim of this shot
+    404:
+      description: The preview file does not exist
 UpdatePreviewPositionResource_put:
   summary: Change the position of a preview
   description: Change the position of a preview in its revision. A revision
