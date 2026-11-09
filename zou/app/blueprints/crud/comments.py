@@ -134,6 +134,19 @@ class CommentResource(BaseModelResource):
         ] != data.get("task_status_id", None):
             self.task_status_change = True
             self.previous_task_status_id = instance_dict["task_status_id"]
+        # By value: the edit form of Kitsu always sends the text back.
+        self.text_changed = (
+            data.get("text", instance_dict["text"]) != instance_dict["text"]
+        )
+        if self.text_changed:
+            # Those of the text before the edit, read like those of the new
+            # one: the stored mentions follow the team at every update.
+            self.previous_mentions = comments_service.get_text_mentions(
+                tasks_service.get_task(instance_dict["object_id"])[
+                    "project_id"
+                ],
+                instance_dict["text"],
+            )
         return data
 
     def post_update(self, instance_dict, data):
@@ -159,7 +172,12 @@ class CommentResource(BaseModelResource):
             )
 
         comments_service.clear_comment_cache(comment["id"])
-        notifications_service.reset_notifications_for_mentions(comment)
+        if self.text_changed:
+            notifications_service.reset_notifications_for_mentions(
+                comment,
+                persons_service.get_current_user()["id"],
+                self.previous_mentions,
+            )
         return comment
 
     def emit_update_event(self, instance_dict):

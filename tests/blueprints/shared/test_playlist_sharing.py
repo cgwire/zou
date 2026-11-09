@@ -9,6 +9,7 @@ import pytest
 from tests.base import TEST_FOLDER, ApiDBTestCase
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
+from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist, Playlist as PlaylistModel
 from zou.app.models.playlist_share_link import PlaylistShareLink
@@ -1202,6 +1203,90 @@ class GuestCommentTestCase(PlaylistSharingTestCase):
             json={"guest_id": guest["id"]},
         )
         self.assertEqual(response.status_code, 404)
+
+    def member_of_the_production(self, first_name):
+        """
+        A member of the production a comment can name, as @<first_name> Smith.
+        """
+        person = Person.create(
+            first_name=first_name,
+            last_name="Smith",
+            email=f"{first_name.lower()}.smith@example.com",
+        )
+        self.project.team.append(person)
+        self.project.save()
+        return person
+
+    def edit_guest_comment(self, link, guest, comment, data):
+        return self.put(
+            self.shared_path(link["token"], f"/comments/{comment['id']}"),
+            {"guest_id": guest["id"], **data},
+            200,
+        )
+
+    def mentioned_ids(self, comment):
+        return [
+            str(notification.person_id)
+            for notification in Notification.get_all_by(
+                type="mention", comment_id=comment["id"]
+            )
+        ]
+
+    def test_a_guest_renaming_a_mention_moves_its_notification(self):
+        self.member_of_the_production("Alice")
+        bob = self.member_of_the_production("Bob")
+        link, guest = self.guest_on_a_share_link()
+        comment = self.post_guest_comment(
+            link, guest, text="@Alice Smith please check"
+        )
+
+        self.edit_guest_comment(
+            link, guest, comment, {"text": "@Bob Smith please check"}
+        )
+
+        self.assertEqual(self.mentioned_ids(comment), [str(bob.id)])
+
+    def test_a_guest_ticking_a_checklist_notifies_nobody(self):
+        """
+        Kitsu sends the text back with each tick. Alice has no notification
+        any more, as after the cleanup of old data.
+        """
+        self.member_of_the_production("Alice")
+        link, guest = self.guest_on_a_share_link()
+        comment = self.post_guest_comment(
+            link, guest, text="@Alice Smith please check"
+        )
+        Notification.delete_all_by(type="mention", comment_id=comment["id"])
+
+        self.tick_a_checklist_item(link, guest, comment)
+
+        self.assertEqual(self.mentioned_ids(comment), [])
+
+    def test_a_tick_is_no_news_for_a_person_who_joined_since(self):
+        """
+        The comment named Alice before she joined the production: ticking its
+        checklist is no news for her.
+        """
+        link, guest = self.guest_on_a_share_link()
+        comment = self.post_guest_comment(
+            link, guest, text="@Alice Smith please check"
+        )
+        self.member_of_the_production("Alice")
+
+        self.tick_a_checklist_item(link, guest, comment)
+
+        self.assertEqual(self.mentioned_ids(comment), [])
+
+    def tick_a_checklist_item(self, link, guest, comment):
+        self.edit_guest_comment(
+            link,
+            guest,
+            comment,
+            {
+                "text": comment["text"],
+                "checklist": [{"text": "an item", "checked": True}],
+            },
+        )
 
 
 class SharedAvatarTestCase(PlaylistSharingTestCase):

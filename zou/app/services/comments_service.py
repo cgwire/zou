@@ -1133,6 +1133,19 @@ def get_comment_department_mention_ids(project_id, text):
     ]
 
 
+def get_text_mentions(project_id, text):
+    """
+    Return the people and departments given text mentions in the production
+    as it is now, shaped like the mentions of a comment dict.
+    """
+    return {
+        "mentions": get_comment_mention_ids(project_id, text),
+        "department_mentions": get_comment_department_mention_ids(
+            project_id, text
+        ),
+    }
+
+
 def get_comment_hashtags(text):
     """
     Check for task type mentions (#full name) in text and returns matching

@@ -345,6 +345,9 @@ def update_guest_comment(comment_id, guest_id, data, token):
         ):
             raise GuestCommentForbidden
     previous_status_id = instance.get("task_status_id")
+    # By value, as on the comment route: the guest panel of Kitsu sends the
+    # text back with each tick of the checklist.
+    text_changed = "text" in data and (data["text"] or "") != instance["text"]
 
     comment_row = Comment.get(comment_id)
     if "text" in data:
@@ -356,11 +359,10 @@ def update_guest_comment(comment_id, guest_id, data, token):
     comment_row.editor_id = guest_id
     comment_row.save()
 
-    # reset_mentions walks the mentions table; feed it the relations-loaded
-    # dict so it has the `mentions` / `department_mentions` keys it expects.
     comments_service.clear_comment_cache(comment_id)
-    updated = comments_service.get_comment(comment_id, relations=True)
-    comments_service.reset_mentions(updated)
+    updated = comments_service.reset_mentions(
+        comments_service.get_comment(comment_id)
+    )
 
     task_id = updated["object_id"]
     task = tasks_service.get_task(task_id)
@@ -377,12 +379,14 @@ def update_guest_comment(comment_id, guest_id, data, token):
             project_id=task["project_id"],
         )
     comments_service.clear_comment_cache(comment_id)
-    try:
-        notifications_service.reset_notifications_for_mentions(updated)
-    except KeyError:
-        # Some serialized dicts lack the `mentions` key; guest comments
-        # never carry mentions anyway, so ignore.
-        pass
+    if text_changed:
+        notifications_service.reset_notifications_for_mentions(
+            updated,
+            guest_id,
+            comments_service.get_text_mentions(
+                task["project_id"], instance["text"]
+            ),
+        )
     events.emit(
         "comment:update",
         {

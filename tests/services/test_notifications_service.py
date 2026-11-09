@@ -195,6 +195,23 @@ class CommentNotificationTestCase(NotificationsTestCase):
             ),
         )
 
+    def reset_after_edit(
+        self, editor_id, named_before=(), departments_before=()
+    ):
+        """
+        Align the mention notifications of self.comment after an edit made by
+        editor_id. Before the edit, its text named the people of named_before
+        and the departments of departments_before.
+        """
+        return notifications_service.reset_notifications_for_mentions(
+            self.comment,
+            editor_id,
+            {
+                "mentions": list(named_before),
+                "department_mentions": list(departments_before),
+            },
+        )
+
     def test_reset_notifications_for_mentions(self):
         """
         Editing a comment rebuilds the notifications its mentions raised,
@@ -206,7 +223,7 @@ class CommentNotificationTestCase(NotificationsTestCase):
         )
 
         self.comment["mentions"] = [self.assignee_id]
-        notifications_service.reset_notifications_for_mentions(self.comment)
+        self.reset_after_edit(self.admin_id, named_before=[self.outsider_id])
 
         self.assertEqual(
             self.kinds(),
@@ -232,9 +249,174 @@ class CommentNotificationTestCase(NotificationsTestCase):
             self.comment["id"], relations=True
         )
 
-        notifications_service.reset_notifications_for_mentions(comment)
+        notifications_service.reset_notifications_for_mentions(
+            comment, self.admin_id, comment
+        )
 
         self.assertEqual(self.kinds(), [("reply", self.admin_id)])
+
+    def test_a_person_still_mentioned_keeps_the_notification(self):
+        """
+        An edit of the text that still names a person has nothing new for
+        them: the notification stays as it is, read status included, with no
+        event and no email.
+        """
+        self.comment["mentions"] = [self.outsider_id]
+        notifications_service.create_notifications_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        mention = Notification.get_by(type="mention")
+        mention_id = mention.id
+        mention.update({"read": True})
+        created = self.capture_events("notification:new")
+
+        with patch.object(
+            notifications_service.emails_service,
+            "send_mention_notification",
+        ) as send_email:
+            self.reset_after_edit(
+                self.admin_id, named_before=[self.outsider_id]
+            )
+
+        mention = Notification.get_by(type="mention")
+        self.assertEqual(mention.id, mention_id)
+        self.assertTrue(mention.read)
+        self.assertEqual(created, [])
+        send_email.assert_not_called()
+
+    def test_only_a_person_newly_mentioned_hears_of_an_edit(self):
+        self.comment["mentions"] = [self.outsider_id]
+        notifications_service.create_notifications_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        created = self.capture_events("notification:new")
+
+        self.comment["mentions"] = [self.outsider_id, self.assignee_id]
+        with patch.object(
+            notifications_service.emails_service,
+            "send_mention_notification",
+        ) as send_email:
+            self.reset_after_edit(
+                self.admin_id, named_before=[self.outsider_id]
+            )
+
+        self.assertEqual(
+            self.kinds(),
+            sorted(
+                [
+                    ("comment", self.assignee_id),
+                    ("mention", self.assignee_id),
+                    ("mention", self.outsider_id),
+                ]
+            ),
+        )
+        self.assertEqual(
+            [event["person_id"] for event in created], [self.assignee_id]
+        )
+        self.assertEqual(
+            [call.args[0] for call in send_email.call_args_list],
+            [self.assignee_id],
+        )
+
+    def test_an_author_naming_themselves_in_an_edit_is_not_notified(self):
+        self.comment["mentions"] = [self.admin_id]
+
+        self.reset_after_edit(self.admin_id)
+
+        self.assertEqual(self.kinds(), [])
+
+    def test_the_author_of_a_comment_hears_of_a_mention_added_by_someone_else(
+        self,
+    ):
+        self.comment["mentions"] = [self.admin_id]
+
+        self.reset_after_edit(self.assignee_id)
+
+        self.assertEqual(self.kinds(), [("mention", self.admin_id)])
+
+    def test_the_person_making_the_edit_is_not_notified_of_it(self):
+        self.comment["mentions"] = [self.outsider_id]
+
+        self.reset_after_edit(self.outsider_id)
+
+        self.assertEqual(self.kinds(), [])
+
+    def test_the_person_making_the_edit_keeps_a_mention_they_already_had(self):
+        """
+        A manager fixing a typo in a comment that names them is still
+        mentioned.
+        """
+        self.comment["mentions"] = [self.outsider_id]
+        notifications_service.create_notifications_for_task_and_comment(
+            self.task_dict, self.comment
+        )
+        mention_id = Notification.get_by(type="mention").id
+
+        self.reset_after_edit(
+            self.outsider_id, named_before=[self.outsider_id]
+        )
+
+        self.assertEqual(Notification.get_by(type="mention").id, mention_id)
+
+    def test_a_person_the_text_named_before_the_edit_is_not_notified_again(
+        self,
+    ):
+        """
+        Still named but without a notification: the author of the comment, an
+        editor who named themselves, or a row the cleanup of old data removed.
+        The edit is nothing new for them.
+        """
+        self.comment["mentions"] = [self.outsider_id]
+
+        self.reset_after_edit(
+            self.assignee_id, named_before=[self.outsider_id]
+        )
+
+        self.assertEqual(self.kinds(), [])
+
+    def test_an_author_named_by_their_department_hears_nothing_of_an_edit(
+        self,
+    ):
+        admin = Person.get(self.admin_id)
+        admin.departments.append(self.department)
+        admin.save()
+        projects_service.add_team_member(str(self.project.id), self.admin_id)
+        self.comment["department_mentions"] = [str(self.department.id)]
+
+        self.reset_after_edit(
+            self.assignee_id, departments_before=[str(self.department.id)]
+        )
+
+        self.assertEqual(self.kinds(), [])
+
+    def test_a_newly_mentioned_person_is_notified_at_the_date_of_the_edit(
+        self,
+    ):
+        """
+        It is news to them, whatever the age of the comment: dated like the
+        comment, the entry would land among the old ones of their list.
+        """
+        self.comment["created_at"] = "2020-01-15T10:00:00"
+        self.comment["mentions"] = [self.outsider_id]
+
+        self.reset_after_edit(self.admin_id)
+
+        mention = Notification.get_by(type="mention")
+        self.assertGreater(mention.created_at.year, 2020)
+
+    def test_a_person_mentioned_twice_gets_one_notification(self):
+        assignee = Person.get(self.assignee_id)
+        assignee.departments.append(self.department)
+        assignee.save()
+        projects_service.add_team_member(
+            str(self.project.id), self.assignee_id
+        )
+        self.comment["mentions"] = [self.assignee_id]
+        self.comment["department_mentions"] = [str(self.department.id)]
+
+        self.reset_after_edit(self.admin_id)
+
+        self.assertEqual(self.kinds(), [("mention", self.assignee_id)])
 
     def test_get_last_notifications(self):
         notifications_service.create_notification(
