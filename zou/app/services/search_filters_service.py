@@ -150,9 +150,7 @@ def create_filter(
         search_filter_group_id=search_filter_group_id,
         department_id=department_id,
     )
-    _clear_cache_after_sharing_change(
-        clear_filter_cache, search_filter.is_shared, current_user["id"]
-    )
+    clear_filter_cache()
     return search_filter.serialize()
 
 
@@ -203,9 +201,7 @@ def update_filter(search_filter_id, data):
     )
 
     search_filter.update(data)
-    _clear_cache_after_sharing_change(
-        clear_filter_cache, search_filter.is_shared, current_user["id"]
-    )
+    clear_filter_cache()
     return search_filter.serialize()
 
 
@@ -220,17 +216,15 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    _clear_cache_after_sharing_change(
-        clear_filter_cache, search_filter.is_shared, current_user["id"]
-    )
+    clear_filter_cache()
     return search_filter.serialize()
 
 
-def clear_filter_group_cache(user_id=None):
+def clear_filter_group_cache():
     """
-    Drop the memoized filter group list of given user, or of every user.
+    Drop the memoized filter group list of every user.
     """
-    persons_service.clear_user_scoped_cache(get_user_filter_groups, user_id)
+    cache.cache.delete_memoized(get_user_filter_groups)
 
 
 def get_filter_groups():
@@ -347,11 +341,7 @@ def create_filter_group(
         is_shared=is_shared,
         department_id=department_id,
     )
-    _clear_cache_after_sharing_change(
-        clear_filter_group_cache,
-        search_filter_group.is_shared,
-        current_user["id"],
-    )
+    clear_filter_group_cache()
 
     return search_filter_group.serialize()
 
@@ -420,11 +410,7 @@ def update_filter_group(search_filter_group_id, data):
             SearchFilter.query.session.commit()
             clear_filter_cache()
 
-    _clear_cache_after_sharing_change(
-        clear_filter_group_cache,
-        search_filter_group.is_shared,
-        current_user["id"],
-    )
+    clear_filter_group_cache()
     return search_filter_group.serialize()
 
 
@@ -453,11 +439,7 @@ def remove_filter_group(search_filter_group_id):
         SearchFilter.query.session.commit()
         clear_filter_cache()
     search_filter_group.delete()
-    _clear_cache_after_sharing_change(
-        clear_filter_group_cache,
-        search_filter_group.is_shared,
-        current_user["id"],
-    )
+    clear_filter_group_cache()
     return search_filter_group.serialize()
 
 
@@ -478,11 +460,14 @@ def _reaches_team_filter(project_id_column, current_user_id):
     )
 
 
-def clear_filter_cache(user_id=None):
+def clear_filter_cache():
     """
-    Drop the memoized filter list of given user, or of every user.
+    Drop the memoized filter list of every user. A row shows in the lists of
+    its owner and, shared now or until this change, of its team: a write is
+    rare and a list costs little to rebuild, so telling them apart saves
+    nothing.
     """
-    persons_service.clear_user_scoped_cache(get_user_filters, user_id)
+    cache.cache.delete_memoized(get_user_filters)
 
 
 def _deny_sharing_without_manager_access(data, instance):
@@ -559,17 +544,6 @@ def _check_new_name_is_free(instance, data, **group_scope):
             person_id=instance.person_id,
             **group_scope,
         )
-
-
-def _clear_cache_after_sharing_change(clear_cache, is_shared, user_id):
-    """
-    A shared filter is visible to the whole team, so its cache must be
-    dropped for everyone; a private one only for its owner.
-    """
-    if is_shared:
-        clear_cache()
-    else:
-        clear_cache(user_id)
 
 
 def _get_own_or_as_admin(model, instance_id, current_user):

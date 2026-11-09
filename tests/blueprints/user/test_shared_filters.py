@@ -508,6 +508,63 @@ class SharedFilterMixin:
 
         self.assertEqual(self.department_of(row_id), animation)
 
+    def test_unsharing_drops_the_listing_of_the_team(self):
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        row = self.create("team", is_shared=True)
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["team"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{row['id']}", {"is_shared": False})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_an_admin_unsharing_a_row_drops_the_listing_of_its_owner(self):
+        self.generate_fixture_user_manager()
+        _, row_id = self.a_shared_row_of(self.user_manager, None)
+        self.log_in_manager()
+        self.clear_cache()
+        listing = self.get(self.path)["asset"][self.project_id]
+        self.assertTrue(listing[0]["is_shared"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{row_id}", {"is_shared": False})
+
+        self.log_in_manager()
+        listing = self.get(self.path)["asset"][self.project_id]
+        self.assertFalse(listing[0]["is_shared"])
+
+    def test_an_admin_renaming_a_row_drops_the_listing_of_its_owner(self):
+        self.log_in_cg_artist()
+        row = self.create("before")
+        self.assertEqual(self.visible_names(), ["before"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{row['id']}", {"name": "after"})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), ["after"])
+
+    def test_an_admin_removing_a_row_drops_the_listing_of_its_owner(self):
+        self.log_in_cg_artist()
+        row = self.create("gone")
+        self.assertEqual(self.visible_names(), ["gone"])
+
+        self.log_in_admin()
+        self.delete(f"{self.path}{row['id']}")
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_a_new_row_drops_the_listing_of_its_owner(self):
+        self.assertEqual(self.visible_names(), [])
+
+        self.create("new")
+
+        self.assertEqual(self.listed_names(), ["new"])
+
     def test_a_row_shared_for_the_first_time_takes_its_department(self):
         department_id = str(self.department.id)
         self.generate_fixture_user_manager()
@@ -664,6 +721,28 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
         row = SearchFilter.get(filter_id)
         self.assertFalse(row.is_shared)
         self.assertIsNone(row.department_id)
+
+    def test_unsharing_a_group_drops_the_listing_of_the_team(self):
+        group_path, _ = self.a_shared_group_with_a_filter(None, None)
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["wip"])
+
+        self.log_in_admin()
+        self.put(group_path, {"is_shared": False})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_removing_a_group_drops_the_listing_of_the_team(self):
+        group_path, _ = self.a_shared_group_with_a_filter(None, None)
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["wip"])
+
+        self.log_in_admin()
+        self.delete(group_path)
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
 
     def test_a_filter_on_another_department_stays_on_it(self):
         group_path, filter_id = self.a_shared_group_with_a_filter(

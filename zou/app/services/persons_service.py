@@ -966,17 +966,6 @@ def get_timezone():
     return timezone or organisation_service.get_default_timezone()
 
 
-def clear_user_scoped_cache(getter, user_id):
-    """
-    Drop the memoized result of given per-user getter, for one user or for
-    all of them when no user is given.
-    """
-    if user_id is None:
-        cache.cache.delete_memoized(getter)
-    else:
-        cache.cache.delete_memoized(getter, user_id)
-
-
 def generate_reset_token():
     """
     Generate and return a reset token.

@@ -58,8 +58,7 @@ class SearchFilterTestCase(SavedSearchTestCase):
     """
     The saved searches of the side panel. A filter belongs to one person
     unless a manager of the production shares it with the team, and the
-    listing is memoized per person, so who may see what and when the cache
-    is dropped are the same question.
+    listing is memoized per person, so any change drops it for everyone.
     """
 
     def test_get_filters_groups_by_list_type_and_production(self):
@@ -417,3 +416,15 @@ class SearchFilterGroupTestCase(SavedSearchTestCase):
         cascade_deletion_service.remove_person(self.user_manager["id"])
 
         self.assertEqual(self.filters_of(self.user), {})
+
+    def test_removing_the_owner_of_a_group_drops_it_everywhere(self):
+        with self.as_user(self.user_manager):
+            self.a_group(is_shared=True)
+        # Warm the admin's listing before the removal.
+        with self.as_user():
+            self.assertIn("shot", search_filters_service.get_filter_groups())
+
+        cascade_deletion_service.remove_person(self.user_manager["id"])
+
+        with self.as_user():
+            self.assertEqual(search_filters_service.get_filter_groups(), {})
