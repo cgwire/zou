@@ -199,3 +199,52 @@ class PluginsServiceTestCase(ApiDBTestCase):
             sorted(plugin["plugin_id"] for plugin in plugins),
             ["plugin1", "plugin2"],
         )
+
+    def test_present_injected_false_without_bundle(self):
+        from zou.app import app
+        from zou.app.utils.plugins import clear_plugin_js_cache
+
+        plugin = self.a_plugin_row("no_bundle")
+        with app.app_context():
+            app.config["PLUGIN_FOLDER"] = str(self.plugin_folder)
+            clear_plugin_js_cache()
+            presented = plugin.present()
+        self.assertFalse(presented["injected"])
+
+    def test_present_injected_true_with_bundle(self):
+        from zou.app import app
+        from zou.app.utils.plugins import clear_plugin_js_cache
+
+        plugin = self.a_plugin_row("with_bundle")
+        dist = self.plugin_folder / "with_bundle" / "frontend" / "dist"
+        dist.mkdir(parents=True)
+        (dist / "plugin.js").write_text("export default {}")
+
+        with app.app_context():
+            app.config["PLUGIN_FOLDER"] = str(self.plugin_folder)
+            clear_plugin_js_cache()
+            presented = plugin.present()
+
+        self.assertTrue(presented["injected"])
+
+    def test_present_injected_cache_invalidated_on_install(self):
+        from zou.app import app
+        from zou.app.utils.plugins import (
+            clear_plugin_js_cache,
+            install_plugin_files,
+        )
+
+        plugin_id = "cache_plugin"
+        plugin = self.a_plugin_row(plugin_id)
+        install_root = self.plugin_folder / plugin_id
+        source = Path(self.temp_dir) / "cache_plugin_src"
+        dist = source / "frontend" / "dist"
+        dist.mkdir(parents=True)
+        (dist / "plugin.js").write_text("export default {}")
+
+        with app.app_context():
+            app.config["PLUGIN_FOLDER"] = str(self.plugin_folder)
+            clear_plugin_js_cache()
+            self.assertFalse(plugin.present()["injected"])
+            install_plugin_files(source, install_root)
+            self.assertTrue(plugin.present()["injected"])
