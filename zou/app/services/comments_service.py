@@ -1469,6 +1469,9 @@ def build_preview_map_for_comments(comment_ids, is_client=False):
                     "original_name": preview.original_name,
                     "position": preview.position,
                     "annotations": preview.annotations,
+                    **preview_files_service.get_preview_file_trim(
+                        preview.data
+                    ),
                 }
             )
     return preview_map

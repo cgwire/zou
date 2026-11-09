@@ -32,6 +32,7 @@ from zou.app.blueprints.previews.resources import (
     SetMainPreviewResource,
     UpdateAnnotationsResource,
     UpdatePreviewPositionResource,
+    UpdatePreviewTrimResource,
 )
 from zou.app.utils.api import configure_api_from_blueprint
 
@@ -156,6 +157,10 @@ routes = [
     (
         "/actions/preview-files/<preview_file_id>/update-position",
         UpdatePreviewPositionResource,
+    ),
+    (
+        "/actions/preview-files/<preview_file_id>/update-trim",
+        UpdatePreviewTrimResource,
     ),
     (
         "/actions/preview-files/<preview_file_id>/update-annotations",
