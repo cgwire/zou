@@ -516,16 +516,24 @@ class PersonWriteTestCase(PersonsTestCase):
             {"expiration_date": "not-a-date"},
         )
 
-    def test_update_person_expiration_date_rotates_the_token(self):
+    def test_update_person_expiration_date_rotates_the_token_of_a_bot(self):
         """
         The expiration date is baked into the token, so setting one hands
-        back a fresh token and stores its id.
+        a bot a fresh token and stores its id. A person gets none: it would
+        be a token issued without their password.
         """
-        result = persons_service.update_person(
-            self.person_id, {"expiration_date": "2100-01-01"}
+        data = {"expiration_date": "2100-01-01"}
+        bot = persons_service.create_person(
+            "bot@example.com", None, "Bot", "One", is_bot=True
         )
+        jti = Person.get(bot["id"]).jti
+        result = persons_service.update_person(bot["id"], data)
         self.assertIn("access_token", result)
-        self.assertIsNotNone(Person.get(self.person_id).jti)
+        self.assertNotEqual(Person.get(bot["id"]).jti, jti)
+
+        result = persons_service.update_person(self.person_id, data)
+        self.assertNotIn("access_token", result)
+        self.assertIsNone(Person.get(self.person_id).jti)
 
     def test_a_protected_account_cannot_be_disabled_nor_demoted(self):
         """

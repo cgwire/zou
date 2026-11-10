@@ -451,16 +451,18 @@ def check_totp(person, totp):
     return pyotp.TOTP(person["totp_secret"]).verify(totp, valid_window=1)
 
 
-def check_email_otp(person, email_otp):
+def check_email_otp(person, email_otp, consume=True):
     """
-    Check email OTP for a person.
+    Check email OTP for a person. A right code works once, unless consume
+    is False.
     """
     count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
     if count is not None:
         if pyotp.HOTP(person["email_otp_secret"]).verify(
             email_otp, int(count)
         ):
-            auth_tokens_store.delete(f"email-otp-count-{person['email']}")
+            if consume:
+                auth_tokens_store.delete(f"email-otp-count-{person['email']}")
             return True
     return False
 
@@ -518,15 +520,19 @@ def pre_enable_totp(person_id):
     return totp_provisionning_uri, person.totp_secret
 
 
-def enable_totp(person_id, totp):
+def enable_totp(person_id, totp, check_existing_factor=None):
     """
-    Enable TOTP for a person.
+    Enable TOTP for a person. check_existing_factor is called once the new
+    code is known to be right, before anything is stored: it raises to
+    refuse. Called first, it would use up a factor for a code that fails.
     """
     person = Person.get(person_id)
     if person.totp_enabled:
         raise TOTPAlreadyEnabledException()
     if not check_totp(person.serialize(), totp):
         raise WrongOTPException
+    if check_existing_factor is not None:
+        check_existing_factor()
 
     person.totp_enabled = True
     otp_recovery_codes = _enable_two_factor_method(person, "totp")
@@ -566,15 +572,22 @@ def pre_enable_email_otp(person_id):
     return True
 
 
-def enable_email_otp(person_id, email_otp):
+def enable_email_otp(person_id, email_otp, check_existing_factor=None):
     """
-    Enable mail OTP for a person.
+    Enable mail OTP for a person. check_existing_factor is called once the
+    new code is known to be right, before anything is stored: it raises to
+    refuse.
     """
     person = Person.get(person_id)
     if person.email_otp_enabled:
         raise EmailOTPAlreadyEnabledException()
-    if not check_email_otp(person.serialize(), email_otp):
+    serialized_person = person.serialize()
+    # The new code is used up last: a refused factor leaves it usable.
+    if not check_email_otp(serialized_person, email_otp, consume=False):
         raise WrongOTPException
+    if check_existing_factor is not None:
+        check_existing_factor()
+    check_email_otp(serialized_person, email_otp)
 
     person.email_otp_enabled = True
     otp_recovery_codes = _enable_two_factor_method(person, "email_otp")
@@ -683,25 +696,33 @@ def pre_register_fido(person_id):
         user_verification="preferred",
         authenticator_attachment="cross-platform",
     )
-    session[f"fido-state-{person.id}"] = state
+    session[f"fido-registration-state-{person.id}"] = state
     return dict(options.public_key)
 
 
-def register_fido(person_id, registration_response, device_name):
+def register_fido(
+    person_id, registration_response, device_name, check_existing_factor=None
+):
     """
-    Register FIDO device for a person.
+    Register FIDO device for a person. check_existing_factor is called once
+    the registration is known to be right, before anything is stored: it
+    raises to refuse.
     """
     person = Person.get(person_id)
-    try:
-        state = session.pop(f"fido-state-{person.id}")
-    except KeyError:
+    state_key = f"fido-registration-state-{person.id}"
+    if state_key not in session:
         raise FIDONoPreregistrationException()
     try:
         auth_data = current_app.extensions["fido_server"].register_complete(
-            state, registration_response
+            session[state_key], registration_response
         )
     except Exception:
+        session.pop(state_key)
         raise FIDOServerException()
+    if check_existing_factor is not None:
+        check_existing_factor()
+    # Kept until here: a refused factor leaves the registration pending.
+    session.pop(state_key)
     credential_data = {
         "device_name": device_name,
         "aaguid": bytes2int(auth_data.credential_data.aaguid),

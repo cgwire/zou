@@ -614,14 +614,17 @@ def update_person(person_id, data, bypass_protected_accounts=False):
 
     person.update(data)
 
-    if "expiration_date" in data:
+    # Bots only, as on the person update route: for a person this would be
+    # a token issued without their password, outliving every session.
+    regenerate_token = person.is_bot and "expiration_date" in data
+    if regenerate_token:
         access_token = create_access_token_for_raw_person(person)
     index_service.remove_person_index(person_id)
     if person.active:
         index_service.index_person(person)
     events.emit("person:update", {"person_id": person_id})
     clear_person_cache()
-    if "expiration_date" in data:
+    if regenerate_token:
         return {
             "access_token": access_token,
             **person.serialize(),
