@@ -692,6 +692,7 @@ def get_episodes_for_project(project_id, only_assigned=False):
     """
     Retrieve all episodes related to given project.
     """
+    episode_type_id = entity_types_service.get_episode_type()["id"]
     if only_assigned:
         Sequence = aliased(Entity, name="sequence")
         Shot = aliased(Entity, name="shot")
@@ -701,14 +702,18 @@ def get_episodes_for_project(project_id, only_assigned=False):
             .join(Shot, Sequence.id == Shot.parent_id)
             .join(Task, Shot.id == Task.entity_id)
             .filter(Entity.project_id == project_id)
+            .filter(Entity.entity_type_id == episode_type_id)
             .filter(persons_service.build_assignee_filter())
         )
         shot_episodes = fields.serialize_models(query.all())
         shot_episode_ids = {episode["id"]: True for episode in shot_episodes}
+        # A shot points to its scene through source_id too: without the
+        # type filter that scene came back as an episode.
         query = (
             Entity.query.join(Asset, Entity.id == Asset.source_id)
             .join(Task, Asset.id == Task.entity_id)
             .filter(Entity.project_id == project_id)
+            .filter(Entity.entity_type_id == episode_type_id)
             .filter(persons_service.build_assignee_filter())
         )
         asset_episodes = fields.serialize_models(query.all())
@@ -720,7 +725,7 @@ def get_episodes_for_project(project_id, only_assigned=False):
     else:
         return entities_service.get_entities_for_project(
             project_id,
-            entity_types_service.get_episode_type()["id"],
+            episode_type_id,
             "Episode",
         )
 

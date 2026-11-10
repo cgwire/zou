@@ -5,6 +5,7 @@ from zou.app.services import (
     comments_service,
     news_service,
     projects_service,
+    tasks_service,
 )
 from zou.app.utils import fields
 
@@ -93,6 +94,33 @@ class EntityRoutesTestCase(ApiDBTestCase):
         self.log_in_client()
         self.get(
             f"/data/entities/{self.asset.id}/entities-linked/with-tasks", 403
+        )
+
+    def test_a_vendor_gets_only_their_tasks_on_linked_entities(self):
+        self.generate_fixture_sequence()
+        for name in ["P01", "P02"]:
+            shot = self.generate_fixture_shot(name)
+            self.generate_fixture_shot_task(name="Main", shot_id=shot.id)
+            self.generate_fixture_shot_task(name="Extra", shot_id=shot.id)
+            EntityConceptLink.create(
+                entity_in_id=shot.id, entity_out_id=self.asset.id
+            )
+        vendor_task = self.shot_task
+        path = f"/data/entities/{self.asset.id}/entities-linked/with-tasks"
+        result = self.get(path)
+        self.assertEqual(sum(len(row["tasks"]) for row in result), 4)
+
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(str(self.project.id), vendor_id)
+        tasks_service.assign_task(self.task.id, vendor_id)
+        tasks_service.assign_task(vendor_task.id, vendor_id)
+        self.log_in_vendor()
+        result = self.get(path)
+        self.assertEqual(
+            [row["id"] for row in result], [str(vendor_task.entity_id)]
+        )
+        self.assertEqual(
+            [task["id"] for task in result[0]["tasks"]], [str(vendor_task.id)]
         )
 
     def test_linked_entities_with_tasks_stay_open_to_artists(self):

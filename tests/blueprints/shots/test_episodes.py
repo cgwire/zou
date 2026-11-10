@@ -146,6 +146,21 @@ class EpisodeTestCase(ApiDBTestCase):
         episodes = self.get(f"data/episodes?project_id={self.project_id}")
         self.assertEqual(len(episodes), 1)
 
+    def test_a_vendor_lists_no_scene_among_episodes(self):
+        self._setup_vendor()
+        self.generate_fixture_scene()
+        self.shot.update({"source_id": self.scene.id})
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        for path in [
+            f"data/projects/{self.project_id}/episodes",
+            f"data/episodes?project_id={self.project_id}",
+        ]:
+            with self.subTest(path=path):
+                episodes = self.get(path)
+                self.assertEqual(
+                    [episode["id"] for episode in episodes], [self.episode_id]
+                )
+
     def test_get_episode_vendor_no_task(self):
         self._setup_vendor()
         self.get(f"data/episodes/{self.episode_02_id}", 403)

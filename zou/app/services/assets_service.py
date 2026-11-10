@@ -125,6 +125,10 @@ def get_assets(criterions=None, only_user_projects=False):
         query = query_utils.apply_criterions_to_db_query(
             Entity, query, criterions
         )
+        if assigned_to:
+            query = query.outerjoin(Task, Task.entity_id == Entity.id).filter(
+                persons_service.build_assignee_filter()
+            )
         if team_filter is not None:
             query = query.filter(team_filter)
         # Add non duplicated assets to the list.

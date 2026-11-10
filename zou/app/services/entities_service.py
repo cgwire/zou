@@ -730,9 +730,11 @@ def get_entity_link(link_id):
     return link.serialize()
 
 
-def get_linked_entities_with_tasks(entity_id):
+def get_linked_entities_with_tasks(entity_id, only_assigned=False):
     """
-    Return all entities and their tasks linked to given entity.
+    Return all entities and their tasks linked to given entity, or with
+    only_assigned the entities holding a task assigned to the current user,
+    with those tasks only.
     """
     entities_in = (
         db.session.query(EntityConceptLink.entity_in_id)
@@ -770,6 +772,8 @@ def get_linked_entities_with_tasks(entity_id):
         )
         .filter(Entity.id.in_(entities_in))
     )
+    if only_assigned:
+        query = query.filter(persons_service.build_assignee_filter())
     query_result = query.all()
 
     for (

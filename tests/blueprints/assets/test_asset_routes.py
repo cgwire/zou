@@ -1,6 +1,11 @@
 from tests.base import ApiDBTestCase
+from zou.app.models.entity import EntityLink
 from zou.app.models.person import Person
-from zou.app.services import breakdown_service
+from zou.app.services import (
+    breakdown_service,
+    projects_service,
+    tasks_service,
+)
 
 
 class AssetRoutesTestCase(ApiDBTestCase):
@@ -213,6 +218,30 @@ class AssetRoutesTestCase(ApiDBTestCase):
 
         self.assertEqual(
             [asset["id"] for asset in result], [str(elsewhere.id)]
+        )
+
+    def test_a_vendor_lists_only_their_assets_of_an_episode(self):
+        """
+        The character is cast in the episode but the vendor holds no task
+        on it: it stays out of their list, like the assets of the episode
+        they are not assigned to.
+        """
+        self.generate_fixture_episode()
+        self.asset.update({"source_id": self.episode.id})
+        EntityLink.create(
+            entity_in_id=self.episode.id,
+            entity_out_id=self.asset_character.id,
+        )
+        vendor_id = self.generate_fixture_user_vendor()["id"]
+        projects_service.add_team_member(self.project_id, vendor_id)
+        tasks_service.assign_task(self.task.id, vendor_id)
+        path = f"/data/projects/{self.project_id}/assets"
+        path = f"{path}?episode_id={self.episode.id}"
+        self.assertEqual(len(self.get(path)), 2)
+
+        self.log_in_vendor()
+        self.assertEqual(
+            [asset["id"] for asset in self.get(path)], [self.asset_id]
         )
 
     def test_list_routes_scope_to_user_projects(self):
