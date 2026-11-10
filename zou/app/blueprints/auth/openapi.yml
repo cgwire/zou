@@ -258,8 +258,9 @@ EmailOTPResource_post:
     200:
       description: The email OTP is enabled
     400:
-      description: The email OTP is already enabled, the code is wrong, or
-        the second factor is missing or wrong
+      description: The email OTP is already enabled, the code is wrong
+        (wrong_OTP), or the second factor is missing or wrong
+        (wrong_existing_OTP)
     403:
       description: The token belongs to a bot
 
@@ -381,6 +382,7 @@ FIDOResource_post:
     400:
       description: The registration failed, the registration is not
         prepared, or the second factor is missing or wrong
+        (wrong_existing_OTP)
     403:
       description: The token belongs to a bot
 
@@ -763,8 +765,9 @@ TOTPResource_post:
     200:
       description: The TOTP is enabled. The body has the recovery codes.
     400:
-      description: The TOTP is already enabled, the code is wrong, or the
-        second factor is missing or wrong
+      description: The TOTP is already enabled, the code is wrong
+        (wrong_OTP), or the second factor is missing or wrong
+        (wrong_existing_OTP)
     403:
       description: The token belongs to a bot
 

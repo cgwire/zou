@@ -850,7 +850,7 @@ class EmailOTPTestCase(ApiDBTestCase):
             "auth/email-otp", data=json.dumps(body), headers=headers
         )
         self.assertEqual(response.status_code, 400)
-        self.assertTrue(json.loads(response.data)["wrong_OTP"])
+        self.assertTrue(json.loads(response.data)["wrong_existing_OTP"])
         self.assertFalse(self.get_person().email_otp_enabled)
 
         body["totp"] = pyotp.TOTP(totp_secret).now()
@@ -858,6 +858,52 @@ class EmailOTPTestCase(ApiDBTestCase):
             "auth/email-otp", data=json.dumps(body), headers=headers
         )
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.get_person().email_otp_enabled)
+
+    def test_enable_email_otp_checks_the_new_code_first(self):
+        """
+        POST /auth/email-otp with a wrong new code burns no recovery code,
+        and a wrong factor leaves the new code usable.
+        """
+        _, headers = self.login()
+        totp_secret = pyotp.random_base32()
+        self.get_person().update(
+            {
+                "totp_enabled": True,
+                "totp_secret": totp_secret,
+                "preferred_two_factor_authentication": "totp",
+                "otp_recovery_codes": auth_service.hash_recovery_codes(
+                    ["recovery"]
+                ),
+            }
+        )
+        persons_service.clear_person_cache()
+        self.app.put("auth/email-otp", headers=headers)
+
+        def enable(**body):
+            response = self.app.post(
+                "auth/email-otp", data=json.dumps(body), headers=headers
+            )
+            return response.status_code, json.loads(response.data)
+
+        status, refused = enable(email_otp="wrong", recovery_code="recovery")
+        self.assertEqual(status, 400)
+        self.assertTrue(refused["wrong_OTP"])
+        self.assertNotIn("wrong_existing_OTP", refused)
+        self.assertEqual(len(self.get_person().otp_recovery_codes), 1)
+
+        person = self.get_person().serialize()
+        count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
+        email_otp = pyotp.HOTP(person["email_otp_secret"]).at(int(count))
+        status, refused = enable(email_otp=email_otp, totp="wrong")
+        self.assertEqual(status, 400)
+        self.assertTrue(refused["wrong_existing_OTP"])
+        self.assertNotIn("wrong_OTP", refused)
+
+        status, _ = enable(
+            email_otp=email_otp, totp=pyotp.TOTP(totp_secret).now()
+        )
+        self.assertEqual(status, 200)
         self.assertTrue(self.get_person().email_otp_enabled)
 
     def test_disable_email_otp(self):
@@ -1118,13 +1164,52 @@ class TOTPTestCase(ApiDBTestCase):
         otp_secret = self.call_2fa("put", "auth/totp", headers)["otp_secret"]
         totp = pyotp.TOTP(otp_secret).now()
         refused = self.call_2fa("post", "auth/totp", headers, totp, 400)
-        self.assertTrue(refused["wrong_OTP"])
+        self.assertTrue(refused["wrong_existing_OTP"])
+        self.assertNotIn("wrong_OTP", refused)
         self.assertFalse(self.get_person().totp_enabled)
 
         auth_tokens_store.add(
             f"email-otp-count-{self.person_dict['email']}", 1
         )
         body = {"totp": totp, "email_otp": pyotp.HOTP(email_otp_secret).at(1)}
+        response = self.app.post(
+            "auth/totp", data=json.dumps(body), headers=headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.get_person().totp_enabled)
+
+    def test_enable_totp_checks_the_new_code_first(self):
+        """
+        POST /auth/totp with a wrong new code leaves the factor given as
+        proof usable: an email OTP works once.
+        """
+        _, headers = self.login()
+        email_otp_secret = pyotp.random_base32()
+        self.get_person().update(
+            {
+                "email_otp_enabled": True,
+                "email_otp_secret": email_otp_secret,
+                "preferred_two_factor_authentication": "email_otp",
+            }
+        )
+        persons_service.clear_person_cache()
+        otp_secret = self.call_2fa("put", "auth/totp", headers)["otp_secret"]
+        auth_tokens_store.add(
+            f"email-otp-count-{self.person_dict['email']}", 1
+        )
+        body = {
+            "totp": "wrong",
+            "email_otp": pyotp.HOTP(email_otp_secret).at(1),
+        }
+        response = self.app.post(
+            "auth/totp", data=json.dumps(body), headers=headers
+        )
+        self.assertEqual(response.status_code, 400)
+        refused = json.loads(response.data)
+        self.assertTrue(refused["wrong_OTP"])
+        self.assertNotIn("wrong_existing_OTP", refused)
+
+        body["totp"] = pyotp.TOTP(otp_secret).now()
         response = self.app.post(
             "auth/totp", data=json.dumps(body), headers=headers
         )

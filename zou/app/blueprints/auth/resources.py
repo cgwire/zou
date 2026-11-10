@@ -48,6 +48,7 @@ from zou.app.exceptions import (
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     UserCantConnectDueToNoFallback,
+    WrongExistingOTPException,
     WrongOTPException,
     WrongPasswordException,
     WrongUserException,
@@ -113,18 +114,36 @@ def _check_existing_two_factor(body):
     of the factors already enabled, as disabling a method does. Without it
     a session left open is enough to add a factor of one's own. The first
     method of an account needs nothing: there is no factor to present yet.
+    The service calls it once the new code is checked: a factor is used up
+    by its check.
     """
     person = persons_service.get_current_user(unsafe=True)
-    if auth_service.person_two_factor_authentication_enabled(
-        person
-    ) and not auth_service.check_two_factor_authentication(
-        person,
-        body.totp,
-        body.email_otp,
-        body.fido_authentication_response,
-        body.recovery_code,
-    ):
-        raise WrongOTPException
+    if not auth_service.person_two_factor_authentication_enabled(person):
+        return
+    try:
+        is_factor_right = auth_service.check_two_factor_authentication(
+            person,
+            body.totp,
+            body.email_otp,
+            body.fido_authentication_response,
+            body.recovery_code,
+        )
+    except MissingOTPException:
+        is_factor_right = False
+    if not is_factor_right:
+        raise WrongExistingOTPException
+
+
+# Told apart from wrong_OTP: the client knows which of the two codes to ask
+# again.
+WRONG_EXISTING_OTP_RESPONSE = (
+    {
+        "error": True,
+        "message": "Verification of a factor already enabled failed.",
+        "wrong_existing_OTP": True,
+    },
+    400,
+)
 
 
 class AuthenticatedResource(MethodView):
@@ -687,10 +706,11 @@ class TOTPResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(TotpSchema)
 
         try:
-            _check_existing_two_factor(body)
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_totp(
-                current_user["id"], body.totp
+                current_user["id"],
+                body.totp,
+                check_existing_factor=lambda: _check_existing_two_factor(body),
             )
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
@@ -701,7 +721,9 @@ class TOTPResource(MethodView, ArgsMixin):
                 {"error": True, "message": "TOTP already enabled."},
                 400,
             )
-        except (WrongOTPException, MissingOTPException):
+        except WrongExistingOTPException:
+            return WRONG_EXISTING_OTP_RESPONSE
+        except WrongOTPException:
             return (
                 {
                     "error": True,
@@ -813,11 +835,11 @@ class EmailOTPResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(EmailOtpSchema)
 
         try:
-            _check_existing_two_factor(body)
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_email_otp(
                 current_user["id"],
                 body.email_otp,
+                check_existing_factor=lambda: _check_existing_two_factor(body),
             )
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
@@ -828,7 +850,9 @@ class EmailOTPResource(MethodView, ArgsMixin):
                 {"error": True, "message": "OTP by email already enabled."},
                 400,
             )
-        except (WrongOTPException, MissingOTPException):
+        except WrongExistingOTPException:
+            return WRONG_EXISTING_OTP_RESPONSE
+        except WrongOTPException:
             return (
                 {
                     "error": True,
@@ -941,26 +965,19 @@ class FIDOResource(MethodView, ArgsMixin):
         try:
             body = validation.validate_request_body(FidoRegisterSchema)
 
-            _check_existing_two_factor(body)
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.register_fido(
                 current_user["id"],
                 body.registration_response,
                 body.device_name,
+                check_existing_factor=lambda: _check_existing_two_factor(body),
             )
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
                 current_user["id"],
             )
-        except (WrongOTPException, MissingOTPException):
-            return (
-                {
-                    "error": True,
-                    "message": "OTP verification failed.",
-                    "wrong_OTP": True,
-                },
-                400,
-            )
+        except WrongExistingOTPException:
+            return WRONG_EXISTING_OTP_RESPONSE
         except FIDONoPreregistrationException:
             return (
                 {"error": True, "message": "No preregistration before."},

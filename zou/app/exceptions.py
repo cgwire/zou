@@ -284,6 +284,10 @@ class WrongOTPException(Exception):
     pass
 
 
+class WrongExistingOTPException(Exception):
+    pass
+
+
 class TOTPAlreadyEnabledException(Exception):
     pass
 

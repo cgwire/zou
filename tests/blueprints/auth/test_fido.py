@@ -97,12 +97,50 @@ class FidoRoutesTestCase(ApiDBTestCase):
     def test_second_device_needs_an_existing_factor(self):
         recovery_code = self._register_device()["otp_recovery_codes"][0]
         refused = self._register_device("second-key", 400)
-        self.assertTrue(refused["wrong_OTP"])
+        self.assertTrue(refused["wrong_existing_OTP"])
         self._register_device("second-key", 400, recovery_code="wrong")
         person = Person.get(self.user["id"])
         self.assertEqual(len(person.fido_credentials), 1)
 
         self._register_device("second-key", recovery_code=recovery_code)
+        person = Person.get(self.user["id"])
+        self.assertEqual(len(person.fido_credentials), 2)
+
+    def test_second_device_keeps_the_factor_when_it_is_refused(self):
+        recovery_code = self._register_device()["otp_recovery_codes"][0]
+        codes = len(Person.get(self.user["id"]).otp_recovery_codes)
+        # No registration is pending: the device is refused first.
+        self.post(
+            "auth/fido",
+            {
+                "registration_response": {"id": "fake"},
+                "device_name": "second-key",
+                "recovery_code": recovery_code,
+            },
+            400,
+        )
+        person = Person.get(self.user["id"])
+        self.assertEqual(len(person.otp_recovery_codes), codes)
+
+    def test_second_device_stays_pending_after_a_wrong_factor(self):
+        recovery_code = self._register_device()["otp_recovery_codes"][0]
+        self.put("auth/fido", {})
+        body = {
+            "registration_response": {"id": "fake"},
+            "device_name": "second-key",
+        }
+        with mock.patch.object(
+            self.flask_app.extensions["fido_server"],
+            "register_complete",
+            return_value=self._fake_auth_data(),
+        ):
+            refused = self.post(
+                "auth/fido", {**body, "recovery_code": "wrong"}, 400
+            )
+            self.assertTrue(refused["wrong_existing_OTP"])
+            self.post(
+                "auth/fido", {**body, "recovery_code": recovery_code}, 200
+            )
         person = Person.get(self.user["id"])
         self.assertEqual(len(person.fido_credentials), 2)
 
