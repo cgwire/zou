@@ -41,6 +41,26 @@ from zou.app.utils import cache, events, fields
 # instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
 MIN_MOVIE_BITRATE = 1
 
+# The collections a project dict serializes, the team aside: it is loaded
+# with selectin by the model already.
+PROJECT_RELATIONS = [
+    Project.asset_types,
+    Project.task_statuses,
+    Project.task_types,
+    Project.status_automations,
+    Project.preview_background_files,
+]
+
+
+def with_project_relations(query):
+    """
+    Load the collections of the listed projects in one query each, not one
+    per project at serialization.
+    """
+    return query.options(
+        *[selectinload(relation) for relation in PROJECT_RELATIONS]
+    )
+
 
 def clear_project_cache(project_id):
     """
@@ -92,7 +112,7 @@ def get_projects_with_extra_data(
     * Add metadata descriptors for this project.
     * Add task types and task statuses for this project.
     """
-    projects_list = query.all()
+    projects_list = with_project_relations(query).all()
     project_ids = [project.id for project in projects_list]
     return serialize_projects_with_extra_data(
         projects_list, [(project_ids, for_client, vendor_departments)]
@@ -125,6 +145,13 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
 
     project_ids = [p.id for p in projects_list]
 
+    status_names = dict(
+        db.session.query(ProjectStatus.id, ProjectStatus.name)
+        .filter(
+            ProjectStatus.id.in_({p.project_status_id for p in projects_list})
+        )
+        .all()
+    )
     descriptors_by_project = {}
     for ids, for_client, vendor_departments in descriptor_visibilities:
         descriptors_by_project.update(
@@ -144,6 +171,7 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
     return [
         _build_project_dict_with_extra_data(
             project,
+            status_names,
             descriptors_by_project,
             task_types_by_project,
             task_statuses_by_project,
@@ -272,6 +300,7 @@ def _serialize_descriptor(descriptor):
 
 def _build_project_dict_with_extra_data(
     project,
+    status_names,
     descriptors_by_project,
     task_types_by_project,
     task_statuses_by_project,
@@ -283,6 +312,9 @@ def _build_project_dict_with_extra_data(
     for the whole page, so no query is issued per project.
     """
     project_dict = project.serialize(relations=True)
+    project_dict["project_status_name"] = status_names.get(
+        project.project_status_id
+    )
 
     project_dict["descriptors"] = [
         _serialize_descriptor(descriptor)
@@ -312,33 +344,13 @@ def _build_project_dict_with_extra_data(
 
 def get_projects():
     """
-    Return all projects, with their Project-scoped metadata descriptors so the
-    admin productions view can render Project metadata columns.
+    Return all projects, extra data included, as a project read by its id.
     """
-    query = (
+    return get_projects_with_extra_data(
         Project.query.join(
             ProjectStatus, Project.project_status_id == ProjectStatus.id
-        )
-        .add_columns(ProjectStatus.name)
-        .order_by(Project.name)
+        ).order_by(Project.name)
     )
-
-    entries = query.all()
-    if not entries:
-        return []
-
-    descriptors_by_project = _fetch_all_project_descriptors_by_project()
-
-    result = []
-    for project, project_status_name in entries:
-        data = project.serialize()
-        data["project_status_name"] = project_status_name
-        data["descriptors"] = [
-            _serialize_descriptor(descriptor)
-            for descriptor in descriptors_by_project.get(project.id, [])
-        ]
-        result.append(data)
-    return result
 
 
 @cache.memoize_function(480)
@@ -450,7 +462,7 @@ def get_project_by_name(project_name):
     if project is None:
         raise ProjectNotFoundException()
 
-    return project.serialize()
+    return get_project_with_extra_data(project)
 
 
 def update_project(project_id, data):
@@ -1251,23 +1263,6 @@ def _fetch_metadata_descriptors_by_project(
     for desc in all_descriptors:
         descriptors_by_project[desc.project_id].append(desc)
     return descriptors_by_project
-
-
-def _fetch_all_project_descriptors_by_project():
-    """
-    Return the metadata descriptors of every project grouped by project.
-    """
-    descriptors = (
-        MetadataDescriptor.query.filter(
-            MetadataDescriptor.entity_type == "Project"
-        )
-        .options(joinedload(MetadataDescriptor.departments))
-        .all()
-    )
-    by_project = defaultdict(list)
-    for descriptor in descriptors:
-        by_project[descriptor.project_id].append(descriptor)
-    return by_project
 
 
 def build_descriptor_narrowing(for_client=False, vendor_departments=None):
