@@ -36,6 +36,8 @@ class News(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
 
+    __table_args__ = (db.Index("ix_news_created_at_id", "created_at", "id"),)
+
     @classmethod
     def create_from_import(cls, data):
         data = {

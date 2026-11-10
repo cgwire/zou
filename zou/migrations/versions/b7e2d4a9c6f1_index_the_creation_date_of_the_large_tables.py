@@ -19,8 +19,10 @@ branch_labels = None
 depends_on = None
 
 TABLES = [
+    "api_event",
     "comment",
     "entity",
+    "news",
     "notification",
     "preview_file",
     "task",
