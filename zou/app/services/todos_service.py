@@ -845,11 +845,18 @@ def _fold_done_rows_before(done_rows, window_start):
 
 
 def get_tasks_for_project(
-    project_id, page=0, task_type_id=None, episode_id=None, only_assigned=False
+    project_id,
+    page=0,
+    task_type_id=None,
+    episode_id=None,
+    only_assigned=False,
+    limit=None,
+    cursor_id=None,
 ):
     """
     Return all tasks for given project, or with only_assigned the ones
-    assigned to the current user.
+    assigned to the current user: all of them, a page of them, or the ones
+    following a cursor (see query_utils.get_paginated_results).
     """
     query = (
         # subqueryload: one query whatever the size, selectinload sends
@@ -875,7 +882,9 @@ def get_tasks_for_project(
     if only_assigned:
         query = query.filter(persons_service.build_assignee_filter())
 
-    return query_utils.get_paginated_results(query, page, relations=True)
+    return query_utils.get_paginated_results(
+        query, page, limit, relations=True, cursor_id=cursor_id
+    )
 
 
 def get_todos():

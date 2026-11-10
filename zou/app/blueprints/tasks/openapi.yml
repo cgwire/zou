@@ -1512,12 +1512,19 @@ ProjectCommentsResource_get:
         default: 100
       description: Number of rows in a page
     - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
+    - in: query
       name: page
       required: false
       schema:
         type: integer
-      description: Page to get. Without page, the route returns all the comments
-        in a list and ignores limit.
+      description: Page to get. Without page nor limit, the route returns all
+        the comments in a list.
   responses:
     200:
       description: Without page, the list of comments. With page, an object
@@ -1580,6 +1587,20 @@ ProjectNotificationsResource_get:
         type: integer
       description: Page to get. Without page, the route returns the full
         list.
+    - in: query
+      name: limit
+      required: false
+      example: 100
+      schema:
+        type: integer
+      description: Number of rows in a page, or in a request of a cursor walk
+    - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
   responses:
     200:
       description: Without page, the list of notifications. With page, an object
@@ -1660,6 +1681,20 @@ ProjectPreviewFilesResource_get:
         type: integer
       description: Page to get. Without page, the route returns the full
         list.
+    - in: query
+      name: limit
+      required: false
+      example: 100
+      schema:
+        type: integer
+      description: Number of rows in a page, or in a request of a cursor walk
+    - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
   responses:
     200:
       description: Without page, the list of preview files. With page, an object
@@ -1783,6 +1818,20 @@ ProjectTasksResource_get:
       schema:
         type: integer
       description: Page to get
+    - in: query
+      name: limit
+      required: false
+      example: 100
+      schema:
+        type: integer
+      description: Number of rows in a page, or in a request of a cursor walk
+    - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
     - in: query
       name: task_type_id
       required: false

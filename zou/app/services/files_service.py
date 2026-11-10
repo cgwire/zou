@@ -1118,16 +1118,21 @@ def get_output_files_for_output_type_and_asset_instance(
     return OutputFile.serialize_list(output_files)
 
 
-def get_preview_files_for_project(project_id, page=-1):
+def get_preview_files_for_project(
+    project_id, page=-1, limit=None, cursor_id=None
+):
     """
-    Return all preview files for given project.
+    Return all preview files for given project, a page of them, or the ones
+    following a cursor (see query_utils.get_paginated_results).
     """
     query = (
         PreviewFile.query.join(Task)
         .filter(Task.project_id == project_id)
         .order_by(desc(PreviewFile.updated_at))
     )
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(
+        query, page, limit, cursor_id=cursor_id
+    )
 
 
 def get_preview_background_file_raw(preview_background_file_id):

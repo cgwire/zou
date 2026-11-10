@@ -264,9 +264,7 @@ class ProductionAssetTypeWorkflowResource(MethodView):
         """
         Set the workflow of an asset type for a production
         """
-        body = validation.validate_request_body(
-            ProjectAssetTypeWorkflowSchema
-        )
+        body = validation.validate_request_body(ProjectAssetTypeWorkflowSchema)
         permissions_service.check_manager_project_access(project_id)
         return projects_service.set_asset_type_workflow(
             project_id, asset_type_id, body.task_type_ids
@@ -870,7 +868,7 @@ class AllProjectsMetadataDescriptorsReorderResource(MethodView):
         )
 
 
-class ProductionTimeSpentsResource(MethodView):
+class ProductionTimeSpentsResource(MethodView, ArgsMixin):
     """
     Resource to retrieve time spents for given production.
     """
@@ -884,7 +882,9 @@ class ProductionTimeSpentsResource(MethodView):
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_client()
         permissions_service.block_access_to_vendor()
-        return time_spents_service.get_time_spents_for_project(project_id)
+        return time_spents_service.get_time_spents_for_project(
+            project_id, **self.get_paging()
+        )
 
 
 class ProductionMilestonesResource(MethodView):
