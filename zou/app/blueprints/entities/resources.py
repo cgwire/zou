@@ -73,7 +73,9 @@ class EntitiesLinkedWithTasksResource(MethodView):
         permissions_service.check_project_access(entity["project_id"])
         permissions_service.check_entity_access(entity_id)
         permissions_service.block_access_to_client()
-        return entities_service.get_linked_entities_with_tasks(entity_id)
+        return entities_service.get_linked_entities_with_tasks(
+            entity_id, only_assigned=permissions.has_vendor_permissions()
+        )
 
 
 class EntityTaskCreationResource(MethodView):
