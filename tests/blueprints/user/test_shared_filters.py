@@ -869,6 +869,33 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
 
         self.assertEqual(self.department_of(row["id"]), animation)
 
+    def test_a_group_without_department_leaves_the_filter_on_its_own(self):
+        animation = str(self.department_animation.id)
+        group_id = self.a_shared_group_on(None)
+        row = self.create("wip", is_shared=True, department_id=animation)
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {"search_filter_group_id": group_id, "department_id": animation},
+        )
+
+        self.assertEqual(self.department_of(row["id"]), animation)
+
+    def test_a_department_picked_with_the_group_is_kept(self):
+        department_id = str(self.department.id)
+        group_id = self.a_shared_group_on(str(self.department_animation.id))
+        row = self.create("wip", is_shared=True)
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {
+                "search_filter_group_id": group_id,
+                "department_id": department_id,
+            },
+        )
+
+        self.assertEqual(self.department_of(row["id"]), department_id)
+
     def test_a_group_gives_no_department_without_the_right_to_share(self):
         department_id = str(self.department.id)
         group_id = self.a_shared_group_on(str(self.department_animation.id))
