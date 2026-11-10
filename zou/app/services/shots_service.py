@@ -768,15 +768,17 @@ def get_sequences_for_episode(episode_id, only_assigned=False):
         return get_sequences({"parent_id": episode_id})
 
 
-def get_shots_for_project(project_id, only_assigned=False):
+def get_shots_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all shots related to given project.
+    Retrieve all shots related to given project, with the paging options of
+    entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_shot_type()["id"],
         "Shot",
         only_assigned=only_assigned,
+        **paging,
     )
 
 

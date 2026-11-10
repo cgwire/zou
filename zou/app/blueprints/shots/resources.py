@@ -469,7 +469,9 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         return permissions_service.mask_metadata_for_vendor(
             "Shot",
             shots_service.get_shots_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                **self.get_paging(),
             ),
             project_id,
         )

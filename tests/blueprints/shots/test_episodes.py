@@ -161,6 +161,29 @@ class EpisodeTestCase(ApiDBTestCase):
                     [episode["id"] for episode in episodes], [self.episode_id]
                 )
 
+    def test_project_shots_are_listed_by_cursor_or_by_page(self):
+        path = f"data/projects/{self.project_id}/shots"
+        expected = self.get(path)
+        self.assertEqual(len(expected), 3)
+        self.assertCountEqual(self.get_by_cursor(path, 2), expected)
+        page = self.get(f"{path}?page=2&limit=2")
+        self.assertEqual(page["total"], 3)
+        self.assertEqual(len(page["data"]), 1)
+        self.assertEqual(page["data"][0]["type"], "Shot")
+
+    def test_a_vendor_holding_two_tasks_on_a_shot_walks_it_once(self):
+        self._setup_vendor()
+        shot_id = str(self.shot.id)
+        for task in [
+            self.shot_task,
+            self.generate_fixture_shot_task(name="Second"),
+        ]:
+            tasks_service.assign_task(task.id, self.user_vendor["id"])
+        path = f"data/projects/{self.project_id}/shots"
+        shots = self.get_by_cursor(path, 1)
+        self.assertEqual([shot["id"] for shot in shots], [shot_id])
+        self.assertEqual([shot["id"] for shot in self.get(path)], [shot_id])
+
     def test_get_episode_vendor_no_task(self):
         self._setup_vendor()
         self.get(f"data/episodes/{self.episode_02_id}", 403)

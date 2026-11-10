@@ -337,16 +337,34 @@ def get_for_entity_from_task(task):
     return "Asset"
 
 
+def build_assigned_task_filter():
+    """
+    Filter keeping the entities holding a task assigned to the current
+    user. An EXISTS clause never repeats an entity the way a join on its
+    tasks does, so a limit on the query counts entities.
+    """
+    return (
+        db.session.query(Task.id)
+        .filter(Task.entity_id == Entity.id)
+        .filter(persons_service.build_assignee_filter())
+        .exists()
+    )
+
+
 def get_entities_for_project(
     project_id,
     entity_type_id,
     obj_type="Entity",
     episode_id=None,
     only_assigned=False,
+    page=0,
+    limit=None,
+    cursor_id=None,
 ):
     """
     Retrieve all entities related to given project of which entity is entity
-    type.
+    type: all of them, a page of them, or the ones following a cursor (see
+    query_utils.get_paginated_results).
     """
     query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
@@ -358,11 +376,14 @@ def get_entities_for_project(
         query = query.filter(Entity.parent_id == episode_id)
 
     if only_assigned:
-        query = query.outerjoin(Task).filter(
-            persons_service.build_assignee_filter()
-        )
-    result = query.all()
-    return Entity.serialize_list(result, obj_type=obj_type)
+        query = query.filter(build_assigned_task_filter())
+    return query_utils.get_paginated_results(
+        query,
+        page,
+        limit,
+        cursor_id=cursor_id,
+        serialize=lambda rows: Entity.serialize_list(rows, obj_type=obj_type),
+    )
 
 
 def get_entity_links_for_project(

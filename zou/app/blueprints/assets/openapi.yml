@@ -37,6 +37,26 @@ AllAssetsResource_get:
         assigned to you.
       schema:
         type: string
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get, answered as an object with data, total, nb_pages, limit, offset and page. Without page nor limit, the route returns the full list.
+    - in: query
+      name: limit
+      required: false
+      example: 100
+      schema:
+        type: integer
+      description: Number of rows in a page, or in a request of a cursor walk
+    - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
   responses:
     200:
       description: The list of assets
@@ -1217,6 +1237,26 @@ ProjectAssetsResource_get:
         assigned to you.
       schema:
         type: string
+    - in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+      description: Page to get, answered as an object with data, total, nb_pages, limit, offset and page. Without page nor limit, the route returns the full list.
+    - in: query
+      name: limit
+      required: false
+      example: 100
+      schema:
+        type: integer
+      description: Number of rows in a page, or in a request of a cursor walk
+    - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
   responses:
     200:
       description: The list of assets

@@ -81,7 +81,7 @@ class AssetResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllAssetsResource(MethodView):
+class AllAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from(SPECS["AllAssetsResource_get"])
@@ -95,6 +95,7 @@ class AllAssetsResource(MethodView):
         return assets_service.get_assets(
             criterions,
             only_user_projects=not permissions.has_admin_permissions(),
+            **self.get_paging(),
         )
 
 
@@ -198,7 +199,7 @@ class ShotAssetTypesResource(MethodView):
         return assets_service.get_asset_types_for_shot(shot_id)
 
 
-class ProjectAssetsResource(MethodView):
+class ProjectAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from(SPECS["ProjectAssetsResource_get"])
@@ -210,7 +211,7 @@ class ProjectAssetsResource(MethodView):
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         permissions_service.scope_criterions_to_vendor(criterions)
-        return assets_service.get_assets(criterions)
+        return assets_service.get_assets(criterions, **self.get_paging())
 
 
 class ProjectAssetTypeAssetsResource(MethodView):

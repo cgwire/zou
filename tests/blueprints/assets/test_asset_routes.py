@@ -244,6 +244,20 @@ class AssetRoutesTestCase(ApiDBTestCase):
             [asset["id"] for asset in self.get(path)], [self.asset_id]
         )
 
+    def test_assets_are_listed_by_cursor_or_by_page(self):
+        for path in [
+            "/data/assets/all",
+            f"/data/projects/{self.project_id}/assets",
+        ]:
+            with self.subTest(path=path):
+                expected = self.get(path)
+                self.assertEqual(len(expected), 2)
+                self.assertCountEqual(self.get_by_cursor(path, 1), expected)
+                page = self.get(f"{path}?page=2&limit=1")
+                self.assertEqual(page["total"], 2)
+                self.assertEqual(len(page["data"]), 1)
+                self.assertEqual(page["data"][0]["type"], "Asset")
+
     def test_list_routes_scope_to_user_projects(self):
         list_paths = ["data/assets/all", "data/assets/with-tasks"]
         self.generate_fixture_project_standard()
