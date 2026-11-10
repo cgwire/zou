@@ -5,6 +5,9 @@ from operator import itemgetter
 from unittest import mock
 from urllib.parse import quote
 
+import pyotp
+import pytest
+
 from tests.base import ApiDBTestCase
 from tests.fake_dns import NO_MX_DOMAIN
 from zou.app import config
@@ -15,6 +18,7 @@ from zou.app.models.person import (
     normalize_country,
     normalize_locale,
 )
+from zou.app.services import persons_service
 from zou.app.utils import fields
 
 
@@ -826,3 +830,65 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         person = Person.get_by(email="ema.doe@example.com")
         person.update({"totp_secret": "SECRETSEED"})
         self.get("data/persons?totp_secret=SECRETSEED", 400)
+
+
+@pytest.mark.real_bcrypt
+class PersonOwnEmailTestCase(ApiDBTestCase):
+    """
+    The password reset link follows the email: changing one's own address
+    asks for the current password, and a second factor when one is on.
+    """
+
+    NEW_EMAIL = "new.address@example.com"
+
+    def setUp(self):
+        super().setUp()
+        self.artist = self.generate_fixture_user_cg_artist()
+        self.path = f"data/persons/{self.artist['id']}"
+        self.log_in_cg_artist()
+
+    def get_email(self):
+        return Person.get(self.artist["id"]).email
+
+    def test_without_password(self):
+        self.put(self.path, {"email": self.NEW_EMAIL}, 400)
+        self.assertEqual(self.get_email(), self.artist["email"])
+
+    def test_with_wrong_password(self):
+        data = {"email": self.NEW_EMAIL, "current_password": "wrong"}
+        self.put(self.path, data, 400)
+        self.assertEqual(self.get_email(), self.artist["email"])
+
+    def test_with_right_password(self):
+        data = {"email": self.NEW_EMAIL, "current_password": "mypassword"}
+        self.put(self.path, data)
+        self.assertEqual(self.get_email(), self.NEW_EMAIL)
+
+    def test_unchanged_email_needs_no_password(self):
+        # Kitsu and gazu send the address back on every save.
+        data = {"email": self.artist["email"], "first_name": "Jane"}
+        self.put(self.path, data)
+        self.assertEqual(Person.get(self.artist["id"]).first_name, "Jane")
+
+    def test_with_two_factor_enabled(self):
+        secret = pyotp.random_base32()
+        Person.get(self.artist["id"]).update(
+            {
+                "totp_enabled": True,
+                "totp_secret": secret,
+                "preferred_two_factor_authentication": "totp",
+            }
+        )
+        persons_service.clear_person_cache()
+        data = {"email": self.NEW_EMAIL, "current_password": "mypassword"}
+        refused = self.put(self.path, data, 400)
+        self.assertTrue(refused["data"]["wrong_OTP"])
+        self.put(self.path, {**data, "recovery_code": "wrong"}, 400)
+        self.assertEqual(self.get_email(), self.artist["email"])
+        self.put(self.path, {**data, "totp": pyotp.TOTP(secret).now()})
+        self.assertEqual(self.get_email(), self.NEW_EMAIL)
+
+    def test_admin_on_someone_else_needs_no_password(self):
+        self.log_in_admin()
+        self.put(self.path, {"email": self.NEW_EMAIL})
+        self.assertEqual(self.get_email(), self.NEW_EMAIL)

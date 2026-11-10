@@ -55,21 +55,28 @@ CLIENT_PERSON_FILTER_FIELDS = [
     "is_bot",
     "is_guest",
 ]
-from zou.app import config
+from zou.app import app, config
+from zou.app.blueprints.auth.schemas import CurrentCredentialsSchema
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import (
+    MissingOTPException,
     PersonInProtectedAccounts,
+    TooManyLoginFailedAttempts,
+    WrongOTPException,
     WrongParameterException,
+    WrongPasswordException,
+    WrongUserException,
 )
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    auth_service,
     cascade_deletion_service,
     index_service,
     organisation_service,
     persons_service,
     user_service,
 )
-from zou.app.utils import auth, date_helpers, permissions
+from zou.app.utils import auth, date_helpers, permissions, validation
 from zou.app.utils.fields import serialize_value
 
 # Set only by preview_accounts_service: through CRUD they would turn a
@@ -120,6 +127,36 @@ def check_display_date_format(data):
         raise WrongParameterException(
             "Invalid display_date_format, expected one of: "
             f"{', '.join(DISPLAY_DATE_FORMATS)}."
+        )
+
+
+def check_current_credentials(email):
+    """
+    Reject the request with a 400 unless its body proves again who the
+    caller is: their current password, and one of their second factors when
+    they have any. A failure counts towards the login lockout.
+    """
+    body = validation.validate_request_body(CurrentCredentialsSchema)
+    try:
+        auth_service.check_auth(
+            app,
+            email,
+            body.current_password,
+            body.totp,
+            body.email_otp,
+            body.fido_authentication_response,
+            body.recovery_code,
+        )
+    except (WrongUserException, WrongPasswordException):
+        raise WrongParameterException("Current password is wrong.")
+    except TooManyLoginFailedAttempts:
+        raise WrongParameterException(
+            "Too many failed login attempts.",
+            {"too_many_failed_login_attemps": True},
+        )
+    except (MissingOTPException, WrongOTPException):
+        raise WrongParameterException(
+            "OTP verification failed.", {"wrong_OTP": True}
         )
 
 
@@ -436,6 +473,17 @@ class PersonResource(BaseModelResource, ArgsMixin):
         # email change would turn one into a regular account.
         if instance_dict.get("preview_project_id") is not None:
             raise permissions.PermissionDenied
+        # The password reset link and the OTP by mail follow the address:
+        # changing it hands the account over, a session is not enough.
+        if (
+            "email" in data
+            and data["email"] != instance_dict["email"]
+            and instance_dict["id"] == persons_service.get_current_user()["id"]
+            # Read from the token: a bot has no password to give, and the
+            # is_bot flag of the row is one an admin can flip on themselves.
+            and permissions.has_person_permissions()
+        ):
+            check_current_credentials(instance_dict["email"])
         if (
             not instance_dict.get("active", False)
             and data.get("active", False)

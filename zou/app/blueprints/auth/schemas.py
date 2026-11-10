@@ -111,6 +111,18 @@ class FidoUnregisterSchema(BaseSchema):
     recovery_code: Optional[str] = None
 
 
+class CurrentCredentialsSchema(TwoFactorAuthSchema):
+    """
+    Body fields proving again who the caller is, before a change a session
+    alone must not allow: the current password, plus a second factor when
+    one is enabled.
+    """
+
+    current_password: str = Field(
+        ..., min_length=1, description="Current password"
+    )
+
+
 class AppLoginCodeSchema(BaseSchema):
     """
     Body for minting a browser login code for a desktop app or a script.
