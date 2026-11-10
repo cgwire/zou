@@ -202,6 +202,29 @@ class SearchFilterTestCase(SavedSearchTestCase):
 
         self.assertEqual(updated["name"], "renamed")
 
+    def test_an_update_keeps_a_filter_or_a_group_in_its_project(self):
+        """
+        The routes drop project_id from the body: a caller of the service
+        gets the same answer.
+        """
+        # The fixture moves self.project_id onto the new project.
+        project_id = self.project_id
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        self.assertNotEqual(project_id, other_project_id)
+        with self.as_user():
+            search_filter = self.a_filter(project_id=project_id)
+            group = self.a_group(project_id=project_id)
+
+            search_filter = search_filters_service.update_filter(
+                search_filter["id"], {"project_id": other_project_id}
+            )
+            group = search_filters_service.update_filter_group(
+                group["id"], {"project_id": other_project_id}
+            )
+
+        self.assertEqual(search_filter["project_id"], project_id)
+        self.assertEqual(group["project_id"], project_id)
+
     def test_update_filter_cannot_share_without_manager_access(self):
         with self.as_user(self.user_cg_artist):
             search_filter = self.a_filter()

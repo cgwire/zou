@@ -168,6 +168,7 @@ def update_filter(search_filter_id, data):
     if search_filter is None:
         raise SearchFilterNotFoundException
 
+    data.pop("project_id", None)
     _check_project_and_department_exist(
         department_id=data.get("department_id")
     )
@@ -375,6 +376,7 @@ def update_filter_group(search_filter_group_id, data):
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
 
+    data.pop("project_id", None)
     _check_project_and_department_exist(
         department_id=data.get("department_id")
     )
