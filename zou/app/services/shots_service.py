@@ -866,25 +866,32 @@ def create_sequence(
         if episode["project_id"] != str(project_id):
             raise EpisodeNotFoundException
 
-    sequence = Entity.get_by(
-        entity_type_id=sequence_type["id"],
-        parent_id=episode_id,
-        project_id=project_id,
-        name=name,
-    )
+    lookup = {
+        "entity_type_id": sequence_type["id"],
+        "parent_id": episode_id,
+        "project_id": project_id,
+        "name": name,
+    }
+    sequence = Entity.get_by(**lookup)
     if sequence is None:
-        sequence = Entity.create(
-            entity_type_id=sequence_type["id"],
-            project_id=project_id,
-            parent_id=episode_id,
-            name=name,
-            description=description,
-            data=data,
-            created_by=created_by,
-        )
-        events.emit(
-            "sequence:new", {"sequence_id": sequence.id}, project_id=project_id
-        )
+        try:
+            sequence = Entity.create(
+                description=description,
+                data=data,
+                created_by=created_by,
+                **lookup,
+            )
+        except IntegrityError:
+            # A concurrent request created the same sequence in between.
+            sequence = Entity.get_by(**lookup)
+            if sequence is None:
+                raise
+        else:
+            events.emit(
+                "sequence:new",
+                {"sequence_id": sequence.id},
+                project_id=project_id,
+            )
     return sequence.serialize(obj_type="Sequence")
 
 
