@@ -131,6 +131,8 @@ def create_filter(
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
             )
+        if department_id is None:
+            department_id = search_filter_group.department_id
 
     _check_name_is_free(
         SearchFilter,
@@ -168,11 +170,8 @@ def update_filter(search_filter_id, data):
     if search_filter is None:
         raise SearchFilterNotFoundException
 
-    _check_project_and_department_exist(
-        department_id=data.get("department_id")
-    )
-    _deny_sharing_without_manager_access(data, search_filter)
-
+    data.pop("project_id", None)
+    search_filter_group = None
     if (
         search_filter_group_id := data.get(
             "search_filter_group_id", search_filter.search_filter_group_id
@@ -191,6 +190,20 @@ def update_filter(search_filter_id, data):
             _check_group_is_in_project(
                 search_filter_group, search_filter.project_id
             )
+            # Kitsu sends the former department back with the new group, so
+            # an unchanged one means the group's: a group without one, or a
+            # department picked in the same save, leaves the body as it is.
+            if search_filter_group.department_id is not None and str(
+                data.get("department_id", search_filter.department_id)
+            ) == str(search_filter.department_id):
+                data["department_id"] = search_filter_group.department_id
+
+    _check_project_and_department_exist(
+        department_id=data.get("department_id")
+    )
+    _deny_sharing_without_manager_access(data, search_filter)
+
+    if search_filter_group is not None:
         if (
             data.get("is_shared", search_filter.is_shared)
             != search_filter_group.is_shared
@@ -375,6 +388,7 @@ def update_filter_group(search_filter_group_id, data):
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
 
+    data.pop("project_id", None)
     _check_project_and_department_exist(
         department_id=data.get("department_id")
     )

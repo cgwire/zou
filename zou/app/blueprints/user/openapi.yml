@@ -1080,7 +1080,9 @@ FilterResource_put:
     false. A change of department on a filter that stays shared needs the same
     role. Otherwise it is ignored. If the filter is in a group, is_shared must
     keep the value of the group. A new group must be in the project of the
-    filter. A null search_filter_group_id takes the filter out of its group.
+    filter. The filter takes the department of its new group, unless the
+    group has none or the body changes department_id. A null
+    search_filter_group_id takes the filter out of its group.
   tags:
     - User
   parameters:
@@ -1263,7 +1265,8 @@ FiltersResource_post:
     is_shared to true. You must be a manager of this project, or an
     administrator. Otherwise the filter is created with is_shared set to false.
     If you give search_filter_group_id, the group must be in the same project
-    and have the same is_shared value.
+    and have the same is_shared value. Without a department_id, the filter
+    takes the department of the group.
   tags:
     - User
   requestBody:
