@@ -20,6 +20,7 @@ from zou.app.exceptions import (
     SequenceNotFoundException,
     ShotNotFoundException,
 )
+from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.output_file import OutputFile
 from zou.app.models.person import Person
@@ -365,6 +366,34 @@ class RemovePersonTestCase(DeletionTestCase):
             project_id=self.project.id,
             search_filter_group_id=group.id,
         )
+
+    def test_remove_person_with_a_comment_removed_meanwhile(self):
+        # KITSU-API-4XC: a comment gone during the loop raised
+        # ObjectDeletedError and aborted the removal of the person.
+        person = Person.create(first_name="Jane", last_name="Doe")
+        person_id = str(person.id)
+        comment_ids = [
+            self.generate_fixture_comment(person=person.serialize())["id"]
+            for _ in range(2)
+        ]
+        remove_comment = deletion_service.remove_comment
+
+        def remove_with_a_concurrent_deletion(comment_id):
+            # As another session would: the loaded comment stays in this one.
+            Comment.query.filter(
+                Comment.id.in_(comment_ids), Comment.id != comment_id
+            ).delete(synchronize_session=False)
+            db.session.commit()
+            return remove_comment(comment_id)
+
+        with patch.object(
+            deletion_service,
+            "remove_comment",
+            side_effect=remove_with_a_concurrent_deletion,
+        ):
+            cascade_deletion_service.remove_person(person_id)
+
+        self.assertIsNone(Person.get(person_id))
 
     def test_remove_person_with_a_grouped_search_filter(self):
         """

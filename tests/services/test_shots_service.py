@@ -431,6 +431,34 @@ class CreationTestCase(ShotsTestCase):
             "running",
         )
 
+    def test_a_sequence_created_concurrently_is_returned(self):
+        parent_id = str(self.episode.id)
+        sequence = shots_service.create_sequence(
+            self.project.id, parent_id, "NSE01"
+        )
+        # The lookup of the losing request ran before the winner committed.
+        real_get_by = Entity.get_by
+        lookups = []
+
+        def get_by(**kwargs):
+            if kwargs.get("name") != "NSE01":
+                return real_get_by(**kwargs)
+            lookups.append(kwargs)
+            return None if len(lookups) == 1 else real_get_by(**kwargs)
+
+        with (
+            patch.object(Entity, "get_by", side_effect=get_by),
+            patch.object(
+                Entity,
+                "create",
+                side_effect=IntegrityError("INSERT", {}, Exception("dup")),
+            ),
+        ):
+            again = shots_service.create_sequence(
+                self.project.id, parent_id, "NSE01"
+            )
+        self.assertEqual(again["id"], sequence["id"])
+
     def test_a_sequence_is_created_under_its_episode(self):
         parent_id = str(self.episode.id)
         sequence = shots_service.create_sequence(

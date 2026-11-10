@@ -142,16 +142,11 @@ def get_nomad_job_logs(ncli, nomad_jobid, nomad_job_name):
         out = "\n".join([x["DisplayMessage"] for x in task["Events"]])
         err = ""
     else:
+        # Framed logs come as one JSON document per 64 KiB chunk.
         err = ncli.client.stream_logs.stream(
-            alloc_id, nomad_job_name, "stderr"
+            alloc_id, nomad_job_name, "stderr", plain=True
         )
         out = ncli.client.stream_logs.stream(
-            alloc_id, nomad_job_name, "stdout"
+            alloc_id, nomad_job_name, "stdout", plain=True
         )
-        if err:
-            err = json.loads(err).get("Data", "")
-            err = base64.b64decode(err).decode("utf-8")
-        if out:
-            out = json.loads(out).get("Data", "")
-            out = base64.b64decode(out).decode("utf-8")
     return out.rstrip(), err.rstrip()

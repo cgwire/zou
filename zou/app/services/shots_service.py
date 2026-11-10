@@ -279,10 +279,11 @@ def prepare_shots_and_tasks(criterions=None, compact=False, for_client=None):
             query = query.filter(Entity.id == criterions["id"])
         if "project_id" in criterions:
             query = query.filter(Entity.project_id == criterions["project_id"])
-        if "episode_id" in criterions and criterions["episode_id"] != "all":
-            query = query.filter(
-                Sequence.parent_id == criterions["episode_id"]
-            )
+        episode_id = criterions.get("episode_id")
+        if episode_id == "main":
+            query = query.filter(Sequence.parent_id == None)
+        elif episode_id is not None and episode_id != "all":
+            query = query.filter(Sequence.parent_id == episode_id)
         if assigned_to:
             has_assigned_task = (
                 db.session.query(Task.id)
@@ -865,25 +866,32 @@ def create_sequence(
         if episode["project_id"] != str(project_id):
             raise EpisodeNotFoundException
 
-    sequence = Entity.get_by(
-        entity_type_id=sequence_type["id"],
-        parent_id=episode_id,
-        project_id=project_id,
-        name=name,
-    )
+    lookup = {
+        "entity_type_id": sequence_type["id"],
+        "parent_id": episode_id,
+        "project_id": project_id,
+        "name": name,
+    }
+    sequence = Entity.get_by(**lookup)
     if sequence is None:
-        sequence = Entity.create(
-            entity_type_id=sequence_type["id"],
-            project_id=project_id,
-            parent_id=episode_id,
-            name=name,
-            description=description,
-            data=data,
-            created_by=created_by,
-        )
-        events.emit(
-            "sequence:new", {"sequence_id": sequence.id}, project_id=project_id
-        )
+        try:
+            sequence = Entity.create(
+                description=description,
+                data=data,
+                created_by=created_by,
+                **lookup,
+            )
+        except IntegrityError:
+            # A concurrent request created the same sequence in between.
+            sequence = Entity.get_by(**lookup)
+            if sequence is None:
+                raise
+        else:
+            events.emit(
+                "sequence:new",
+                {"sequence_id": sequence.id},
+                project_id=project_id,
+            )
     return sequence.serialize(obj_type="Sequence")
 
 
