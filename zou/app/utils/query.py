@@ -138,8 +138,16 @@ def apply_cursor(query, cursor_id=None, limit=None):
     return query.limit(limit)
 
 
+def is_whole_list(page=0, limit=None, cursor_id=None):
+    """
+    True when the paging options of a listing ask for neither a page nor a
+    cursor walk: the listing answers with all its rows.
+    """
+    return page < 1 and not limit and not cursor_id
+
+
 def get_paginated_results(
-    query, page, limit=None, relations=False, cursor_id=None, serialize=None
+    query, page=0, limit=None, relations=False, cursor_id=None, serialize=None
 ):
     """
     Apply pagination to the query object. A page answers with an envelope.
@@ -152,10 +160,10 @@ def get_paginated_results(
         def serialize(entries):
             return fields.serialize_models(entries, relations=relations)
 
-    if page < 1:
-        if limit or cursor_id:
-            query = apply_cursor(query, cursor_id, limit)
+    if is_whole_list(page, limit, cursor_id):
         return serialize(query.all())
+    elif page < 1:
+        return serialize(apply_cursor(query, cursor_id, limit).all())
     else:
         limit = limit or config.NB_RECORDS_PER_PAGE
         total = query.count()

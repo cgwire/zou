@@ -214,7 +214,7 @@ class ProjectAssetsResource(MethodView, ArgsMixin):
         return assets_service.get_assets(criterions, **self.get_paging())
 
 
-class ProjectAssetTypeAssetsResource(MethodView):
+class ProjectAssetTypeAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from(SPECS["ProjectAssetTypeAssetsResource_get"])
@@ -227,7 +227,7 @@ class ProjectAssetTypeAssetsResource(MethodView):
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
         permissions_service.scope_criterions_to_vendor(criterions)
-        return assets_service.get_assets(criterions)
+        return assets_service.get_assets(criterions, **self.get_paging())
 
 
 class AssetAssetsResource(MethodView):
@@ -451,7 +451,7 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
         return super().post(asset_ids=asset_ids)
 
 
-class ProjectAssetsSharedUsedResource(MethodView):
+class ProjectAssetsSharedUsedResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from(SPECS["ProjectAssetsSharedUsedResource_get"])
     def get(self, project_id):
@@ -459,10 +459,12 @@ class ProjectAssetsSharedUsedResource(MethodView):
         Get shared assets used in project
         """
         permissions_service.check_project_access(project_id)
-        return assets_service.get_shared_assets_used_in_project(project_id)
+        return assets_service.get_shared_assets_used_in_project(
+            project_id, **self.get_paging()
+        )
 
 
-class ProjectEpisodeAssetsSharedUsedResource(MethodView):
+class ProjectEpisodeAssetsSharedUsedResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from(SPECS["ProjectEpisodeAssetsSharedUsedResource_get"])
@@ -472,5 +474,5 @@ class ProjectEpisodeAssetsSharedUsedResource(MethodView):
         """
         permissions_service.check_project_access(project_id)
         return assets_service.get_shared_assets_used_in_project(
-            project_id, episode_id
+            project_id, episode_id, **self.get_paging()
         )

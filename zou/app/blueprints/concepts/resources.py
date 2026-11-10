@@ -51,7 +51,7 @@ class ConceptResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllConceptsResource(MethodView):
+class AllConceptsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     @swag_from(SPECS["AllConceptsResource_get"])
@@ -68,7 +68,7 @@ class AllConceptsResource(MethodView):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return concepts_service.get_concepts(criterions)
+        return concepts_service.get_concepts(criterions, **self.get_paging())
 
 
 class ConceptTaskTypesResource(MethodView):
@@ -156,7 +156,9 @@ class ProjectConceptsResource(MethodView, ArgsMixin):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return concepts_service.get_concepts_for_project(project_id)
+        return concepts_service.get_concepts_for_project(
+            project_id, **self.get_paging()
+        )
 
     @jwt_required()
     @swag_from(SPECS["ProjectConceptsResource_post"])

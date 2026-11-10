@@ -91,9 +91,10 @@ def get_full_edit(edit_id):
     return edits[0]
 
 
-def get_edits(criterions=None):
+def get_edits(criterions=None, **paging):
     """
-    Get all edits for given criterions.
+    Get all edits for given criterions, with the paging options of
+    query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -105,26 +106,31 @@ def get_edits(criterions=None):
 
     query = Entity.query
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
-    query = query.join(Project).add_columns(Project.name).order_by(Entity.name)
+    query = (
+        query.join(Project)
+        .add_columns(Project.name)
+        .order_by(Entity.name, Entity.id)
+    )
 
     if is_only_assignation:
-        query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(persons_service.build_assignee_filter())
+        query = query.filter(entities_service.build_assigned_task_filter())
+
+    def serialize(rows):
+        edits = []
+        for edit_model, project_name in rows:
+            edit = edit_model.serialize(obj_type="Edit")
+            edit["project_name"] = project_name
+            edits.append(edit)
+        return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
+            "Edit", criterions.get("vendor_departments"), edits
+        )
 
     try:
-        data = query.all()
+        return query_utils.get_paginated_results(
+            query, serialize=serialize, **paging
+        )
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
-
-    edits = []
-    for edit_model, project_name in data:
-        edit = edit_model.serialize(obj_type="Edit")
-        edit["project_name"] = project_name
-        edits.append(edit)
-
-    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
-        "Edit", criterions.get("vendor_departments"), edits
-    )
 
 
 def get_edits_and_tasks(criterions=None, for_client=None):
@@ -242,15 +248,17 @@ def get_edits_and_tasks(criterions=None, for_client=None):
     return edits
 
 
-def get_edits_for_project(project_id, only_assigned=False):
+def get_edits_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all edits related to given project.
+    Retrieve all edits related to given project, with the paging options of
+    entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_edit_type()["id"],
         "Edit",
         only_assigned=only_assigned,
+        **paging,
     )
 
 

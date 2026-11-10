@@ -184,6 +184,57 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertEqual([shot["id"] for shot in shots], [shot_id])
         self.assertEqual([shot["id"] for shot in self.get(path)], [shot_id])
 
+    def test_entity_lists_are_listed_by_cursor_or_by_page(self):
+        self.generate_fixture_scene("SC01")
+        self.generate_fixture_scene("SC02")
+        project_path = f"data/projects/{self.project_id}"
+        for path in [
+            "data/shots",
+            "data/shots/all",
+            f"data/shots/all?project_id={self.project_id}",
+            "data/sequences",
+            "data/episodes",
+            "data/scenes/all",
+            f"{project_path}/sequences",
+            f"{project_path}/episodes",
+            f"{project_path}/scenes",
+        ]:
+            with self.subTest(path=path):
+                self.assert_listed_by_cursor_or_by_page(path)
+
+    def test_a_vendor_holding_two_tasks_walks_the_parents_once(self):
+        self._setup_vendor()
+        for task in [
+            self.shot_task,
+            self.generate_fixture_shot_task(name="Second"),
+        ]:
+            tasks_service.assign_task(task.id, self.user_vendor["id"])
+        sequence_id = str(self.shot.parent_id)
+        project_path = f"data/projects/{self.project_id}"
+        for path, parent_id, parent_type in [
+            (f"{project_path}/sequences", sequence_id, "Sequence"),
+            (
+                f"data/sequences?project_id={self.project_id}",
+                sequence_id,
+                "Sequence",
+            ),
+            (f"{project_path}/episodes", self.episode_id, "Episode"),
+            (
+                f"data/episodes?project_id={self.project_id}",
+                self.episode_id,
+                "Episode",
+            ),
+        ]:
+            with self.subTest(path=path):
+                parents = self.get_by_cursor(path, 1)
+                self.assertEqual(
+                    [(parent["id"], parent["type"]) for parent in parents],
+                    [(parent_id, parent_type)],
+                )
+                separator = "&" if "?" in path else "?"
+                page = self.get(f"{path}{separator}page=1")
+                self.assertEqual(page["total"], 1)
+
     def test_get_episode_vendor_no_task(self):
         self._setup_vendor()
         self.get(f"data/episodes/{self.episode_02_id}", 403)

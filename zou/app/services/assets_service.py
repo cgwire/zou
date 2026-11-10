@@ -604,25 +604,36 @@ def set_shared_assets(
     return Entity.serialize_list(assets, obj_type="Asset")
 
 
-def get_shared_assets_used_in_project(project_id, episode_id=None):
+def get_shared_assets_used_in_project(project_id, episode_id=None, **paging):
     """
-    Get all shared assets used in a project.
+    Get all shared assets used in a project, with the paging options of
+    query_utils.get_paginated_results.
     """
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
 
+    # An EXISTS clause rather than joins: an asset cast in several shots
+    # comes once, so a limit counts assets.
+    casting = (
+        db.session.query(EntityLink.id)
+        .join(Shot, EntityLink.entity_in_id == Shot.id)
+        .join(Sequence, Shot.parent_id == Sequence.id)
+        .filter(EntityLink.entity_out_id == Entity.id)
+        .filter(Shot.project_id == project_id)
+    )
+    if episode_id is not None and episode_id not in ["main", "all"]:
+        casting = casting.filter(Sequence.parent_id == episode_id)
+
     assets = (
         Entity.query.filter(entity_types_service.build_asset_type_filter())
         .filter(Entity.is_shared == True)
-        .join(EntityLink, EntityLink.entity_out_id == Entity.id)
-        .join(Shot, EntityLink.entity_in_id == Shot.id)
-        .join(Sequence, Shot.parent_id == Sequence.id)
-        .filter(Shot.project_id == project_id)
         .filter(Entity.canceled != True)
         .filter(Entity.project_id != project_id)
+        .filter(casting.exists())
+        .order_by(Entity.name, Entity.id)
     )
-
-    if episode_id is not None and episode_id not in ["main", "all"]:
-        assets = assets.filter(Sequence.parent_id == episode_id)
-
-    return Entity.serialize_list(assets.all(), obj_type="Asset")
+    return query_utils.get_paginated_results(
+        assets,
+        serialize=lambda rows: Entity.serialize_list(rows, obj_type="Asset"),
+        **paging,
+    )

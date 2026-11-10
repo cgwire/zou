@@ -228,6 +228,23 @@ class ApiTestCase(unittest.TestCase):
                 return rows
             page = self.get(f"{path}&cursor_id={page[-1]['id']}")
 
+    def assert_listed_by_cursor_or_by_page(self, path, limit=1):
+        """
+        The list at given path, longer than limit, comes whole and without
+        a repeated row whether it is walked by cursor or read page by page.
+        """
+        expected = self.get(path)
+        self.assertGreater(len(expected), limit)
+        self.assertCountEqual(self.get_by_cursor(path, limit), expected)
+        separator = "&" if "?" in path else "?"
+        path = f"{path}{separator}limit={limit}"
+        first = self.get(f"{path}&page=1")
+        self.assertEqual(first["total"], len(expected))
+        rows = []
+        for page in range(1, first["nb_pages"] + 1):
+            rows += self.get(f"{path}&page={page}")["data"]
+        self.assertCountEqual(rows, expected)
+
     def get_first(self, path, code=200):
         """
         Get first element of data at given path. It makes the assumption that
