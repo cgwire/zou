@@ -47,10 +47,20 @@ class SharedFilterMixin:
         assertions do not depend on the order the route happens to return.
         """
         self.clear_cache()
+        return self.listed_names()
+
+    def listed_names(self):
+        """
+        The same names as the route gives them now, memoized or not.
+        """
         result = self.get(self.path)
         if not result:
             return []
         return sorted(f["name"] for f in result["asset"][self.project_id])
+
+    def department_of(self, row_id):
+        department_id = self.model.get(row_id).department_id
+        return department_id and str(department_id)
 
     def put_join_the_team_and_the_department(self):
         projects_service.add_team_member(
@@ -162,6 +172,26 @@ class SharedFilterMixin:
         self.log_in_cg_artist()
         self.assertEqual(self.visible_names(), ["department", "team"])
 
+    def test_a_department_one_stays_in_the_list_of_its_owner(self):
+        """
+        The department tells whom else a row reaches: its owner lists it even
+        out of that department and with no manager role.
+        """
+        animation = str(self.department_animation.id)
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        for name, is_shared in [("private", False), ("shared", True)]:
+            row = self.create(
+                name, is_shared=is_shared, department_id=animation
+            )
+            # Sharing takes a manager, but the owner can lose that role.
+            self.model.get(row["id"]).update(
+                {"person_id": self.user_cg_artist["id"]}
+            )
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["private", "shared"])
+
     def test_a_name_of_the_column_length_is_kept(self):
         self.create("n" * 200)
         self.assertEqual(self.visible_names(), ["n" * 200])
@@ -239,15 +269,19 @@ class SharedFilterMixin:
         self.put(path, {"name": "used by the artist"}, 400)
         self.put(path, {"name": "used by the admin"})
 
-    def test_a_new_name_is_checked_where_the_body_moves_the_row(self):
-        project_id = self.project_id
+    def test_a_new_name_is_checked_in_the_project_of_the_row(self):
         row = self.create("mine")
+        self.create("used here")
         other_project_id = str(self.generate_fixture_project("Other").id)
-        self.create("wip", project_id=other_project_id)
+        self.create("used elsewhere", project_id=other_project_id)
 
         path = f"{self.path}{row['id']}"
-        self.put(path, {"name": "wip", "project_id": other_project_id}, 400)
-        self.put(path, {"name": "wip", "project_id": project_id})
+        self.put(
+            path, {"name": "used here", "project_id": other_project_id}, 400
+        )
+        self.put(
+            path, {"name": "used elsewhere", "project_id": other_project_id}
+        )
 
     def test_a_new_name_stays_free_in_the_other_lists(self):
         self.create("used in shots", list_type="shot")
@@ -258,19 +292,32 @@ class SharedFilterMixin:
         self.put(path, {"name": "used in shots"})
         self.put(path, {"name": "used on shot tasks"})
 
-    def test_moving_a_row_onto_a_name_of_the_target_list_is_refused(self):
+    def test_another_project_leaves_a_row_where_it_is(self):
+        project_id = self.project_id
+        row = self.create("wip")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": other_project_id}
+        )
+
+        self.assertEqual(updated["project_id"], project_id)
+        self.assertEqual(str(self.model.get(row["id"]).project_id), project_id)
+
+    def test_another_project_holding_the_name_changes_nothing(self):
+        project_id = self.project_id
         row = self.create("wip")
         other_project_id = str(self.generate_fixture_project("Other").id)
         self.create("wip", project_id=other_project_id)
 
-        path = f"{self.path}{row['id']}"
-        self.put(path, {"project_id": other_project_id}, 400)
-        self.put(path, {"name": "wip", "project_id": other_project_id}, 400)
+        updated = self.put(
+            f"{self.path}{row['id']}",
+            {"name": "wip", "project_id": other_project_id},
+        )
 
-        stored = self.get(f"{self.detail_path}{row['id']}")
-        self.assertEqual(stored["project_id"], row["project_id"])
+        self.assertEqual(updated["project_id"], project_id)
 
-    def test_moving_a_row_without_a_project_is_checked_too(self):
+    def test_another_project_leaves_a_row_out_of_any_production(self):
         """
         Kitsu used to send the current production for the lists out of any
         production, which moved their rows.
@@ -278,9 +325,11 @@ class SharedFilterMixin:
         row = self.create("wip", project_id=None)
         self.create("wip")
 
-        self.put(
-            f"{self.path}{row['id']}", {"project_id": self.project_id}, 400
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": self.project_id}
         )
+
+        self.assertIsNone(updated["project_id"])
 
     def test_a_null_project_leaves_a_row_where_it_is(self):
         """
@@ -301,16 +350,6 @@ class SharedFilterMixin:
             f"{self.path}{in_project['id']}", {"project_id": None}
         )
         self.assertEqual(updated["project_id"], self.project_id)
-
-    def test_moving_a_row_where_its_name_is_free_is_accepted(self):
-        row = self.create("wip")
-        other_project_id = str(self.generate_fixture_project("Other").id)
-
-        updated = self.put(
-            f"{self.path}{row['id']}", {"project_id": other_project_id}
-        )
-
-        self.assertEqual(updated["project_id"], other_project_id)
 
     def test_a_row_can_keep_a_name_it_already_shares(self):
         """
@@ -336,25 +375,20 @@ class SharedFilterMixin:
             self.path, self.payload("wip", project_id=self.unknown_id), 404
         )
 
-    def test_moving_a_row_to_a_project_of_no_row_is_refused(self):
+    def test_an_update_ignores_a_project_of_no_row(self):
         row = self.create("wip")
 
-        self.put(
-            f"{self.path}{row['id']}", {"project_id": self.unknown_id}, 404
+        updated = self.put(
+            f"{self.path}{row['id']}", {"project_id": self.unknown_id}
         )
-        self.assertEqual(
-            str(self.model.get(row["id"]).project_id), self.project_id
-        )
+
+        self.assertEqual(updated["project_id"], self.project_id)
 
     def test_an_artist_gets_the_same_answer_for_a_project_of_no_row(self):
         self.log_in_cg_artist()
-        row = self.create("wip", project_id=None)
 
         self.post(
             self.path, self.payload("new", project_id=self.unknown_id), 404
-        )
-        self.put(
-            f"{self.path}{row['id']}", {"project_id": self.unknown_id}, 404
         )
 
     def test_a_department_of_no_row_is_refused(self):
@@ -369,6 +403,231 @@ class SharedFilterMixin:
             f"{self.path}{row['id']}", {"department_id": self.unknown_id}, 404
         )
         self.assertIsNone(self.model.get(row["id"]).department_id)
+
+    def test_a_null_department_opens_the_row_to_the_team(self):
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        self.create("team", is_shared=True)
+        # The artist belongs to self.department, not to this one.
+        scoped = self.create(
+            "department",
+            is_shared=True,
+            department_id=str(self.department_animation.id),
+        )
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["team"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{scoped['id']}", {"department_id": None})
+
+        self.assertIsNone(self.model.get(scoped["id"]).department_id)
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), ["department", "team"])
+
+    def test_a_body_without_a_department_keeps_it(self):
+        row = self.create(
+            "wip", is_shared=True, department_id=str(self.department.id)
+        )
+
+        self.put(f"{self.path}{row['id']}", {"name": "renamed"})
+
+        self.assertEqual(
+            str(self.model.get(row["id"]).department_id),
+            str(self.department.id),
+        )
+
+    def a_shared_row_of(self, person, department_id):
+        """
+        Sharing takes a manager, but the owner can lose that role afterwards.
+        """
+        self.log_in_admin()
+        row = self.create("wip", is_shared=True, department_id=department_id)
+        self.model.get(row["id"]).update({"person_id": person["id"]})
+        return f"{self.path}{row['id']}", row["id"]
+
+    def test_a_department_change_is_ignored_without_the_right_to_share(self):
+        animation = str(self.department_animation.id)
+        self.put_join_the_team_and_the_department()
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, animation)
+        self.log_in_cg_artist()
+
+        self.put(path, {"department_id": None})
+        self.assertEqual(self.department_of(row_id), animation)
+
+        self.put(path, {"department_id": str(self.department.id)})
+        self.assertEqual(self.department_of(row_id), animation)
+
+        # The whole form, as Kitsu sends it.
+        self.put(
+            path,
+            {
+                "is_shared": True,
+                "project_id": self.project_id,
+                "department_id": None,
+            },
+        )
+        self.assertEqual(self.department_of(row_id), animation)
+
+    def test_the_rest_of_a_body_applies_without_the_right_to_share(self):
+        animation = str(self.department_animation.id)
+        self.put_join_the_team_and_the_department()
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, animation)
+        self.log_in_cg_artist()
+
+        self.put(path, {"name": "renamed", "department_id": None})
+
+        self.assertEqual(self.model.get(row_id).name, "renamed")
+        self.assertEqual(self.department_of(row_id), animation)
+
+    def test_unsharing_drops_the_department_without_the_right_to_share(self):
+        animation = str(self.department_animation.id)
+        self.put_join_the_team_and_the_department()
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, animation)
+        self.log_in_cg_artist()
+
+        self.put(path, {"is_shared": False, "department_id": None})
+
+        self.assertFalse(self.model.get(row_id).is_shared)
+        self.assertIsNone(self.department_of(row_id))
+
+    def test_a_private_row_takes_a_department_without_the_right_to_share(self):
+        department_id = str(self.department.id)
+        self.put_join_the_team_and_the_department()
+        self.log_in_cg_artist()
+        row = self.create("wip")
+
+        self.put(f"{self.path}{row['id']}", {"department_id": department_id})
+
+        self.assertEqual(self.department_of(row["id"]), department_id)
+
+    def test_a_manager_of_the_project_changes_the_department(self):
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        path, row_id = self.a_shared_row_of(
+            self.user_manager, str(self.department_animation.id)
+        )
+        self.log_in_manager()
+
+        self.put(path, {"department_id": None})
+
+        self.assertIsNone(self.department_of(row_id))
+
+    def test_naming_a_project_of_the_caller_gives_no_right_on_the_row(self):
+        animation = str(self.department_animation.id)
+        self.generate_fixture_user_manager()
+        path, row_id = self.a_shared_row_of(self.user_manager, animation)
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        projects_service.add_team_member(
+            other_project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+
+        self.put(path, {"project_id": other_project_id, "department_id": None})
+
+        self.assertEqual(self.department_of(row_id), animation)
+
+    def test_unsharing_drops_the_listing_of_the_team(self):
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        row = self.create("team", is_shared=True)
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["team"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{row['id']}", {"is_shared": False})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_an_admin_unsharing_a_row_drops_the_listing_of_its_owner(self):
+        self.generate_fixture_user_manager()
+        _, row_id = self.a_shared_row_of(self.user_manager, None)
+        self.log_in_manager()
+        self.clear_cache()
+        listing = self.get(self.path)["asset"][self.project_id]
+        self.assertTrue(listing[0]["is_shared"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{row_id}", {"is_shared": False})
+
+        self.log_in_manager()
+        listing = self.get(self.path)["asset"][self.project_id]
+        self.assertFalse(listing[0]["is_shared"])
+
+    def test_an_admin_renaming_a_row_drops_the_listing_of_its_owner(self):
+        self.log_in_cg_artist()
+        row = self.create("before")
+        self.assertEqual(self.visible_names(), ["before"])
+
+        self.log_in_admin()
+        self.put(f"{self.path}{row['id']}", {"name": "after"})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), ["after"])
+
+    def test_an_admin_removing_a_row_drops_the_listing_of_its_owner(self):
+        self.log_in_cg_artist()
+        row = self.create("gone")
+        self.assertEqual(self.visible_names(), ["gone"])
+
+        self.log_in_admin()
+        self.delete(f"{self.path}{row['id']}")
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_a_new_row_drops_the_listing_of_its_owner(self):
+        self.assertEqual(self.visible_names(), [])
+
+        self.create("new")
+
+        self.assertEqual(self.listed_names(), ["new"])
+
+    def test_a_row_shared_for_the_first_time_takes_its_department(self):
+        department_id = str(self.department.id)
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+        row = self.create("wip")
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {"is_shared": True, "department_id": department_id},
+        )
+
+        self.assertTrue(self.model.get(row["id"]).is_shared)
+        self.assertEqual(self.department_of(row["id"]), department_id)
+
+    def test_naming_a_project_of_the_caller_does_not_share_the_row(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        row = self.create("wip")
+        other_project_id = str(self.generate_fixture_project("Other").id)
+        projects_service.add_team_member(
+            other_project_id, self.user_manager["id"]
+        )
+
+        self.put(
+            f"{self.path}{row['id']}",
+            {"is_shared": True, "project_id": other_project_id},
+        )
+
+        self.assertFalse(self.model.get(row["id"]).is_shared)
+
+    def test_naming_a_project_does_not_share_a_row_out_of_any_production(self):
+        row = self.create("wip", project_id=None)
+
+        updated = self.put(
+            f"{self.path}{row['id']}",
+            {"is_shared": True, "project_id": self.project_id},
+        )
+
+        self.assertFalse(updated["is_shared"])
+        self.assertIsNone(updated["project_id"])
 
 
 class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
@@ -409,6 +668,165 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
                 "project_id": self.project_id,
             },
         )
+
+    def a_shared_group_with_a_filter(
+        self, group_department, filter_department
+    ):
+        self.log_in_admin()
+        self.put_join_the_team_and_the_department()
+        group = self.post(
+            "data/user/filter-groups/",
+            {
+                "list_type": "asset",
+                "name": "group",
+                "project_id": self.project_id,
+                "is_shared": True,
+                "department_id": group_department,
+            },
+        )
+        row = self.create(
+            "wip",
+            is_shared=True,
+            search_filter_group_id=group["id"],
+            department_id=filter_department,
+        )
+        return f"data/user/filter-groups/{group['id']}", row["id"]
+
+    def test_a_filter_follows_its_group_to_a_new_department(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+
+        self.put(group_path, {"department_id": str(self.department.id)})
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department.id)
+        )
+
+    def test_a_filter_follows_its_group_into_a_first_department(self):
+        group_path, filter_id = self.a_shared_group_with_a_filter(None, None)
+
+        self.put(group_path, {"department_id": str(self.department.id)})
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department.id)
+        )
+
+    def test_a_filter_follows_its_group_out_of_its_department(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+        # The artist belongs to self.department, not to this one. The listing
+        # stays memoized from here on: the update has to clear it.
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), [])
+
+        self.log_in_admin()
+        self.put(group_path, {"department_id": None})
+
+        self.assertIsNone(self.department_of(filter_id))
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), ["wip"])
+
+    def test_a_filter_follows_its_group_and_stays_in_the_list_of_its_owner(
+        self,
+    ):
+        group_path, filter_id = self.a_shared_group_with_a_filter(None, None)
+        # Shared as a manager, by an owner who lost that role since.
+        SearchFilter.get(filter_id).update(
+            {"person_id": self.user_cg_artist["id"]}
+        )
+
+        self.put(
+            group_path, {"department_id": str(self.department_animation.id)}
+        )
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department_animation.id)
+        )
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["wip"])
+
+    def test_a_filter_leaves_the_department_of_a_group_no_longer_shared(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+
+        self.put(group_path, {"is_shared": False, "department_id": None})
+
+        row = SearchFilter.get(filter_id)
+        self.assertFalse(row.is_shared)
+        self.assertIsNone(row.department_id)
+
+    def test_unsharing_a_group_drops_the_listing_of_the_team(self):
+        group_path, _ = self.a_shared_group_with_a_filter(None, None)
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["wip"])
+
+        self.log_in_admin()
+        self.put(group_path, {"is_shared": False})
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_removing_a_group_drops_the_listing_of_the_team(self):
+        group_path, _ = self.a_shared_group_with_a_filter(None, None)
+        self.log_in_cg_artist()
+        self.assertEqual(self.visible_names(), ["wip"])
+
+        self.log_in_admin()
+        self.delete(group_path)
+
+        self.log_in_cg_artist()
+        self.assertEqual(self.listed_names(), [])
+
+    def test_a_filter_on_another_department_stays_on_it(self):
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            str(self.department_animation.id), str(self.department.id)
+        )
+
+        self.put(group_path, {"department_id": None})
+
+        self.assertEqual(
+            self.department_of(filter_id), str(self.department.id)
+        )
+
+    def test_a_filter_of_another_group_keeps_its_department(self):
+        animation = str(self.department_animation.id)
+        group_path, _ = self.a_shared_group_with_a_filter(animation, animation)
+        other_group = self.post(
+            "data/user/filter-groups/",
+            {
+                "list_type": "asset",
+                "name": "other group",
+                "project_id": self.project_id,
+                "is_shared": True,
+                "department_id": animation,
+            },
+        )
+        other = self.create(
+            "other",
+            is_shared=True,
+            search_filter_group_id=other_group["id"],
+            department_id=animation,
+        )
+
+        self.put(group_path, {"department_id": None})
+
+        self.assertEqual(self.department_of(other["id"]), animation)
+
+    def test_a_filter_keeps_its_department_when_its_group_keeps_its_own(self):
+        animation = str(self.department_animation.id)
+        group_path, filter_id = self.a_shared_group_with_a_filter(
+            animation, animation
+        )
+
+        self.put(group_path, {"name": "renamed"})
+
+        self.assertEqual(self.department_of(filter_id), animation)
 
     def test_a_name_used_in_the_group_is_refused(self):
         group_id = self.a_group()["id"]
@@ -462,7 +880,7 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     def test_changing_group_under_the_same_name_is_accepted(self):
         """
         A duplicate made by taking a filter out of a group or by putting it
-        in one does no harm: only a new name or a new project is checked.
+        in one does no harm: only a new name is checked.
         """
         group_id = self.a_group()["id"]
         self.create("wip")
@@ -478,6 +896,80 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
             {"search_filter_group_id": group_id},
         )
         self.assertEqual(updated["search_filter_group_id"], group_id)
+
+    def test_a_new_filter_cannot_join_a_group_of_another_project(self):
+        group_id = self.a_group()["id"]
+        other_project_id = str(self.generate_fixture_project("Other").id)
+
+        for project_id in [other_project_id, None]:
+            self.post(
+                self.path,
+                self.payload(
+                    "wip",
+                    project_id=project_id,
+                    search_filter_group_id=group_id,
+                ),
+                400,
+            )
+
+    def test_a_filter_cannot_join_a_group_of_another_project(self):
+        """
+        Sharing a group takes a manager of its project, and its filters follow
+        it: a filter of another project would reach a team beyond that right.
+        """
+        in_a_project = self.create("in a project")
+        out_of_any = self.create("out of any", project_id=None)
+        # The fixture moves self.project_id onto the new project.
+        self.generate_fixture_project("Other")
+        group_id = self.a_group()["id"]
+
+        for row in [in_a_project, out_of_any]:
+            self.put(
+                f"{self.path}{row['id']}",
+                {"search_filter_group_id": group_id},
+                400,
+            )
+            self.assertIsNone(
+                SearchFilter.get(row["id"]).search_filter_group_id
+            )
+
+    def test_a_filter_out_of_any_production_joins_a_group_out_of_any(self):
+        group_id = self.post(
+            "data/user/filter-groups/",
+            {"list_type": "asset", "name": "group"},
+        )["id"]
+        self.create("new", project_id=None, search_filter_group_id=group_id)
+        row = self.create("existing", project_id=None)
+
+        updated = self.put(
+            f"{self.path}{row['id']}", {"search_filter_group_id": group_id}
+        )
+
+        self.assertEqual(updated["search_filter_group_id"], group_id)
+
+    def test_a_filter_already_in_a_group_of_another_project_stays_editable(
+        self,
+    ):
+        """
+        A group could move without its filters before this rule, and gazu
+        sends the group of a filter back with every other change.
+        """
+        group_id = self.a_group()["id"]
+        row = self.create("wip", search_filter_group_id=group_id)
+        SearchFilterGroup.get(group_id).update(
+            {"project_id": str(self.generate_fixture_project("Other").id)}
+        )
+        path = f"{self.path}{row['id']}"
+
+        updated = self.put(
+            path, {"name": "renamed", "search_filter_group_id": group_id}
+        )
+        self.assertEqual(updated["name"], "renamed")
+
+        updated = self.put(path, {"search_filter_group_id": None})
+        self.assertIsNone(updated["search_filter_group_id"])
+
+        self.put(path, {"search_filter_group_id": group_id}, 400)
 
     def test_a_query_of_the_column_length_is_kept(self):
         self.create("long", query="q" * 500)

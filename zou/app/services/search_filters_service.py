@@ -80,8 +80,11 @@ def get_user_filters(current_user_id):
             department_id is not None
             and str(department_id) in current_user["departments"]
         )
+        # The department tells whom else a row reaches: its owner lists it
+        # whatever the department.
+        is_own = str(search_filter.person_id) == str(current_user_id)
 
-        if department_id is None or is_manager or is_in_departments:
+        if is_own or department_id is None or is_manager or is_in_departments:
             if search_filter.list_type not in result:
                 result[search_filter.list_type] = {}
             subresult = result[search_filter.list_type]
@@ -123,6 +126,7 @@ def create_filter(
         )
         if search_filter_group is None:
             raise SearchFilterGroupNotFoundException
+        _check_group_is_in_project(search_filter_group, project_id)
         if is_shared != search_filter_group.is_shared:
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
@@ -149,9 +153,7 @@ def create_filter(
         search_filter_group_id=search_filter_group_id,
         department_id=department_id,
     )
-    _clear_cache_after_sharing_change(
-        clear_filter_cache, search_filter.is_shared, current_user["id"]
-    )
+    clear_filter_cache()
     return search_filter.serialize()
 
 
@@ -167,7 +169,7 @@ def update_filter(search_filter_id, data):
         raise SearchFilterNotFoundException
 
     _check_project_and_department_exist(
-        data.get("project_id"), data.get("department_id")
+        department_id=data.get("department_id")
     )
     _deny_sharing_without_manager_access(data, search_filter)
 
@@ -181,6 +183,14 @@ def update_filter(search_filter_id, data):
         )
         if search_filter_group is None:
             raise SearchFilterGroupNotFoundException
+        # A row keeping its group passes, so the ones saved before this rule
+        # stay editable.
+        if str(search_filter_group_id) != str(
+            search_filter.search_filter_group_id
+        ):
+            _check_group_is_in_project(
+                search_filter_group, search_filter.project_id
+            )
         if (
             data.get("is_shared", search_filter.is_shared)
             != search_filter_group.is_shared
@@ -194,9 +204,7 @@ def update_filter(search_filter_id, data):
     )
 
     search_filter.update(data)
-    _clear_cache_after_sharing_change(
-        clear_filter_cache, search_filter.is_shared, current_user["id"]
-    )
+    clear_filter_cache()
     return search_filter.serialize()
 
 
@@ -211,17 +219,15 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    _clear_cache_after_sharing_change(
-        clear_filter_cache, search_filter.is_shared, current_user["id"]
-    )
+    clear_filter_cache()
     return search_filter.serialize()
 
 
-def clear_filter_group_cache(user_id=None):
+def clear_filter_group_cache():
     """
-    Drop the memoized filter group list of given user, or of every user.
+    Drop the memoized filter group list of every user.
     """
-    persons_service.clear_user_scoped_cache(get_user_filter_groups, user_id)
+    cache.cache.delete_memoized(get_user_filter_groups)
 
 
 def get_filter_groups():
@@ -287,7 +293,8 @@ def get_user_filter_groups(current_user_id):
             department_id is not None
             and str(department_id) in current_user["departments"]
         )
-        if department_id is None or is_manager or is_in_departments:
+        is_own = str(search_filter_group.person_id) == str(current_user_id)
+        if is_own or department_id is None or is_manager or is_in_departments:
             subresult = result[search_filter_group.list_type]
 
             if search_filter_group.project_id is None:
@@ -338,11 +345,7 @@ def create_filter_group(
         is_shared=is_shared,
         department_id=department_id,
     )
-    _clear_cache_after_sharing_change(
-        clear_filter_group_cache,
-        search_filter_group.is_shared,
-        current_user["id"],
-    )
+    clear_filter_group_cache()
 
     return search_filter_group.serialize()
 
@@ -373,12 +376,27 @@ def update_filter_group(search_filter_group_id, data):
         raise SearchFilterGroupNotFoundException
 
     _check_project_and_department_exist(
-        data.get("project_id"), data.get("department_id")
+        department_id=data.get("department_id")
     )
     _deny_sharing_without_manager_access(data, search_filter_group)
     _check_new_name_is_free(search_filter_group, data)
 
+    former_department_id = search_filter_group.department_id
     search_filter_group.update(data)
+
+    if str(search_filter_group.department_id) != str(former_department_id):
+        # The filters on the department of the group follow it: left there,
+        # they would leave the group empty for those it reaches now. A filter
+        # set on another department stays on it.
+        if (
+            SearchFilter.query.filter_by(
+                search_filter_group_id=search_filter_group_id,
+                department_id=former_department_id,
+            ).update({"department_id": search_filter_group.department_id})
+            > 0
+        ):
+            SearchFilter.query.session.commit()
+            clear_filter_cache()
 
     if data.get("is_shared", None) is not None:
         # The group carries the authorized value by now, since
@@ -396,11 +414,7 @@ def update_filter_group(search_filter_group_id, data):
             SearchFilter.query.session.commit()
             clear_filter_cache()
 
-    _clear_cache_after_sharing_change(
-        clear_filter_group_cache,
-        search_filter_group.is_shared,
-        current_user["id"],
-    )
+    clear_filter_group_cache()
     return search_filter_group.serialize()
 
 
@@ -429,11 +443,7 @@ def remove_filter_group(search_filter_group_id):
         SearchFilter.query.session.commit()
         clear_filter_cache()
     search_filter_group.delete()
-    _clear_cache_after_sharing_change(
-        clear_filter_group_cache,
-        search_filter_group.is_shared,
-        current_user["id"],
-    )
+    clear_filter_group_cache()
     return search_filter_group.serialize()
 
 
@@ -454,30 +464,40 @@ def _reaches_team_filter(project_id_column, current_user_id):
     )
 
 
-def clear_filter_cache(user_id=None):
+def clear_filter_cache():
     """
-    Drop the memoized filter list of given user, or of every user.
+    Drop the memoized filter list of every user. A row shows in the lists of
+    its owner and, shared now or until this change, of its team: a write is
+    rare and a list costs little to rebuild, so telling them apart saves
+    nothing.
     """
-    persons_service.clear_user_scoped_cache(get_user_filters, user_id)
+    cache.cache.delete_memoized(get_user_filters)
 
 
 def _deny_sharing_without_manager_access(data, instance):
     """
     Silently turn off a sharing request the caller is not allowed to make:
-    sharing is a per project manager privilege, and a filter without a
-    project cannot be shared at all. Mutates data in place.
+    sharing is a manager privilege on the project of the row, and a filter
+    without a project cannot be shared at all. The department of a row that
+    stays shared tells who it reaches, so changing it takes the same
+    privilege. Mutates data in place.
     """
+    if permissions_service.can_share_filter(instance.project_id):
+        return
     if (
         data.get("is_shared", None) is not None
         and instance.is_shared != data["is_shared"]
-        and not permissions_service.can_share_filter(
-            data.get("project_id", None)
-        )
     ):
         data["is_shared"] = False
+    if (
+        "department_id" in data
+        and instance.is_shared
+        and data.get("is_shared", True)
+    ):
+        del data["department_id"]
 
 
-def _check_project_and_department_exist(project_id, department_id):
+def _check_project_and_department_exist(project_id=None, department_id=None):
     """
     Raise a not found exception for a project or a department of no row, which
     would otherwise reach a foreign key and end in an internal error.
@@ -486,6 +506,17 @@ def _check_project_and_department_exist(project_id, department_id):
         projects_service.get_project_raw(project_id)
     if department_id is not None:
         departments_service.get_department(department_id)
+
+
+def _check_group_is_in_project(search_filter_group, project_id):
+    """
+    Sharing a group takes a manager of its project, and its filters follow it:
+    a filter of another project would reach a team beyond that right.
+    """
+    if str(search_filter_group.project_id) != str(project_id):
+        raise WrongParameterException(
+            "A search filter should be in the same project as its search filter group."
+        )
 
 
 def _check_name_is_free(model, name, **list_scope):
@@ -502,33 +533,21 @@ def _check_name_is_free(model, name, **list_scope):
 
 def _check_new_name_is_free(instance, data, **group_scope):
     """
-    Same check for an update, which can change the name of the row as well
-    as its project. A row keeping both passes, even when it changes group,
-    so the ones saved before this rule stay editable.
+    Same check for an update, which can change the name of the row. A row
+    keeping it passes, even when it changes group, so the ones saved before
+    this rule stay editable.
     """
     name = data.get("name", instance.name)
-    project_id = data.get("project_id", instance.project_id)
-    if name != instance.name or str(project_id) != str(instance.project_id):
+    if name != instance.name:
         _check_name_is_free(
             type(instance),
             name,
             list_type=instance.list_type,
             entity_type=instance.entity_type,
-            project_id=project_id,
+            project_id=instance.project_id,
             person_id=instance.person_id,
             **group_scope,
         )
-
-
-def _clear_cache_after_sharing_change(clear_cache, is_shared, user_id):
-    """
-    A shared filter is visible to the whole team, so its cache must be
-    dropped for everyone; a private one only for its owner.
-    """
-    if is_shared:
-        clear_cache()
-    else:
-        clear_cache(user_id)
 
 
 def _get_own_or_as_admin(model, instance_id, current_user):

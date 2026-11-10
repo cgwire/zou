@@ -48,7 +48,6 @@ class UpdateSearchFilterSchema(BaseSchema):
     search_query: Optional[FilterQuery] = None
     search_filter_group_id: Optional[str] = None
     is_shared: Optional[bool] = None
-    project_id: Optional[str] = None
     department_id: Optional[str] = None
 
 
@@ -74,7 +73,6 @@ class UpdateSearchFilterGroupSchema(BaseSchema):
     name: Optional[FilterName] = None
     color: Optional[FilterColor] = None
     is_shared: Optional[bool] = None
-    project_id: Optional[str] = None
     department_id: Optional[str] = None
 
 
