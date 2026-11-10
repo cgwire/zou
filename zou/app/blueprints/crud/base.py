@@ -93,6 +93,11 @@ class BaseModelsResource(MethodView, ArgsMixin):
     def serialize_list(self, entries, relations=False):
         return self.model.serialize_list(entries, relations=relations)
 
+    def cursor_entries(self, db_query, cursor_id, limit, relations=False):
+        return self.all_entries(
+            query.apply_cursor(db_query, cursor_id, limit), relations=relations
+        )
+
     def paginated_entries(self, query, page, limit=None, relations=False):
         total = query.count()
         limit = limit or current_app.config["NB_RECORDS_PER_PAGE"]
@@ -262,6 +267,7 @@ class BaseModelsResource(MethodView, ArgsMixin):
                 query = self.add_project_permission_filter(query)
                 page = self.get_page()
                 limit = self.get_limit()
+                cursor_id = self.get_cursor_id()
                 relations = self.get_bool_parameter("relations")
                 field_names = self.get_text_parameter("fields")
                 if field_names:
@@ -280,7 +286,12 @@ class BaseModelsResource(MethodView, ArgsMixin):
                         )
                     return result
                 else:
-                    result = self.all_entries(query, relations=relations)
+                    if limit or cursor_id:
+                        result = self.cursor_entries(
+                            query, cursor_id, limit, relations=relations
+                        )
+                    else:
+                        result = self.all_entries(query, relations=relations)
                     if field_names:
                         result = fields.pick_fields(result, field_names)
                     return result

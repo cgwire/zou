@@ -120,6 +120,27 @@ class ArgsMixin(object):
         """
         return self.get_integer_parameter("limit", 0)
 
+    def get_cursor_id(self):
+        """
+        Returns the id of the last row of the previous request, for the
+        listings walked by cursor, raising a 400 error when it is not an id.
+        """
+        cursor_id = request.args.get("cursor_id")
+        if cursor_id is not None and not fields.is_valid_id(cursor_id):
+            raise WrongParameterException("cursor_id must be a valid id.")
+        return cursor_id
+
+    def get_paging(self):
+        """
+        Returns the paging options of a listing, as the keyword arguments
+        its service takes: the page, the limit and the cursor id.
+        """
+        return {
+            "page": self.get_page(),
+            "limit": self.get_limit(),
+            "cursor_id": self.get_cursor_id(),
+        }
+
     def get_integer_parameter(self, field_name, default=0):
         """
         Returns an integer query parameter, raising a 400 error when the
