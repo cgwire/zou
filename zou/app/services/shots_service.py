@@ -125,7 +125,7 @@ def get_episodes(criterions=None, **paging):
         criterions = {}
     episode_type = entity_types_service.get_episode_type()
     criterions["entity_type_id"] = episode_type["id"]
-    query = Entity.query.order_by(Entity.name, Entity.id)
+    query = Entity.query.order_by(Entity.name)
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     try:
         return query_utils.get_paginated_results(
@@ -148,7 +148,7 @@ def get_sequences(criterions=None, **paging):
         criterions = {}
     sequence_type = entity_types_service.get_sequence_type()
     criterions["entity_type_id"] = sequence_type["id"]
-    query = Entity.query.order_by(Entity.name, Entity.id)
+    query = Entity.query.order_by(Entity.name)
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     try:
         return query_utils.get_paginated_results(
@@ -201,7 +201,7 @@ def get_shots(criterions=None, **paging):
 
     is_whole_list = query_utils.is_whole_list(**paging)
     if not is_whole_list:
-        query = query.order_by(Entity.name, Entity.id)
+        query = query.order_by(Entity.name)
     try:
         shots = query_utils.get_paginated_results(
             query, serialize=serialize, **paging
@@ -254,7 +254,7 @@ def get_scenes(criterions=None, **paging):
         return scenes
 
     if not query_utils.is_whole_list(**paging):
-        query = query.order_by(Entity.name, Entity.id)
+        query = query.order_by(Entity.name)
     try:
         return query_utils.get_paginated_results(
             query, serialize=serialize, **paging

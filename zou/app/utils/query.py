@@ -170,6 +170,11 @@ def get_paginated_results(
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
+        # The id ends the sort of every paged listing: rows left equal by
+        # the listing order (same name, same date) would otherwise move
+        # from a page to the other, one coming twice and another never.
+        model = query.column_descriptions[0]["entity"]
+        query = query.order_by(model.id)
         query = query.limit(limit)
         query = query.offset(offset)
 

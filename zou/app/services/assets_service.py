@@ -123,6 +123,8 @@ def get_assets(
         query = query.filter(
             persons_service.build_team_exists_filter(Entity.project_id)
         )
+    if not query_utils.is_whole_list(page, limit, cursor_id):
+        query = query.order_by(Entity.name)
     result = query_utils.get_paginated_results(
         query,
         page,
@@ -630,7 +632,7 @@ def get_shared_assets_used_in_project(project_id, episode_id=None, **paging):
         .filter(Entity.canceled != True)
         .filter(Entity.project_id != project_id)
         .filter(casting.exists())
-        .order_by(Entity.name, Entity.id)
+        .order_by(Entity.name)
     )
     return query_utils.get_paginated_results(
         assets,

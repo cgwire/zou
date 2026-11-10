@@ -184,6 +184,23 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertEqual([shot["id"] for shot in shots], [shot_id])
         self.assertEqual([shot["id"] for shot in self.get(path)], [shot_id])
 
+    def test_pages_keep_one_order_for_the_shots_of_a_same_name(self):
+        """
+        Five shots share a name, as SH010 does from a sequence to the next:
+        the pages still hold each of them once, in a single order.
+        """
+        path = f"data/projects/{self.project_id}"
+        for sequence in self.get(f"{path}/sequences"):
+            self.generate_fixture_shot("SAME", sequence_id=sequence["id"])
+        nb_pages = self.get(f"{path}/shots?page=1&limit=1")["nb_pages"]
+        shots = [
+            self.get(f"{path}/shots?page={page}&limit=1")["data"][0]
+            for page in range(1, nb_pages + 1)
+        ]
+        keys = [(shot["name"], shot["id"]) for shot in shots]
+        self.assertEqual(len(keys), 8)
+        self.assertEqual(keys, sorted(keys))
+
     def test_entity_lists_are_listed_by_cursor_or_by_page(self):
         self.generate_fixture_scene("SC01")
         self.generate_fixture_scene("SC02")

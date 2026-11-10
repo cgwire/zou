@@ -113,7 +113,7 @@ def get_concepts(criterions=None, **paging):
     query = (
         query.join(Project, Project.id == Entity.project_id)
         .add_columns(Project.name)
-        .order_by(Entity.name, Entity.id)
+        .order_by(Entity.name)
     )
 
     if is_only_assignation:

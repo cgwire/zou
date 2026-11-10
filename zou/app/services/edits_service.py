@@ -106,11 +106,7 @@ def get_edits(criterions=None, **paging):
 
     query = Entity.query
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
-    query = (
-        query.join(Project)
-        .add_columns(Project.name)
-        .order_by(Entity.name, Entity.id)
-    )
+    query = query.join(Project).add_columns(Project.name).order_by(Entity.name)
 
     if is_only_assignation:
         query = query.filter(entities_service.build_assigned_task_filter())
