@@ -25,4 +25,5 @@ class TimeSpent(db.Model, BaseMixin, SerializerMixin):
             "person_id", "task_id", "date", name="time_spent_uc"
         ),
         db.CheckConstraint("duration > 0", name="check_duration_positive"),
+        db.Index("ix_time_spent_created_at_id", "created_at", "id"),
     )

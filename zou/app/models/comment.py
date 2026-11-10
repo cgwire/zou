@@ -126,6 +126,10 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     )
     attachment_files = db.relationship("AttachmentFile", backref="comment")
 
+    __table_args__ = (
+        db.Index("ix_comment_created_at_id", "created_at", "id"),
+    )
+
     # Relationships whose IDs can be fetched directly from join tables
     # instead of loading full ORM objects.
     _join_table_map = {
