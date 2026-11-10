@@ -193,29 +193,51 @@ def create_notifications_for_task_and_reply(task, comment, reply):
     return recipient_ids
 
 
-def reset_notifications_for_mentions(comment):
+def reset_notifications_for_mentions(comment, editor_id, previous_mentions):
     """
-    For given task and comment, delete all mention notifications related
-    to the comment and recreate notifications for the mentions listed in the
-    comment.
+    Align the mention notifications of given comment with an edit of its
+    text. previous_mentions holds the mentions of the text before the edit,
+    read in the production as it is now, like those of the new text. The
+    people no longer mentioned lose their notification. The ones the text
+    did not name before get one, unless they made the edit. The others keep
+    theirs as it is, read status included, or still have none: the author,
+    an editor who named themselves, someone named before they joined the
+    production, or a row the cleanup of old data removed. Return the created
+    notifications.
     """
-    # Only the mentions: they are the ones rebuilt below. The notifications
+    task = tasks_service.get_task(comment["object_id"])
+    # The author of the comment, even when someone else adds the mention: the
+    # listing hides the text of a client's comment from artists by this role.
+    author_id = comment["person_id"]
+    mentions = set(get_mentioned_people(task["project_id"], comment))
+    named_before = set(
+        get_mentioned_people(task["project_id"], previous_mentions)
+    )
+    # Only the mentions: they are the ones aligned here. The notifications
     # raised by the replies of that comment belong to the replies, which
     # clean up after themselves in delete_reply, and nothing here would
     # bring them back.
-    Notification.delete_all_by(type="mention", comment_id=comment["id"])
+    Notification.delete_all_by(
+        Notification.person_id.not_in(list(mentions)),
+        type="mention",
+        comment_id=comment["id"],
+    )
+    notified_ids = {
+        str(notification.person_id)
+        for notification in Notification.get_all_by(
+            type="mention", comment_id=comment["id"]
+        )
+    }
     notifications = []
-    task = tasks_service.get_task(comment["object_id"])
-    author_id = comment["person_id"]
-    mentions = get_mentioned_people(task["project_id"], comment)
-    for recipient_id in mentions:
+    for recipient_id in (
+        mentions - named_before - notified_ids - {str(editor_id)}
+    ):
         notification = create_notification(
             recipient_id,
             comment_id=comment["id"],
             author_id=author_id,
             task_id=comment["object_id"],
             type="mention",
-            created_at=comment["created_at"],
         )
         emails_service.send_mention_notification(
             recipient_id, author_id, comment, task

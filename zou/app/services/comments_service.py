@@ -119,7 +119,7 @@ def create_comment(
     task = tasks_service.get_task(task_id, relations=True)
     task_status = task_types_service.get_task_status(task_status_id)
     task_type = task_types_service.get_task_type(task["task_type_id"])
-    _check_retake_capping(task_status, task)
+    _check_retake_capping(task_status, task, created_at)
 
     comment = new_comment(
         task_id=task_id,
@@ -189,12 +189,18 @@ def _handle_hashtags(person, task_type, task, text):
     return hashtags
 
 
-def _check_retake_capping(task_status, task):
+def _check_retake_capping(task_status, task, created_at=None):
     """
     Raise when a retake would exceed the cap. The cap is read on the
     entity when it sets one, on the project otherwise; zero means no cap.
+    A comment dated now that leaves the task on that status adds no retake:
+    the cap does not apply. A comment with a date of its own can come before
+    others, and the replay of the history can count one more retake.
     """
-    if task_status["is_retake"]:
+    adds_no_retake = (
+        task_status["id"] == task["task_status_id"] and not created_at
+    )
+    if task_status["is_retake"] and not adds_no_retake:
         project = projects_service.get_project(task["project_id"])
         project_max_retakes = project["max_retakes"] or 0
         if project_max_retakes > 0:
@@ -1131,6 +1137,19 @@ def get_comment_department_mention_ids(project_id, text):
         str(mention.id)
         for mention in get_comment_department_mentions(project_id, text)
     ]
+
+
+def get_text_mentions(project_id, text):
+    """
+    Return the people and departments given text mentions in the production
+    as it is now, shaped like the mentions of a comment dict.
+    """
+    return {
+        "mentions": get_comment_mention_ids(project_id, text),
+        "department_mentions": get_comment_department_mention_ids(
+            project_id, text
+        ),
+    }
 
 
 def get_comment_hashtags(text):
