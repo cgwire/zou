@@ -683,7 +683,7 @@ def pre_register_fido(person_id):
         user_verification="preferred",
         authenticator_attachment="cross-platform",
     )
-    session[f"fido-state-{person.id}"] = state
+    session[f"fido-registration-state-{person.id}"] = state
     return dict(options.public_key)
 
 
@@ -693,7 +693,7 @@ def register_fido(person_id, registration_response, device_name):
     """
     person = Person.get(person_id)
     try:
-        state = session.pop(f"fido-state-{person.id}")
+        state = session.pop(f"fido-registration-state-{person.id}")
     except KeyError:
         raise FIDONoPreregistrationException()
     try:

@@ -228,7 +228,8 @@ EmailOTPResource_post:
   summary: Enable the email OTP
   description: Enable the authentication with a one-time password (OTP) sent
     by email. Give the code that the user got by email to confirm this
-    operation.
+    operation. When the user already has a second factor, give one of them
+    too (totp, fido_authentication_response or recovery_code).
   tags:
     - Authentication
   requestBody:
@@ -242,13 +243,23 @@ EmailOTPResource_post:
               type: string
               minLength: 1
               description: One-time password that the user got by email
+            totp:
+              type: string
+              description: TOTP code from the authenticator app
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
           required:
             - email_otp
   responses:
     200:
       description: The email OTP is enabled
     400:
-      description: The email OTP is already enabled, or the code is wrong
+      description: The email OTP is already enabled, the code is wrong, or
+        the second factor is missing or wrong
     403:
       description: The token belongs to a bot
 
@@ -330,7 +341,9 @@ FIDOResource_get:
 FIDOResource_post:
   summary: Register a FIDO device
   description: Register a FIDO device for the current user. First, prepare the
-    registration. Then, send the response of the device.
+    registration. Then, send the response of the device. When the user
+    already has a second factor, give one of them too (totp, email_otp,
+    fido_authentication_response or recovery_code).
   tags:
     - Authentication
   requestBody:
@@ -347,6 +360,18 @@ FIDOResource_post:
               type: string
               minLength: 1
               description: Name of the FIDO device
+            totp:
+              type: string
+              description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
           required:
             - registration_response
             - device_name
@@ -354,8 +379,8 @@ FIDOResource_post:
     200:
       description: The FIDO device is registered
     400:
-      description: The registration failed, or the registration is not
-        prepared
+      description: The registration failed, the registration is not
+        prepared, or the second factor is missing or wrong
     403:
       description: The token belongs to a bot
 
@@ -708,6 +733,8 @@ TOTPResource_post:
   summary: Enable the TOTP
   description: Enable the authentication with a time-based one-time password
     (TOTP). Give a code from the authenticator app to confirm this operation.
+    When the user already has a second factor, give one of them too
+    (email_otp, fido_authentication_response or recovery_code).
   tags:
     - Authentication
   requestBody:
@@ -721,13 +748,23 @@ TOTPResource_post:
               type: string
               minLength: 1
               description: TOTP code from the authenticator app
+            email_otp:
+              type: string
+              description: One-time password that the user got by email
+            fido_authentication_response:
+              type: object
+              description: Response of the FIDO device to the challenge
+            recovery_code:
+              type: string
+              description: One recovery code of the user
           required:
             - totp
   responses:
     200:
       description: The TOTP is enabled. The body has the recovery codes.
     400:
-      description: The TOTP is already enabled, or the code is wrong
+      description: The TOTP is already enabled, the code is wrong, or the
+        second factor is missing or wrong
     403:
       description: The token belongs to a bot
 

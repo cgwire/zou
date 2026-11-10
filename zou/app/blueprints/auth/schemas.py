@@ -55,14 +55,6 @@ class SendPasswordResetSchema(BaseSchema):
     email: str = Field(..., min_length=1)
 
 
-class TotpSchema(BaseSchema):
-    """
-    Body for enabling TOTP.
-    """
-
-    totp: str = Field(..., min_length=1, description="TOTP verification code")
-
-
 class TwoFactorAuthSchema(BaseSchema):
     """
     Body for two-factor authentication verification.
@@ -74,9 +66,19 @@ class TwoFactorAuthSchema(BaseSchema):
     recovery_code: Optional[str] = None
 
 
-class EmailOtpSchema(BaseSchema):
+class TotpSchema(TwoFactorAuthSchema):
     """
-    Body for enabling email OTP.
+    Body for enabling TOTP. The inherited fields carry a factor already
+    enabled, asked for when the account has one.
+    """
+
+    totp: str = Field(..., min_length=1, description="TOTP verification code")
+
+
+class EmailOtpSchema(TwoFactorAuthSchema):
+    """
+    Body for enabling email OTP. The inherited fields carry a factor already
+    enabled, asked for when the account has one.
     """
 
     email_otp: str = Field(
@@ -84,9 +86,10 @@ class EmailOtpSchema(BaseSchema):
     )
 
 
-class FidoRegisterSchema(BaseSchema):
+class FidoRegisterSchema(TwoFactorAuthSchema):
     """
-    Body for registering a FIDO device.
+    Body for registering a FIDO device. The inherited fields carry a factor
+    already enabled, asked for when the account has one.
     """
 
     registration_response: dict = Field(

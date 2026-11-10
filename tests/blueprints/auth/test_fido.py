@@ -33,7 +33,7 @@ class FidoRoutesTestCase(ApiDBTestCase):
         }
         return auth_data
 
-    def _register_device(self, device_name="security-key"):
+    def _register_device(self, device_name="security-key", code=200, **factor):
         self.put("auth/fido", {})
         with mock.patch.object(
             self.flask_app.extensions["fido_server"],
@@ -45,8 +45,9 @@ class FidoRoutesTestCase(ApiDBTestCase):
                 {
                     "registration_response": {"id": "fake"},
                     "device_name": device_name,
+                    **factor,
                 },
-                200,
+                code,
             )
 
     def test_get_challenge_unknown_user(self):
@@ -92,6 +93,32 @@ class FidoRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             person.preferred_two_factor_authentication.code, "fido"
         )
+
+    def test_second_device_needs_an_existing_factor(self):
+        recovery_code = self._register_device()["otp_recovery_codes"][0]
+        refused = self._register_device("second-key", 400)
+        self.assertTrue(refused["wrong_OTP"])
+        self._register_device("second-key", 400, recovery_code="wrong")
+        person = Person.get(self.user["id"])
+        self.assertEqual(len(person.fido_credentials), 1)
+
+        self._register_device("second-key", recovery_code=recovery_code)
+        person = Person.get(self.user["id"])
+        self.assertEqual(len(person.fido_credentials), 2)
+
+    def test_second_device_with_the_first_one_as_factor(self):
+        # The challenge of the first key and the registration of the second
+        # one are both pending in the session at the same time.
+        self._register_device()
+        self.get(f"auth/fido?email={self.user['email']}")
+        with mock.patch.object(
+            self.flask_app.extensions["fido_server"], "authenticate_complete"
+        ):
+            self._register_device(
+                "second-key", fido_authentication_response={"id": "fake"}
+            )
+        person = Person.get(self.user["id"])
+        self.assertEqual(len(person.fido_credentials), 2)
 
     def test_registered_user_gets_a_challenge(self):
         self._register_device()

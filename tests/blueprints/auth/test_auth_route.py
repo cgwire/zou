@@ -825,6 +825,41 @@ class EmailOTPTestCase(ApiDBTestCase):
         data = json.loads(response.data.decode("utf-8"))
         self.assertTrue(data["wrong_OTP"])
 
+    def test_enable_email_otp_needs_an_existing_factor(self):
+        """
+        POST /auth/email-otp on an account that already has 2FA asks for a
+        factor already enabled.
+        """
+        _, headers = self.login()
+        totp_secret = pyotp.random_base32()
+        self.get_person().update(
+            {
+                "totp_enabled": True,
+                "totp_secret": totp_secret,
+                "preferred_two_factor_authentication": "totp",
+            }
+        )
+        persons_service.clear_person_cache()
+
+        self.app.put("auth/email-otp", headers=headers)
+        person = self.get_person().serialize()
+        count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
+        otp = pyotp.HOTP(person["email_otp_secret"]).at(int(count))
+        body = {"email_otp": otp}
+        response = self.app.post(
+            "auth/email-otp", data=json.dumps(body), headers=headers
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(json.loads(response.data)["wrong_OTP"])
+        self.assertFalse(self.get_person().email_otp_enabled)
+
+        body["totp"] = pyotp.TOTP(totp_secret).now()
+        response = self.app.post(
+            "auth/email-otp", data=json.dumps(body), headers=headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.get_person().email_otp_enabled)
+
     def test_disable_email_otp(self):
         """
         DELETE /auth/email-otp disables email OTP with valid
@@ -1063,6 +1098,38 @@ class TOTPTestCase(ApiDBTestCase):
             status=400,
         )
         self.assertTrue(data["error"])
+
+    def test_enable_totp_needs_an_existing_factor(self):
+        """
+        POST /auth/totp on an account that already has 2FA asks for a
+        factor already enabled.
+        """
+        _, headers = self.login()
+        email_otp_secret = pyotp.random_base32()
+        self.get_person().update(
+            {
+                "email_otp_enabled": True,
+                "email_otp_secret": email_otp_secret,
+                "preferred_two_factor_authentication": "email_otp",
+            }
+        )
+        persons_service.clear_person_cache()
+
+        otp_secret = self.call_2fa("put", "auth/totp", headers)["otp_secret"]
+        totp = pyotp.TOTP(otp_secret).now()
+        refused = self.call_2fa("post", "auth/totp", headers, totp, 400)
+        self.assertTrue(refused["wrong_OTP"])
+        self.assertFalse(self.get_person().totp_enabled)
+
+        auth_tokens_store.add(
+            f"email-otp-count-{self.person_dict['email']}", 1
+        )
+        body = {"totp": totp, "email_otp": pyotp.HOTP(email_otp_secret).at(1)}
+        response = self.app.post(
+            "auth/totp", data=json.dumps(body), headers=headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.get_person().totp_enabled)
 
     def test_disable_totp(self):
         """

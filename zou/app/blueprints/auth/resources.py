@@ -107,6 +107,26 @@ def _build_2fa_registration_response(response_data, user_id):
     return response
 
 
+def _check_existing_two_factor(body):
+    """
+    Before a method is added to an account that already has 2FA, check one
+    of the factors already enabled, as disabling a method does. Without it
+    a session left open is enough to add a factor of one's own. The first
+    method of an account needs nothing: there is no factor to present yet.
+    """
+    person = persons_service.get_current_user(unsafe=True)
+    if auth_service.person_two_factor_authentication_enabled(
+        person
+    ) and not auth_service.check_two_factor_authentication(
+        person,
+        body.totp,
+        body.email_otp,
+        body.fido_authentication_response,
+        body.recovery_code,
+    ):
+        raise WrongOTPException
+
+
 class AuthenticatedResource(MethodView):
 
     @jwt_required()
@@ -667,6 +687,7 @@ class TOTPResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(TotpSchema)
 
         try:
+            _check_existing_two_factor(body)
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_totp(
                 current_user["id"], body.totp
@@ -680,7 +701,7 @@ class TOTPResource(MethodView, ArgsMixin):
                 {"error": True, "message": "TOTP already enabled."},
                 400,
             )
-        except WrongOTPException:
+        except (WrongOTPException, MissingOTPException):
             return (
                 {
                     "error": True,
@@ -792,6 +813,7 @@ class EmailOTPResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(EmailOtpSchema)
 
         try:
+            _check_existing_two_factor(body)
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_email_otp(
                 current_user["id"],
@@ -806,7 +828,7 @@ class EmailOTPResource(MethodView, ArgsMixin):
                 {"error": True, "message": "OTP by email already enabled."},
                 400,
             )
-        except WrongOTPException:
+        except (WrongOTPException, MissingOTPException):
             return (
                 {
                     "error": True,
@@ -919,6 +941,7 @@ class FIDOResource(MethodView, ArgsMixin):
         try:
             body = validation.validate_request_body(FidoRegisterSchema)
 
+            _check_existing_two_factor(body)
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.register_fido(
                 current_user["id"],
@@ -928,6 +951,15 @@ class FIDOResource(MethodView, ArgsMixin):
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
                 current_user["id"],
+            )
+        except (WrongOTPException, MissingOTPException):
+            return (
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
             )
         except FIDONoPreregistrationException:
             return (
