@@ -342,8 +342,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
         if not permissions.has_admin_permissions():
-            if not permissions.has_person_permissions():
-                data.pop("expiration_date", None)
+            data.pop("expiration_date", None)
             data.pop("role", None)
             data.pop("departments", None)
             data.pop("active", None)
@@ -469,7 +468,9 @@ class PersonResource(BaseModelResource, ArgsMixin):
         instance_dict["departments"] = [
             str(department.id) for department in self.instance.departments
         ]
-        regenerate_token = "expiration_date" in data
+        # Bots only: for a person this was a token that never expires, issued
+        # without their password and outliving logout and password changes.
+        regenerate_token = self.instance.is_bot and "expiration_date" in data
         if regenerate_token and data["expiration_date"] is not None:
             # A past date only yields an already-expired token that get_jti()
             # then rejects (500/401). Skip regeneration so an expired bot

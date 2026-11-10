@@ -313,6 +313,40 @@ class PersonTestCase(PersonFixtureTestCase):
         )
         self.assertIn("access_token", renewed)
 
+    def test_update_person_issues_a_token_for_bots_only(self):
+        """
+        The update hands a token to bots only. For a person, whatever the
+        role, it was a permanent one issued without their password.
+        """
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        bot = self.post(
+            "data/persons",
+            {
+                "first_name": "Bot",
+                "last_name": "Bot",
+                "email": "bot@example.com",
+                "is_bot": True,
+            },
+        )
+        for person_id in (self.user["id"], artist_id):
+            updated = self.put(
+                f"data/persons/{person_id}", {"expiration_date": None}
+            )
+            self.assertNotIn("access_token", updated)
+            self.assertIsNone(Person.get(person_id).jti)
+        # Kitsu sends null from the Bots page when no date is set.
+        renewed = self.put(
+            f"data/persons/{bot['id']}", {"expiration_date": None}
+        )
+        self.assertIn("access_token", renewed)
+
+        self.log_in_cg_artist()
+        updated = self.put(
+            f"data/persons/{artist_id}", {"expiration_date": None}
+        )
+        self.assertNotIn("access_token", updated)
+        self.assertIsNone(Person.get(artist_id).jti)
+
     def test_update_person(self):
         person = self.get_first("data/persons")
         data = {

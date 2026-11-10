@@ -128,19 +128,19 @@ PersonResource_put:
     - Crud
   description: Update the fields of a person. Send only the fields to change.
     You can change your own person. To change another person, you must be an
-    administrator. If you are not an administrator, the route ignores role,
-    departments, active, is_bot, archived, studio_id, last_presence, the login
-    failure fields and the LDAP, OIDC and SAML fields. A bot cannot change its
-    own expiration_date. You cannot change id, created_at, updated_at,
+    administrator. If you are not an administrator, the route ignores
+    expiration_date, role, departments, active, is_bot, archived, studio_id,
+    last_presence, the login failure fields and the LDAP, OIDC and SAML
+    fields. You cannot change id, created_at, updated_at,
     password, jti, the two-factor fields and the preview account fields. You
     cannot change a preview account. You cannot deactivate a protected account
     of another person or change its role. You cannot activate a person who is
     not a bot when the user limit is reached. The route checks role,
     contract_type, country, locale, display_date_format,
     two_factor_authentication, email and expiration_date. A new expiration
-    date cannot be in the past. When you change expiration_date, the response
-    gives a new access_token, unless the date is in the past. expiration_date
-    uses the YYYY-MM-DD format.
+    date cannot be in the past. When you change the expiration_date of a bot,
+    the response gives a new access_token, unless the date is in the past.
+    expiration_date uses the YYYY-MM-DD format.
   parameters:
     - in: path
       name: instance_id
@@ -182,7 +182,7 @@ PersonResource_put:
               type: string
               format: date
               example: '2025-12-31'
-              description: Person or admin only
+              description: Admin only
             country:
               type: string
               description: ISO 3166-1 alpha-2 country code (nullable)
