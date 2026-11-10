@@ -828,6 +828,58 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
 
         self.assertEqual(self.department_of(filter_id), animation)
 
+    def a_shared_group_on(self, department_id):
+        self.log_in_admin()
+        return self.post(
+            "data/user/filter-groups/",
+            {
+                "list_type": "asset",
+                "name": "group",
+                "project_id": self.project_id,
+                "is_shared": True,
+                "department_id": department_id,
+            },
+        )["id"]
+
+    def test_a_new_filter_takes_the_department_of_its_group(self):
+        animation = str(self.department_animation.id)
+        group_id = self.a_shared_group_on(animation)
+
+        row = self.create(
+            "wip", is_shared=True, search_filter_group_id=group_id
+        )
+
+        self.assertEqual(self.department_of(row["id"]), animation)
+
+    def test_a_filter_joining_a_group_takes_its_department(self):
+        animation = str(self.department_animation.id)
+        group_id = self.a_shared_group_on(animation)
+        row = self.create(
+            "wip", is_shared=True, department_id=str(self.department.id)
+        )
+
+        # The whole form, as Kitsu sends it.
+        self.put(
+            f"{self.path}{row['id']}",
+            {
+                "search_filter_group_id": group_id,
+                "department_id": str(self.department.id),
+            },
+        )
+
+        self.assertEqual(self.department_of(row["id"]), animation)
+
+    def test_a_group_gives_no_department_without_the_right_to_share(self):
+        department_id = str(self.department.id)
+        group_id = self.a_shared_group_on(str(self.department_animation.id))
+        path, row_id = self.a_shared_row_of(self.user_cg_artist, department_id)
+        self.log_in_cg_artist()
+
+        updated = self.put(path, {"search_filter_group_id": group_id})
+
+        self.assertEqual(updated["search_filter_group_id"], group_id)
+        self.assertEqual(self.department_of(row_id), department_id)
+
     def test_a_name_used_in_the_group_is_refused(self):
         group_id = self.a_group()["id"]
         self.create("wip", search_filter_group_id=group_id)

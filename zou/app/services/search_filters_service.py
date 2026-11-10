@@ -131,6 +131,8 @@ def create_filter(
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
             )
+        if department_id is None:
+            department_id = search_filter_group.department_id
 
     _check_name_is_free(
         SearchFilter,
@@ -169,11 +171,7 @@ def update_filter(search_filter_id, data):
         raise SearchFilterNotFoundException
 
     data.pop("project_id", None)
-    _check_project_and_department_exist(
-        department_id=data.get("department_id")
-    )
-    _deny_sharing_without_manager_access(data, search_filter)
-
+    search_filter_group = None
     if (
         search_filter_group_id := data.get(
             "search_filter_group_id", search_filter.search_filter_group_id
@@ -192,6 +190,16 @@ def update_filter(search_filter_id, data):
             _check_group_is_in_project(
                 search_filter_group, search_filter.project_id
             )
+            # A filter joining a group takes its department, whatever the
+            # body says: Kitsu sends the former one back with the new group.
+            data["department_id"] = search_filter_group.department_id
+
+    _check_project_and_department_exist(
+        department_id=data.get("department_id")
+    )
+    _deny_sharing_without_manager_access(data, search_filter)
+
+    if search_filter_group is not None:
         if (
             data.get("is_shared", search_filter.is_shared)
             != search_filter_group.is_shared
