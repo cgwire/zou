@@ -29,15 +29,29 @@ TABLES = [
 
 
 def upgrade():
-    for table in TABLES:
-        op.create_index(
-            f"ix_{table}_created_at_id",
-            table,
-            ["created_at", "id"],
-            unique=False,
-        )
+    # These are the largest tables of an instance: the indexes are built
+    # concurrently so that writes go on during the migration.
+    # Caveat: if a concurrent build is interrupted, Postgres keeps an
+    # INVALID index that if_not_exists will skip on retry; drop it
+    # manually (check pg_index.indisvalid) before re-running.
+    with op.get_context().autocommit_block():
+        for table in TABLES:
+            op.create_index(
+                f"ix_{table}_created_at_id",
+                table,
+                ["created_at", "id"],
+                unique=False,
+                postgresql_concurrently=True,
+                if_not_exists=True,
+            )
 
 
 def downgrade():
-    for table in reversed(TABLES):
-        op.drop_index(f"ix_{table}_created_at_id", table_name=table)
+    with op.get_context().autocommit_block():
+        for table in reversed(TABLES):
+            op.drop_index(
+                f"ix_{table}_created_at_id",
+                table_name=table,
+                postgresql_concurrently=True,
+                if_exists=True,
+            )
