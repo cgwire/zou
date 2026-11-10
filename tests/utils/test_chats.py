@@ -22,6 +22,42 @@ class SendToSlackTestCase(unittest.TestCase):
         client_class.assert_not_called()
 
 
+    def test_a_refusal_of_slack_is_a_warning(self):
+        from slack_sdk.errors import SlackApiError
+
+        error = SlackApiError("failed", {"error": "account_inactive"})
+        with mock.patch("slack_sdk.WebClient") as client_class:
+            client_class.return_value.chat_postMessage.side_effect = error
+            with self.assertLogs(chats.logger, "WARNING") as logs:
+                chats.send_to_slack("xoxb-token", "U123", "hello")
+        self.assertEqual(
+            [record.levelname for record in logs.records], ["WARNING"]
+        )
+        self.assertIn("account_inactive", logs.output[0])
+
+
+class SendToDiscordTestCase(unittest.TestCase):
+    def test_the_closing_task_ends_before_the_loop_closes(self):
+        import asyncio
+
+        import discord
+
+        closed = []
+
+        async def start(client, token):
+            async def _close():
+                await asyncio.sleep(0.01)
+                closed.append(True)
+
+            # What on_ready does through client.close(): start() returns
+            # while the closing task is still pending.
+            client._closing_task = asyncio.create_task(_close())
+
+        with mock.patch.object(discord.Client, "start", start):
+            chats.send_to_discord("token", "john", "hello")
+        self.assertEqual(closed, [True])
+
+
 class SendToMattermostTestCase(unittest.TestCase):
     def test_posts_payload_on_webhook_url(self):
         webhook = "https://mattermost.example.com/hooks/abcdef123"

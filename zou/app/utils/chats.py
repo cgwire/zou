@@ -19,9 +19,10 @@ logger.addHandler(loghandler)
 def send_to_slack(token, userid, message):
     if token:
         if userid:
-            try:
-                from slack_sdk import WebClient as SlackClient
+            from slack_sdk import WebClient as SlackClient
+            from slack_sdk.errors import SlackApiError
 
+            try:
                 client = SlackClient(token=token)
                 blocks = [
                     {
@@ -33,6 +34,13 @@ def send_to_slack(token, userid, message):
                     channel=f"@{userid}",
                     blocks=blocks,
                     as_user=True,
+                )
+            except SlackApiError as exception:
+                # Slack answered and refused (revoked token, unknown
+                # user): a studio setting to fix, not a failure of ours.
+                logger.warning(
+                    "Slack refused the notification: "
+                    f"{exception.response.get('error')}"
                 )
             except Exception:
                 logger.error(
@@ -115,7 +123,11 @@ def send_to_discord(token, userid, message):
 
             await client.close()
 
-        await client.start(token)
+        # Leaving the context waits for the closing task that on_ready
+        # started: start() returns before it ends, and closing the loop
+        # then destroys it while pending.
+        async with client:
+            await client.start(token)
 
     if token:
         if userid:
