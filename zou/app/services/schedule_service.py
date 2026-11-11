@@ -30,6 +30,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     tasks_service,
+    untracked_service,
 )
 from zou.app.utils import cache, events, fields
 
@@ -73,7 +74,7 @@ def get_task_types_schedule_items(project_id):
         task_type
         for task_type in task_types
         if task_type["for_entity"]
-        in ["Asset", "Shot", "Sequence", "Episode", "Edit"]
+        in ["Asset", "Shot", "Sequence", "Episode", "Edit", "Untracked"]
         and (
             not project_task_type_ids
             or task_type["id"] in project_task_type_ids
@@ -261,6 +262,55 @@ def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
         task_type_id,
         edits,
         edit_map,
+        existing_schedule_items,
+    )
+
+
+def get_untracked_schedule_items(project_id, task_type_id, episode_id=None):
+    """
+    Return the schedule items of the untracked items of given project that
+    have a task of given task type. If no schedule item exists for one of
+    them, it creates one. When an episode is given, results are restricted
+    to the items linked to that episode, and to the ones linked to nothing,
+    which belong to the whole production.
+    """
+    # Each item is planned with the task type named after it: the other
+    # untracked task types do not list it.
+    planned_ids = {
+        str(task.entity_id)
+        for task in Task.query.filter_by(
+            project_id=project_id, task_type_id=task_type_id
+        )
+    }
+    untracked_items = [
+        item
+        for item in untracked_service.get_untracked_for_project(project_id)
+        if item["id"] in planned_ids
+    ]
+    if episode_id is not None:
+        untracked_items = [
+            item
+            for item in untracked_items
+            if item["parent_id"] is None
+            or item["episode_id"] == str(episode_id)
+        ]
+    untracked_map = base_service.get_model_map_from_array(untracked_items)
+    untracked_type = entity_types_service.get_untracked_type()
+
+    query = _entity_schedule_items_query(
+        project_id, task_type_id, untracked_type["id"]
+    )
+    if episode_id is not None:
+        query = query.filter(
+            ScheduleItem.object_id.in_(list(untracked_map.keys()))
+        )
+    existing_schedule_items = set(query.all())
+
+    return get_entity_schedule_items(
+        project_id,
+        task_type_id,
+        untracked_items,
+        untracked_map,
         existing_schedule_items,
     )
 
