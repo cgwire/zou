@@ -28,4 +28,5 @@ class ApiEvent(db.Model, BaseMixin, SerializerMixin):
         db.Index(
             "ix_api_event_project_id_created_at", "project_id", "created_at"
         ),
+        db.Index("ix_api_event_created_at_id", "created_at", "id"),
     )

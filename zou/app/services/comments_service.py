@@ -1548,16 +1548,19 @@ def get_comment_preview_file(task_id, comment_id, preview_file_id):
     return preview_file.serialize()
 
 
-def get_comments_for_project(project_id, page=0, limit=None):
+def get_comments_for_project(project_id, page=0, limit=None, cursor_id=None):
     """
-    Return all comments for given project.
+    Return all comments for given project, a page of them, or the ones
+    following a cursor (see query_utils.get_paginated_results).
     """
     query = (
         Comment.query.join(Task, Task.id == Comment.object_id)
         .filter(Task.project_id == project_id)
         .order_by(Comment.updated_at.desc())
     )
-    result = query_utils.get_paginated_results(query, page, limit)
+    result = query_utils.get_paginated_results(
+        query, page, limit, cursor_id=cursor_id
+    )
     comments = result["data"] if isinstance(result, dict) else result
     _add_relation_ids_to_comments(comments)
     return result

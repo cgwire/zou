@@ -95,9 +95,10 @@ def get_full_concept(concept_id):
     return concept
 
 
-def get_concepts(criterions=None):
+def get_concepts(criterions=None, **paging):
     """
-    Get all concepts for given criterions.
+    Get all concepts for given criterions, with the paging options of
+    query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -116,21 +117,22 @@ def get_concepts(criterions=None):
     )
 
     if is_only_assignation:
-        query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(persons_service.build_assignee_filter())
+        query = query.filter(entities_service.build_assigned_task_filter())
+
+    def serialize(rows):
+        concepts = []
+        for concept_model, project_name in rows:
+            concept = concept_model.serialize(obj_type="Concept")
+            concept["project_name"] = project_name
+            concepts.append(concept)
+        return concepts
 
     try:
-        data = query.all()
+        return query_utils.get_paginated_results(
+            query, serialize=serialize, **paging
+        )
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
-
-    concepts = []
-    for concept_model, project_name in data:
-        concept = concept_model.serialize(obj_type="Concept")
-        concept["project_name"] = project_name
-        concepts.append(concept)
-
-    return concepts
 
 
 def get_concepts_and_tasks(criterions=None, for_client=None):
@@ -257,15 +259,17 @@ def get_concepts_and_tasks(criterions=None, for_client=None):
     return concepts
 
 
-def get_concepts_for_project(project_id, only_assigned=False):
+def get_concepts_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all concepts related to given project.
+    Retrieve all concepts related to given project, with the paging options
+    of entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_concept_type()["id"],
         "Concept",
         only_assigned=only_assigned,
+        **paging,
     )
 
 

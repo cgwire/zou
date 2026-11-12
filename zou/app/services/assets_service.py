@@ -81,11 +81,18 @@ def clear_asset_cache(asset_id):
     entities_service.clear_entity_cache(asset_id)
 
 
-def get_assets(criterions=None, only_user_projects=False):
+def get_assets(
+    criterions=None,
+    only_user_projects=False,
+    page=0,
+    limit=None,
+    cursor_id=None,
+):
     """
-    Get all assets for given criterions. Set only_user_projects on routes
-    taking their criterions from a client: criterions carrying no project
-    restrict nothing.
+    Get the assets matching given criterions: all of them, a page of them,
+    or the ones following a cursor (see query_utils.get_paginated_results).
+    Set only_user_projects on routes taking their criterions from a client:
+    criterions carrying no project restrict nothing.
     """
     if criterions is None:
         criterions = {}
@@ -99,51 +106,38 @@ def get_assets(criterions=None, only_user_projects=False):
         episode_id = criterions["episode_id"]
         del criterions["episode_id"]
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
-    if assigned_to:
-        query = query.outerjoin(Task)
-        query = query.filter(persons_service.build_assignee_filter())
-
-    team_filter = None
-    if only_user_projects:
-        team_filter = persons_service.build_team_exists_filter(
-            Entity.project_id
-        )
-        query = query.filter(team_filter)
-
     if episode_id is not None:
-        # Filter based on main episode.
-        query = query.filter(Entity.source_id == episode_id)
-        result = query.all()
-        # Filter based on episode casting.
-        query = (
-            Entity.query.join(
-                EntityLink, EntityLink.entity_out_id == Entity.id
-            )
+        # The assets of the episode, and the ones cast in it.
+        cast_in_episode = (
+            db.session.query(EntityLink.entity_out_id)
+            .filter(EntityLink.entity_out_id == Entity.id)
             .filter(EntityLink.entity_in_id == episode_id)
-            .filter(entity_types_service.build_asset_type_filter())
+            .exists()
         )
-        query = query_utils.apply_criterions_to_db_query(
-            Entity, query, criterions
+        query = query.filter(
+            or_(Entity.source_id == episode_id, cast_in_episode)
         )
-        if assigned_to:
-            query = query.outerjoin(Task, Task.entity_id == Entity.id).filter(
-                persons_service.build_assignee_filter()
-            )
-        if team_filter is not None:
-            query = query.filter(team_filter)
-        # Add non duplicated assets to the list.
-        result += [
-            asset
-            for asset in query.all()
-            if str(asset.source_id) != str(episode_id)
-        ]
-    else:
-        result = query.all()
-    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
+    if assigned_to:
+        query = query.filter(entities_service.build_assigned_task_filter())
+    if only_user_projects:
+        query = query.filter(
+            persons_service.build_team_exists_filter(Entity.project_id)
+        )
+    if not query_utils.is_whole_list(page, limit, cursor_id):
+        query = query.order_by(Entity.name)
+    result = query_utils.get_paginated_results(
+        query,
+        page,
+        limit,
+        cursor_id=cursor_id,
+        serialize=lambda rows: Entity.serialize_list(rows, obj_type="Asset"),
+    )
+    metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
         "Asset",
         criterions.get("vendor_departments"),
-        Entity.serialize_list(result, obj_type="Asset"),
+        result["data"] if isinstance(result, dict) else result,
     )
+    return result
 
 
 def _apply_asset_and_tasks_criterions(
@@ -612,25 +606,36 @@ def set_shared_assets(
     return Entity.serialize_list(assets, obj_type="Asset")
 
 
-def get_shared_assets_used_in_project(project_id, episode_id=None):
+def get_shared_assets_used_in_project(project_id, episode_id=None, **paging):
     """
-    Get all shared assets used in a project.
+    Get all shared assets used in a project, with the paging options of
+    query_utils.get_paginated_results.
     """
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
 
+    # An EXISTS clause rather than joins: an asset cast in several shots
+    # comes once, so a limit counts assets.
+    casting = (
+        db.session.query(EntityLink.id)
+        .join(Shot, EntityLink.entity_in_id == Shot.id)
+        .join(Sequence, Shot.parent_id == Sequence.id)
+        .filter(EntityLink.entity_out_id == Entity.id)
+        .filter(Shot.project_id == project_id)
+    )
+    if episode_id is not None and episode_id not in ["main", "all"]:
+        casting = casting.filter(Sequence.parent_id == episode_id)
+
     assets = (
         Entity.query.filter(entity_types_service.build_asset_type_filter())
         .filter(Entity.is_shared == True)
-        .join(EntityLink, EntityLink.entity_out_id == Entity.id)
-        .join(Shot, EntityLink.entity_in_id == Shot.id)
-        .join(Sequence, Shot.parent_id == Sequence.id)
-        .filter(Shot.project_id == project_id)
         .filter(Entity.canceled != True)
         .filter(Entity.project_id != project_id)
+        .filter(casting.exists())
+        .order_by(Entity.name)
     )
-
-    if episode_id is not None and episode_id not in ["main", "all"]:
-        assets = assets.filter(Sequence.parent_id == episode_id)
-
-    return Entity.serialize_list(assets.all(), obj_type="Asset")
+    return query_utils.get_paginated_results(
+        assets,
+        serialize=lambda rows: Entity.serialize_list(rows, obj_type="Asset"),
+        **paging,
+    )

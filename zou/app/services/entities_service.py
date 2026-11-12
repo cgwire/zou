@@ -337,16 +337,50 @@ def get_for_entity_from_task(task):
     return "Asset"
 
 
+def build_assigned_task_filter():
+    """
+    Filter keeping the entities holding a task assigned to the current
+    user. An EXISTS clause never repeats an entity the way a join on its
+    tasks does, so a limit on the query counts entities.
+    """
+    return (
+        db.session.query(Task.id)
+        .filter(Task.entity_id == Entity.id)
+        .filter(persons_service.build_assignee_filter())
+        .exists()
+    )
+
+
+def build_assigned_child_query(Child):
+    """
+    Query of the tasks assigned to the current user on given child, an
+    alias of Entity. The caller says how the child relates to the listed
+    entity and turns the query into an EXISTS filter: it never repeats an
+    entity the way joins do, so a limit counts entities.
+    """
+    return (
+        db.session.query(Task.id)
+        .join(Child, Child.id == Task.entity_id)
+        .filter(persons_service.build_assignee_filter())
+    )
+
+
 def get_entities_for_project(
     project_id,
     entity_type_id,
     obj_type="Entity",
     episode_id=None,
     only_assigned=False,
+    scope=None,
+    page=0,
+    limit=None,
+    cursor_id=None,
 ):
     """
     Retrieve all entities related to given project of which entity is entity
-    type.
+    type: all of them, a page of them, or the ones following a cursor (see
+    query_utils.get_paginated_results). The scope is one more filter, for
+    the listings that keep a user to a part of the production.
     """
     query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
@@ -358,11 +392,16 @@ def get_entities_for_project(
         query = query.filter(Entity.parent_id == episode_id)
 
     if only_assigned:
-        query = query.outerjoin(Task).filter(
-            persons_service.build_assignee_filter()
-        )
-    result = query.all()
-    return Entity.serialize_list(result, obj_type=obj_type)
+        query = query.filter(build_assigned_task_filter())
+    if scope is not None:
+        query = query.filter(scope)
+    return query_utils.get_paginated_results(
+        query,
+        page,
+        limit,
+        cursor_id=cursor_id,
+        serialize=lambda rows: Entity.serialize_list(rows, obj_type=obj_type),
+    )
 
 
 def get_entity_links_for_project(

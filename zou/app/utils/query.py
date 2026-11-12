@@ -3,7 +3,7 @@ import uuid
 
 import orjson as json
 import sqlalchemy.orm as orm
-from sqlalchemy import func, types as sa_types
+from sqlalchemy import func, or_, tuple_, types as sa_types
 from sqlalchemy.inspection import inspect
 
 from zou.app import config
@@ -106,19 +106,75 @@ def apply_criterions_to_db_query(model, db_query, criterions):
     return db_query
 
 
-def get_paginated_results(query, page, limit=None, relations=False):
+def apply_cursor(query, cursor_id=None, limit=None):
     """
-    Apply pagination to the query object.
+    Restrict the query to the rows following given one, newest created
+    first, to walk a whole listing request by request: the client asks again
+    with the id of the last row it got until a page comes back short. Unlike
+    pages, rows written during the walk never shift the others. The id
+    settles the order of rows created together.
     """
-    if page < 1:
-        entries = query.all()
-        return fields.serialize_models(entries, relations=relations)
+    limit = limit or config.NB_RECORDS_PER_PAGE
+    if limit < 0:
+        raise WrongParameterException("limit must be a positive integer.")
+    model = query.column_descriptions[0]["entity"]
+    if cursor_id:
+        cursor = model.get(cursor_id)
+        if cursor is None:
+            raise WrongParameterException("cursor_id matches no row.")
+        if cursor.created_at is None:
+            # PostgreSQL sorts the rows without a date before the dated ones.
+            query = query.filter(
+                or_(model.created_at.isnot(None), model.id < cursor.id)
+            )
+        else:
+            query = query.filter(
+                tuple_(model.created_at, model.id)
+                < tuple_(cursor.created_at, cursor.id)
+            )
+    query = query.order_by(None).order_by(
+        model.created_at.desc(), model.id.desc()
+    )
+    return query.limit(limit)
+
+
+def is_whole_list(page=0, limit=None, cursor_id=None):
+    """
+    True when the paging options of a listing ask for neither a page nor a
+    cursor walk: the listing answers with all its rows.
+    """
+    return page < 1 and not limit and not cursor_id
+
+
+def get_paginated_results(
+    query, page=0, limit=None, relations=False, cursor_id=None, serialize=None
+):
+    """
+    Apply pagination to the query object. A page answers with an envelope.
+    Without a page, a limit or a cursor id answers with a plain list walked
+    by cursor (see apply_cursor), and nothing with the whole list. The rows
+    go through serialize when the listing has its own way to present them.
+    """
+    if serialize is None:
+
+        def serialize(entries):
+            return fields.serialize_models(entries, relations=relations)
+
+    if is_whole_list(page, limit, cursor_id):
+        return serialize(query.all())
+    elif page < 1:
+        return serialize(apply_cursor(query, cursor_id, limit).all())
     else:
         limit = limit or config.NB_RECORDS_PER_PAGE
         total = query.count()
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
+        # The id ends the sort of every paged listing: rows left equal by
+        # the listing order (same name, same date) would otherwise move
+        # from a page to the other, one coming twice and another never.
+        model = query.column_descriptions[0]["entity"]
+        query = query.order_by(model.id)
         query = query.limit(limit)
         query = query.offset(offset)
 
@@ -134,7 +190,7 @@ def get_paginated_results(query, page, limit=None, relations=False):
                 "page": page,
             }
         else:
-            models = fields.serialize_models(query.all(), relations=relations)
+            models = serialize(query.all())
             result = {
                 "data": models,
                 "total": total,

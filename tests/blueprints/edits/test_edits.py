@@ -13,6 +13,16 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(len(edits), 1)
         self.assertEqual(edits[0]["name"], self.edit_dict["name"])
 
+    def test_edits_are_listed_by_cursor_or_by_page(self):
+        self.generate_fixture_edit("Second edit")
+        for path in [
+            "data/edits",
+            "data/edits/all",
+            f"data/projects/{self.project.id}/edits",
+        ]:
+            with self.subTest(path=path):
+                self.assert_listed_by_cursor_or_by_page(path)
+
     def test_get_edit(self):
         edit = self.get(f"data/edits/{self.edit.id}")
 

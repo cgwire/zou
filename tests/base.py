@@ -212,6 +212,39 @@ class ApiTestCase(unittest.TestCase):
         lines = response.data.decode("utf-8").strip().split("\n")
         return json.loads(lines[0]), [json.loads(line) for line in lines[1:]]
 
+    def get_by_cursor(self, path, limit):
+        """
+        Get the whole list at given path the way a client walks it by
+        cursor: request after request until one comes back short.
+        """
+        separator = "&" if "?" in path else "?"
+        path = f"{path}{separator}limit={limit}"
+        rows = []
+        page = self.get(path)
+        while True:
+            self.assertLessEqual(len(page), limit)
+            rows += page
+            if len(page) < limit:
+                return rows
+            page = self.get(f"{path}&cursor_id={page[-1]['id']}")
+
+    def assert_listed_by_cursor_or_by_page(self, path, limit=1):
+        """
+        The list at given path, longer than limit, comes whole and without
+        a repeated row whether it is walked by cursor or read page by page.
+        """
+        expected = self.get(path)
+        self.assertGreater(len(expected), limit)
+        self.assertCountEqual(self.get_by_cursor(path, limit), expected)
+        separator = "&" if "?" in path else "?"
+        path = f"{path}{separator}limit={limit}"
+        first = self.get(f"{path}&page=1")
+        self.assertEqual(first["total"], len(expected))
+        rows = []
+        for page in range(1, first["nb_pages"] + 1):
+            rows += self.get(f"{path}&page={page}")["data"]
+        self.assertCountEqual(rows, expected)
+
     def get_first(self, path, code=200):
         """
         Get first element of data at given path. It makes the assumption that

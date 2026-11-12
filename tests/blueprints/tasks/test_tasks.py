@@ -871,6 +871,32 @@ class TaskListingTestCase(TaskTestCase):
         page = self.get(f"{path}?page=1")["data"]
         self.assertEqual([task["id"] for task in page], [task_id])
 
+    def test_project_tasks_are_walked_by_cursor(self):
+        for name in ["first", "second", "third", "fourth", "fifth"]:
+            self.generate_fixture_task(name=name)
+        path = f"/data/projects/{self.project_id}/tasks"
+        expected = self.get(path)
+        self.assertEqual(len(expected), 5)
+        # Same rows, same shape, whatever the page size.
+        for limit in [2, 5, 10]:
+            with self.subTest(limit=limit):
+                self.assertCountEqual(
+                    self.get_by_cursor(path, limit), expected
+                )
+        self.get(f"{path}?cursor_id=wrong", 400)
+
+    def test_a_vendor_walks_their_own_project_tasks_by_cursor(self):
+        self.generate_fixture_user_vendor()
+        vendor_id = self.user_vendor["id"]
+        task_id = str(self.generate_fixture_task().id)
+        self.generate_fixture_task(name="second task")
+        projects_service.add_team_member(self.project_id, vendor_id)
+        tasks_service.assign_task(task_id, vendor_id)
+        self.log_in_vendor()
+        path = f"/data/projects/{self.project_id}/tasks"
+        tasks = self.get_by_cursor(path, 1)
+        self.assertEqual([task["id"] for task in tasks], [task_id])
+
     def test_a_vendor_reads_the_tasks_by_type_of_their_entities_only(self):
         self.generate_fixture_user_vendor()
         vendor_id = self.user_vendor["id"]

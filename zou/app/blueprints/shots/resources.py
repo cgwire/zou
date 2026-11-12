@@ -119,7 +119,7 @@ class SceneResource(MethodView):
         return "", 204
 
 
-class AllShotsResource(MethodView):
+class AllShotsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from(SPECS["AllShotsResource_get"])
     def get(self):
@@ -136,10 +136,10 @@ class AllShotsResource(MethodView):
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
-        return shots_service.get_shots(criterions)
+        return shots_service.get_shots(criterions, **self.get_paging())
 
 
-class ScenesResource(MethodView):
+class ScenesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from(SPECS["ScenesResource_get"])
     def get(self):
@@ -152,7 +152,7 @@ class ScenesResource(MethodView):
         )
         if permissions.has_vendor_permissions():
             raise permissions.PermissionDenied
-        return shots_service.get_scenes(criterions)
+        return shots_service.get_scenes(criterions, **self.get_paging())
 
 
 class ShotAssetsResource(MethodView):
@@ -469,7 +469,9 @@ class ProjectShotsResource(MethodView, ArgsMixin):
         return permissions_service.mask_metadata_for_vendor(
             "Shot",
             shots_service.get_shots_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                **self.get_paging(),
             ),
             project_id,
         )
@@ -508,7 +510,9 @@ class ProjectSequencesResource(MethodView, ArgsMixin):
         return permissions_service.mask_metadata_for_vendor(
             "Sequence",
             shots_service.get_sequences_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                **self.get_paging(),
             ),
             project_id,
         )
@@ -545,7 +549,9 @@ class ProjectEpisodesResource(MethodView, ArgsMixin):
         return permissions_service.mask_metadata_for_vendor(
             "Episode",
             shots_service.get_episodes_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                **self.get_paging(),
             ),
             project_id,
         )
@@ -631,7 +637,7 @@ class EpisodeResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class EpisodesResource(MethodView):
+class EpisodesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from(SPECS["EpisodesResource_get"])
     def get(self):
@@ -648,12 +654,12 @@ class EpisodesResource(MethodView):
                 return permissions_service.mask_metadata_for_vendor(
                     "Episode",
                     shots_service.get_episodes_for_project(
-                        project_id, only_assigned=True
+                        project_id, only_assigned=True, **self.get_paging()
                     ),
                     project_id,
                 )
             return []
-        return shots_service.get_episodes(criterions)
+        return shots_service.get_episodes(criterions, **self.get_paging())
 
 
 class EpisodeSequencesResource(MethodView):
@@ -733,7 +739,7 @@ class SequenceResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class SequencesResource(MethodView):
+class SequencesResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from(SPECS["SequencesResource_get"])
     def get(self):
@@ -755,12 +761,12 @@ class SequencesResource(MethodView):
                 return permissions_service.mask_metadata_for_vendor(
                     "Sequence",
                     shots_service.get_sequences_for_project(
-                        project_id, only_assigned=True
+                        project_id, only_assigned=True, **self.get_paging()
                     ),
                     project_id,
                 )
             return []
-        return shots_service.get_sequences(criterions)
+        return shots_service.get_sequences(criterions, **self.get_paging())
 
 
 class SequenceShotsResource(MethodView):
@@ -791,7 +797,7 @@ class ProjectScenesResource(MethodView, ArgsMixin):
         return permissions_service.mask_metadata_for_vendor(
             "Scene",
             shots_service.get_scenes_for_project(
-                project_id, only_assigned=only_assigned
+                project_id, only_assigned=only_assigned, **self.get_paging()
             ),
             project_id,
         )

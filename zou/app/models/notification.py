@@ -66,6 +66,7 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
             "type",
             name="notification_uc",
         ),
+        db.Index("ix_notification_created_at_id", "created_at", "id"),
     )
 
     def serialize(self, obj_type=None, relations=False, milliseconds=False):

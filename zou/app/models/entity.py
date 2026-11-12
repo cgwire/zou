@@ -191,6 +191,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             "parent_id",
             name="entity_uc",
         ),
+        db.Index("ix_entity_created_at_id", "created_at", "id"),
         db.Index(
             "ix_entity_project_type_status",
             "project_id",

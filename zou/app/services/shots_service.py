@@ -1,4 +1,4 @@
-from sqlalchemy import Text, cast, func
+from sqlalchemy import Text, cast, func, or_
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import aliased
 
@@ -116,9 +116,10 @@ def clear_episode_cache(episode_id):
     entities_service.clear_entity_cache(episode_id)
 
 
-def get_episodes(criterions=None):
+def get_episodes(criterions=None, **paging):
     """
-    Get all episodes for given criterions.
+    Get all episodes for given criterions, with the paging options of
+    query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -127,15 +128,21 @@ def get_episodes(criterions=None):
     query = Entity.query.order_by(Entity.name)
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     try:
-        episodes = query.all()
+        return query_utils.get_paginated_results(
+            query,
+            serialize=lambda rows: Entity.serialize_list(
+                rows, obj_type="Episode"
+            ),
+            **paging,
+        )
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
-    return Entity.serialize_list(episodes, obj_type="Episode")
 
 
-def get_sequences(criterions=None):
+def get_sequences(criterions=None, **paging):
     """
-    Get all sequences for given criterions.
+    Get all sequences for given criterions, with the paging options of
+    query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -144,15 +151,21 @@ def get_sequences(criterions=None):
     query = Entity.query.order_by(Entity.name)
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     try:
-        sequences = query.all()
+        return query_utils.get_paginated_results(
+            query,
+            serialize=lambda rows: Entity.serialize_list(
+                rows, obj_type="Sequence"
+            ),
+            **paging,
+        )
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
-    return Entity.serialize_list(sequences, obj_type="Sequence")
 
 
-def get_shots(criterions=None):
+def get_shots(criterions=None, **paging):
     """
-    Get all shots for given criterions.
+    Get all shots for given criterions, with the paging options of
+    query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -173,34 +186,41 @@ def get_shots(criterions=None):
     )
 
     if is_only_assignation:
-        query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(persons_service.build_assignee_filter())
+        query = query.filter(entities_service.build_assigned_task_filter())
 
+    def serialize(rows):
+        shots = []
+        for shot_model, project_name, sequence_name in rows:
+            shot = shot_model.serialize(obj_type="Shot")
+            shot["project_name"] = project_name
+            shot["sequence_name"] = sequence_name
+            shots.append(shot)
+        return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
+            "Shot", criterions.get("vendor_departments"), shots
+        )
+
+    is_whole_list = query_utils.is_whole_list(**paging)
+    if not is_whole_list:
+        query = query.order_by(Entity.name)
     try:
-        data = query.all()
+        shots = query_utils.get_paginated_results(
+            query, serialize=serialize, **paging
+        )
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
 
-    shots = []
-    for shot_model, project_name, sequence_name in data:
-        shot = shot_model.serialize(obj_type="Shot")
-        shot["project_name"] = project_name
-        shot["sequence_name"] = sequence_name
-        shots.append(shot)
-
-    # Sort the dicts rather than the SQL rows: ordering thousands of
-    # wide rows (data JSONB included) in PostgreSQL makes it materialize
-    # the whole join before returning anything.
-    shots.sort(key=lambda shot: shot["name"].casefold())
-
-    return metadata_descriptors_service.remove_not_allowed_metadata_for_vendor(
-        "Shot", criterions.get("vendor_departments"), shots
-    )
+    if is_whole_list:
+        # Sort the dicts rather than the SQL rows: ordering thousands of
+        # wide rows (data JSONB included) in PostgreSQL makes it materialize
+        # the whole join before returning anything.
+        shots.sort(key=lambda shot: shot["name"].casefold())
+    return shots
 
 
-def get_scenes(criterions=None):
+def get_scenes(criterions=None, **paging):
     """
-    Get all scenes for given criterions.
+    Get all scenes for given criterions, with the paging options of
+    query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -222,22 +242,25 @@ def get_scenes(criterions=None):
     )
 
     if is_only_assignation:
-        query = query.outerjoin(Task, Task.entity_id == Entity.id)
-        query = query.filter(persons_service.build_assignee_filter())
+        query = query.filter(entities_service.build_assigned_task_filter())
 
+    def serialize(rows):
+        scenes = []
+        for scene_model, project_name, sequence_name in rows:
+            scene = scene_model.serialize(obj_type="Scene")
+            scene["project_name"] = project_name
+            scene["sequence_name"] = sequence_name
+            scenes.append(scene)
+        return scenes
+
+    if not query_utils.is_whole_list(**paging):
+        query = query.order_by(Entity.name)
     try:
-        data = query.all()
+        return query_utils.get_paginated_results(
+            query, serialize=serialize, **paging
+        )
     except StatementError:  # Occurs when an id is not properly formatted
         raise WrongIdFormatException
-
-    scenes = []
-    for scene_model, project_name, sequence_name in data:
-        scene = scene_model.serialize(obj_type="Scene")
-        scene["project_name"] = project_name
-        scene["sequence_name"] = sequence_name
-        scenes.append(scene)
-
-    return scenes
 
 
 def prepare_shots_and_tasks(criterions=None, compact=False, for_client=None):
@@ -688,67 +711,57 @@ def get_or_create_first_episode(project_id, created_by=None):
         return create_episode(project_id, "E01", created_by=created_by)
 
 
-def get_episodes_for_project(project_id, only_assigned=False):
+def get_episodes_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all episodes related to given project.
+    Retrieve all episodes related to given project, with the paging options
+    of entities_service.get_entities_for_project. With only_assigned, an
+    episode is kept when the current user holds a task on one of its shots
+    or on an asset made for it.
     """
-    episode_type_id = entity_types_service.get_episode_type()["id"]
+    scope = None
     if only_assigned:
         Sequence = aliased(Entity, name="sequence")
         Shot = aliased(Entity, name="shot")
         Asset = aliased(Entity, name="asset")
-        query = (
-            Entity.query.join(Sequence, Entity.id == Sequence.parent_id)
-            .join(Shot, Sequence.id == Shot.parent_id)
-            .join(Task, Shot.id == Task.entity_id)
-            .filter(Entity.project_id == project_id)
-            .filter(Entity.entity_type_id == episode_type_id)
-            .filter(persons_service.build_assignee_filter())
+        scope = or_(
+            entities_service.build_assigned_child_query(Shot)
+            .join(Sequence, Sequence.id == Shot.parent_id)
+            .filter(Sequence.parent_id == Entity.id)
+            .exists(),
+            entities_service.build_assigned_child_query(Asset)
+            .filter(Asset.source_id == Entity.id)
+            .exists(),
         )
-        shot_episodes = fields.serialize_models(query.all())
-        shot_episode_ids = {episode["id"]: True for episode in shot_episodes}
-        # A shot points to its scene through source_id too: without the
-        # type filter that scene came back as an episode.
-        query = (
-            Entity.query.join(Asset, Entity.id == Asset.source_id)
-            .join(Task, Asset.id == Task.entity_id)
-            .filter(Entity.project_id == project_id)
-            .filter(Entity.entity_type_id == episode_type_id)
-            .filter(persons_service.build_assignee_filter())
-        )
-        asset_episodes = fields.serialize_models(query.all())
-        result = shot_episodes
-        for episode in asset_episodes:
-            if episode["id"] not in shot_episode_ids:
-                result.append(episode)
-        return result
-    else:
-        return entities_service.get_entities_for_project(
-            project_id,
-            episode_type_id,
-            "Episode",
-        )
+    return entities_service.get_entities_for_project(
+        project_id,
+        entity_types_service.get_episode_type()["id"],
+        "Episode",
+        scope=scope,
+        **paging,
+    )
 
 
-def get_sequences_for_project(project_id, only_assigned=False):
+def get_sequences_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all sequences related to given project.
+    Retrieve all sequences related to given project, with the paging options
+    of entities_service.get_entities_for_project. With only_assigned, a
+    sequence is kept when the current user holds a task on one of its shots.
     """
+    scope = None
     if only_assigned:
         Shot = aliased(Entity, name="shot")
-        query = (
-            Entity.query.join(Shot, Entity.id == Shot.parent_id)
-            .join(Task, Shot.id == Task.entity_id)
-            .filter(Entity.project_id == project_id)
-            .filter(persons_service.build_assignee_filter())
+        scope = (
+            entities_service.build_assigned_child_query(Shot)
+            .filter(Shot.parent_id == Entity.id)
+            .exists()
         )
-        return fields.serialize_models(query.all())
-    else:
-        return entities_service.get_entities_for_project(
-            project_id,
-            entity_types_service.get_sequence_type()["id"],
-            "Sequence",
-        )
+    return entities_service.get_entities_for_project(
+        project_id,
+        entity_types_service.get_sequence_type()["id"],
+        "Sequence",
+        scope=scope,
+        **paging,
+    )
 
 
 def get_sequences_for_episode(episode_id, only_assigned=False):
@@ -768,15 +781,17 @@ def get_sequences_for_episode(episode_id, only_assigned=False):
         return get_sequences({"parent_id": episode_id})
 
 
-def get_shots_for_project(project_id, only_assigned=False):
+def get_shots_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all shots related to given project.
+    Retrieve all shots related to given project, with the paging options of
+    entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_shot_type()["id"],
         "Shot",
         only_assigned=only_assigned,
+        **paging,
     )
 
 
@@ -794,15 +809,17 @@ def get_shots_for_episode(episode_id, relations=False):
     return Entity.serialize_list(result, "Shot", relations=relations)
 
 
-def get_scenes_for_project(project_id, only_assigned=False):
+def get_scenes_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all scenes related to given project.
+    Retrieve all scenes related to given project, with the paging options of
+    entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
         entity_types_service.get_scene_type()["id"],
         "Scene",
         only_assigned=only_assigned,
+        **paging,
     )
 
 

@@ -64,6 +64,7 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
 
     __table_args__ = (
         db.UniqueConstraint("name", "task_id", "revision", name="preview_uc"),
+        db.Index("ix_preview_file_created_at_id", "created_at", "id"),
     )
 
     shotgun_id = db.Column(db.Integer, unique=True)

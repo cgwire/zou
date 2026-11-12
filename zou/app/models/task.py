@@ -77,6 +77,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
             "difficulty > 0 AND difficulty < 6", name="check_difficulty"
         ),
         db.Index("ix_task_entity_project", "entity_id", "project_id"),
+        db.Index("ix_task_created_at_id", "created_at", "id"),
     )
 
     def assignees_as_string(self):

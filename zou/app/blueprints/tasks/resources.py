@@ -764,9 +764,8 @@ class ProjectNotificationsResource(MethodView, ArgsMixin):
         Get project notifications
         """
         projects_service.get_project(project_id)
-        page = self.get_page()
         return notifications_service.get_notifications_for_project(
-            project_id, page
+            project_id, **self.get_paging()
         )
 
 
@@ -792,15 +791,14 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         )
         if http_cache.is_fresh(etag):
             return http_cache.not_modified(etag)
-        page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
         tasks = todos_service.get_tasks_for_project(
             project_id,
-            page,
             task_type_id=task_type_id,
             episode_id=episode_id,
             only_assigned=permissions.has_vendor_permissions(),
+            **self.get_paging(),
         )
         if isinstance(tasks, dict):
             tasks["data"] = entities_service.blank_tasks_for_current_user(
@@ -826,10 +824,8 @@ class ProjectCommentsResource(MethodView, ArgsMixin):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        page = self.get_page()
-        limit = self.get_limit()
         return comments_service.get_comments_for_project(
-            project_id, page, limit
+            project_id, **self.get_paging()
         )
 
 
@@ -843,8 +839,9 @@ class ProjectPreviewFilesResource(MethodView, ArgsMixin):
         Get project preview files
         """
         projects_service.get_project(project_id)
-        page = self.get_page()
-        return files_service.get_preview_files_for_project(project_id, page)
+        return files_service.get_preview_files_for_project(
+            project_id, **self.get_paging()
+        )
 
 
 class SetTaskMainPreviewResource(MethodView):

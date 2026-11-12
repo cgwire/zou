@@ -244,6 +244,42 @@ class AssetRoutesTestCase(ApiDBTestCase):
             [asset["id"] for asset in self.get(path)], [self.asset_id]
         )
 
+    def test_assets_are_listed_by_cursor_or_by_page(self):
+        for path in [
+            "/data/assets/all",
+            f"/data/projects/{self.project_id}/assets",
+        ]:
+            with self.subTest(path=path):
+                expected = self.get(path)
+                self.assertEqual(len(expected), 2)
+                self.assertCountEqual(self.get_by_cursor(path, 1), expected)
+                page = self.get(f"{path}?page=2&limit=1")
+                self.assertEqual(page["total"], 2)
+                self.assertEqual(len(page["data"]), 1)
+                self.assertEqual(page["data"][0]["type"], "Asset")
+                # Pages come by name: the rabbit, then the tree.
+                self.assertEqual(page["data"][0]["name"], "Tree")
+
+    def test_assets_of_a_type_are_listed_by_cursor_or_by_page(self):
+        self.generate_fixture_asset("Bush")
+        self.assert_listed_by_cursor_or_by_page(
+            f"/data/projects/{self.project_id}"
+            f"/asset-types/{self.asset_type.id}/assets"
+        )
+
+    def test_shared_assets_cast_in_two_shots_are_walked_once(self):
+        elsewhere = self.share_an_asset_of_another_production_in_this_shot()
+        other = self.generate_fixture_asset(
+            "Stone", project_id=self.project_standard.id
+        )
+        other.update({"is_shared": True})
+        second_shot = self.generate_fixture_shot("P02")
+        for asset in [elsewhere, other]:
+            breakdown_service.create_casting_link(second_shot.id, asset.id)
+        path = f"/data/projects/{self.project_id}/assets/shared-used"
+        self.assertEqual(len(self.get(path)), 2)
+        self.assert_listed_by_cursor_or_by_page(path)
+
     def test_list_routes_scope_to_user_projects(self):
         list_paths = ["data/assets/all", "data/assets/with-tasks"]
         self.generate_fixture_project_standard()

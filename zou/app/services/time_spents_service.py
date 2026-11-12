@@ -895,9 +895,14 @@ def get_time_spents_for_task(task_id, date=None):
     return result
 
 
-def get_time_spents_for_project(project_id, page=0):
+def get_time_spents_for_project(
+    project_id, page=0, limit=None, cursor_id=None
+):
     """
-    Return all time spents for given project.
+    Return all time spents for given project, a page of them, or the ones
+    following a cursor (see query_utils.get_paginated_results).
     """
     query = TimeSpent.query.join(Task).filter(Task.project_id == project_id)
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(
+        query, page, limit, cursor_id=cursor_id
+    )

@@ -166,6 +166,13 @@ OutputFilesResource_get:
       schema:
         type: integer
     - in: query
+      name: cursor_id
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Without page, id of the last row of the previous request. With limit, it walks the whole list from the newest created row to the oldest, request after request, until one returns fewer rows than limit
+    - in: query
       name: relations
       required: false
       description: Add the related data to each row

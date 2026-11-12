@@ -31,6 +31,16 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         result = self.get("/data/concepts")
         self.assertEqual(len(result), 2)
 
+    def test_concepts_are_listed_by_cursor_or_by_page(self):
+        self.create_concept("First")
+        self.create_concept("Second")
+        for path in [
+            "data/concepts",
+            f"data/projects/{self.project.id}/concepts",
+        ]:
+            with self.subTest(path=path):
+                self.assert_listed_by_cursor_or_by_page(path)
+
     def test_get_all_concepts_empty(self):
         result = self.get("/data/concepts")
         self.assertEqual(result, [])

@@ -46,7 +46,7 @@ class EditResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllEditsResource(MethodView):
+class AllEditsResource(MethodView, ArgsMixin):
     @jwt_required()
     @swag_from(SPECS["AllEditsResource_get"])
     def get(self):
@@ -58,7 +58,7 @@ class AllEditsResource(MethodView):
             criterions.get("project_id", None)
         )
         permissions_service.scope_criterions_to_vendor(criterions)
-        return edits_service.get_edits(criterions)
+        return edits_service.get_edits(criterions, **self.get_paging())
 
 
 class EditTaskTypesResource(MethodView):
@@ -166,7 +166,9 @@ class ProjectEditsResource(MethodView, ArgsMixin):
         return permissions_service.mask_metadata_for_vendor(
             "Edit",
             edits_service.get_edits_for_project(
-                project_id, only_assigned=permissions.has_vendor_permissions()
+                project_id,
+                only_assigned=permissions.has_vendor_permissions(),
+                **self.get_paging(),
             ),
             project_id,
         )

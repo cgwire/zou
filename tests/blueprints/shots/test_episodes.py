@@ -161,6 +161,97 @@ class EpisodeTestCase(ApiDBTestCase):
                     [episode["id"] for episode in episodes], [self.episode_id]
                 )
 
+    def test_project_shots_are_listed_by_cursor_or_by_page(self):
+        path = f"data/projects/{self.project_id}/shots"
+        expected = self.get(path)
+        self.assertEqual(len(expected), 3)
+        self.assertCountEqual(self.get_by_cursor(path, 2), expected)
+        page = self.get(f"{path}?page=2&limit=2")
+        self.assertEqual(page["total"], 3)
+        self.assertEqual(len(page["data"]), 1)
+        self.assertEqual(page["data"][0]["type"], "Shot")
+
+    def test_a_vendor_holding_two_tasks_on_a_shot_walks_it_once(self):
+        self._setup_vendor()
+        shot_id = str(self.shot.id)
+        for task in [
+            self.shot_task,
+            self.generate_fixture_shot_task(name="Second"),
+        ]:
+            tasks_service.assign_task(task.id, self.user_vendor["id"])
+        path = f"data/projects/{self.project_id}/shots"
+        shots = self.get_by_cursor(path, 1)
+        self.assertEqual([shot["id"] for shot in shots], [shot_id])
+        self.assertEqual([shot["id"] for shot in self.get(path)], [shot_id])
+
+    def test_pages_keep_one_order_for_the_shots_of_a_same_name(self):
+        """
+        Five shots share a name, as SH010 does from a sequence to the next:
+        the pages still hold each of them once, in a single order.
+        """
+        path = f"data/projects/{self.project_id}"
+        for sequence in self.get(f"{path}/sequences"):
+            self.generate_fixture_shot("SAME", sequence_id=sequence["id"])
+        nb_pages = self.get(f"{path}/shots?page=1&limit=1")["nb_pages"]
+        shots = [
+            self.get(f"{path}/shots?page={page}&limit=1")["data"][0]
+            for page in range(1, nb_pages + 1)
+        ]
+        keys = [(shot["name"], shot["id"]) for shot in shots]
+        self.assertEqual(len(keys), 8)
+        self.assertEqual(keys, sorted(keys))
+
+    def test_entity_lists_are_listed_by_cursor_or_by_page(self):
+        self.generate_fixture_scene("SC01")
+        self.generate_fixture_scene("SC02")
+        project_path = f"data/projects/{self.project_id}"
+        for path in [
+            "data/shots",
+            "data/shots/all",
+            f"data/shots/all?project_id={self.project_id}",
+            "data/sequences",
+            "data/episodes",
+            "data/scenes/all",
+            f"{project_path}/sequences",
+            f"{project_path}/episodes",
+            f"{project_path}/scenes",
+        ]:
+            with self.subTest(path=path):
+                self.assert_listed_by_cursor_or_by_page(path)
+
+    def test_a_vendor_holding_two_tasks_walks_the_parents_once(self):
+        self._setup_vendor()
+        for task in [
+            self.shot_task,
+            self.generate_fixture_shot_task(name="Second"),
+        ]:
+            tasks_service.assign_task(task.id, self.user_vendor["id"])
+        sequence_id = str(self.shot.parent_id)
+        project_path = f"data/projects/{self.project_id}"
+        for path, parent_id, parent_type in [
+            (f"{project_path}/sequences", sequence_id, "Sequence"),
+            (
+                f"data/sequences?project_id={self.project_id}",
+                sequence_id,
+                "Sequence",
+            ),
+            (f"{project_path}/episodes", self.episode_id, "Episode"),
+            (
+                f"data/episodes?project_id={self.project_id}",
+                self.episode_id,
+                "Episode",
+            ),
+        ]:
+            with self.subTest(path=path):
+                parents = self.get_by_cursor(path, 1)
+                self.assertEqual(
+                    [(parent["id"], parent["type"]) for parent in parents],
+                    [(parent_id, parent_type)],
+                )
+                separator = "&" if "?" in path else "?"
+                page = self.get(f"{path}{separator}page=1")
+                self.assertEqual(page["total"], 1)
+
     def test_get_episode_vendor_no_task(self):
         self._setup_vendor()
         self.get(f"data/episodes/{self.episode_02_id}", 403)
