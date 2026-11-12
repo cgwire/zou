@@ -301,7 +301,15 @@ def get_open_projects(name=None):
         )
         query = query.filter(ProjectPersonLink.person_id == current_user["id"])
 
-    projects = query.all()
+    return serialize_projects(query)
+
+
+def serialize_projects(query):
+    """
+    Serialize the projects of given query with their extra data, the
+    metadata descriptors of each narrowed on the role held on it.
+    """
+    projects = projects_service.with_project_relations(query).all()
     return projects_service.serialize_projects_with_extra_data(
         projects,
         get_descriptor_visibilities([project.id for project in projects]),
@@ -352,6 +360,21 @@ def get_projects(name=None):
     """
     Get all projects for which current user is part of the team.
     """
+    return serialize_projects(get_projects_query(name))
+
+
+def get_project_ids():
+    """
+    Get the ids of all projects for which current user is part of the team.
+    """
+    return [str(project.id) for project in get_projects_query()]
+
+
+def get_projects_query(name=None):
+    """
+    Return the query of the projects for which current user is part of the
+    team.
+    """
     current_user = persons_service.get_current_user()
     query = (
         Project.query.join(
@@ -364,7 +387,7 @@ def get_projects(name=None):
     if name is not None:
         query = query.filter(func.lower(Project.name) == name.lower())
 
-    return fields.serialize_value(query.all())
+    return query
 
 
 def get_project_by_name(project_name):

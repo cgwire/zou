@@ -32,12 +32,13 @@ class ProjectTestCase(ApiDBTestCase):
         self.get_404(f"data/projects/{fields.gen_uuid()}")
 
     def test_get_project_without_relations(self):
+        # The listing serves the project as a read by its id does, extra
+        # data included; relations=false keeps a lighter read by id.
         project = self.get_first("data/projects")
-        project_again = self.get(
-            f"data/projects/{project['id']}?relations=false"
-        )
-        project["project_status_name"] = "Open"
-        self.assertEqual(project, project_again)
+        self.assertEqual(project, self.get(f"data/projects/{project['id']}"))
+        light = self.get(f"data/projects/{project['id']}?relations=false")
+        self.assertEqual(light["name"], project["name"])
+        self.assertNotIn("task_types", light)
 
     def test_get_closed_project_with_the_listing_extra_data(self):
         """

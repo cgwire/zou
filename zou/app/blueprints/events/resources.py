@@ -75,9 +75,7 @@ class EventsResource(MethodView, ArgsMixin):
         # all (persons, organisation, settings).
         project_ids = None
         if not permissions.has_admin_permissions():
-            project_ids = [
-                project["id"] for project in user_service.get_projects()
-            ]
+            project_ids = user_service.get_project_ids()
             if project_id is not None and project_id not in project_ids:
                 raise permissions.PermissionDenied
 

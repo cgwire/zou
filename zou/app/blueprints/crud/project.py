@@ -33,14 +33,12 @@ class ProjectsResource(BaseModelsResource):
         self._template_id_to_apply = None
         self._template_overrides = {}
 
-    def get_relations_eager_load(self):
-        return [
-            Project.asset_types,
-            Project.task_statuses,
-            Project.task_types,
-            Project.status_automations,
-            Project.preview_background_files,
-        ]
+    def all_entries(self, query=None, relations=False):
+        # A listed project is the one read by its id, extra data included,
+        # whatever relations asks: gazu reads both and expects one shape.
+        if query is None:
+            query = self.model.query
+        return user_service.serialize_projects(query)
 
     @jwt_required()
     @swag_from(SPECS["ProjectsResource_get"])
