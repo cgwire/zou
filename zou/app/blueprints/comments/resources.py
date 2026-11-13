@@ -240,14 +240,21 @@ class CommentManyTasksResource(MethodView):
             permissions_service.check_manager_project_access(project_id)
         except permissions.PermissionDenied:
             comments = self.get_allowed_comments_only(comments, person)
+        comments = [
+            comment
+            for comment in comments
+            if "task_status_id" in comment
+            and "object_id" in comment
+            and "comment" in comment
+        ]
+        # The hashtags repost a text on no task the batch posts it on, and
+        # only once on any other.
+        posted_comments = {
+            (str(comment["object_id"]), comment["comment"])
+            for comment in comments
+        }
         result = []
         for comment in comments:
-            if (
-                "task_status_id" not in comment
-                or "object_id" not in comment
-                or "comment" not in comment
-            ):
-                continue
             task_project_id = tasks_service.get_task(comment["object_id"])[
                 "project_id"
             ]
@@ -264,6 +271,7 @@ class CommentManyTasksResource(MethodView):
                 {},
                 None,
                 comment.get("links", []),
+                posted_comments=posted_comments,
             )
             result.append(comment)
         return result, 201
