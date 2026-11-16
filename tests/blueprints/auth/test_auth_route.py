@@ -483,6 +483,45 @@ class AuthTestCase(ApiDBTestCase):
         response = self.put("auth/reset-password", data, 400)
         self.assertEqual(response["message"], "Wrong or expired token.")
 
+    def test_check_reset_password_link(self):
+        """
+        The reset page asks if its link is valid before showing the form,
+        without logging in. The answer is the same for an unknown address
+        and for a wrong token, and asking never uses the token.
+        """
+        email = self.user["email"]
+        token = persons_service.create_reset_token(email, 3600)
+        stored = auth_tokens_store.get(f"reset-tokens-{email}")
+        response = self.app.post(
+            "auth/reset-password/check",
+            data=json.dumps({"email": email.upper(), "token": token}),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"valid": True})
+
+        def is_valid(email, token):
+            data = {"email": email, "token": token}
+            return self.post("auth/reset-password/check", data, 200)["valid"]
+
+        self.assertTrue(is_valid(email, token))
+        self.assertFalse(is_valid(email, "wrong-token"))
+        self.assertFalse(is_valid("nobody@example.com", token))
+        self.assertFalse(is_valid("jane\x00@example.com", token))
+        self.post("auth/reset-password/check", {"email": email}, 400)
+        self.assertEqual(
+            auth_tokens_store.get(f"reset-tokens-{email}"), stored
+        )
+
+        data = {
+            "email": email,
+            "token": token,
+            "password": "newpassword",
+            "password2": "newpassword",
+        }
+        self.put("auth/reset-password", data, 200)
+        self.assertFalse(is_valid(email, token))
+
     def test_unactive(self):
         self.person.update({"active": False})
         self.post("auth/login", self.credentials, 401)

@@ -24,6 +24,7 @@ from zou.app.blueprints.auth.schemas import (
     FidoRegisterSchema,
     FidoUnregisterSchema,
     LoginSchema,
+    ResetPasswordCheckSchema,
     ResetPasswordSchema,
     SendPasswordResetSchema,
     TotpSchema,
@@ -669,6 +670,21 @@ class ResetPasswordResource(MethodView, ArgsMixin):
             subject, email_html_body, user["email"], locale=locale
         )
         return {"success": "Reset token sent"}
+
+
+class ResetPasswordCheckResource(MethodView):
+
+    @swag_from(SPECS["ResetPasswordCheckResource_post"])
+    def post(self):
+        """
+        Check a password reset token
+        """
+        body = validation.validate_request_body(ResetPasswordCheckSchema)
+        return {
+            "valid": persons_service.is_reset_token_valid(
+                body.email, body.token
+            )
+        }
 
 
 class TOTPResource(MethodView, ArgsMixin):
