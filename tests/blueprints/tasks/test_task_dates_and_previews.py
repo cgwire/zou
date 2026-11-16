@@ -523,6 +523,25 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             path += "?force=true"
         return self.delete(path, code)
 
+    def add_comment_preview(self, task_id, comment_id, code=201):
+        path = f"/actions/tasks/{task_id}/comments/{comment_id}/add-preview"
+        return self.post(path, {}, code)
+
+    def add_extra_comment_preview(
+        self, task_id, comment_id, preview_file_id, code=201
+    ):
+        path = (
+            f"/actions/tasks/{task_id}/comments/{comment_id}"
+            f"/preview-files/{preview_file_id}"
+        )
+        return self.post(path, {}, code)
+
+    def get_task_preview_ids(self, task):
+        return [
+            str(preview_file.id)
+            for preview_file in PreviewFile.query.filter_by(task_id=task.id)
+        ]
+
     def log_in_member(self, person, assigned=False):
         """
         Log in as given person, made a member of the production and, on
@@ -703,3 +722,154 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             preview_file["id"], force=True
         )
         self.assertIsNone(PreviewFile.get(preview_file["id"]))
+
+    def test_add_extra_preview_to_comment_as_an_assigned_artist(self):
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        extra_preview_file = self.add_extra_comment_preview(
+            self.task.id, comment["id"], preview_file["id"]
+        )
+
+        self.assertEqual(extra_preview_file["task_id"], str(self.task.id))
+        self.assertEqual(
+            extra_preview_file["revision"], preview_file["revision"]
+        )
+        self.assertCountEqual(
+            self.get_comment_preview_ids(comment["id"]),
+            [preview_file["id"], extra_preview_file["id"]],
+        )
+
+    def test_add_extra_preview_to_a_comment_of_another_task(self):
+        # The new preview goes to the task of the path: a comment of another
+        # task would hold a preview that is not on its task.
+        comment, preview_file = self.generate_comment_with_preview(
+            self.shot_task
+        )
+
+        self.add_extra_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 404
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+        self.assertEqual(self.get_task_preview_ids(self.task), [])
+
+    def test_add_extra_preview_to_a_comment_of_another_production(self):
+        # The rights are checked on the task of the path: the comment and
+        # the preview are only looked for there.
+        self.generate_fixture_task_standard()
+        comment, preview_file = self.generate_comment_with_preview(
+            self.task_standard
+        )
+        own_comment, own_preview_file = self.generate_comment_with_preview(
+            self.task
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        self.add_extra_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 404
+        )
+        self.add_extra_comment_preview(
+            self.task.id, own_comment["id"], preview_file["id"], 404
+        )
+        self.add_extra_comment_preview(
+            self.task_standard.id, comment["id"], preview_file["id"], 403
+        )
+        # Without rights on the task, the answer tells nothing of the ids.
+        self.add_extra_comment_preview(
+            self.task_standard.id,
+            own_comment["id"],
+            own_preview_file["id"],
+            403,
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+        self.assertEqual(
+            self.get_comment_preview_ids(own_comment["id"]),
+            [own_preview_file["id"]],
+        )
+
+    def test_add_extra_preview_beside_a_preview_of_another_comment(self):
+        # The new preview takes the revision of the given one: it has to be
+        # on the comment.
+        comment, preview_file = self.generate_comment_with_preview(self.task)
+        other_comment, other_preview_file = self.generate_comment_with_preview(
+            self.task
+        )
+
+        self.add_extra_comment_preview(
+            self.task.id, other_comment["id"], preview_file["id"], 404
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(other_comment["id"]),
+            [other_preview_file["id"]],
+        )
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+    def test_add_extra_preview_beside_a_preview_of_another_task(self):
+        # The link to the comment is not enough: the preview has to be on
+        # the task of the path too.
+        comment_id, preview_file_id = self.generate_preview_attached_by_hand(
+            self.task, self.shot_task
+        )
+
+        self.add_extra_comment_preview(
+            self.task.id, comment_id, preview_file_id, 404
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment_id), [preview_file_id]
+        )
+
+    def test_add_preview_to_a_comment_moved_to_another_task(self):
+        # A read that races the move of a comment can leave the cache on its
+        # former task: the check of its task reads the row.
+        comment = self.generate_fixture_comment(task_id=self.task.id)
+        comments_service.get_comment(comment["id"])
+        Comment.get(comment["id"]).update({"object_id": self.shot_task.id})
+
+        self.add_comment_preview(self.task.id, comment["id"], 404)
+        preview_file = self.add_comment_preview(
+            self.shot_task.id, comment["id"]
+        )
+
+        self.assertEqual(preview_file["task_id"], str(self.shot_task.id))
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+    def test_add_preview_to_a_comment_of_another_task(self):
+        # The new preview goes to the task of the path: a comment of another
+        # task would hold a preview that is not on its task.
+        comment = self.generate_fixture_comment(task_id=self.shot_task.id)
+
+        self.add_comment_preview(self.task.id, comment["id"], 404)
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertEqual(self.get_task_preview_ids(self.task), [])
+
+    def test_add_preview_to_a_comment_of_another_production(self):
+        # The rights are checked on the task of the path: the comment is only
+        # looked for there.
+        self.generate_fixture_task_standard()
+        comment = self.generate_fixture_comment(task_id=self.task_standard.id)
+        own_comment = self.generate_fixture_comment(task_id=self.task.id)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        self.add_comment_preview(self.task.id, comment["id"], 404)
+        self.add_comment_preview(self.task_standard.id, comment["id"], 403)
+        # Without rights on the task, the answer tells nothing of the ids.
+        self.add_comment_preview(self.task_standard.id, own_comment["id"], 403)
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertEqual(self.get_comment_preview_ids(own_comment["id"]), [])

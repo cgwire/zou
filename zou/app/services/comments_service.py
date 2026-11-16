@@ -1521,12 +1521,14 @@ def get_comment(comment_id, relations=False):
 def get_task_comment(task_id, comment_id):
     """
     Return the comment matching given id as a dict, provided it is on given
-    task. Raise CommentNotFoundException otherwise.
+    task. Raise CommentNotFoundException otherwise. It reads the row, not
+    the cache: a read that races the move of the comment to another task can
+    leave the cache on the former task for two minutes.
     """
-    comment = get_comment(comment_id)
-    if comment["object_id"] != str(task_id):
+    comment = get_comment_raw(comment_id)
+    if str(comment.object_id) != str(task_id):
         raise CommentNotFoundException
-    return comment
+    return comment.serialize()
 
 
 def get_comment_preview_file(task_id, comment_id, preview_file_id):

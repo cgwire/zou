@@ -59,9 +59,10 @@ AddExtraPreviewResource_post:
   tags:
     - Tasks
   description: Create another preview entry on a comment, in the same revision
-    as the preview preview_file_id. A comment can have several previews in the
-    same revision. The route creates the metadata only. Upload the file after,
-    with the preview file upload route. Administrators and the managers of the
+    as the preview preview_file_id. That preview must be on the comment, and
+    both must be on the task. A comment can have several previews in the same
+    revision. The route creates the metadata only. Upload the file after, with
+    the preview file upload route. Administrators and the managers of the
     project can use this route. Other users must be assignees of the task,
     supervisors of its department, or creators of its entity. A client of the
     project cannot use this route.
@@ -118,23 +119,23 @@ AddExtraPreviewResource_post:
                 format: uuid
                 example: d24a6ea4-ce75-4665-a070-57453082c250
     400:
-      description: The project allows one preview per revision, or the
-        revision already exists
+      description: The project allows one preview per revision
     403:
       description: You cannot do actions on this task
     404:
-      description: The task, the comment or the preview file does not exist
+      description: The task, the comment or the preview file does not exist,
+        or they are not linked
 
 AddPreviewResource_post:
   summary: Add a preview to a comment
   tags:
     - Tasks
-  description: Create a preview file for a comment of a task. Upload the file
-    of the preview after. If you do not give the revision, the route uses the
-    last revision plus 1. Administrators and the managers of the project can
-    use this route. Other users must be assignees of the task, supervisors of
-    its department, or creators of its entity. A client of the project cannot
-    use this route.
+  description: Create a preview file for a comment of a task. The comment must
+    be on the task. Upload the file of the preview after. If you do not give
+    the revision, the route uses the last revision plus 1. Administrators and
+    the managers of the project can use this route. Other users must be
+    assignees of the task, supervisors of its department, or creators of its
+    entity. A client of the project cannot use this route.
   parameters:
     - in: path
       name: task_id
@@ -200,7 +201,8 @@ AddPreviewResource_post:
     403:
       description: You cannot do actions on this task
     404:
-      description: The task or the comment does not exist
+      description: The task or the comment does not exist, or the comment is
+        on another task
 
 AddTimeSpentResource_post:
   summary: Add time to a time spent

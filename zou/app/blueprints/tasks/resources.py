@@ -69,6 +69,7 @@ class AddPreviewResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(CommentPreviewSchema)
 
         permissions_service.check_task_work_access(task_id)
+        comments_service.get_task_comment(task_id, comment_id)
 
         person = persons_service.get_current_user()
         preview_file = comments_service.add_preview_file_to_comment(
@@ -86,11 +87,11 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         Add preview to comment
         """
         permissions_service.check_task_work_access(task_id)
-        comments_service.get_comment(comment_id)
+        related_preview_file = comments_service.get_comment_preview_file(
+            task_id, comment_id, preview_file_id
+        )
 
         person = persons_service.get_current_user()
-        related_preview_file = files_service.get_preview_file(preview_file_id)
-
         preview_file = comments_service.add_preview_file_to_comment(
             comment_id, person["id"], task_id, related_preview_file["revision"]
         )
