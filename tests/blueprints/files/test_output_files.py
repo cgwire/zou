@@ -804,15 +804,12 @@ class OutputFileFileTestCase(OutputFileTestCase):
         )
 
     def test_a_client_downloads_no_output_file(self):
-        self.assertEqual(self.download_as_artist("client"), 403)
-
-    def test_an_artist_downloads_no_output_file_out_of_their_tasks(self):
-        self.assertEqual(self.download_as_artist(), 403)
-
-    def test_an_artist_downloads_the_output_file_of_an_asset_cast(self):
         self.assertEqual(
-            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+            self.download_as_artist("client", task_id=self.task_id), 403
         )
+
+    def test_an_artist_downloads_any_output_file_of_the_project(self):
+        self.assertEqual(self.download_as_artist(), 200)
 
     def test_a_supervisor_of_the_project_downloads_any_output_file(self):
         self.assertEqual(self.download_as_artist("supervisor"), 200)

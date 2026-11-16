@@ -126,9 +126,7 @@ class WorkingFileFileResource(MethodView):
         permissions_service.check_project_access(task["project_id"])
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
-        permissions_service.check_assigned_or_cast_entity_access(
-            task["entity_id"]
-        )
+        permissions_service.check_file_download_access(task["entity_id"])
         return send_storage_file(
             working_file_id,
             last_modified=date_helpers.get_datetime_from_string(
@@ -197,7 +195,7 @@ class OutputFileFileResource(MethodView):
         output_file, entity = self.check_access(output_file_id)
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
-        permissions_service.check_assigned_or_cast_entity_access(entity["id"])
+        permissions_service.check_file_download_access(entity["id"])
         return send_storage_file(
             output_file_id,
             last_modified=date_helpers.get_datetime_from_string(

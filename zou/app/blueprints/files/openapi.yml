@@ -1893,10 +1893,10 @@ TaskWorkingFilesResource_get:
 WorkingFileFileResource_get:
   summary: Download a working file
   description: Download the file of a working file from the storage. You must
-    be in the project team. A client cannot download it. A manager or a
-    supervisor of the project downloads every working file of the project. An
-    artist or a vendor downloads the working files of the entities they have
-    a task on, and of the assets cast in these entities.
+    be in the project team. A client cannot download it. A manager, a
+    supervisor, or an artist of the project downloads every working file of
+    the project. A vendor downloads the working files of the entities they
+    have a task on, and of the assets cast in these entities.
   tags:
     - Files
   parameters:
@@ -1937,7 +1937,7 @@ WorkingFileFileResource_get:
             description: Binary file content
             example: binary data
     403:
-      description: You do not have access to this task
+      description: You do not have access to this working file
     404:
       description: The working file or its file does not exist
 
@@ -2096,9 +2096,9 @@ WorkingFilePathResource_post:
 OutputFileFileResource_get:
   summary: Download an output file
   description: Download the file of an output file from the storage. You must
-    be in the project team. A client cannot download it. A manager or a
-    supervisor of the project downloads every output file of the project. An
-    artist or a vendor downloads the output files of the entities they have a
+    be in the project team. A client cannot download it. A manager, a
+    supervisor, or an artist of the project downloads every output file of the
+    project. A vendor downloads the output files of the entities they have a
     task on, and of the assets cast in these entities.
   tags:
     - Files

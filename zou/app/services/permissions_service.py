@@ -262,9 +262,9 @@ def check_entity_access(entity_id):
 def check_assigned_or_cast_entity_access(entity_id):
     """
     An administrator, a manager or a supervisor reaches every entity of the
-    resolved project. An artist or a vendor reaches the entities they hold a
-    task on, and the assets cast in these entities, to build the scene of a
-    shot. Resolve the project first.
+    resolved project. Anyone else, in practice a vendor, reaches the entities
+    they hold a task on, and the assets cast in these entities, to build the
+    scene of a shot. Resolve the project first.
     """
     if (
         permissions.has_admin_permissions()
@@ -283,6 +283,18 @@ def check_assigned_or_cast_entity_access(entity_id):
     ):
         return True
     raise permissions.PermissionDenied
+
+
+def check_file_download_access(entity_id):
+    """
+    Downloading the content of a working or an output file: an artist of the
+    project reaches all its entities, as a manager or a supervisor does. A
+    vendor keeps to check_assigned_or_cast_entity_access. Resolve the project
+    and refuse a client first.
+    """
+    if permissions.has_artist_permissions():
+        return True
+    return check_assigned_or_cast_entity_access(entity_id)
 
 
 def keep_entities_a_vendor_reaches(entities):

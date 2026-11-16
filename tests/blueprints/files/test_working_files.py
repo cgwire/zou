@@ -272,11 +272,13 @@ class WorkingFilesTestCase(ApiDBTestCase):
         working_file = self.generate_fixture_working_file()
         self.get(f"/data/working-files/{working_file.id}/file", 404)
 
-    def test_working_file_needs_task_access(self):
+    def test_working_file_needs_project_access(self):
         working_file = self.generate_fixture_working_file()
         path = f"/data/working-files/{working_file.id}/file"
 
-        self.generate_fixture_user_cg_artist()
+        # Assigned, but out of the team: the team check alone refuses.
+        artist = self.generate_fixture_user_cg_artist()
+        self.assign_task(self.task.id, artist["id"])
         self.log_in_cg_artist()
         self.get(path, 403)
 
@@ -302,21 +304,33 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         return self.app.get(path, headers=self.base_headers).status_code
 
-    def test_an_artist_downloads_the_working_file_of_their_entity(self):
-        self.assertEqual(self.download_as_artist(task_id=self.task.id), 200)
-
-    def test_an_artist_downloads_the_working_file_of_an_asset_cast(self):
+    def test_an_artist_downloads_any_working_file_of_the_project(self):
         self.assertEqual(
-            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+            self.download_as_artist(task_id=self.shot_task.id), 200
         )
 
-    def test_an_artist_downloads_no_working_file_out_of_their_tasks(self):
+    def test_a_vendor_downloads_the_working_file_of_their_entity(self):
         self.assertEqual(
-            self.download_as_artist(task_id=self.shot_task.id), 403
+            self.download_as_artist("vendor", task_id=self.task.id), 200
+        )
+
+    def test_a_vendor_downloads_the_working_file_of_an_asset_cast(self):
+        self.assertEqual(
+            self.download_as_artist(
+                "vendor", task_id=self.shot_task.id, cast=True
+            ),
+            200,
+        )
+
+    def test_a_vendor_downloads_no_working_file_of_an_asset_not_cast(self):
+        self.assertEqual(
+            self.download_as_artist("vendor", task_id=self.shot_task.id), 403
         )
 
     def test_a_client_downloads_no_working_file(self):
-        self.assertEqual(self.download_as_artist("client"), 403)
+        self.assertEqual(
+            self.download_as_artist("client", task_id=self.task.id), 403
+        )
 
     def test_a_supervisor_of_the_project_downloads_any_working_file(self):
         self.assertEqual(self.download_as_artist("supervisor"), 200)
