@@ -121,8 +121,8 @@ AuthenticatedResource_get:
 ChangePasswordResource_post:
   summary: Change the password
   description: Change the password of the current user. Give the current
-    password and the new password two times. A pending password reset link
-    stops working.
+    password and the new password two times. The pending password reset
+    links stop working.
   tags:
     - Authentication
   requestBody:
@@ -585,7 +585,8 @@ ResetPasswordResource_post:
   summary: Ask for a password reset
   description: Send an email with a password reset link to the user. You do
     not need a token for this route. The response is the same if the address
-    is unknown or if the user is inactive.
+    is unknown or if the user is inactive. The link is valid for 2 hours, and
+    the links of earlier emails stay valid, up to 10 per address.
   tags:
     - Authentication
   security: []
@@ -612,7 +613,8 @@ ResetPasswordResource_put:
   summary: Reset the password with a token
   description: Set a new password for a user who forgot the password. Give the
     token from the password reset email. The token proves that the user asked
-    for the reset.
+    for the reset. A token works once, and the new password cancels the other
+    pending links.
   tags:
     - Authentication
   security: []

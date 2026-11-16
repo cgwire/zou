@@ -1,4 +1,6 @@
+import re
 from datetime import timedelta
+from unittest import mock
 
 import orjson as json
 import pyotp
@@ -420,6 +422,67 @@ class AuthTestCase(ApiDBTestCase):
             "auth/login", {"email": email, "password": new_password}, 200
         )
 
+    def test_reset_password_keeps_the_earlier_links(self):
+        """
+        A second recovery email leaves the link of the first one valid. A
+        link works once, and setting the password cancels the other one.
+        """
+        email = self.user["email"]
+        with mock.patch("zou.app.utils.emails.send_email") as send_email:
+            self.post("auth/reset-password", {"email": email}, 200)
+            self.post("auth/reset-password", {"email": email.upper()}, 200)
+        first, second = [
+            re.search(r"token=(\w+)", call.args[1]).group(1)
+            for call in send_email.call_args_list
+        ]
+        self.assertNotEqual(first, second)
+        self.assertEqual(
+            [call.args[2] for call in send_email.call_args_list],
+            [email, email],
+        )
+        for token in [first, second]:
+            self.assertTrue(persons_service.is_reset_token_valid(email, token))
+
+        data = {
+            "email": email.upper(),
+            "token": first,
+            "password": "newpassword",
+            "password2": "newpassword",
+        }
+        self.put("auth/reset-password", data, 200)
+        for token in [first, second]:
+            response = self.put(
+                "auth/reset-password", dict(data, token=token), 400
+            )
+            self.assertEqual(response["message"], "Wrong or expired token.")
+        self.post(
+            "auth/login", {"email": email, "password": "newpassword"}, 200
+        )
+
+    def test_reset_password_keeps_the_link_after_a_refused_password(self):
+        email = self.user["email"]
+        token = persons_service.create_reset_token(email, 3600)
+        data = {
+            "email": email,
+            "token": token,
+            "password": "newpassword",
+            "password2": "otherpassword",
+        }
+        self.put("auth/reset-password", data, 400)
+        self.put("auth/reset-password", dict(data, password2="newpassword"))
+
+    def test_reset_password_with_a_nul_in_the_address(self):
+        email = "jane\x00@example.com"
+        self.post("auth/reset-password", {"email": email}, 200)
+        data = {
+            "email": email,
+            "token": "token",
+            "password": "newpassword",
+            "password2": "newpassword",
+        }
+        response = self.put("auth/reset-password", data, 400)
+        self.assertEqual(response["message"], "Wrong or expired token.")
+
     def test_unactive(self):
         self.person.update({"active": False})
         self.post("auth/login", self.credentials, 401)
@@ -455,6 +518,23 @@ class AuthTestCase(ApiDBTestCase):
             "password2": "complex22pass",
         }
         response = self.put("auth/reset-password", data, 200)
+
+    def test_default_password_with_the_address_in_capitals(self):
+        """
+        Kitsu opens the reset page with the address as typed at login.
+        """
+        self.person.update({"password": auth.encrypt_password("default")})
+        email = self.person.email.upper()
+        response = self.post(
+            "auth/login", {"email": email, "password": "default"}, 400
+        )
+        data = {
+            "email": email,
+            "token": response["token"],
+            "password": "complex22pass",
+            "password2": "complex22pass",
+        }
+        self.put("auth/reset-password", data, 200)
 
     def test_get_last_login_logs(self):
         user_artist = self.generate_fixture_user_cg_artist()

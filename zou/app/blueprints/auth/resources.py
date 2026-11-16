@@ -1,4 +1,3 @@
-import hmac
 import secrets
 
 from babel.dates import format_datetime
@@ -63,7 +62,6 @@ from zou.app.services import (
     task_types_service,
     templates_service,
 )
-from zou.app.stores import auth_tokens_store
 from zou.app.utils import (
     auth,
     date_helpers,
@@ -274,9 +272,8 @@ class LoginResource(MethodView, ArgsMixin):
             )
 
             if auth_service.is_default_password(app, password):
-                token = persons_service.generate_reset_token()
-                auth_tokens_store.add(
-                    f"reset-token-{email}", token, ttl=3600 * 2
+                token = persons_service.create_reset_token(
+                    user["email"], 3600 * 2
                 )
                 current_app.logger.info(
                     f"User {email} must change his password."
@@ -584,27 +581,25 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         Reset password with token
         """
         body = validation.validate_request_body(ResetPasswordSchema)
+        wrong_token = (
+            {"error": True, "message": "Wrong or expired token."},
+            400,
+        )
 
         try:
-            token_from_store = auth_tokens_store.get(
-                f"reset-token-{body.email}"
-            )
-            if token_from_store and hmac.compare_digest(
-                token_from_store, body.token
+            if not persons_service.is_reset_token_valid(
+                body.email, body.token
             ):
-                auth.validate_password(body.password, body.password2)
-                password = auth.encrypt_password(body.password)
-                persons_service.update_password(body.email, password)
-                auth_tokens_store.delete(f"reset-token-{body.email}")
-                current_app.logger.info(
-                    f"User {body.email} has reset his password"
-                )
-                return {"success": True}
-            else:
-                return (
-                    {"error": True, "message": "Wrong or expired token."},
-                    400,
-                )
+                return wrong_token
+            auth.validate_password(body.password, body.password2)
+            if not persons_service.use_reset_token(body.email, body.token):
+                return wrong_token
+            password = auth.encrypt_password(body.password)
+            persons_service.update_password(body.email, password)
+            current_app.logger.info(
+                f"User {body.email} has reset his password"
+            )
+            return {"success": True}
 
         except auth.PasswordsNoMatchException:
             return (
@@ -637,9 +632,10 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         if not user["active"]:
             return generic_response
 
-        token = persons_service.generate_reset_token()
-        auth_tokens_store.add(f"reset-token-{body.email}", token, ttl=3600 * 2)
-        reset_url = persons_service.build_password_reset_url(body.email, token)
+        token = persons_service.create_reset_token(user["email"], 3600 * 2)
+        reset_url = persons_service.build_password_reset_url(
+            user["email"], token
+        )
         locale = user.get("locale") or getattr(
             config, "DEFAULT_LOCALE", "en_US"
         )
@@ -669,7 +665,9 @@ class ResetPasswordResource(MethodView, ArgsMixin):
         email_html_body = templates_service.generate_html_body(
             title, html, locale=locale
         )
-        emails.send_email(subject, email_html_body, body.email, locale=locale)
+        emails.send_email(
+            subject, email_html_body, user["email"], locale=locale
+        )
         return {"success": "Reset token sent"}
 
 

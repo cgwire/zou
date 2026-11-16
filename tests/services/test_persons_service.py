@@ -1,6 +1,9 @@
 import datetime
 from unittest import mock
 
+from freezegun import freeze_time
+from redis.commands.core import BasicKeyCommands
+
 from tests.services.cases import AuthTestCase, PersonsTestCase
 from zou.app import config, db
 from zou.app.exceptions import (
@@ -897,18 +900,174 @@ class TokenTestCase(AuthTestCase):
         self.assertEqual(len(token), 64)
         self.assertNotEqual(token, persons_service.generate_reset_token())
 
-    def test_update_password_cancels_the_reset_link(self):
+    def is_valid(self, token, email=None):
+        return persons_service.is_reset_token_valid(email or self.email, token)
+
+    def test_create_reset_token(self):
         """
-        A new password, whoever sets it, cancels the pending reset link.
+        Each email gets a token of its own, and the tokens of earlier emails
+        stay valid, whatever the case of the address in the link.
         """
-        key = f"reset-token-{self.email}"
-        auth_tokens_store.add(key, "pending-token", ttl=3600)
+        first = persons_service.create_reset_token(self.email, 3600)
+        second = persons_service.create_reset_token(self.email, 3600)
+
+        self.assertNotEqual(first, second)
+        self.assertTrue(self.is_valid(first))
+        self.assertTrue(self.is_valid(second, self.email.upper()))
+        self.assertFalse(self.is_valid("wrong-token"))
+        self.assertFalse(self.is_valid(first, "nobody@example.com"))
+
+    def test_reset_tokens_expire_on_their_own(self):
+        with freeze_time("2026-11-16T10:00:00") as frozen:
+            short_token = persons_service.create_reset_token(self.email, 3600)
+            long_token = persons_service.create_reset_token(self.email, 7200)
+            frozen.tick(datetime.timedelta(seconds=3601))
+
+            self.assertFalse(self.is_valid(short_token))
+            self.assertTrue(self.is_valid(long_token))
+
+    def test_reset_tokens_make_room_for_the_new_one(self):
+        """
+        An address keeps 10 tokens at most: the ones that expire first make
+        room for the new one, even when it expires before all of them.
+        """
+        week = 3600 * 24 * 7
+        invitation = persons_service.create_reset_token(self.email, week)
+        tokens = [
+            persons_service.create_reset_token(self.email, 3600)
+            for _ in range(10)
+        ]
+
+        self.assertTrue(self.is_valid(invitation))
+        self.assertFalse(self.is_valid(tokens[0]))
+        self.assertTrue(all(self.is_valid(token) for token in tokens[1:]))
+
+        invitations = [
+            persons_service.create_reset_token(self.email, week)
+            for _ in range(9)
+        ]
+        token = persons_service.create_reset_token(self.email, 3600)
+
+        self.assertTrue(self.is_valid(token))
+        self.assertFalse(self.is_valid(invitation))
+        self.assertTrue(all(self.is_valid(other) for other in invitations))
+
+    def test_use_reset_token(self):
+        """
+        A token works once, and the other tokens of the address stay valid.
+        """
+        first = persons_service.create_reset_token(self.email, 3600)
+        second = persons_service.create_reset_token(self.email, 3600)
+
+        self.assertTrue(
+            persons_service.use_reset_token(self.email.upper(), first)
+        )
+        self.assertFalse(persons_service.use_reset_token(self.email, first))
+        self.assertFalse(self.is_valid(first))
+        self.assertTrue(self.is_valid(second))
+        self.assertFalse(
+            persons_service.use_reset_token("nobody@example.com", second)
+        )
+
+    def act_during_read(self, action):
+        """
+        Run given action, as another request would, right after the next
+        read of the reset tokens of the person: that read still gives what
+        was stored before the action.
+        """
+        key = f"reset-tokens-{self.email}"
+        read = BasicKeyCommands.get
+        actions = [action]
+
+        def read_then_act(client, name):
+            value = read(client, name)
+            if name == key and actions:
+                actions.pop()()
+            return value
+
+        return mock.patch.object(BasicKeyCommands, "get", read_then_act)
+
+    def test_use_reset_token_once_for_two_requests(self):
+        """
+        Of two requests with the same token, only one uses it, even when
+        the second one reads the token before the first removes it.
+        """
+        token = persons_service.create_reset_token(self.email, 3600)
+        first_request = []
+
+        with self.act_during_read(
+            lambda: first_request.append(
+                persons_service.use_reset_token(self.email, token)
+            )
+        ):
+            used = persons_service.use_reset_token(self.email, token)
+
+        self.assertEqual(first_request, [True])
+        self.assertFalse(used)
+
+    def test_create_reset_token_keeps_a_token_stored_meanwhile(self):
+        """
+        A token that another request stores between the read and the write
+        stays, for its whole lifetime.
+        """
+        week = 3600 * 24 * 7
+        other_request = []
+
+        with self.act_during_read(
+            lambda: other_request.append(
+                persons_service.create_reset_token(self.email, week)
+            )
+        ):
+            token = persons_service.create_reset_token(self.email, 3600)
+
+        self.assertTrue(self.is_valid(token))
+        self.assertTrue(self.is_valid(other_request[0]))
+        self.assertGreater(
+            auth_tokens_store.revoked_tokens_store.ttl(
+                f"reset-tokens-{self.email}"
+            ),
+            week - 100,
+        )
+
+    def test_reset_token_stored_by_a_former_version(self):
+        """
+        The single token that former versions stored under the address of
+        the link, as typed for a recovery email, stays valid until it is
+        used.
+        """
+        for email in [self.email, self.email.upper()]:
+            with self.subTest(email=email):
+                key = f"reset-token-{email}"
+                auth_tokens_store.add(key, "former-token", ttl=3600)
+
+                self.assertFalse(self.is_valid("former-tokén", email))
+                self.assertTrue(self.is_valid("former-token", email))
+                self.assertTrue(
+                    persons_service.use_reset_token(email, "former-token")
+                )
+                self.assertFalse(
+                    persons_service.use_reset_token(email, "former-token")
+                )
+                self.assertIsNone(auth_tokens_store.get(key))
+
+    def test_update_password_cancels_the_reset_links(self):
+        """
+        A new password, whoever sets it, cancels the pending reset links.
+        """
+        auth_tokens_store.add(
+            f"reset-token-{self.email}", "former-token", ttl=3600
+        )
+        tokens = [
+            persons_service.create_reset_token(self.email, 3600)
+            for _ in range(2)
+        ]
 
         persons_service.update_password(
             self.email.upper(), auth.encrypt_password("new-password-123")
         )
 
-        self.assertIsNone(auth_tokens_store.get(key))
+        for token in tokens + ["former-token"]:
+            self.assertFalse(self.is_valid(token))
 
     def test_update_password_without_redis_changes_nothing(self):
         """
