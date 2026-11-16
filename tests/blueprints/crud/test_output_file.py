@@ -97,6 +97,23 @@ class OutputFileTestCase(ApiDBTestCase):
         tasks_service.assign_task(str(self.task.id), user_cg_artist_id)
         self.put(f"data/output-files/{output_file['id']}", data)
 
+    def update_as_assignee(self, code, role=None, in_team=True):
+        output_file = self.get_first("data/output-files")
+        member_id = self.generate_fixture_user_cg_artist()["id"]
+        if in_team:
+            projects_service.add_team_member(self.project_id, member_id, role)
+        tasks_service.assign_task(str(self.task.id), member_id)
+        self.log_in_cg_artist()
+        self.put(
+            f"data/output-files/{output_file['id']}", {"quality": "low"}, code
+        )
+
+    def test_an_assignee_out_of_the_team_updates_no_output_file(self):
+        self.update_as_assignee(403, in_team=False)
+
+    def test_a_client_of_the_project_updates_no_output_file(self):
+        self.update_as_assignee(403, role="client")
+
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
         data = {"name": "Super modeling output_file 2"}
@@ -109,6 +126,50 @@ class OutputFileTestCase(ApiDBTestCase):
         self.assertEqual(self.last_event_data["project_id"], self.project_id)
 
         self.put_404(f"data/output-files/{fields.gen_uuid()}", data)
+
+    def test_an_update_keeps_the_links_of_an_output_file(self):
+        output_file = self.get_first("data/output-files")
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        working_file = self.generate_fixture_working_file()
+        path = f"data/output-files/{output_file['id']}"
+        self.put(
+            path,
+            {
+                "entity_id": str(self.shot.id),
+                "temporal_entity_id": str(self.shot.id),
+                "asset_instance_id": str(self.asset_instance.id),
+                "source_file_id": str(working_file.id),
+            },
+        )
+        output_file_again = self.get(path)
+        for field in [
+            "entity_id",
+            "temporal_entity_id",
+            "asset_instance_id",
+            "source_file_id",
+        ]:
+            self.assertEqual(output_file_again[field], output_file[field])
+
+    def author_is_changed_by(self, role=None):
+        """
+        Have an assignee of a task of the entity, with given role on the
+        project, set themselves as the author of an output file.
+        """
+        output_file = self.get_first("data/output-files")
+        member_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project_id, member_id, role)
+        tasks_service.assign_task(str(self.task.id), member_id)
+        self.log_in_cg_artist()
+        path = f"data/output-files/{output_file['id']}"
+        self.put(path, {"person_id": member_id})
+        return self.get(path)["person_id"] == member_id
+
+    def test_an_artist_keeps_the_author_of_an_output_file(self):
+        self.assertFalse(self.author_is_changed_by())
+
+    def test_a_project_manager_changes_the_author_of_an_output_file(self):
+        self.assertTrue(self.author_is_changed_by("manager"))
 
     def test_delete_output_file(self):
         output_files = self.get("data/output-files")

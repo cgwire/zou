@@ -77,6 +77,11 @@ class WorkingFilesResource(BaseModelsResource):
 class WorkingFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, WorkingFile)
+        # A working file stays on its task and entity: the update checks the
+        # access on the stored ones. Output files keep their source: the
+        # update would move any output file, of any project, without checking
+        # the access to it.
+        self.protected_fields += ["task_id", "entity_id", "outputs"]
 
     def check_read_permissions(self, instance):
         working_file = files_service.get_working_file(instance["id"])
@@ -124,6 +129,10 @@ class WorkingFileResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
+        # Only a manager of the project changes the author: the update check
+        # resolved the project role.
+        if not permissions.has_manager_permissions():
+            data.pop("person_id", None)
         check_validation_status(data)
         return data
 

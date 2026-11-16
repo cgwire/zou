@@ -77,6 +77,15 @@ class OutputFilesResource(BaseModelsResource):
 class OutputFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, OutputFile)
+        # An output file stays on its entity and temporal entity: the update
+        # checks the access on the stored ones. Its instance and source file
+        # stay too: the update does not check the access to them.
+        self.protected_fields += [
+            "entity_id",
+            "temporal_entity_id",
+            "asset_instance_id",
+            "source_file_id",
+        ]
 
     def check_read_permissions(self, instance):
         entity = entities_service.get_entity(instance["entity_id"])
@@ -86,14 +95,13 @@ class OutputFileResource(BaseModelResource):
 
     def check_update_permissions(self, output_file, data):
         entity = entities_service.get_entity(output_file["entity_id"])
-        if permissions_service.has_manager_project_access(
-            entity["project_id"]
-        ):
-            return True
-        else:
-            return permissions_service.check_working_on_entity(
+        permissions_service.check_project_access(entity["project_id"])
+        permissions_service.block_access_to_client()
+        if not permissions.has_manager_permissions():
+            permissions_service.check_working_on_entity(
                 output_file["temporal_entity_id"] or output_file["entity_id"]
             )
+        return True
 
     @jwt_required()
     @swag_from(SPECS["OutputFileResource_get"])
@@ -131,6 +139,10 @@ class OutputFileResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
+        # Only a manager of the project changes the author: the update check
+        # resolved the project role.
+        if not permissions.has_manager_permissions():
+            data.pop("person_id", None)
         check_quality(data)
         return data
 

@@ -29,7 +29,7 @@ from zou.app.models.comment import (
     department_mentions_table,
     mentions_table,
 )
-from zou.app.models.entity import EntityLink
+from zou.app.models.entity import AssetInstanceLink, EntityLink
 from zou.app.models.person import DepartmentLink
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
@@ -259,6 +259,39 @@ def check_entity_access(entity_id):
     return is_allowed
 
 
+def check_vendor_asset_instance_access(asset_instance, temporal_entity_id):
+    """
+    Return true if current user is not a vendor, or has a task assigned on
+    the asset of given instance, or on the given temporal entity when the
+    instance is placed in it: its scene, its target asset, or a shot it is
+    cast in. Like check_entity_access, it filters vendors only. Resolve the
+    project first.
+    """
+    if not permissions.has_vendor_permissions():
+        return True
+    entity_ids = [asset_instance["asset_id"]]
+    is_placed = temporal_entity_id in (
+        asset_instance["scene_id"],
+        asset_instance["target_asset_id"],
+    ) or (
+        AssetInstanceLink.query.filter_by(
+            entity_id=temporal_entity_id,
+            asset_instance_id=asset_instance["id"],
+        ).count()
+        > 0
+    )
+    if is_placed:
+        entity_ids.append(temporal_entity_id)
+    nb_tasks = (
+        Task.query.filter(Task.entity_id.in_(entity_ids))
+        .filter(persons_service.build_assignee_filter())
+        .count()
+    )
+    if nb_tasks == 0:
+        raise permissions.PermissionDenied
+    return True
+
+
 def check_assigned_or_cast_entity_access(entity_id):
     """
     An administrator, a manager or a supervisor reaches every entity of the
@@ -287,11 +320,12 @@ def check_assigned_or_cast_entity_access(entity_id):
 
 def check_file_download_access(entity_id):
     """
-    Downloading the content of a working or an output file: an artist of the
-    project reaches all its entities, as a manager or a supervisor does. A
-    vendor keeps to check_assigned_or_cast_entity_access. Resolve the project
-    and refuse a client first.
+    Downloading the content of a working or an output file: never for a
+    client of the project. An artist of the project reaches all its
+    entities, as a manager or a supervisor does. A vendor keeps to
+    check_assigned_or_cast_entity_access. Resolve the project first.
     """
+    block_access_to_client()
     if permissions.has_artist_permissions():
         return True
     return check_assigned_or_cast_entity_access(entity_id)

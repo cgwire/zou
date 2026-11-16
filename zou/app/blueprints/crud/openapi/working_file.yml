@@ -77,8 +77,10 @@ WorkingFileResource_put:
   tags:
     - Crud
   description: Update the fields of a working file. Send only the fields to
-    change. You cannot change id, created_at, updated_at. Dates use the ISO
-    8601 format. The validation_status must be validated, rejected or neutral.
+    change. You cannot change id, created_at, updated_at, task_id, entity_id,
+    outputs. Only a manager of the project can change person_id, which is
+    ignored for other users. Dates use the ISO 8601 format. The
+    validation_status must be validated, rejected or neutral.
     You must be an administrator, or a manager of the project. Other members
     of the project can change it if they are an assignee of the task or the
     creator of the entity. A supervisor of the project can also change it if
