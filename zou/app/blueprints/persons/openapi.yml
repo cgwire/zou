@@ -60,7 +60,8 @@ ChangePasswordForPersonResource_post:
     times. You cannot change the password of a protected account. You cannot
     change the password of another administrator who already has a password.
     You can set the first password of a new administrator. The person gets an
-    email about the change. You must be an administrator.
+    email about the change, and a pending password reset link stops working.
+    You must be an administrator.
   tags:
     - Persons
   parameters:

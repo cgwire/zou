@@ -15,6 +15,7 @@ from zou.app.services import (
     persons_service,
     time_spents_service,
 )
+from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, fields
 
 
@@ -895,3 +896,35 @@ class TokenTestCase(AuthTestCase):
         token = persons_service.generate_reset_token()
         self.assertEqual(len(token), 64)
         self.assertNotEqual(token, persons_service.generate_reset_token())
+
+    def test_update_password_cancels_the_reset_link(self):
+        """
+        A new password, whoever sets it, cancels the pending reset link.
+        """
+        key = f"reset-token-{self.email}"
+        auth_tokens_store.add(key, "pending-token", ttl=3600)
+
+        persons_service.update_password(
+            self.email.upper(), auth.encrypt_password("new-password-123")
+        )
+
+        self.assertIsNone(auth_tokens_store.get(key))
+
+    def test_update_password_without_redis_changes_nothing(self):
+        """
+        Without Redis, the password stays as it was.
+        """
+        person = persons_service.get_person_by_email_raw(self.email)
+        before = person.password
+        with mock.patch.object(
+            auth_tokens_store,
+            "delete",
+            side_effect=ConnectionError("Redis is down"),
+        ):
+            self.assertRaises(
+                ConnectionError,
+                persons_service.update_password,
+                self.email,
+                auth.encrypt_password("new-password-123"),
+            )
+        self.assertEqual(Person.get(person.id).password, before)

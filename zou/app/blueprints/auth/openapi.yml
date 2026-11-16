@@ -121,7 +121,8 @@ AuthenticatedResource_get:
 ChangePasswordResource_post:
   summary: Change the password
   description: Change the password of the current user. Give the current
-    password and the new password two times.
+    password and the new password two times. A pending password reset link
+    stops working.
   tags:
     - Authentication
   requestBody:

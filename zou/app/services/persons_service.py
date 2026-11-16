@@ -558,9 +558,12 @@ def create_person(
 
 def update_password(email, password):
     """
-    Update password field for use matching given email.
+    Update password field for user matching given email. The pending reset
+    link of that person stops working.
     """
     person = get_person_by_email_raw(email)
+    # First, so that without Redis the password stays as it was.
+    auth_tokens_store.delete(f"reset-token-{person.email}")
     person.update({"password": password})
     clear_person_cache()
     logger.info("Password updated", extra={"email": email})
