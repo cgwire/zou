@@ -1349,6 +1349,9 @@ NewEntityOutputFileResource_post:
     caches. Give the task type to give the department of the file. If revision
     is 0, the route uses the next revision. An unknown working_file_id is
     ignored.
+    A vendor must have a task on the entity. A client of the project cannot
+    use this route. Only a manager of the project can give person_id to set
+    another author. For other users, the author is always the current user.
   tags:
     - Files
   parameters:
@@ -1475,7 +1478,8 @@ NewEntityOutputFileResource_post:
         not exist, the output file already exists, or the file tree of the
         project is not valid
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, you are a client,
+        or you are a vendor without a task on the entity
     404:
       description: The entity or the task type does not exist
 
@@ -1484,6 +1488,11 @@ NewInstanceOutputFileResource_post:
   description: Create an output file for an asset instance. An asset instance
     is a copy of an asset in a shot or a scene. The temporal entity is this
     shot or this scene. If revision is 0, the route uses the next revision.
+    The temporal entity must belong to the project of the asset.
+    A vendor must have a task on the asset, or on the temporal entity when
+    the asset instance is placed in it. A client of the project cannot use
+    this route. Only a manager of the project can give person_id to set
+    another author. For other users, the author is always the current user.
   tags:
     - Files
   parameters:
@@ -1623,7 +1632,9 @@ NewInstanceOutputFileResource_post:
       description: The body is not valid, the output type or the person does
         not exist, or the output file already exists
     403:
-      description: You do not have access to this project
+      description: You do not have access to this project, the temporal entity
+        is in another project, you are a client, or you are a vendor without a
+        task on the asset or on the temporal entity the instance is placed in
     404:
       description: The asset instance, the temporal entity, the asset or the
         task type does not exist
@@ -1634,10 +1645,11 @@ NewWorkingFileResource_post:
     of a file that an artist uses to make output files. The route uses the
     file tree of the project to make the path. If revision is 0, the route
     uses the next revision. The task is assigned to the current user. A
-    vendor must have a task on the entity of the task. If software_id is not
-    given, the route uses the Blender software and creates it if it does not
-    exist. Only a manager of the project can give person_id to set another
-    author. For other users, the author is always the current user.
+    vendor must have a task on the entity of the task. A client of the
+    project cannot use this route. If software_id is not given, the route
+    uses the Blender software and creates it if it does not exist. Only a
+    manager of the project can give person_id to set another author. For
+    other users, the author is always the current user.
   tags:
     - Files
   parameters:
@@ -1737,8 +1749,8 @@ NewWorkingFileResource_post:
     400:
       description: The body is not valid, or the working file already exists
     403:
-      description: You do not have access to this project, or you are a vendor
-        without a task on this entity
+      description: You do not have access to this project, you are a client,
+        or you are a vendor without a task on this entity
     404:
       description: The task or the software does not exist
 
@@ -1893,10 +1905,10 @@ TaskWorkingFilesResource_get:
 WorkingFileFileResource_get:
   summary: Download a working file
   description: Download the file of a working file from the storage. You must
-    be in the project team. A client cannot download it. A manager or a
-    supervisor of the project downloads every working file of the project. An
-    artist or a vendor downloads the working files of the entities they have
-    a task on, and of the assets cast in these entities.
+    be in the project team. A client of the project cannot download it. A
+    manager, a supervisor, or an artist of the project downloads every
+    working file of the project. A vendor downloads the working files of the
+    entities they have a task on, and of the assets cast in these entities.
   tags:
     - Files
   parameters:
@@ -1937,14 +1949,15 @@ WorkingFileFileResource_get:
             description: Binary file content
             example: binary data
     403:
-      description: You do not have access to this task
+      description: You do not have access to this working file
     404:
       description: The working file or its file does not exist
 
 WorkingFileFileResource_post:
   summary: Upload a working file
   description: Upload the file of a working file to the storage. Send the file
-    in a multipart form.
+    in a multipart form. You must be able to do actions on the task. A client
+    of the project cannot use this route.
   tags:
     - Files
   parameters:
@@ -2013,7 +2026,7 @@ WorkingFileFileResource_post:
     400:
       description: The file is missing
     403:
-      description: You do not have access to this task
+      description: You cannot do actions on this task
     404:
       description: The working file does not exist
 
@@ -2096,10 +2109,10 @@ WorkingFilePathResource_post:
 OutputFileFileResource_get:
   summary: Download an output file
   description: Download the file of an output file from the storage. You must
-    be in the project team. A client cannot download it. A manager or a
-    supervisor of the project downloads every output file of the project. An
-    artist or a vendor downloads the output files of the entities they have a
-    task on, and of the assets cast in these entities.
+    be in the project team. A client of the project cannot download it. A
+    manager, a supervisor, or an artist of the project downloads every output
+    file of the project. A vendor downloads the output files of the entities
+    they have a task on, and of the assets cast in these entities.
   tags:
     - Files
   parameters:

@@ -22,7 +22,6 @@ segments, not on whole paths.
 | Day off aggregations | `GET /data/persons/<id>/day-offs/{month,week,year}/…` | The unit day-off routes and the studio-wide month view are covered |
 | Department items | `GET /data/departments/<id>/hardware-items/<id>` | Its DELETE is covered, the GET is not (the software one is) |
 | Batch comments (multipart) | `/actions/tasks/batch-comment` with attached preview files | The JSON body path is covered |
-| Working file I/O | `POST /data/working-files/<id>/file` | The GET, its 404 and its 403 are covered |
 | Attachment upload | `/actions/tasks/<id>/comments/<id>/add-attachment` | Service layer covered; the route-level upload is not |
 | Output files with instances | `/data/asset-instances/<id>/entities/<id>/output-types/<id>/output-files` | Complex FK setup |
 | Production schedule apply | `/actions/production-schedule-versions/<id>/…` (3 action routes) | Complex schedule setup |

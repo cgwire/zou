@@ -102,11 +102,6 @@ def send_storage_file(
 
 class WorkingFileFileResource(MethodView):
 
-    def check_access(self, working_file_id):
-        working_file = files_service.get_working_file(working_file_id)
-        permissions_service.check_task_access(working_file["task_id"])
-        return working_file
-
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
         uploaded_file = request.files["file"]
         tmp_folder = current_app.config["TMP_DIR"]
@@ -124,11 +119,7 @@ class WorkingFileFileResource(MethodView):
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         permissions_service.check_project_access(task["project_id"])
-        if permissions.has_client_permissions():
-            raise permissions.PermissionDenied
-        permissions_service.check_assigned_or_cast_entity_access(
-            task["entity_id"]
-        )
+        permissions_service.check_file_download_access(task["entity_id"])
         return send_storage_file(
             working_file_id,
             last_modified=date_helpers.get_datetime_from_string(
@@ -142,7 +133,8 @@ class WorkingFileFileResource(MethodView):
         """
         Store working file
         """
-        self.check_access(working_file_id)
+        working_file = files_service.get_working_file(working_file_id)
+        permissions_service.check_task_work_access(working_file["task_id"])
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
         )
@@ -195,9 +187,7 @@ class OutputFileFileResource(MethodView):
         Download output file
         """
         output_file, entity = self.check_access(output_file_id)
-        if permissions.has_client_permissions():
-            raise permissions.PermissionDenied
-        permissions_service.check_assigned_or_cast_entity_access(entity["id"])
+        permissions_service.check_file_download_access(entity["id"])
         return send_storage_file(
             output_file_id,
             last_modified=date_helpers.get_datetime_from_string(
@@ -461,6 +451,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             task = tasks_service.get_task(task_id)
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
+            permissions_service.block_access_to_client()
             # Only a manager of the project files on behalf of someone else.
             if not permissions.has_manager_permissions():
                 person_id = persons_service.get_current_user()["id"]
@@ -585,9 +576,14 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
 
             entity = entities_service.get_entity(entity_id)
             permissions_service.check_project_access(entity["project_id"])
+            permissions_service.block_access_to_client()
+            permissions_service.check_entity_access(entity_id)
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
 
+            # Only a manager of the project files on behalf of someone else.
+            if not permissions.has_manager_permissions():
+                args["person_id"] = None
             if args["person_id"] is None:
                 person = persons_service.get_current_user()
             else:
@@ -707,9 +703,19 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
 
             entity = assets_service.get_asset(asset_instance["asset_id"])
             permissions_service.check_project_access(entity["project_id"])
+            permissions_service.check_entities_belong_to_project(
+                [temporal_entity["id"]], entity["project_id"]
+            )
+            permissions_service.block_access_to_client()
+            permissions_service.check_vendor_asset_instance_access(
+                asset_instance, temporal_entity["id"]
+            )
 
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
+            # Only a manager of the project files on behalf of someone else.
+            if not permissions.has_manager_permissions():
+                args["person_id"] = None
             if args["person_id"] is None:
                 person = persons_service.get_current_user()
             else:

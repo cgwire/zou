@@ -60,6 +60,20 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
         self.assertEqual(working_file["person_id"], self.user_cg_artist["id"])
 
+    def test_a_client_creates_no_working_file(self):
+        client_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, client_id, "client")
+        self.log_in_cg_artist()
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "theirs"},
+            403,
+        )
+        task = Task.get(self.task_id)
+        self.assertNotIn(
+            client_id, [str(person.id) for person in task.assignees]
+        )
+
     def test_new_working_file(self):
         task = Task.get(self.task_id)
         self.assertEqual(len(task.assignees), 1)
@@ -272,11 +286,13 @@ class WorkingFilesTestCase(ApiDBTestCase):
         working_file = self.generate_fixture_working_file()
         self.get(f"/data/working-files/{working_file.id}/file", 404)
 
-    def test_working_file_needs_task_access(self):
+    def test_working_file_needs_project_access(self):
         working_file = self.generate_fixture_working_file()
         path = f"/data/working-files/{working_file.id}/file"
 
-        self.generate_fixture_user_cg_artist()
+        # Assigned, but out of the team: the team check alone refuses.
+        artist = self.generate_fixture_user_cg_artist()
+        self.assign_task(self.task.id, artist["id"])
         self.log_in_cg_artist()
         self.get(path, 403)
 
@@ -302,21 +318,71 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         return self.app.get(path, headers=self.base_headers).status_code
 
-    def test_an_artist_downloads_the_working_file_of_their_entity(self):
-        self.assertEqual(self.download_as_artist(task_id=self.task.id), 200)
-
-    def test_an_artist_downloads_the_working_file_of_an_asset_cast(self):
+    def test_an_artist_downloads_any_working_file_of_the_project(self):
         self.assertEqual(
-            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+            self.download_as_artist(task_id=self.shot_task.id), 200
         )
 
-    def test_an_artist_downloads_no_working_file_out_of_their_tasks(self):
+    def test_a_vendor_downloads_the_working_file_of_their_entity(self):
         self.assertEqual(
-            self.download_as_artist(task_id=self.shot_task.id), 403
+            self.download_as_artist("vendor", task_id=self.task.id), 200
+        )
+
+    def test_a_vendor_downloads_the_working_file_of_an_asset_cast(self):
+        self.assertEqual(
+            self.download_as_artist(
+                "vendor", task_id=self.shot_task.id, cast=True
+            ),
+            200,
+        )
+
+    def test_a_vendor_downloads_no_working_file_of_an_asset_not_cast(self):
+        self.assertEqual(
+            self.download_as_artist("vendor", task_id=self.shot_task.id), 403
         )
 
     def test_a_client_downloads_no_working_file(self):
-        self.assertEqual(self.download_as_artist("client"), 403)
+        self.assertEqual(
+            self.download_as_artist("client", task_id=self.task.id), 403
+        )
 
     def test_a_supervisor_of_the_project_downloads_any_working_file(self):
         self.assertEqual(self.download_as_artist("supervisor"), 200)
+
+    def upload_as_artist(self, role=None, task_id=None):
+        import os
+
+        working_file = self.generate_fixture_working_file()
+        path = f"/data/working-files/{working_file.id}/file"
+        fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        artist_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, artist_id, role)
+        if task_id is not None:
+            self.assign_task(task_id, artist_id)
+        self.log_in_cg_artist()
+        with open(fixture, "rb") as file_content:
+            response = self.app.post(
+                path,
+                data={"file": (file_content, "th01.png")},
+                headers=self.base_headers,
+            )
+        return response.status_code
+
+    def test_an_artist_stores_the_working_file_of_their_task(self):
+        self.assertEqual(self.upload_as_artist(task_id=self.task.id), 201)
+
+    def test_an_artist_stores_no_working_file_of_another_task(self):
+        self.assertEqual(self.upload_as_artist(task_id=self.shot_task.id), 403)
+
+    def test_a_client_stores_no_working_file(self):
+        self.assertEqual(
+            self.upload_as_artist("client", task_id=self.task.id), 403
+        )
+
+    def test_a_supervisor_with_no_department_stores_any_working_file(self):
+        self.assertEqual(self.upload_as_artist("supervisor"), 201)
+
+    def test_a_manager_of_the_project_stores_any_working_file(self):
+        self.assertEqual(self.upload_as_artist("manager"), 201)

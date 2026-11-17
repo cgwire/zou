@@ -75,6 +75,16 @@ class OutputFileTestCase(ApiDBTestCase):
             render, 1, "variant-1"
         )
 
+    def log_in_team_member(self, role=None, task_id=None):
+        from zou.app.services import projects_service, tasks_service
+
+        person_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, person_id, role)
+        if task_id is not None:
+            tasks_service.assign_task(task_id, person_id)
+        self.log_in_cg_artist()
+        return person_id
+
 
 class NewOutputFileTestCase(OutputFileTestCase):
     """
@@ -257,6 +267,26 @@ class NewOutputFileTestCase(OutputFileTestCase):
             200,
         )
         self.assertEqual(result["next_revision"], 1)
+
+    def test_a_client_publishes_no_output_file(self):
+        self.log_in_team_member("client", task_id=self.task_id)
+        self.publish(403)
+
+    def test_a_vendor_publishes_the_output_file_of_their_entity(self):
+        self.log_in_team_member("vendor", task_id=self.task_id)
+        self.publish()
+
+    def test_a_vendor_publishes_no_output_file_of_another_entity(self):
+        self.log_in_team_member("vendor", task_id=self.shot_task.id)
+        self.publish(403)
+
+    def test_an_artist_publishes_as_themselves(self):
+        artist_id = self.log_in_team_member()
+        self.assertEqual(self.publish()["person_id"], artist_id)
+
+    def test_a_manager_of_the_project_publishes_for_someone_else(self):
+        self.log_in_team_member("manager")
+        self.assertEqual(self.publish()["person_id"], self.person_id)
 
 
 class AssetInstanceOutputFileTestCase(OutputFileTestCase):
@@ -469,6 +499,101 @@ class AssetInstanceOutputFileTestCase(OutputFileTestCase):
             f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/last-revisions"
         )
         assert output_file["id"] in [f["id"] for f in result]
+
+    def publish_instance(self, code=201, temporal_entity=None, asset=None):
+        """
+        Publish an output of an instance of the scene, cast in the shot,
+        for the shot unless another temporal entity is given.
+        """
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance(asset=asset)
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
+        if temporal_entity is None:
+            temporal_entity = self.shot
+        return self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/"
+            f"{temporal_entity.id}/output-files/new",
+            {
+                "person_id": self.person_id,
+                "output_type_id": self.cache_type_id,
+                "task_type_id": str(self.task_type_animation.id),
+                "working_file_id": self.working_file_id,
+            },
+            code,
+        )
+
+    def test_a_client_publishes_no_instance_output_file(self):
+        self.log_in_team_member("client", task_id=self.shot_task.id)
+        self.publish_instance(403)
+
+    def test_a_vendor_of_the_shot_publishes_an_instance_output_file(self):
+        self.log_in_team_member("vendor", task_id=self.shot_task.id)
+        self.publish_instance()
+
+    def test_a_vendor_of_the_asset_publishes_an_instance_output_file(self):
+        self.log_in_team_member("vendor", task_id=self.task_id)
+        self.publish_instance()
+
+    def test_a_vendor_of_the_scene_publishes_an_instance_output_file(self):
+        self.generate_fixture_scene()
+        scene_task = self.generate_fixture_task(
+            name="Layout", entity_id=self.scene.id
+        )
+        self.log_in_team_member("vendor", task_id=scene_task.id)
+        self.publish_instance(temporal_entity=self.scene)
+
+    def test_a_vendor_of_the_target_asset_publishes_an_instance_output_file(
+        self,
+    ):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        self.generate_fixture_asset_asset_instance()
+        self.log_in_team_member("vendor", task_id=self.task_id)
+        self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/"
+            f"{self.asset_id}/output-files/new",
+            {
+                "output_type_id": self.tx_type_id,
+                "task_type_id": self.task_type_id,
+                "working_file_id": self.working_file_id,
+            },
+        )
+
+    def test_a_vendor_of_another_shot_publishes_no_instance_output_file(self):
+        shot = self.shot
+        other_shot = self.generate_fixture_shot("P02")
+        self.shot = shot
+        other_task = self.generate_fixture_shot_task(
+            name="Other", shot_id=other_shot.id
+        )
+        self.log_in_team_member("vendor", task_id=other_task.id)
+        self.publish_instance(403, temporal_entity=other_shot)
+
+    def test_a_vendor_without_a_task_publishes_no_instance_output_file(self):
+        self.log_in_team_member("vendor")
+        self.publish_instance(403)
+
+    def test_an_artist_publishes_an_instance_output_file_as_themselves(self):
+        artist_id = self.log_in_team_member()
+        self.assertEqual(self.publish_instance()["person_id"], artist_id)
+
+    def test_a_manager_publishes_an_instance_output_file_for_someone_else(
+        self,
+    ):
+        self.log_in_team_member("manager")
+        self.assertEqual(self.publish_instance()["person_id"], self.person_id)
+
+    def test_an_instance_output_file_stays_in_the_project_of_its_asset(self):
+        self.publish_instance(
+            403, temporal_entity=self.generate_fixture_shot_standard()
+        )
+
+    def test_a_shared_asset_publishes_no_instance_output_file_elsewhere(self):
+        self.generate_fixture_asset_standard()
+        self.asset_standard.update({"is_shared": True})
+        self.publish_instance(403, asset=self.asset_standard)
 
 
 class OutputFileListingTestCase(OutputFileTestCase):
@@ -804,15 +929,12 @@ class OutputFileFileTestCase(OutputFileTestCase):
         )
 
     def test_a_client_downloads_no_output_file(self):
-        self.assertEqual(self.download_as_artist("client"), 403)
-
-    def test_an_artist_downloads_no_output_file_out_of_their_tasks(self):
-        self.assertEqual(self.download_as_artist(), 403)
-
-    def test_an_artist_downloads_the_output_file_of_an_asset_cast(self):
         self.assertEqual(
-            self.download_as_artist(task_id=self.shot_task.id, cast=True), 200
+            self.download_as_artist("client", task_id=self.task_id), 403
         )
+
+    def test_an_artist_downloads_any_output_file_of_the_project(self):
+        self.assertEqual(self.download_as_artist(), 200)
 
     def test_a_supervisor_of_the_project_downloads_any_output_file(self):
         self.assertEqual(self.download_as_artist("supervisor"), 200)
@@ -835,6 +957,8 @@ class OutputFileFileTestCase(OutputFileTestCase):
         output_file = self.new_output_file()
         path = f"/data/output-files/{output_file['id']}/file"
 
-        self.generate_fixture_user_cg_artist()
+        # Assigned, but out of the team: the team check alone refuses.
+        artist = self.generate_fixture_user_cg_artist()
+        self.assign_task(self.task_id, artist["id"])
         self.log_in_cg_artist()
         self.get(path, 403)

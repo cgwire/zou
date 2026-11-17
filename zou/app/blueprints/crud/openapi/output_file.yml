@@ -53,8 +53,13 @@ OutputFileResource_put:
   tags:
     - Crud
   description: Update the fields of an output file. Send only the fields to
-    change. You cannot change id, created_at, updated_at. You must be a manager
-    of the project of its entity, or work on a task of the entity.
+    change. You cannot change id, created_at, updated_at, entity_id,
+    temporal_entity_id, asset_instance_id, source_file_id. Only a manager of
+    the project can change person_id, which is ignored for other users. You
+    must be in the project team of its entity, and be a manager of the
+    project or work on a task of its entity. For an asset instance output,
+    that task must be on its temporal entity, not on the asset. A client of
+    the project cannot use this route.
   parameters:
     - in: path
       name: instance_id
@@ -109,8 +114,9 @@ OutputFileResource_put:
     400:
       description: The body is not valid, or the quality is unknown
     403:
-      description: You are not a manager of the project and you do not work
-        on the entity
+      description: You are not in the project team, you are a client, or you
+        are not a manager of the project and you do not work on its entity (on
+        its temporal entity for an asset instance output)
     404:
       description: The output file does not exist
 
