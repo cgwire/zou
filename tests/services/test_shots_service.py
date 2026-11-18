@@ -606,6 +606,18 @@ class CreationTestCase(ShotsTestCase):
         )
         self.assertEqual(len(captured), 1)
 
+    def test_an_updated_episode_is_read_back_updated(self):
+        episode_id = str(self.episode.id)
+        shots_service.get_episode(episode_id)
+        captured = self.capture_events("episode:update")
+
+        shots_service.update_episode(episode_id, {"status": "complete"})
+
+        self.assertEqual(
+            shots_service.get_episode(episode_id)["status"], "complete"
+        )
+        self.assertEqual(len(captured), 1)
+
 
 class FramesFromPreviewTestCase(ShotsTestCase):
     """

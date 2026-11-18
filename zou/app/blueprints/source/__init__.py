@@ -8,6 +8,9 @@ from flask import Blueprint
 from zou.app.blueprints.source.csv.assets import AssetsCsvImportResource
 from zou.app.blueprints.source.csv.casting import CastingCsvImportResource
 from zou.app.blueprints.source.csv.edits import EditsCsvImportResource
+from zou.app.blueprints.source.csv.episodes import (
+    EpisodesCsvImportResource,
+)
 from zou.app.blueprints.source.csv.persons import PersonsCsvImportResource
 from zou.app.blueprints.source.csv.sequences import (
     SequencesCsvImportResource,
@@ -149,6 +152,10 @@ routes = [
     (
         "/import/csv/projects/<project_id>/sequences",
         SequencesCsvImportResource,
+    ),
+    (
+        "/import/csv/projects/<project_id>/episodes",
+        EpisodesCsvImportResource,
     ),
     ("/import/csv/projects/<project_id>/casting", CastingCsvImportResource),
     (
