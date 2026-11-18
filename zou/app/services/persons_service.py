@@ -1,4 +1,5 @@
 import datetime
+import hmac
 import logging
 import random
 import string
@@ -35,6 +36,7 @@ from zou.app.utils.email_i18n import get_email_translation
 
 logger = logging.getLogger(__name__)
 
+RESET_TOKENS_PER_ADDRESS = 10
 
 _SHORT_PERSON_COLUMNS = (
     Person.id,
@@ -306,6 +308,10 @@ def get_person_by_email_raw(email):
     """
     Return person that matches given email as an active record.
     """
+    # The database refuses a NUL character in a query, and no stored
+    # address holds one.
+    if email is not None and "\x00" in email:
+        raise PersonNotFoundException()
     person = Person.get_by(email=email, is_bot=False)
 
     if person is None:
@@ -558,9 +564,12 @@ def create_person(
 
 def update_password(email, password):
     """
-    Update password field for use matching given email.
+    Update password field for user matching given email. The pending reset
+    links of that person stop working.
     """
     person = get_person_by_email_raw(email)
+    # First, so that without Redis the password stays as it was.
+    revoke_reset_tokens(person.email)
     person.update({"password": password})
     clear_person_cache()
     logger.info("Password updated", extra={"email": email})
@@ -781,20 +790,85 @@ def check_password_change_allowed(person_id):
     return person
 
 
+def create_reset_token(email, ttl):
+    """
+    Store a new password reset token for given email, as the person record
+    holds it, valid for ttl seconds, and return it. The tokens of earlier
+    emails stay valid, up to RESET_TOKENS_PER_ADDRESS tokens per address:
+    the ones that expire first make room for the new one.
+    """
+    token = generate_reset_token()
+    auth_tokens_store.add_to_token_set(
+        f"reset-tokens-{email}", token, ttl, RESET_TOKENS_PER_ADDRESS
+    )
+    return token
+
+
+def is_reset_token_valid(email, token):
+    """
+    Tell if given token is a valid password reset token of the person with
+    given email. The tokens are stored for the address of the person, so the
+    case of given email does not matter.
+    """
+    try:
+        person = get_person_by_email_raw(email)
+    except PersonNotFoundException:
+        return False
+    tokens = auth_tokens_store.get_token_set(f"reset-tokens-{person.email}")
+    return token in tokens or _is_former_reset_token(email, token)
+
+
+def use_reset_token(email, token):
+    """
+    Remove given password reset token of the person with given email.
+    Return True if the token was valid: of two requests with the same link,
+    only one gets True.
+    """
+    try:
+        person = get_person_by_email_raw(email)
+    except PersonNotFoundException:
+        return False
+    if auth_tokens_store.remove_from_token_set(
+        f"reset-tokens-{person.email}", token
+    ):
+        return True
+    return (
+        _is_former_reset_token(email, token)
+        and auth_tokens_store.delete(f"reset-token-{email}") == 1
+    )
+
+
+def _is_former_reset_token(email, token):
+    # Former versions stored one token per address, under the address of
+    # the link they sent.
+    stored_token = auth_tokens_store.get(f"reset-token-{email}")
+    return stored_token is not None and hmac.compare_digest(
+        stored_token.encode(), token.encode()
+    )
+
+
+def revoke_reset_tokens(email):
+    """
+    Remove the password reset tokens of given email, as the person record
+    holds it.
+    """
+    auth_tokens_store.delete(f"reset-tokens-{email}")
+    auth_tokens_store.delete(f"reset-token-{email}")
+
+
 def get_or_create_password_reset_link(person_id):
     """
-    Return the password reset link for the given person. If a reset token is
-    already stored for that person (for instance from a recovery email or a
-    previous call), it is reused so that a link shared earlier stays valid.
-    Otherwise a new token is generated and stored. It is the same link as the
-    one embedded in the password recovery email.
+    Return the password reset link for the given person. The reset token
+    that expires last (for instance from an invitation or a previous call)
+    is reused if it has an hour left or more, instead of storing one more
+    token. Otherwise a new token, valid for 2 hours, is generated and stored.
+    It is the same link as the one embedded in the password recovery email.
     """
     person = get_person(person_id)
-    key = f"reset-token-{person['email']}"
-    token = auth_tokens_store.get(key)
-    if not token:
-        token = generate_reset_token()
-        auth_tokens_store.add(key, token, ttl=3600 * 2)
+    tokens = auth_tokens_store.get_token_set(f"reset-tokens-{person['email']}")
+    token = max(tokens, key=tokens.get, default=None)
+    if token is None or tokens[token] < 3600:
+        token = create_reset_token(person["email"], 3600 * 2)
     return build_password_reset_url(person["email"], token)
 
 
@@ -817,10 +891,7 @@ def invite_person(person_id):
     """
     person = get_person(person_id)
     organisation = organisation_service.get_organisation()
-    token = generate_reset_token()
-    auth_tokens_store.add(
-        f"reset-token-{person['email']}", token, ttl=3600 * 24 * 7
-    )
+    token = create_reset_token(person["email"], 3600 * 24 * 7)
     reset_url = build_password_reset_url(
         person["email"], token, token_type="new"
     )

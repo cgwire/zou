@@ -47,6 +47,15 @@ class ResetPasswordSchema(BaseSchema):
     password2: str = Field(..., min_length=1)
 
 
+class ResetPasswordCheckSchema(BaseSchema):
+    """
+    Body for checking a password reset token.
+    """
+
+    email: str = Field(..., min_length=1)
+    token: str = Field(..., min_length=1)
+
+
 class SendPasswordResetSchema(BaseSchema):
     """
     Body for requesting a password reset email.

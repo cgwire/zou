@@ -1631,8 +1631,9 @@ ProductionPreviewAccountResource_get:
 ProductionPreviewAccountResource_post:
   summary: Create the preview account of a project
   description: Create the preview account of a project. If the account exists,
-    the route sets a new password and closes the access. Only this response
-    gives the password. You must be a manager of the project.
+    the route sets a new password and closes the access, and its pending
+    password reset links stop working. Only this response gives the
+    password. You must be a manager of the project.
   tags:
     - Projects
   parameters:

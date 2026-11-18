@@ -57,7 +57,8 @@ def get_preview_account(project_id):
 def create_or_reset_preview_account(project_id):
     """
     Create the preview account of given project, or replace its password.
-    The access window is closed in both cases, which kills every session.
+    The access window is closed in both cases, which kills every session,
+    and the pending password reset links of the account stop working.
     Return the account and its clear password.
     """
     if not is_available():
@@ -81,6 +82,8 @@ def create_or_reset_preview_account(project_id):
         )
         projects_service.add_team_member(project.id, person.id)
     else:
+        # First, so that without Redis the reset changes nothing.
+        persons_service.revoke_reset_tokens(person.email)
         person.update(
             {
                 "password": hashed,

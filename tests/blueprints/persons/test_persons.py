@@ -1,3 +1,4 @@
+import re
 import urllib.parse
 from unittest import mock
 
@@ -9,7 +10,6 @@ from zou.app.services import (
     projects_service,
     tasks_service,
 )
-from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, fields
 
 
@@ -467,11 +467,8 @@ class PersonRoutesTestCase(ApiDBTestCase):
         query = urllib.parse.urlparse(reset_link).query
         params = dict(urllib.parse.parse_qsl(query))
         self.assertEqual(params["email"], email)
-        # The link carries the very token stored for the reset flow, so it
-        # can be used to set a new password just like the emailed link.
-        self.assertEqual(
-            params["token"], auth_tokens_store.get(f"reset-token-{email}")
-        )
+        # The link carries a token of the reset flow, so it can be used to
+        # set a new password just like the emailed link.
         new_password = "newpassword123"
         self.put(
             "auth/reset-password",
@@ -493,6 +490,50 @@ class PersonRoutesTestCase(ApiDBTestCase):
         second = self.post(path, {}, 200)["reset_password_link"]
         # A pending token is reused so a previously shared link stays valid.
         self.assertEqual(first, second)
+
+    def reset_link_token(self):
+        result = self.post(
+            f"/actions/persons/{self.person_id}/reset-password-link",
+            {},
+            200,
+        )
+        query = urllib.parse.urlparse(result["reset_password_link"]).query
+        return dict(urllib.parse.parse_qsl(query))["token"]
+
+    def test_get_reset_password_link_gives_time_to_use_it(self):
+        """
+        A token with less than an hour left is not given again: the link
+        gets a new one, and the former token stays valid until it expires.
+        """
+        email = self.person.email
+        token = persons_service.create_reset_token(email, 3500)
+
+        link_token = self.reset_link_token()
+
+        self.assertNotEqual(link_token, token)
+        self.assertTrue(persons_service.is_reset_token_valid(email, token))
+        self.assertTrue(
+            persons_service.is_reset_token_valid(email, link_token)
+        )
+
+    def test_get_reset_password_link_reuses_the_token_that_expires_last(self):
+        email = self.person.email
+        persons_service.create_reset_token(email, 3500)
+        token = persons_service.create_reset_token(email, 3700)
+        persons_service.create_reset_token(email, 3650)
+
+        self.assertEqual(self.reset_link_token(), token)
+
+    def test_get_reset_password_link_of_a_pending_invitation(self):
+        """
+        The link gives again the token of a pending invitation.
+        """
+        with mock.patch("zou.app.utils.emails.send_email") as send_email:
+            self.get(f"/actions/persons/{self.person.id}/invite")
+
+        self.assertIn(
+            f"token={self.reset_link_token()}", send_email.call_args.args[1]
+        )
 
     def test_get_reset_password_link_for_new_admin(self):
         new_admin = self.another_admin()
@@ -542,3 +583,19 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.get(path, 403)
+
+    def test_invite_person_again_keeps_the_first_link(self):
+        path = f"/actions/persons/{self.person.id}/invite"
+        with mock.patch("zou.app.utils.emails.send_email") as send_email:
+            self.get(path)
+            self.get(path)
+        first, second = [
+            re.search(r"token=(\w+)", call.args[1]).group(1)
+            for call in send_email.call_args_list
+        ]
+
+        self.assertNotEqual(first, second)
+        for token in [first, second]:
+            self.assertTrue(
+                persons_service.is_reset_token_valid(self.person.email, token)
+            )

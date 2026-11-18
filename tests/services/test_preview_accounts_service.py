@@ -66,6 +66,42 @@ class PreviewAccountsServiceTestCase(ApiDBTestCase):
         self.assertIsNone(person.preview_opened_at)
         self.assertTrue(auth.check_password(person.password, new_password))
 
+    def test_reset_cancels_the_reset_links(self):
+        service = preview_accounts_service
+        account, _ = service.create_or_reset_preview_account(self.project.id)
+        token = persons_service.create_reset_token(account["email"], 3600)
+        self.assertTrue(
+            persons_service.is_reset_token_valid(account["email"], token)
+        )
+
+        service.create_or_reset_preview_account(self.project.id)
+
+        self.assertFalse(
+            persons_service.is_reset_token_valid(account["email"], token)
+        )
+
+    def test_reset_without_redis_changes_nothing(self):
+        service = preview_accounts_service
+        account, password = service.create_or_reset_preview_account(
+            self.project.id
+        )
+        service.set_preview_account_open(self.project.id, True)
+
+        with patch.object(
+            persons_service,
+            "revoke_reset_tokens",
+            side_effect=ConnectionError("Redis is down"),
+        ):
+            self.assertRaises(
+                ConnectionError,
+                service.create_or_reset_preview_account,
+                self.project.id,
+            )
+
+        person = Person.get(account["id"])
+        self.assertTrue(auth.check_password(person.password, password))
+        self.assertIsNotNone(person.preview_open_until)
+
     def test_create_when_unavailable(self):
         self.flask_app.config["AUTH_STRATEGY"] = "auth_remote_ldap"
         self.assertRaises(
