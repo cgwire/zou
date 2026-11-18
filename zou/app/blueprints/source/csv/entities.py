@@ -24,14 +24,16 @@ from zou.app.services.tasks_service import (
 class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
     """
     Import of the entities that carry a name, a description, metadata, and
-    tasks, and hang under an episode in a TV show: edits, sequences, and
-    episodes. A subclass names its entity type, and says how to create and
-    update an entity and how to list its tasks.
+    tasks: edits, sequences, and episodes. In a TV show, an edit or a
+    sequence hangs under an episode. A subclass names its entity type, and
+    says how to create and update an entity and how to list its tasks.
     """
 
     entity_type_name = None
     # An entity of the type hangs under an episode in a TV show.
     has_episode = True
+    # A line of a TV show must name that episode.
+    is_episode_required = False
 
     def get_entity_type(self):
         raise NotImplementedError
@@ -180,11 +182,15 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
                     "isn't a TV Show"
                 )
             return None
-        if episode_name is not None and episode_name not in self.episodes:
+        if episode_name is None:
+            if self.is_episode_required:
+                raise RowException("Episode cannot be empty")
+            return None
+        if episode_name not in self.episodes:
             self.episodes[episode_name] = shots_service.create_episode(
                 project_id, episode_name, created_by=self.current_user_id
             )["id"]
-        return self.episodes.get(episode_name, None)
+        return self.episodes[episode_name]
 
     def import_row(self, row, project_id):
         name = row["Name"]

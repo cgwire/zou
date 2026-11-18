@@ -594,6 +594,18 @@ class CreationTestCase(ShotsTestCase):
         self.assertEqual(shots_service.get_shot(shot_id)["nb_frames"], 42)
         self.assertEqual(len(captured), 1)
 
+    def test_an_updated_sequence_is_read_back_updated(self):
+        sequence_id = str(self.sequence.id)
+        shots_service.get_sequence(sequence_id)
+        captured = self.capture_events("sequence:update")
+
+        shots_service.update_sequence(sequence_id, {"description": "Night"})
+
+        self.assertEqual(
+            shots_service.get_sequence(sequence_id)["description"], "Night"
+        )
+        self.assertEqual(len(captured), 1)
+
 
 class FramesFromPreviewTestCase(ShotsTestCase):
     """
