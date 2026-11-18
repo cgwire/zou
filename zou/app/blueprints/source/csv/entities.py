@@ -14,7 +14,11 @@ from zou.app.services.task_types_service import (
     get_task_statuses,
     get_task_type,
 )
-from zou.app.services.tasks_service import create_task, create_tasks
+from zou.app.services.tasks_service import (
+    assign_task,
+    create_task,
+    create_tasks,
+)
 
 
 class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
@@ -39,6 +43,10 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
         raise NotImplementedError
 
     def get_tasks(self, entity_id):
+        """
+        Tasks of the entity with their assignee ids, so an import does not
+        assign again the people a task already has.
+        """
         raise NotImplementedError
 
     def get_extra_values(self, row):
@@ -93,16 +101,19 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
                     )
 
             task_comment_text = row.get(f"{task_type['name']} comment", None)
+            task_assignees = self.get_assignation_ids(row, task_type["name"])
 
-            if task_status_id is not None or task_comment_text not in [
-                None,
-                "",
-            ]:
+            if (
+                task_status_id is not None
+                or task_comment_text not in [None, ""]
+                or task_assignees
+            ):
                 tasks_update.append(
                     {
                         "task_type_id": task_type["id"],
                         "task_status_id": task_status_id,
                         "comment": task_comment_text,
+                        "assignees": task_assignees,
                     }
                 )
 
@@ -128,6 +139,16 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
                         entity.serialize(),
                     )
                 task = tasks_map[task_update["task_type_id"]]
+                # Assignations only add people: an import never removes one.
+                already_assigned = set(task.get("assignees") or [])
+                for person_id in task_update["assignees"]:
+                    if person_id not in already_assigned:
+                        assign_task(
+                            task["id"], person_id, self.current_user_id
+                        )
+                # The status guard needs the explicit None check: an entry
+                # created for its assignations alone must not post an
+                # empty comment at the default status.
                 if task_update["comment"] is not None or (
                     task_update["task_status_id"] is not None
                     and task_update["task_status_id"] != task["task_status_id"]
@@ -167,6 +188,10 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         name = row["Name"]
+        # Checked before the episode: a spreadsheet total row created an
+        # entity named "", and its episode with it.
+        if not (name or "").strip():
+            raise RowException("Name cannot be empty")
         parent_id = None
         if self.has_episode:
             parent_id = self.get_episode_id(row, project_id)

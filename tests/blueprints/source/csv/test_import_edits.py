@@ -167,3 +167,78 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
             sorted(comment.text for comment in Comment.query.all()),
             ["", "Approved"],
         )
+
+    def test_import_assigns_the_people_of_the_assignations_column(self):
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.generate_fixture_person()
+        csv_path = self.write_csv(
+            'Name,Edit,Edit assignations\nOpening,,"John Doe, John Did"\n'
+            "Ending,,\n"
+        )
+        self.upload_file(self.path, csv_path)
+
+        tasks = {
+            edits_service.get_edit(str(task.entity_id))["name"]: task
+            for task in Task.query.all()
+        }
+        self.assertEqual(
+            sorted(str(person.id) for person in tasks["Opening"].assignees),
+            sorted([str(self.person.id), self.user["id"]]),
+        )
+        self.assertEqual(tasks["Ending"].assignees, [])
+        # Assignations alone post no comment at the default status.
+        self.assertEqual(Comment.query.all(), [])
+
+        # The people already assigned are not assigned again.
+        assigned = self.capture_events("task:assign")
+        self.upload_file(f"{self.path}?update=true", csv_path)
+        self.assertEqual(assigned, [])
+        self.assertEqual(len(Task.get(tasks["Opening"].id).assignees), 2)
+
+    def test_an_unknown_assignee_stops_the_import(self):
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        result = self.upload_file(
+            self.path,
+            self.write_csv(
+                "Name,Edit assignations\nOpening,\nEnding,Jane Roe\n"
+            ),
+            code=400,
+        )
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Person not found for Jane Roe")
+        self.assertEqual(result["imported_rows"], 1)
+
+    def test_a_line_without_name_is_refused(self):
+        # It created an edit named "".
+        result = self.upload_file(
+            self.path,
+            self.write_csv("Name,Description\nOpening,First\n ,Second\n"),
+            code=400,
+        )
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Name cannot be empty")
+        self.assertEqual(result["imported_rows"], 1)
+        self.assertEqual(
+            [
+                edit["name"]
+                for edit in edits_service.get_edits_for_project(
+                    str(self.project.id)
+                )
+            ],
+            ["Opening"],
+        )
+
+    def test_a_line_without_name_creates_no_episode(self):
+        self.project.update({"production_type": "tvshow"})
+        self.upload_file(
+            self.path, self.write_csv("Name,Episode\n,E01\n"), code=400
+        )
+        self.assertEqual(
+            shots_service.get_episodes({"project_id": self.project.id}), []
+        )

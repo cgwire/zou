@@ -35,4 +35,4 @@ class EditsCsvImportResource(BaseCsvEntityImportResource):
         return edits_service.update_edit(entity_id, values)
 
     def get_tasks(self, entity_id):
-        return get_tasks_for_edit(entity_id)
+        return get_tasks_for_edit(entity_id, relations=True)

@@ -158,12 +158,15 @@ EditsCsvImportResource_post:
   summary: Import edits from a CSV file
   tags:
     - Import
-  description: Create edits in a project from a CSV file. A line can also set
-    the metadata and the task statuses of an edit. Send the CSV file in a
-    multipart form. The route finds the separator of the file. Each line is
-    imported in order. If a line is not valid, the import stops. Without
-    update=true, the lines of the entities that exist are skipped. You must be
-    a manager of the project.
+  description: Create edits in a project from a CSV file. A line needs the
+    name of the edit. It can also give its episode (TV shows only, the route
+    creates the missing episodes), its description, its metadata, and the
+    status, a comment, and the assignees of its tasks. Assignees are added
+    to the people a task already has. Send the CSV file in a multipart form.
+    The route finds the separator of the file. Each line is imported in
+    order. If a line is not valid, the import stops. Without update=true,
+    the lines of the entities that exist are skipped. You must be a manager
+    of the project.
   parameters:
     - in: path
       name: project_id
