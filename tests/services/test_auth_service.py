@@ -2,6 +2,7 @@ import datetime
 from unittest import mock
 
 import pytest
+from ldap3.core.exceptions import LDAPPasswordIsMandatoryError
 
 from tests.services.cases import AuthTestCase
 from zou.app import app, db
@@ -160,8 +161,8 @@ class CheckAuthTestCase(AuthTestCase):
 
 class LdapStrategyTestCase(AuthTestCase):
     """
-    What happens to someone who is not in the directory. Reaching the
-    directory itself is not this test's business.
+    What the strategy decides without reaching the directory. Reaching
+    the directory itself is not this test's business.
     """
 
     def setUp(self):
@@ -181,6 +182,32 @@ class LdapStrategyTestCase(AuthTestCase):
     def test_a_local_person_without_a_fallback(self):
         app.config["LDAP_FALLBACK"] = False
         self.assertRaises(UserCantConnectDueToNoFallback, self.authenticate)
+
+    def test_an_empty_password_is_a_wrong_password(self):
+        """
+        ldap3 refuses an empty password before sending the bind, with an
+        error of its own that the login answered as a server failure.
+        """
+        self.person.update({"is_generated_from_ldap": True})
+        with mock.patch("ldap3.Connection") as connection:
+            connection.return_value.bind.side_effect = (
+                LDAPPasswordIsMandatoryError(
+                    "password is mandatory in simple bind"
+                )
+            )
+            self.assertRaises(WrongPasswordException, self.authenticate, "")
+        connection.assert_not_called()
+        self.assertEqual(self.failed_attemps(), 1)
+
+    def test_an_empty_password_leaves_local_people_to_their_rules(self):
+        """
+        Only an account of the directory skips the bind on an empty
+        password: a local person without a fallback is refused as before.
+        """
+        app.config["LDAP_FALLBACK"] = False
+        self.assertRaises(
+            UserCantConnectDueToNoFallback, self.authenticate, ""
+        )
 
 
 class LoginLockoutTestCase(AuthTestCase):
