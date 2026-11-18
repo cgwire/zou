@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
+from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.services import edits_service, projects_service, shots_service
 
@@ -107,4 +108,62 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
                 for task in Task.query.all()
             ],
             [(edits[0]["id"], str(self.task_type_edit.id))],
+        )
+
+    def test_an_existing_edit_changes_with_the_update_option_only(self):
+        self.upload_file(
+            self.path, self.write_csv("Name,Description\nOpening,First\n")
+        )
+        self.upload_file(
+            self.path, self.write_csv("Name,Description\nOpening,Second\n")
+        )
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual([edit["description"] for edit in edits], ["First"])
+
+        self.upload_file(
+            f"{self.path}?update=true",
+            self.write_csv("Name,Description\nOpening,Third\n"),
+        )
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual(
+            [(edit["name"], edit["description"]) for edit in edits],
+            [("Opening", "Third")],
+        )
+
+    def test_import_reads_the_metadata_columns(self):
+        self.generate_fixture_metadata_descriptor(entity_type="Edit")
+        self.upload_file(
+            self.path, self.write_csv("Name,Contractor\nOpening,value 1\n")
+        )
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual(edits[0]["data"], {"contractor": "value 1"})
+
+    def test_import_sets_the_task_status_with_its_comment(self):
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status_wip()
+        self.generate_fixture_task_status_done()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(self.path, self.write_csv("Name,Edit\nOpening,wip\n"))
+        task = Task.query.one()
+        self.assertEqual(task.task_status_id, self.task_status_wip.id)
+        self.assertEqual(Comment.query.count(), 1)
+
+        # The same status again posts nothing.
+        self.upload_file(
+            f"{self.path}?update=true",
+            self.write_csv("Name,Edit\nOpening,wip\n"),
+        )
+        self.assertEqual(Comment.query.count(), 1)
+
+        self.upload_file(
+            f"{self.path}?update=true",
+            self.write_csv("Name,Edit,Edit comment\nOpening,Done,Approved\n"),
+        )
+        task = Task.get(task.id)
+        self.assertEqual(task.task_status_id, self.task_status_done.id)
+        self.assertEqual(
+            sorted(comment.text for comment in Comment.query.all()),
+            ["", "Approved"],
         )
