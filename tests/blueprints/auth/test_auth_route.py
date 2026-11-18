@@ -5,6 +5,7 @@ from unittest import mock
 import orjson as json
 import pyotp
 import pytest
+from ldap3.core.exceptions import LDAPPasswordIsMandatoryError
 
 from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
@@ -173,6 +174,29 @@ class AuthTestCase(ApiDBTestCase):
         self.assertFalse(result["login"])
         self.assertEqual(result["message"], "Wrong email or password.")
         self.assertIsNotAuthenticated(result, 422)
+
+    def test_ldap_login_with_an_empty_password(self):
+        """
+        ldap3 refuses an empty password with an error of its own, which
+        the route answered with a 500.
+        """
+        self.addCleanup(
+            self.flask_app.config.__setitem__,
+            "AUTH_STRATEGY",
+            self.flask_app.config["AUTH_STRATEGY"],
+        )
+        self.flask_app.config["AUTH_STRATEGY"] = "auth_remote_ldap"
+        self.person.update({"is_generated_from_ldap": True})
+        credentials = {"email": self.person_dict["email"], "password": ""}
+        with mock.patch("ldap3.Connection") as connection:
+            connection.return_value.bind.side_effect = (
+                LDAPPasswordIsMandatoryError(
+                    "password is mandatory in simple bind"
+                )
+            )
+            result = self.post("auth/login", credentials, 400)
+        self.assertFalse(result["login"])
+        self.assertEqual(result["message"], "Wrong email or password.")
 
     def _fail_login(self, times):
         credentials = {

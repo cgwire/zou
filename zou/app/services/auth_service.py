@@ -223,6 +223,12 @@ def ldap_auth_strategy(person, password, app):
     (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
     """
     if person["is_generated_from_ldap"]:
+        # An empty password makes an unauthenticated bind (RFC 4513, 5.1.2),
+        # which some directories accept. ldap3 refuses it before sending the
+        # bind, with an error the login answered as a server failure.
+        if not password:
+            raise WrongPasswordException()
+
         from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
         from ldap3.core.exceptions import (
             LDAPInvalidCredentialsResult,
