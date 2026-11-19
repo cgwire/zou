@@ -1,4 +1,5 @@
 import csv
+import io
 import os
 import uuid
 
@@ -35,6 +36,19 @@ class RowException(Exception):
     def __init__(self, message):
         Exception.__init__(self, message)
         self.message = message
+
+
+# The delimiters the sniffer prefers, plus the pipe, minus the space, which
+# names hold.
+DELIMITERS = ",;\t|:"
+
+# A control character that text does not hold, as is_single_column checks:
+# each line is a single cell, whatever delimiter the writer of the file used.
+SINGLE_COLUMN_DELIMITER = "\x1f"
+
+
+class SingleColumnDialect(csv.excel):
+    delimiter = SINGLE_COLUMN_DELIMITER
 
 
 class BaseCsvImportResource(MethodView, ArgsMixin):
@@ -137,9 +151,51 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         sniffer = csv.Sniffer()
         sample = csvfile.read(8192)
         csvfile.seek(0)
-        dialect = sniffer.sniff(sample)
+        try:
+            dialect = sniffer.sniff(sample)
+        except csv.Error:
+            # It gives up on a file of a single column.
+            if self.is_single_column(csvfile, SingleColumnDialect):
+                return SingleColumnDialect
+            raise
         dialect.doublequote = True
+        # Or takes the quote of its cells for the delimiter, which Python 3.13
+        # refuses, or a letter of its names.
+        if (
+            dialect.delimiter == dialect.quotechar
+            or dialect.delimiter.isalnum()
+        ):
+            if not self.is_single_column(csvfile, dialect):
+                raise csv.Error("Could not determine delimiter")
+            dialect.delimiter = SINGLE_COLUMN_DELIMITER
         return dialect
+
+    def is_single_column(self, csvfile, dialect):
+        """
+        Tell whether given file, read with the quote and the spacing of given
+        dialect, holds a single column: a header on its first line,
+        well-formed quoted cells, and out of them no comma, semicolon, tab,
+        pipe, or colon, nor the delimiter of a single column. Such a
+        delimiter leaves a doubt: a name can hold it, or a line can hold
+        more cells than the header names. A quote left open would merge the
+        next lines into one name.
+        """
+        content = csvfile.read()
+        csvfile.seek(0)
+        header = content.splitlines()[0] if content else ""
+        try:
+            return header != "" and not any(
+                len(cells) > 1
+                for delimiter in DELIMITERS + SINGLE_COLUMN_DELIMITER
+                for cells in csv.reader(
+                    io.StringIO(content, newline=""),
+                    dialect,
+                    delimiter=delimiter,
+                    strict=True,
+                )
+            )
+        except csv.Error:
+            return False
 
     def prepare_import(self, *args):
         pass

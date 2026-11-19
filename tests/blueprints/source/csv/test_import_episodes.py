@@ -39,6 +39,159 @@ class ImportCsvEpisodesTestCase(ApiDBTestCase):
             [("E01", "Pilot", "running")],
         )
 
+    def test_import_reads_a_file_of_a_single_column(self):
+        # The delimiter sniffer finds none in such a file: it gave up, or
+        # took a letter for one.
+        self.upload_file(self.path, self.write_csv("Name\nE01\nE02\n"))
+        self.upload_file(self.path, self.write_csv("Name\nOpening\n"))
+
+        self.assertEqual(
+            [episode["name"] for episode in self.get_episodes()],
+            ["E01", "E02", "Opening"],
+        )
+
+    def test_import_reads_a_quoted_single_column(self):
+        # The sniffer takes the quote of such a file for its delimiter, which
+        # Python 3.13 refuses. Kitsu quotes every cell it uploads.
+        self.upload_file(
+            self.path, self.write_csv('"Name"\n"E;01"\n"L\'éveil"\n')
+        )
+        self.upload_file(self.path, self.write_csv("'Name'\n'E02'\n"))
+
+        self.assertEqual(
+            sorted(episode["name"] for episode in self.get_episodes()),
+            ["E02", "E;01", "L'éveil"],
+        )
+
+    def test_a_quoted_single_column_keeps_the_delimiters_of_its_cells(self):
+        # A doubled quote in a name makes the sniffer take a letter for the
+        # delimiter: the comma of a quoted cell holds no doubt.
+        names = ['"Episode 1 ""Pilot"""'] + [
+            f'"Episode {number}"' for number in range(2, 12)
+        ]
+        lines = ['"Name"'] + names + ['"Episode 12, part 2"']
+        self.upload_file(self.path, self.write_csv("\n".join(lines) + "\n"))
+
+        self.assertEqual(len(self.get_episodes()), 12)
+
+    def test_import_sniffs_the_other_usual_delimiters(self):
+        self.upload_file(
+            self.path, self.write_csv("Name:Description\nE01:Pilot\n")
+        )
+        self.upload_file(
+            self.path, self.write_csv("Name Description\nE02 Finale\n")
+        )
+
+        self.assertEqual(
+            [
+                (episode["name"], episode["description"])
+                for episode in self.get_episodes()
+            ],
+            [("E01", "Pilot"), ("E02", "Finale")],
+        )
+
+    def test_import_reads_the_header_as_the_first_record(self):
+        # Not as the first line: a pandas index writes an empty first header,
+        # and a quoted header can hold a line break.
+        self.upload_file(self.path, self.write_csv("\tName\n0\tE01\n"))
+        self.upload_file(
+            self.path, self.write_csv('"Note\n(free)";"Name"\n"x";"E02"\n')
+        )
+
+        self.assertEqual(
+            [episode["name"] for episode in self.get_episodes()],
+            ["E01", "E02"],
+        )
+
+    def test_import_reads_a_tilde_delimiter(self):
+        self.upload_file(
+            self.path, self.write_csv("Name~Description\nE01~Pilot\n")
+        )
+
+        self.assertEqual(
+            [
+                (episode["name"], episode["description"])
+                for episode in self.get_episodes()
+            ],
+            [("E01", "Pilot")],
+        )
+
+    def test_a_line_wider_than_its_header_is_not_a_single_column(self):
+        self.upload_file(self.path, self.write_csv('"Name"\n"E01";"Pilot"\n'))
+
+        self.assertEqual(
+            [episode["name"] for episode in self.get_episodes()], ["E01"]
+        )
+
+    def test_a_single_column_after_a_blank_line_is_refused(self):
+        # Read as the header, it leaves no column to the lines, which would
+        # then import nothing without a word.
+        for content in ("\nName\nE01\n", '\n"Name"\n"E01"\n'):
+            with self.subTest(content=content):
+                result = self.upload_file(
+                    self.path, self.write_csv(content), code=400
+                )
+                self.assertEqual(
+                    result["message"], "Could not determine delimiter"
+                )
+        self.assertEqual(self.get_episodes(), [])
+
+    def test_an_unquoted_delimiter_under_a_header_of_one_is_refused(self):
+        # "E01;Pilot" can be a name, or two cells under a header of one,
+        # wherever the line is: the sniffer reads the first lines only, and
+        # takes "E" for the delimiter of the longer files here.
+        names = "".join(f"E{number:02d}\n" for number in range(2, 31))
+        for content in (
+            "Name\nE01;Pilot\n",
+            "Name\nE01;Pilot\n" + names,
+            "Name\n" + names * 100 + "E01;Pilot\n",
+        ):
+            with self.subTest(lines=content.count("\n")):
+                result = self.upload_file(
+                    self.path, self.write_csv(content), code=400
+                )
+                self.assertEqual(
+                    result["message"], "Could not determine delimiter"
+                )
+        self.assertEqual(self.get_episodes(), [])
+
+    def test_a_quote_left_open_is_refused(self):
+        # Read as it is, the file merges the next lines into one name,
+        # whether the sniffer gives up, takes the quote for the delimiter, or
+        # takes a letter and skips the spaces before a quote.
+        quoted = "".join(f'"E{number:02d}"\n' for number in range(1, 21))
+        for content in (
+            'Name\n"Pilot\nE02\nE03\n',
+            '"Name"\n"E01\n"E02"\n"E03"\n',
+            '"Name"\n' + quoted + '"E21\n"E22"\n"E23"\n',
+            "Name\n" + quoted + '  "E21\nE22\nE23\n',
+        ):
+            with self.subTest(content=content):
+                result = self.upload_file(
+                    self.path, self.write_csv(content), code=400
+                )
+                self.assertEqual(
+                    result["message"], "Could not determine delimiter"
+                )
+        self.assertEqual(self.get_episodes(), [])
+
+    def test_a_unit_separator_out_of_quotes_is_refused(self):
+        # A single column reads with this control character as delimiter: the
+        # import would drop the rest of its line without a word.
+        names = "".join(f"E{number:02d}\n" for number in range(1, 21))
+        for content in (
+            "Name\nE01\x1fPilot\n",
+            "Name\n" + names + 'E21\x1f"E22\nE23\nE24\n',
+        ):
+            with self.subTest(content=content):
+                result = self.upload_file(
+                    self.path, self.write_csv(content), code=400
+                )
+                self.assertEqual(
+                    result["message"], "Could not determine delimiter"
+                )
+        self.assertEqual(self.get_episodes(), [])
+
     def test_import_reads_the_status_in_any_case(self):
         self.upload_file(
             self.path,
