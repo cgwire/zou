@@ -108,6 +108,13 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         # utf-8-sig drops the byte order mark that starts a "CSV UTF-8" file
         # of Excel, which would otherwise begin the first header.
         with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
+            # Decoded whole first: a file in another encoding, such as the
+            # Windows-1252 of a spreadsheet, is refused before any import.
+            try:
+                csvfile.read()
+            except UnicodeDecodeError:
+                raise csv.Error("The file is not encoded in UTF-8")
+            csvfile.seek(0)
             reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
             for row in reader:
                 # reader.line_num is the real file line (header included),

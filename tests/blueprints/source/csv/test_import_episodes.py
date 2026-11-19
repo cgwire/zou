@@ -131,6 +131,28 @@ class ImportCsvEpisodesTestCase(ApiDBTestCase):
             [("E01", "Pilot"), ("E02", "")],
         )
 
+    def test_a_file_in_another_encoding_is_refused(self):
+        # Spreadsheets save a plain "CSV" in the encoding of the system, such
+        # as Windows-1252. Nothing is imported, even from the lines before
+        # the first byte that is not UTF-8.
+        lines = "".join(
+            f"E{number:02d},{'x' * 1000}\n" for number in range(10)
+        )
+        for content in (
+            "Name\nSéquence\n",
+            "Name,Description\n" + lines + "E10,Séquence\n",
+        ):
+            with self.subTest(lines=content.count("\n")):
+                descriptor, file_path = tempfile.mkstemp(suffix=".csv")
+                self.addCleanup(os.remove, file_path)
+                with os.fdopen(descriptor, "wb") as f:
+                    f.write(content.encode("cp1252"))
+                result = self.upload_file(self.path, file_path, code=400)
+                self.assertEqual(
+                    result["message"], "The file is not encoded in UTF-8"
+                )
+        self.assertEqual(self.get_episodes(), [])
+
     def test_a_line_wider_than_its_header_is_not_a_single_column(self):
         self.upload_file(self.path, self.write_csv('"Name"\n"E01";"Pilot"\n'))
 

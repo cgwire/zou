@@ -55,8 +55,9 @@ AssetsCsvImportResource_post:
                   type: string
                   example: Main character asset
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -119,8 +120,9 @@ CastingCsvImportResource_post:
               type: object
               nullable: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -213,8 +215,9 @@ EditsCsvImportResource_post:
                   type: string
                   example: Edit description
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -307,8 +310,9 @@ EpisodesCsvImportResource_post:
                   type: string
                   example: Episode description
     400:
-      description: A line of the file is not valid (the lines before it
-        are imported), or the project is not a TV show.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), a line of the file is not valid (the lines
+        before it are imported), or the project is not a TV show.
       content:
         application/json:
           schema:
@@ -422,8 +426,9 @@ PersonsCsvImportResource_post:
                   type: boolean
                   example: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -515,8 +520,9 @@ SequencesCsvImportResource_post:
                   type: string
                   example: Sequence description
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -610,8 +616,9 @@ ShotsCsvImportResource_post:
                   type: string
                   example: Shot description
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -698,8 +705,9 @@ TaskTypeEstimationsCsvImportResource_post:
               type: object
               nullable: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -800,8 +808,9 @@ TaskTypeEstimationsEpisodeCsvImportResource_post:
               type: object
               nullable: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
