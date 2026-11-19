@@ -273,6 +273,7 @@ class ConfigResource(MethodView):
             "movie_highdef_bitrate": config.MOVIE_HIGHDEF_BITRATE,
             "movie_lowdef_bitrate": config.MOVIE_LOWDEF_BITRATE,
             "preview_accounts_enabled": preview_accounts_enabled,
+            "expert_mode_enabled": config.EXPERT_MODE_ENABLED,
         }
         if config.SENTRY_KITSU_ENABLED:
             conf["sentry"] = {

@@ -81,3 +81,14 @@ class ConfigRouteTestCase(ApiDBTestCase):
             conf = self.get("config")
         self.assertEqual(conf["movie_highdef_bitrate"], 40)
         self.assertEqual(conf["movie_lowdef_bitrate"], 8)
+
+    def test_config_route_gives_the_expert_mode(self):
+        """
+        Kitsu unlocks the edits of the expert mode, such as the real dates
+        of the tasks, only on an instance that enables it.
+        """
+        with patch.object(config, "EXPERT_MODE_ENABLED", False):
+            self.assertIs(self.get("config")["expert_mode_enabled"], False)
+        with patch.object(config, "EXPERT_MODE_ENABLED", True):
+            conf = self.get("config")
+        self.assertIs(conf["expert_mode_enabled"], True)
