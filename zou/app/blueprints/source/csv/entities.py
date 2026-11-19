@@ -171,7 +171,11 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
         elif creation:
             self.created_entities.append(entity.serialize())
 
-    def get_episode_id(self, row, project_id):
+    def get_episode_name(self, row):
+        """
+        Name of the episode a line gives, None for no episode, checked
+        against the production.
+        """
         # An empty cell reads as "" with DictReader: it means no episode,
         # not an episode named "".
         episode_name = (row.get("Episode") or "").strip() or None
@@ -182,10 +186,15 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
                     "isn't a TV Show"
                 )
             return None
-        if episode_name is None:
-            if self.is_episode_required:
-                raise RowException("Episode cannot be empty")
-            return None
+        if episode_name is None and self.is_episode_required:
+            raise RowException("Episode cannot be empty")
+        return episode_name
+
+    def get_episode_id(self, episode_name, project_id):
+        """
+        Id of the episode of given name, created when the production does not
+        have it yet.
+        """
         if episode_name not in self.episodes:
             self.episodes[episode_name] = shots_service.create_episode(
                 project_id, episode_name, created_by=self.current_user_id
@@ -194,20 +203,26 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         name = row["Name"]
-        # Checked before the episode: a spreadsheet total row created an
-        # entity named "", and its episode with it.
         if not (name or "").strip():
             raise RowException("Name cannot be empty")
-        parent_id = None
+        episode_name = None
         if self.has_episode:
-            parent_id = self.get_episode_id(row, project_id)
+            episode_name = self.get_episode_name(row)
 
-        entity = entities_service.find_entity_raw(
-            name=name,
-            project_id=project_id,
-            entity_type_id=self.entity_type_id,
-            parent_id=parent_id,
-        )
+        # An episode the production does not have yet holds no entity.
+        entity = None
+        if episode_name is None or episode_name in self.episodes:
+            entity = entities_service.find_entity_raw(
+                name=name,
+                project_id=project_id,
+                entity_type_id=self.entity_type_id,
+                parent_id=self.episodes.get(episode_name),
+            )
+        # Without update=true, the line of an entity that exists changes
+        # nothing: it is not read either, so an assignee renamed since the
+        # export does not stop the import there.
+        if entity is not None and not self.is_update:
+            return entity.serialize()
 
         values = {}
         description = row.get("Description", None)
@@ -220,11 +235,16 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
         tasks_update = self.get_tasks_update(row)
 
+        # Created once the whole line is read: a line refused as it is read
+        # leaves no episode behind.
         if entity is None:
+            parent_id = None
+            if episode_name is not None:
+                parent_id = self.get_episode_id(episode_name, project_id)
             created = self.create_entity(project_id, name, parent_id, values)
             entity = entities_service.get_entity_raw(created["id"])
             self.create_and_update_tasks(tasks_update, entity, creation=True)
-        elif self.is_update:
+        else:
             self.update_entity(str(entity.id), values)
             self.create_and_update_tasks(tasks_update, entity)
 

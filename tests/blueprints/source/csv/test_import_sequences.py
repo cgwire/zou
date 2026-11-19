@@ -89,6 +89,27 @@ class ImportCsvSequencesTestCase(ApiDBTestCase):
             [sequence["name"] for sequence in self.get_sequences()], ["SQ01"]
         )
 
+    def test_a_refused_line_creates_no_episode(self):
+        # The episode of a line was created before the rest of the line was
+        # checked.
+        self.project.update({"production_type": "tvshow"})
+        task_type = TaskType.create(
+            name="Storyboard",
+            short_name="sb",
+            color="#FFFFFF",
+            for_entity="Sequence",
+        )
+        projects_service.add_task_type_setting(self.project.id, task_type.id)
+        result = self.upload_file(
+            self.path,
+            self.write_csv("Episode,Name,Storyboard\nE09,SQ01,nope\n"),
+            code=400,
+        )
+
+        self.assertEqual(result["message"], "Task status not found for nope")
+        self.assertEqual(self.get_episodes(), [])
+        self.assertEqual(self.get_sequences(), [])
+
     def test_a_film_reads_no_episode(self):
         """
         A film has no episode: an empty Episode column is fine, a filled

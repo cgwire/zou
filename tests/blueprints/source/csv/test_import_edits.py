@@ -242,3 +242,29 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
         self.assertEqual(
             shots_service.get_episodes({"project_id": self.project.id}), []
         )
+
+    def test_a_line_of_an_existing_edit_is_not_read_without_update(self):
+        # Kitsu shows such a line as one that changes nothing: an assignee
+        # renamed since the export used to stop the import there.
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(
+            self.path, self.write_csv("Name,Description\nOpening,First\n")
+        )
+
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Edit assignations\nOpening,Nobody Known\n"),
+        )
+
+        self.assertEqual(
+            [
+                edit["name"]
+                for edit in edits_service.get_edits_for_project(
+                    str(self.project.id)
+                )
+            ],
+            ["Opening"],
+        )
