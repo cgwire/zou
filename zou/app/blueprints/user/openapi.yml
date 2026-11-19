@@ -1110,7 +1110,7 @@ FilterResource_put:
             search_query:
               type: string
               minLength: 1
-              maxLength: 500
+              maxLength: 5000
               description: Updated filter query
               example: '{"status": "active"}'
             search_filter_group_id:
@@ -1288,7 +1288,7 @@ FiltersResource_post:
             query:
               type: string
               minLength: 1
-              maxLength: 500
+              maxLength: 5000
               description: Filter query as JSON string
               example: '{"project_id": "uuid"}'
             list_type:

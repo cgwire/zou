@@ -15,7 +15,7 @@ class SearchFilter(db.Model, BaseMixin, SerializerMixin):
     list_type = db.Column(db.String(80), nullable=False, index=True)
     entity_type = db.Column(db.String(80))
     name = db.Column(db.String(200), nullable=False, default="")
-    search_query = db.Column(db.String(500), nullable=False, default="")
+    search_query = db.Column(db.String(5000), nullable=False, default="")
     is_shared = db.Column(
         db.Boolean,
         server_default=expression.false(),
