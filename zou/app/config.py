@@ -265,7 +265,7 @@ PROMETHEUS_METRICS_ENABLED = envtobool("PROMETHEUS_METRICS_ENABLED", False)
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 IS_SELF_HOSTED = envtobool("IS_SELF_HOSTED", True)
 # Unlocks edits that are off by default, such as the real dates of tasks in
-# Kitsu.
+# Kitsu and in the estimations import.
 EXPERT_MODE_ENABLED = envtobool("EXPERT_MODE_ENABLED", False)
 
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
