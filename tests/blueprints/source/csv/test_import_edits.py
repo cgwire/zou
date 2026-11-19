@@ -268,3 +268,39 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
             ],
             ["Opening"],
         )
+
+    def test_an_empty_comment_cell_at_the_same_status_posts_no_comment(self):
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status_todo()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Edit,Edit comment\nOpening,todo,\n"),
+        )
+
+        task = Task.query.one()
+        self.assertEqual(str(task.task_status_id), self.task_status_todo["id"])
+        self.assertEqual(Comment.query.all(), [])
+
+    def test_an_empty_comment_cell_posts_no_comment(self):
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.generate_fixture_person()
+        self.upload_file(
+            self.path,
+            self.write_csv(
+                "Name,Edit,Edit comment,Edit assignations\n"
+                "Opening,,,John Doe\n"
+            ),
+        )
+
+        task = Task.query.one()
+        self.assertEqual(
+            [str(person.id) for person in task.assignees],
+            [str(self.person.id)],
+        )
+        self.assertEqual(Comment.query.all(), [])

@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
+from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -530,3 +531,34 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(
             {str(id) for id in index_assets.call_args.args[0]}, asset_ids
         )
+
+    def test_an_empty_comment_cell_at_the_same_status_posts_no_comment(self):
+        self.link_asset_task_types_to_project()
+        self.generate_fixture_task_status_todo()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_comment_same_status.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        task = Task.query.filter_by(task_type_id=self.task_type.id).one()
+        self.assertEqual(str(task.task_status_id), self.task_status_todo["id"])
+        self.assertEqual(Comment.query.all(), [])
+
+    def test_an_empty_comment_cell_posts_no_comment(self):
+        self.link_asset_task_types_to_project()
+        self.generate_fixture_person()
+        path = f"/import/csv/projects/{self.project.id}/assets"
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_comment.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        task = Task.query.filter_by(task_type_id=self.task_type.id).one()
+        self.assertEqual(
+            [str(person.id) for person in task.assignees],
+            [str(self.person.id)],
+        )
+        self.assertEqual(Comment.query.all(), [])
