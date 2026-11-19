@@ -105,7 +105,9 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         # Permissions are checked by post(), before the upload is written.
         result = []
         self.prepare_import(*args)
-        with open(file_path, newline="", encoding="utf-8") as csvfile:
+        # utf-8-sig drops the byte order mark that starts a "CSV UTF-8" file
+        # of Excel, which would otherwise begin the first header.
+        with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
             reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
             for row in reader:
                 # reader.line_num is the real file line (header included),

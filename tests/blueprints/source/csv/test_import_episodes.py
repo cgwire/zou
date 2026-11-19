@@ -116,6 +116,21 @@ class ImportCsvEpisodesTestCase(ApiDBTestCase):
             [("E01", "Pilot")],
         )
 
+    def test_import_reads_a_byte_order_mark(self):
+        # Excel starts a "CSV UTF-8" file with one.
+        self.upload_file(
+            self.path, self.write_csv("\ufeffName,Description\nE01,Pilot\n")
+        )
+        self.upload_file(self.path, self.write_csv("\ufeffName\nE02\n"))
+
+        self.assertEqual(
+            [
+                (episode["name"], episode["description"])
+                for episode in self.get_episodes()
+            ],
+            [("E01", "Pilot"), ("E02", "")],
+        )
+
     def test_a_line_wider_than_its_header_is_not_a_single_column(self):
         self.upload_file(self.path, self.write_csv('"Name"\n"E01";"Pilot"\n'))
 
