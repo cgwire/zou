@@ -671,12 +671,19 @@ TaskTypeEstimationsCsvImportResource_post:
     concept task types. The Estimation column is in hours when the
     organisation shows durations in hours, in days otherwise. Dates use the
     YYYY-MM-DD format. If Due date is empty and Start date and Estimation are
-    set, the route computes the due date from them. Send the CSV file in a
-    multipart form. The route finds the separator of the file. Each line is
-    imported in order. If a line is not valid, the import stops. You must be
-    an administrator, a manager of the project, or a supervisor of the
-    project. A supervisor must have no department, or the department of the
-    task type must be one of their departments.
+    set, the route computes the due date from them. When the instance
+    enables the expert mode (expert_mode_enabled in /config) and you are an
+    administrator, the route also reads the WIP date, Feedback date, and
+    Approval date columns, which set real_start_date, end_date, and
+    done_date, at 10:00 UTC. A real date whose UTC day does not change keeps
+    its time; any other must be from 2000 to 2100. An empty cell keeps the
+    date. Without the expert mode, or for anybody but an administrator, the
+    route ignores these columns, invalid values included. Send the CSV file
+    in a multipart form. The route finds the separator of the file. Each
+    line is imported in order. If a line is not valid, the import stops. You
+    must be an administrator, a manager of the project, or a supervisor of
+    the project. A supervisor must have no department, or the department of
+    the task type must be one of their departments.
   parameters:
     - in: path
       name: project_id
@@ -766,12 +773,19 @@ TaskTypeEstimationsEpisodeCsvImportResource_post:
     Estimation column is in hours when the organisation shows durations in
     hours, in days otherwise. Dates use the YYYY-MM-DD format. If Due date is
     empty and Start date and Estimation are set, the route computes the due
-    date from them. Send the CSV file in a multipart form. The route finds the
-    separator of the file. Each line is imported in order. If a line is not
-    valid, the import stops. You must be an administrator, a manager of the
-    project, or a supervisor of the project. A supervisor must have no
-    department, or the department of the task type must be one of their
-    departments.
+    date from them. When the instance enables the expert mode
+    (expert_mode_enabled in /config) and you are an administrator, the route
+    also reads the WIP date, Feedback date, and Approval date columns, which
+    set real_start_date, end_date, and done_date, at 10:00 UTC. A real date
+    whose UTC day does not change keeps its time; any other must be from
+    2000 to 2100. An empty cell keeps the date. Without the expert mode, or
+    for anybody but an administrator, the route ignores these columns,
+    invalid values included. Send the CSV file in a multipart form. The route
+    finds the separator of the file. Each line is imported in order. If a
+    line is not valid, the import stops. You must be an administrator, a
+    manager of the project, or a supervisor of the project. A supervisor must
+    have no department, or the department of the task type must be one of
+    their departments.
   parameters:
     - in: path
       name: project_id

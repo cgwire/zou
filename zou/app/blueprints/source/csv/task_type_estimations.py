@@ -1,8 +1,10 @@
 import math
+from datetime import timedelta
 
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
+from zou.app import config
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
@@ -16,7 +18,7 @@ from zou.app.services import (
     task_types_service,
     tasks_service,
 )
-from zou.app.utils import date_helpers
+from zou.app.utils import date_helpers, permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -39,9 +41,42 @@ def parse_number(value):
     return number
 
 
+def parse_real_date(value):
+    """
+    Return the day at 10:00 UTC. Each user counts a real date on their own
+    calendar day: 10:00 UTC stays that day from UTC-10 (Hawaii) to UTC+13
+    (New Zealand in summer), where midnight would fall on the day before
+    west of UTC.
+    """
+    return date_helpers.get_date_from_string(value) + timedelta(hours=10)
+
+
+def parse_changed_real_date(value):
+    """
+    Return a real date that changes the stored one. A mistyped year such as
+    0024 would spread the task over centuries of quota days: it goes from
+    2000 to 2100.
+    """
+    real_date = parse_real_date(value)
+    if not 2000 <= real_date.year <= 2100:
+        raise ValueError(value)
+    return real_date
+
+
 DATE_FORMAT = (date_helpers.get_date_from_string, "YYYY-MM-DD")
+REAL_DATE_FORM = "a YYYY-MM-DD date from 2000 to 2100"
+REAL_DATE_FORMAT = (parse_real_date, REAL_DATE_FORM)
+CHANGED_REAL_DATE_FORMAT = (parse_changed_real_date, REAL_DATE_FORM)
 NUMBER_FORMAT = (parse_number, "a number with a dot, such as 1.5")
 WHOLE_NUMBER_FORMAT = (int, "a whole number")
+
+# The real dates of a task, which status changes set, by the column name
+# Kitsu gives them.
+REAL_DATE_COLUMNS = {
+    "WIP date": "real_start_date",
+    "Feedback date": "end_date",
+    "Approval date": "done_date",
+}
 
 
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
@@ -63,6 +98,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def prepare_import(self, project_id, task_type, episode_id=None):
         self.organisation = organisation_service.get_organisation()
+        self.reads_real_dates = (
+            config.EXPERT_MODE_ENABLED and permissions.has_admin_permissions()
+        )
         self.for_entity = task_type["for_entity"]
         self.own_episode_id = None
         self.candidates = {}
@@ -315,12 +353,31 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 f"has no '{task_type['name']}' task"
             )
 
+        if self.reads_real_dates:
+            for column, field in REAL_DATE_COLUMNS.items():
+                real_date = self.read_cell(row, column, REAL_DATE_FORMAT)
+                stored_day = (task[field] or "")[:10]
+                # An export gives the day of a real date, not its time:
+                # imported back as is, the date keeps its time, whatever
+                # its year. isoformat pads a year below 1000 as the stored
+                # day does, where strftime does not on Linux.
+                if (
+                    real_date is not None
+                    and real_date.date().isoformat() != stored_day
+                ):
+                    new_data[field] = self.read_cell(
+                        row, column, CHANGED_REAL_DATE_FORMAT
+                    )
+
         # Merge descriptor cells into the task's own metadata instead of
         # replacing it, so columns absent from the CSV are preserved.
         if any(field in row for field in self.descriptor_fields):
             new_data["data"] = self.get_descriptor_values(row, task["data"])
 
-        tasks_service.update_task(task["id"], new_data)
+        # A later line for the same entity compares with what this one wrote.
+        self.tasks_map[entity["id"]] = tasks_service.update_task(
+            task["id"], new_data
+        )
 
     def read_cell(self, row, column, value_format):
         """

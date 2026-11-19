@@ -1,14 +1,18 @@
+import datetime
 import os
 import tempfile
 import uuid
+from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
+from zou.app import config
 from zou.app.models.entity import EntityLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     organisation_service,
+    projects_service,
 )
 
 
@@ -255,6 +259,259 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         )
         self.assertEqual(result["line_number"], 3)
         self.assertEqual(result["imported_rows"], 1)
+
+    REAL_DATES_CSV = (
+        "Parent,Entity,WIP date,Feedback date,Approval date\n"
+        "Props,Tree,2024-01-05,2024-01-10,2024-01-12\n"
+    )
+
+    def get_real_dates(self, task):
+        return [
+            date.strftime("%Y-%m-%d") if date else None
+            for date in [task.real_start_date, task.end_date, task.done_date]
+        ]
+
+    def import_in_expert_mode(self, content):
+        with patch.object(config, "EXPERT_MODE_ENABLED", True):
+            return self.import_estimations(content)
+
+    def test_real_dates_are_ignored_without_the_expert_mode(self):
+        """
+        Status changes set the real dates of a task: the import reads them
+        only on an instance that enables the expert mode.
+        """
+        self.generate_fixture_task()
+        with patch.object(config, "EXPERT_MODE_ENABLED", False):
+            task = self.import_estimations(self.REAL_DATES_CSV)
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
+
+    def test_real_dates_are_not_checked_without_the_expert_mode(self):
+        """
+        Without the expert mode the import does not read the real date
+        columns: an invalid value there does not stop it.
+        """
+        self.generate_fixture_task()
+        with patch.object(config, "EXPERT_MODE_ENABLED", False):
+            task = self.import_estimations(
+                "Parent,Entity,Start date,WIP date\n"
+                "Props,Tree,2024-01-08,05/01/2024\n"
+            )
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
+
+    def test_expert_mode_imports_the_real_dates(self):
+        """
+        Each user counts a real date on their own calendar day: a day stored
+        at 10:00 UTC stays that day from UTC-10 (Hawaii) to UTC+13 (New
+        Zealand in summer), where midnight would fall on the day before west
+        of UTC.
+        """
+        self.generate_fixture_task()
+        task = self.import_in_expert_mode(self.REAL_DATES_CSV)
+        self.assertEqual(
+            [task.real_start_date, task.end_date, task.done_date],
+            [
+                datetime.datetime(2024, 1, 5, 10),
+                datetime.datetime(2024, 1, 10, 10),
+                datetime.datetime(2024, 1, 12, 10),
+            ],
+        )
+
+    def test_expert_mode_compares_a_real_date_with_the_previous_row(self):
+        """
+        Lines are imported in order: a second line for the same entity
+        compares its day with what the first one wrote.
+        """
+        self.generate_fixture_task()
+        self.task.update({"done_date": datetime.datetime(2024, 1, 12, 19)})
+        task = self.import_in_expert_mode(
+            "Parent,Entity,Approval date\n"
+            "Props,Tree,2024-01-15\n"
+            "Props,Tree,2024-01-12\n"
+        )
+        self.assertEqual(task.done_date, datetime.datetime(2024, 1, 12, 10))
+
+    def test_episode_route_imports_the_real_dates(self):
+        self.generate_fixture_episode("E01")
+        self.generate_fixture_sequence("S01", episode_id=self.episode.id)
+        shot = self.generate_fixture_shot("P01")
+        task = self.generate_fixture_shot_task(
+            "main", shot_id=shot.id, task_type_id=self.task_type_animation.id
+        )
+        path = self.estimations_path(
+            self.task_type_animation.id, self.episode.id
+        )
+        with patch.object(config, "EXPERT_MODE_ENABLED", True):
+            self.upload_file(
+                path,
+                self.write_csv("Parent,Entity,WIP date\nS01,P01,2024-01-05\n"),
+            )
+        self.assertEqual(
+            Task.get(task.id).real_start_date,
+            datetime.datetime(2024, 1, 5, 10),
+        )
+
+    def test_expert_mode_keeps_the_time_of_an_unchanged_real_date(self):
+        """
+        An export gives the day of a real date, not its time: imported back
+        as is, it keeps the time the status change stored.
+        """
+        self.generate_fixture_task()
+        self.task.update({"done_date": datetime.datetime(2024, 1, 12, 19)})
+        task = self.import_in_expert_mode(
+            "Parent,Entity,WIP date,Approval date\n"
+            "Props,Tree,2017-02-22,2024-01-12\n"
+        )
+        self.assertEqual(task.real_start_date, datetime.datetime(2017, 2, 22))
+        self.assertEqual(task.done_date, datetime.datetime(2024, 1, 12, 19))
+
+    def test_expert_mode_keeps_the_real_dates_of_empty_cells(self):
+        self.generate_fixture_task()
+        task = self.import_in_expert_mode(
+            "Parent,Entity,WIP date,Feedback date,Approval date\n"
+            "Props,Tree,,2024-01-10,\n"
+        )
+        self.assertEqual(
+            self.get_real_dates(task), ["2017-02-22", "2024-01-10", None]
+        )
+
+    def test_expert_mode_names_an_invalid_real_date(self):
+        self.generate_fixture_task()
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/task-types/{self.task_type.id}/estimations"
+        )
+        for column in ["WIP date", "Feedback date", "Approval date"]:
+            with self.subTest(column=column):
+                content = f"Parent,Entity,{column}\nProps,Tree,05/01/2024\n"
+                with patch.object(config, "EXPERT_MODE_ENABLED", True):
+                    result = self.upload_file(
+                        path, self.write_csv(content), code=400
+                    )
+                self.assertEqual(
+                    result["message"],
+                    f"Invalid value in column '{column}': '05/01/2024' "
+                    "(expected a YYYY-MM-DD date from 2000 to 2100)",
+                )
+
+    def test_expert_mode_refuses_a_real_date_out_of_its_years(self):
+        """
+        A mistyped year such as 0024 would spread the task over centuries
+        of quota days: a real date goes from 2000 to 2100. The line is
+        refused whole, its other cells with it, a valid real date included.
+        """
+        self.generate_fixture_task()
+        start_date = Task.get(self.task.id).start_date
+        path = (
+            f"/import/csv/projects/{self.project.id}"
+            f"/task-types/{self.task_type.id}/estimations"
+        )
+        lines = [
+            ("Start date,WIP date", "2024-01-08,{}", "WIP date"),
+            ("WIP date,Approval date", "2024-01-05,{}", "Approval date"),
+        ]
+        for value in ["0024-01-05", "1999-12-31", "2101-01-01"]:
+            for headers, cells, column in lines:
+                with self.subTest(value=value, column=column):
+                    content = (
+                        f"Parent,Entity,{headers}\n"
+                        f"Props,Tree,{cells.format(value)}\n"
+                    )
+                    with patch.object(config, "EXPERT_MODE_ENABLED", True):
+                        result = self.upload_file(
+                            path, self.write_csv(content), code=400
+                        )
+                    self.assertEqual(
+                        result["message"],
+                        f"Invalid value in column '{column}': '{value}' "
+                        "(expected a YYYY-MM-DD date from 2000 to 2100)",
+                    )
+                    self.assertEqual(result["line_number"], 2)
+                    self.assertEqual(result["imported_rows"], 0)
+                    task = Task.get(self.task.id)
+                    self.assertEqual(task.start_date, start_date)
+                    self.assertEqual(
+                        self.get_real_dates(task), ["2017-02-22", None, None]
+                    )
+
+    def test_expert_mode_imports_the_first_and_last_real_date_years(self):
+        self.generate_fixture_task()
+        task = self.import_in_expert_mode(
+            "Parent,Entity,WIP date,Approval date\n"
+            "Props,Tree,2000-01-01,2100-12-31\n"
+        )
+        self.assertEqual(
+            self.get_real_dates(task), ["2000-01-01", None, "2100-12-31"]
+        )
+
+    def test_expert_mode_keeps_a_stored_real_date_out_of_its_years(self):
+        """
+        The years bound a real date that changes: one written before through
+        the API and repeated as is does not stop the import, a year below
+        1000 included, which strftime does not pad to 4 digits on Linux.
+        """
+        self.generate_fixture_task()
+        for stored, cell in [
+            (datetime.datetime(1960, 5, 4, 15), "1960-05-04"),
+            (datetime.datetime(24, 1, 5, 15), "0024-01-05"),
+        ]:
+            with self.subTest(cell=cell):
+                self.task.update({"real_start_date": stored})
+                task = self.import_in_expert_mode(
+                    "Parent,Entity,Start date,WIP date\n"
+                    f"Props,Tree,2024-01-08,{cell}\n"
+                )
+                self.assertEqual(
+                    task.start_date.strftime("%Y-%m-%d"), "2024-01-08"
+                )
+                self.assertEqual(task.real_start_date, stored)
+
+    def import_real_dates_as(self, person, log_in):
+        projects_service.add_team_member(self.project.id, person["id"])
+        log_in()
+        return self.import_in_expert_mode(
+            "Parent,Entity,Start date,WIP date,Approval date\n"
+            "Props,Tree,2024-01-08,2024-01-05,2024-01-12\n"
+        )
+
+    def test_expert_mode_leaves_the_real_dates_to_admins(self):
+        """
+        A manager of the production imports estimations, but in expert mode
+        only an administrator changes the real dates: the import ignores
+        their columns for anybody else.
+        """
+        self.generate_fixture_task()
+        task = self.import_real_dates_as(
+            self.generate_fixture_user_manager(), self.log_in_manager
+        )
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
+
+    def test_expert_mode_ignores_the_real_dates_of_a_supervisor(self):
+        self.generate_fixture_task()
+        task = self.import_real_dates_as(
+            self.generate_fixture_user_supervisor(), self.log_in_supervisor
+        )
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
+
+    def test_expert_mode_does_not_check_the_real_dates_of_a_manager(self):
+        """
+        The import does not read the real date columns for a manager: an
+        invalid value there does not stop it.
+        """
+        self.generate_fixture_task()
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project.id, self.user_manager["id"]
+        )
+        self.log_in_manager()
+        task = self.import_in_expert_mode(
+            "Parent,Entity,Start date,WIP date\n"
+            "Props,Tree,2024-01-08,05/01/2024\n"
+        )
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
 
     def estimations_path(self, task_type_id, episode_id=None):
         episode_part = f"/episodes/{episode_id}" if episode_id else ""
