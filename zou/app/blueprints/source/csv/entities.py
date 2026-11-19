@@ -185,8 +185,7 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
         if not self.is_tv_show:
             if episode_name is not None:
                 raise RowException(
-                    "An episode column is present for a production that "
-                    "isn't a TV Show"
+                    "The Episode cell must be empty outside a TV show"
                 )
             return None
         if episode_name is None and self.is_episode_required:

@@ -205,7 +205,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             episode_id = self.episodes.get(episode_name, None)
         elif episode_name is not None:
             raise RowException(
-                "An episode column is present for a production that isn't a TV Show"
+                "The Episode cell must be empty outside a TV show"
             )
 
         if self.asset_types_in_project:

@@ -562,3 +562,17 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             [str(self.person.id)],
         )
         self.assertEqual(Comment.query.all(), [])
+
+    def test_import_assets_refuses_an_episode_outside_a_tv_show(self):
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_episode.csv")
+        )
+        result = self.upload_file(path, file_path_fixture, 400)
+
+        self.assertEqual(result["line_number"], 2)
+        self.assertEqual(
+            result["message"],
+            "The Episode cell must be empty outside a TV show",
+        )
+        self.assertEqual(Entity.query.all(), [])

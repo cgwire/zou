@@ -116,10 +116,14 @@ class ImportCsvSequencesTestCase(ApiDBTestCase):
         one is a mistake worth reporting rather than a value to ignore.
         """
         self.upload_file(self.path, self.write_csv("Name,Episode\nSQ01,\n"))
-        self.upload_file(
+        result = self.upload_file(
             self.path, self.write_csv("Name,Episode\nSQ02,E01\n"), code=400
         )
 
+        self.assertEqual(
+            result["message"],
+            "The Episode cell must be empty outside a TV show",
+        )
         self.assertEqual(
             [
                 (sequence["name"], sequence["parent_id"])
