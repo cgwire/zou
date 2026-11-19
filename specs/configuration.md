@@ -24,6 +24,7 @@ fails when one is added to the code and not here, or documented and no longer re
 | `TMP_DIR` | <system tmp>/zou | Working directory for uploads, encodings and the storage cache |
 | `IS_SELF_HOSTED` | true | Announced to the client through `/config`; `false` on the Kitsu cloud offer |
 | `CRISP_TOKEN` | (none) | Crisp chat widget token announced to the client through `/config` |
+| `EXPERT_MODE_ENABLED` | false | Unlocks edits that are off by default; `/config` announces it to the client |
 | `TELEMETRY_URL` | account.cg-wire.com endpoint | Where `zou telemetry` posts its anonymous usage figures |
 | `DEFAULT_FILE_TREE` | default | File tree template applied to new productions (`zou/app/file_trees/`) |
 | `DEFAULT_TIMEZONE` | Europe/Paris | Timezone of new accounts and of the studio, also stored in Redis (see `zou config`) |

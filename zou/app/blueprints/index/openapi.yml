@@ -1,9 +1,9 @@
 ConfigResource_get:
   summary: Get the configuration of the instance
   description: 'Get the configuration that Kitsu needs before login: SSO, 2FA, indexer,
-    locale, timezone, theme and movie bitrates. If Sentry is enabled for Kitsu,
-    the response also gives the Sentry settings. You do not need a token for this
-    route.'
+    locale, timezone, theme, movie bitrates, and expert mode. If Sentry is
+    enabled for Kitsu, the response also gives the Sentry settings. You do not
+    need a token for this route.'
   tags:
     - Index
   security: []
@@ -28,6 +28,8 @@ ConfigResource_get:
               enforce_2fa:
                 type: boolean
               preview_accounts_enabled:
+                type: boolean
+              expert_mode_enabled:
                 type: boolean
               crisp_token:
                 type: string
