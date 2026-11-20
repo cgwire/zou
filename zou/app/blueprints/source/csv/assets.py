@@ -88,12 +88,15 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get(f"{task_type['name']} comment", None)
+            # An empty cell holds no comment, as a missing column does.
+            task_comment_text = (
+                row.get(f"{task_type['name']} comment", None) or None
+            )
             task_assignees = self.get_assignation_ids(row, task_type["name"])
 
             if (
                 task_status_id is not None
-                or task_comment_text not in [None, ""]
+                or task_comment_text is not None
                 or task_assignees
             ):
                 tasks_update.append(
@@ -202,7 +205,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             episode_id = self.episodes.get(episode_name, None)
         elif episode_name is not None:
             raise RowException(
-                "An episode column is present for a production that isn't a TV Show"
+                "The Episode cell must be empty outside a TV show"
             )
 
         if self.asset_types_in_project:

@@ -1032,6 +1032,36 @@ def update_shot(shot_id, data_dict, index=True):
     return shot.serialize()
 
 
+def update_sequence(sequence_id, data_dict):
+    """
+    Update the fields of given sequence with the values of given dict.
+    """
+    sequence = get_sequence_raw(sequence_id)
+    sequence.update(data_dict)
+    clear_sequence_cache(sequence_id)
+    events.emit(
+        "sequence:update",
+        {"sequence_id": sequence_id},
+        project_id=str(sequence.project_id),
+    )
+    return sequence.serialize(obj_type="Sequence")
+
+
+def update_episode(episode_id, data_dict):
+    """
+    Update the fields of given episode with the values of given dict.
+    """
+    episode = get_episode_raw(episode_id)
+    episode.update(data_dict)
+    clear_episode_cache(episode_id)
+    events.emit(
+        "episode:update",
+        {"episode_id": episode_id},
+        project_id=str(episode.project_id),
+    )
+    return episode.serialize(obj_type="Episode")
+
+
 def get_shot_versions(shot_id):
     """
     Return all versions of given shot, most recent first. A version is

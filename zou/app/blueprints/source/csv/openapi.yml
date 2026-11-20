@@ -55,8 +55,9 @@ AssetsCsvImportResource_post:
                   type: string
                   example: Main character asset
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -119,8 +120,9 @@ CastingCsvImportResource_post:
               type: object
               nullable: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -158,12 +160,15 @@ EditsCsvImportResource_post:
   summary: Import edits from a CSV file
   tags:
     - Import
-  description: Create edits in a project from a CSV file. A line can also set
-    the metadata and the task statuses of an edit. Send the CSV file in a
-    multipart form. The route finds the separator of the file. Each line is
-    imported in order. If a line is not valid, the import stops. Without
-    update=true, the lines of the entities that exist are skipped. You must be
-    a manager of the project.
+  description: Create edits in a project from a CSV file. A line needs the
+    name of the edit. It can also give its episode (TV shows only, the route
+    creates the missing episodes), its description, its metadata, and the
+    status, a comment, and the assignees of its tasks. Assignees are added
+    to the people a task already has. Send the CSV file in a multipart form.
+    The route finds the separator of the file. Each line is imported in
+    order. If a line is not valid, the import stops. Without update=true,
+    the lines of the entities that exist are skipped. You must be a manager
+    of the project.
   parameters:
     - in: path
       name: project_id
@@ -210,8 +215,9 @@ EditsCsvImportResource_post:
                   type: string
                   example: Edit description
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -241,6 +247,101 @@ EditsCsvImportResource_post:
             file:
               type: string
               description: CSV file with edit data
+              format: binary
+          required:
+            - file
+
+EpisodesCsvImportResource_post:
+  summary: Import episodes from a CSV file
+  tags:
+    - Import
+  description: Create episodes in a TV show from a CSV file. A line needs
+    the name of the episode. It can also give its description, its status
+    (running, complete, standby, or canceled, in any case; running when the
+    cell is empty on a new episode), its metadata, and the status, a
+    comment, and the assignees of its tasks. Assignees are added to the
+    people a task already has. Send the CSV file in a multipart form. The
+    route finds the separator of the file. Each line is imported in order.
+    If a line is not valid, the import stops. Without update=true, the lines
+    of the entities that exist are skipped. You must be a manager of the
+    project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: update
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Update the entities that exist
+  responses:
+    201:
+      description: The imported lines
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: E01
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                status:
+                  type: string
+                  example: running
+                description:
+                  type: string
+                  example: Episode description
+    400:
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), a line of the file is not valid (the lines
+        before it are imported), or the project is not a TV show.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with episode data
               format: binary
           required:
             - file
@@ -325,8 +426,9 @@ PersonsCsvImportResource_post:
                   type: boolean
                   example: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -354,6 +456,102 @@ PersonsCsvImportResource_post:
             file:
               type: string
               description: CSV file with person data
+              format: binary
+          required:
+            - file
+
+SequencesCsvImportResource_post:
+  summary: Import sequences from a CSV file
+  tags:
+    - Import
+  description: Create sequences in a project from a CSV file. A line needs
+    the name of the sequence and, in a TV show, its episode (the route
+    creates the missing episodes). Outside a TV show, the Episode column
+    must stay empty. A line can also give the description and the metadata
+    of the sequence, and the status, a comment, and the assignees of its
+    tasks. Assignees are added to the people a task already has. Send the
+    CSV file in a multipart form. The route finds the separator of the file.
+    Each line is imported in order. If a line is not valid, the import
+    stops. Without update=true, the lines of the entities that exist are
+    skipped. You must be a manager of the project.
+  parameters:
+    - in: path
+      name: project_id
+      required: true
+      schema:
+        type: string
+        format: uuid
+      example: a24a6ea4-ce75-4665-a070-57453082c250
+      description: Unique identifier of the project
+    - in: query
+      name: update
+      required: false
+      schema:
+        type: boolean
+        default: false
+      example: false
+      description: Update the entities that exist
+  responses:
+    201:
+      description: The imported lines
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  example: a24a6ea4-ce75-4665-a070-57453082c250
+                name:
+                  type: string
+                  example: SQ01
+                project_id:
+                  type: string
+                  format: uuid
+                  example: b24a6ea4-ce75-4665-a070-57453082c250
+                parent_id:
+                  type: string
+                  format: uuid
+                  example: c24a6ea4-ce75-4665-a070-57453082c250
+                description:
+                  type: string
+                  example: Sequence description
+    400:
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: boolean
+              message:
+                type: string
+              line_number:
+                type: integer
+                description: Number of the line that is not valid
+              imported_rows:
+                type: integer
+                description: Number of lines that are imported
+    403:
+      description: You are not a manager of the project
+    404:
+      description: The project does not exist
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              description: CSV file with sequence data
               format: binary
           required:
             - file
@@ -418,8 +616,9 @@ ShotsCsvImportResource_post:
                   type: string
                   example: Shot description
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -506,8 +705,9 @@ TaskTypeEstimationsCsvImportResource_post:
               type: object
               nullable: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:
@@ -608,8 +808,9 @@ TaskTypeEstimationsEpisodeCsvImportResource_post:
               type: object
               nullable: true
     400:
-      description: A line of the file is not valid. The lines before this line
-        are imported.
+      description: The file is not encoded in UTF-8 or has no clear delimiter
+        (nothing is imported), or a line of the file is not valid (the lines
+        before it are imported).
       content:
         application/json:
           schema:

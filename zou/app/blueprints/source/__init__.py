@@ -8,7 +8,13 @@ from flask import Blueprint
 from zou.app.blueprints.source.csv.assets import AssetsCsvImportResource
 from zou.app.blueprints.source.csv.casting import CastingCsvImportResource
 from zou.app.blueprints.source.csv.edits import EditsCsvImportResource
+from zou.app.blueprints.source.csv.episodes import (
+    EpisodesCsvImportResource,
+)
 from zou.app.blueprints.source.csv.persons import PersonsCsvImportResource
+from zou.app.blueprints.source.csv.sequences import (
+    SequencesCsvImportResource,
+)
 from zou.app.blueprints.source.csv.shots import ShotsCsvImportResource
 from zou.app.blueprints.source.csv.task_type_estimations import (
     TaskTypeEstimationsCsvImportResource,
@@ -143,6 +149,14 @@ routes = [
     ("/import/csv/projects/<project_id>/assets", AssetsCsvImportResource),
     ("/import/csv/projects/<project_id>/shots", ShotsCsvImportResource),
     ("/import/csv/projects/<project_id>/edits", EditsCsvImportResource),
+    (
+        "/import/csv/projects/<project_id>/sequences",
+        SequencesCsvImportResource,
+    ),
+    (
+        "/import/csv/projects/<project_id>/episodes",
+        EpisodesCsvImportResource,
+    ),
     ("/import/csv/projects/<project_id>/casting", CastingCsvImportResource),
     (
         "/import/csv/projects/<project_id>/task-types/<task_type_id>/estimations",

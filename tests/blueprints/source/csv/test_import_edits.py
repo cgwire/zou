@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
+from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.services import edits_service, projects_service, shots_service
 
@@ -108,3 +109,198 @@ class ImportCsvEditsTestCase(ApiDBTestCase):
             ],
             [(edits[0]["id"], str(self.task_type_edit.id))],
         )
+
+    def test_an_existing_edit_changes_with_the_update_option_only(self):
+        self.upload_file(
+            self.path, self.write_csv("Name,Description\nOpening,First\n")
+        )
+        self.upload_file(
+            self.path, self.write_csv("Name,Description\nOpening,Second\n")
+        )
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual([edit["description"] for edit in edits], ["First"])
+
+        self.upload_file(
+            f"{self.path}?update=true",
+            self.write_csv("Name,Description\nOpening,Third\n"),
+        )
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual(
+            [(edit["name"], edit["description"]) for edit in edits],
+            [("Opening", "Third")],
+        )
+
+    def test_import_reads_the_metadata_columns(self):
+        self.generate_fixture_metadata_descriptor(entity_type="Edit")
+        self.upload_file(
+            self.path, self.write_csv("Name,Contractor\nOpening,value 1\n")
+        )
+        edits = edits_service.get_edits_for_project(str(self.project.id))
+        self.assertEqual(edits[0]["data"], {"contractor": "value 1"})
+
+    def test_import_sets_the_task_status_with_its_comment(self):
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status_wip()
+        self.generate_fixture_task_status_done()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(self.path, self.write_csv("Name,Edit\nOpening,wip\n"))
+        task = Task.query.one()
+        self.assertEqual(task.task_status_id, self.task_status_wip.id)
+        self.assertEqual(Comment.query.count(), 1)
+
+        # The same status again posts nothing.
+        self.upload_file(
+            f"{self.path}?update=true",
+            self.write_csv("Name,Edit\nOpening,wip\n"),
+        )
+        self.assertEqual(Comment.query.count(), 1)
+
+        self.upload_file(
+            f"{self.path}?update=true",
+            self.write_csv("Name,Edit,Edit comment\nOpening,Done,Approved\n"),
+        )
+        task = Task.get(task.id)
+        self.assertEqual(task.task_status_id, self.task_status_done.id)
+        self.assertEqual(
+            sorted(comment.text for comment in Comment.query.all()),
+            ["", "Approved"],
+        )
+
+    def test_import_assigns_the_people_of_the_assignations_column(self):
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.generate_fixture_person()
+        csv_path = self.write_csv(
+            'Name,Edit,Edit assignations\nOpening,,"John Doe, John Did"\n'
+            "Ending,,\n"
+        )
+        self.upload_file(self.path, csv_path)
+
+        tasks = {
+            edits_service.get_edit(str(task.entity_id))["name"]: task
+            for task in Task.query.all()
+        }
+        self.assertEqual(
+            sorted(str(person.id) for person in tasks["Opening"].assignees),
+            sorted([str(self.person.id), self.user["id"]]),
+        )
+        self.assertEqual(tasks["Ending"].assignees, [])
+        # Assignations alone post no comment at the default status.
+        self.assertEqual(Comment.query.all(), [])
+
+        # The people already assigned are not assigned again.
+        assigned = self.capture_events("task:assign")
+        self.upload_file(f"{self.path}?update=true", csv_path)
+        self.assertEqual(assigned, [])
+        self.assertEqual(len(Task.get(tasks["Opening"].id).assignees), 2)
+
+    def test_an_unknown_assignee_stops_the_import(self):
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        result = self.upload_file(
+            self.path,
+            self.write_csv(
+                "Name,Edit assignations\nOpening,\nEnding,Jane Roe\n"
+            ),
+            code=400,
+        )
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Person not found for Jane Roe")
+        self.assertEqual(result["imported_rows"], 1)
+
+    def test_a_line_without_name_is_refused(self):
+        # It created an edit named "".
+        result = self.upload_file(
+            self.path,
+            self.write_csv("Name,Description\nOpening,First\n ,Second\n"),
+            code=400,
+        )
+        self.assertEqual(result["line_number"], 3)
+        self.assertEqual(result["message"], "Name cannot be empty")
+        self.assertEqual(result["imported_rows"], 1)
+        self.assertEqual(
+            [
+                edit["name"]
+                for edit in edits_service.get_edits_for_project(
+                    str(self.project.id)
+                )
+            ],
+            ["Opening"],
+        )
+
+    def test_a_line_without_name_creates_no_episode(self):
+        self.project.update({"production_type": "tvshow"})
+        self.upload_file(
+            self.path, self.write_csv("Name,Episode\n,E01\n"), code=400
+        )
+        self.assertEqual(
+            shots_service.get_episodes({"project_id": self.project.id}), []
+        )
+
+    def test_a_line_of_an_existing_edit_is_not_read_without_update(self):
+        # Kitsu shows such a line as one that changes nothing: an assignee
+        # renamed since the export used to stop the import there.
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(
+            self.path, self.write_csv("Name,Description\nOpening,First\n")
+        )
+
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Edit assignations\nOpening,Nobody Known\n"),
+        )
+
+        self.assertEqual(
+            [
+                edit["name"]
+                for edit in edits_service.get_edits_for_project(
+                    str(self.project.id)
+                )
+            ],
+            ["Opening"],
+        )
+
+    def test_an_empty_comment_cell_at_the_same_status_posts_no_comment(self):
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status_todo()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.upload_file(
+            self.path,
+            self.write_csv("Name,Edit,Edit comment\nOpening,todo,\n"),
+        )
+
+        task = Task.query.one()
+        self.assertEqual(str(task.task_status_id), self.task_status_todo["id"])
+        self.assertEqual(Comment.query.all(), [])
+
+    def test_an_empty_comment_cell_posts_no_comment(self):
+        self.generate_fixture_task_type()
+        projects_service.add_task_type_setting(
+            self.project.id, self.task_type_edit.id
+        )
+        self.generate_fixture_person()
+        self.upload_file(
+            self.path,
+            self.write_csv(
+                "Name,Edit,Edit comment,Edit assignations\n"
+                "Opening,,,John Doe\n"
+            ),
+        )
+
+        task = Task.query.one()
+        self.assertEqual(
+            [str(person.id) for person in task.assignees],
+            [str(self.person.id)],
+        )
+        self.assertEqual(Comment.query.all(), [])

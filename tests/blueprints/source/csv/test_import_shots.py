@@ -348,3 +348,46 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(
             [str(id) for id in index_shots.call_args.args[0]], [shot["id"]]
         )
+
+    def test_an_empty_comment_cell_at_the_same_status_posts_no_comment(self):
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_animation.id,
+            )
+        )
+        self.generate_fixture_task_status_todo()
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_empty_comment_same_status.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        task = Task.query.one()
+        self.assertEqual(str(task.task_status_id), self.task_status_todo["id"])
+        self.assertEqual(Comment.query.all(), [])
+
+    def test_an_empty_comment_cell_posts_no_comment(self):
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_animation.id,
+            )
+        )
+        self.generate_fixture_person()
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        self.project.update({"production_type": "tvshow"})
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_empty_comment.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        task = Task.query.one()
+        self.assertEqual(
+            [str(person.id) for person in task.assignees],
+            [str(self.person.id)],
+        )
+        self.assertEqual(Comment.query.all(), [])
