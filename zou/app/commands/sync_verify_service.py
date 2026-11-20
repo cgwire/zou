@@ -407,6 +407,7 @@ def _tgt_asset(project_id):
         "Shot",
         "Concept",
         "ConceptFolder",
+        "Untracked",
         "Edit",
         "Scene",
     ]
