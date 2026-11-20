@@ -21,6 +21,7 @@ from zou.app.blueprints.previews.schemas import (
     AnnotationsUpdateSchema,
     ExtractAnnotatedFrameSchema,
     PreviewFilePositionSchema,
+    PreviewFileTrimSchema,
     PreviewFileUploadSchema,
 )
 from zou.app.exceptions import (
@@ -1596,6 +1597,34 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
         permissions_service.check_task_work_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, body.position
+        )
+
+
+class UpdatePreviewTrimResource(MethodView, ArgsMixin):
+    """
+    Set the in/out handles of a preview file. The extra previews of a
+    revision have their own timeline, so they carry their own trim, while
+    the main preview uses the trim of the shot.
+    """
+
+    @jwt_required()
+    @swag_from(SPECS["UpdatePreviewTrimResource_put"])
+    def put(self, preview_file_id):
+        """
+        Update preview trim
+        """
+        body = validation_utils.validate_request_body(PreviewFileTrimSchema)
+        trim = {key: getattr(body, key) for key in body.model_fields_set}
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        entity = entities_service.get_entity(task["entity_id"])
+        # Same rule as the trim of the shot, saved in its data: managers
+        # and supervisors without departments.
+        permissions_service.check_metadata_department_access(
+            entity, {"data": trim}
+        )
+        return preview_files_service.update_preview_file_trim(
+            preview_file_id, trim
         )
 
 

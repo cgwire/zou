@@ -8,10 +8,12 @@ import redis
 import slugify
 from rq import Queue, Retry, get_current_job
 from rq.timeouts import BaseTimeoutException
+from sqlalchemy import Text, case, func, literal, update
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import StaleDataError
 
-from zou.app import config
+from zou.app import config, db
 from zou.app.exceptions import (
     PreviewFileNotFoundException,
     PreviewProcessingFailedException,
@@ -170,6 +172,68 @@ def update_preview_file(preview_file_id, data, silent=False):
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)
+
+
+TRIM_KEYS = ("handle_in", "handle_out")
+
+
+def get_preview_file_trim(data):
+    """
+    The in/out handles stored in the data of a preview file, None when unset.
+    """
+    data = data if isinstance(data, dict) else {}
+    return {key: data.get(key) for key in TRIM_KEYS}
+
+
+def update_preview_file_trim(preview_file_id, trim):
+    """
+    Set the in/out handles of given preview file, a None value clears the
+    handle. The extra previews of a revision carry their own trim there: the
+    trim of the main preview stays on the shot, like before.
+
+    The keys are merged in the database in one statement: a read-modify-write
+    of the data column could drop a key the movie jobs write at the same time
+    (the stored movie prefixes).
+    """
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    task_id = preview_file.task_id
+    trim = {key: value for key, value in trim.items() if key in TRIM_KEYS}
+    if trim:
+        removed_keys = [key for key, value in trim.items() if value is None]
+        patch = {
+            key: value for key, value in trim.items() if value is not None
+        }
+        # A bare JSONB column can hold anything: start over from an empty
+        # object when it is not one.
+        data = case(
+            (
+                func.jsonb_typeof(PreviewFile.data) == "object",
+                PreviewFile.data,
+            ),
+            else_=literal({}, JSONB),
+        )
+        if removed_keys:
+            data = data.op("-")(literal(removed_keys, ARRAY(Text)))
+        data = data.op("||")(literal(patch, JSONB))
+        db.session.execute(
+            update(PreviewFile)
+            .where(PreviewFile.id == preview_file.id)
+            .values(data=data)
+        )
+        db.session.commit()
+        files_service.clear_preview_file_cache(preview_file_id)
+        task = Task.get(task_id)
+        events.emit(
+            "preview-file:update",
+            {"preview_file_id": str(preview_file_id)},
+            project_id=str(task.project_id),
+        )
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    db.session.refresh(preview_file)
+    return {
+        "id": str(preview_file.id),
+        **get_preview_file_trim(preview_file.data),
+    }
 
 
 def update_preview_file_raw(preview_file, data, silent=False):
