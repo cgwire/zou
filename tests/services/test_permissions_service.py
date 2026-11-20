@@ -3,9 +3,10 @@ from contextlib import contextmanager
 
 from flask import g
 from flask_jwt_extended import verify_jwt_in_request
+from sqlalchemy import event
 
 from tests.base import ApiDBTestCase
-from zou.app import app
+from zou.app import app, db
 from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.services import (
@@ -137,6 +138,31 @@ class ProjectAccessTestCase(PermissionsTestCase):
             self.assertTrue(
                 permissions_service.check_belong_to_project(self.project_id)
             )
+
+    def test_check_belong_to_project_leaves_the_team_rows_alone(self):
+        """
+        Every project access check runs it, thumbnails included. It used
+        to load the project, which brings the whole person row of each
+        team member along.
+        """
+        self.join_team(self.a_user("artist"))
+        statements = []
+
+        def record(conn, cursor, statement, parameters, context, many):
+            statements.append(statement)
+
+        with self.as_role("artist"):
+            projects_service.clear_project_cache(self.project_id)
+            event.listen(db.engine, "before_cursor_execute", record)
+            try:
+                permissions_service.check_belong_to_project(self.project_id)
+            finally:
+                event.remove(db.engine, "before_cursor_execute", record)
+
+        self.assertTrue(statements)
+        for statement in statements:
+            self.assertNotIn("JOIN person", statement)
+            self.assertNotIn("FROM project ", statement)
 
     def test_check_belong_to_project_without_a_project(self):
         self.join_team(self.a_user("artist"))

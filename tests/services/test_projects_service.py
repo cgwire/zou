@@ -122,6 +122,29 @@ class ProjectServiceTestCase(ApiDBTestCase):
         project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [])
 
+    def test_get_team_person_ids(self):
+        self.generate_fixture_person()
+        project_id = str(self.project.id)
+        self.assertEqual(projects_service.get_team_person_ids(project_id), [])
+
+        projects_service.add_team_member(project_id, self.person.id)
+        self.assertEqual(
+            projects_service.get_team_person_ids(project_id),
+            [str(self.person.id)],
+        )
+
+        projects_service.remove_team_member(project_id, self.person.id)
+        self.assertEqual(projects_service.get_team_person_ids(project_id), [])
+
+    def test_get_team_person_ids_of_an_unknown_project(self):
+        unknown_id = "00000000-0000-0000-0000-000000000000"
+        for project_id in (unknown_id, "wrongid"):
+            self.assertRaises(
+                ProjectNotFoundException,
+                projects_service.get_team_person_ids,
+                project_id,
+            )
+
     def test_add_and_remove_project_settings(self):
         """
         The three settings that are plain links on the project: adding one

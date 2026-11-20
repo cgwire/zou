@@ -71,6 +71,7 @@ def clear_project_cache(project_id):
     project_id = str(project_id)
     cache.cache.delete_memoized(_get_project_cached, project_id, False)
     cache.cache.delete_memoized(_get_project_cached, project_id, True)
+    cache.cache.delete_memoized(get_team_person_ids, project_id)
     cache.cache.delete_memoized(get_team_roles, project_id)
     cache.cache.delete_memoized(get_project_by_name)
     cache.cache.delete_memoized(open_projects)
@@ -568,6 +569,32 @@ def get_team_raw(project_id):
         .filter(Person.id.in_([person.id for person in project.team]))
         .all()
     )
+
+
+@cache.memoize_function(240)
+def get_team_person_ids(project_id):
+    """
+    Return the ids of the persons in the team of given project. Raises an
+    exception if project is not found. Memoized: every project access check
+    reads it. Always call it with the project id as a string, the cache is
+    keyed on it.
+
+    The ids come from the link table alone: loading the project row brings
+    the whole person row of each member along, which no access check needs.
+    """
+    try:
+        person_ids = [
+            str(person_id)
+            for (person_id,) in ProjectPersonLink.query.with_entities(
+                ProjectPersonLink.person_id
+            ).filter_by(project_id=project_id)
+        ]
+    except StatementError:
+        raise ProjectNotFoundException()
+    if not person_ids:
+        # A project that does not exist has no team either.
+        get_project_raw(project_id)
+    return person_ids
 
 
 @cache.memoize_function(120)
