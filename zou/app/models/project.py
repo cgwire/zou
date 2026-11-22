@@ -274,9 +274,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         nullable=True,
     )
 
-    team = db.relationship(
-        "Person", secondary=ProjectPersonLink.__table__, lazy="selectin"
-    )
+    team = db.relationship("Person", secondary=ProjectPersonLink.__table__)
     asset_types = db.relationship(
         "EntityType", secondary=ProjectAssetTypeLink.__table__
     )

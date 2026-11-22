@@ -41,9 +41,9 @@ from zou.app.utils import cache, events, fields
 # instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
 MIN_MOVIE_BITRATE = 1
 
-# The collections a project dict serializes, the team aside: it is loaded
-# with selectin by the model already.
+# The collections a project dict serializes.
 PROJECT_RELATIONS = [
+    Project.team,
     Project.asset_types,
     Project.task_statuses,
     Project.task_types,
@@ -566,7 +566,8 @@ def get_team_raw(project_id):
     project = get_project_raw(project_id)
     return (
         Person.query.options(selectinload(Person.departments))
-        .filter(Person.id.in_([person.id for person in project.team]))
+        .join(ProjectPersonLink, ProjectPersonLink.person_id == Person.id)
+        .filter(ProjectPersonLink.project_id == project.id)
         .all()
     )
 

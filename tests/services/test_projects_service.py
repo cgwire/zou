@@ -1,8 +1,11 @@
 import os
 import tempfile
 
+from sqlalchemy import event
+
 from tests.base import ApiDBTestCase
 from tests.services.cases import PreviewFileTestCase
+from zou.app import db
 from zou.app.exceptions import (
     ProjectNotFoundException,
     WrongParameterException,
@@ -121,6 +124,27 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.remove_team_member(self.project.id, self.person.id)
         project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [])
+
+    def test_get_project_raw_leaves_the_team_alone(self):
+        """
+        The team used to come with every project row, read or not: the
+        whole person row of each member.
+        """
+        self.generate_fixture_person()
+        projects_service.add_team_member(self.project.id, self.person.id)
+        db.session.expunge_all()
+        statements = []
+
+        def record(conn, cursor, statement, parameters, context, many):
+            statements.append(statement)
+
+        event.listen(db.engine, "before_cursor_execute", record)
+        try:
+            projects_service.get_project_raw(self.project.id)
+        finally:
+            event.remove(db.engine, "before_cursor_execute", record)
+
+        self.assertEqual(len(statements), 1)
 
     def test_get_team_person_ids(self):
         self.generate_fixture_person()
