@@ -10,6 +10,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.services import (
     entity_types_service,
+    metadata_descriptors_service,
     projects_service,
 )
 
@@ -441,6 +442,19 @@ def index_shots(shot_ids):
     return _index_entries(get_shot_index, prepare_shot, shot_ids)
 
 
+def prepare_metadatas(data):
+    """
+    Return the entity data worth searching on: the values of its columns,
+    stored as strings since the index has one type per field. The keys of the
+    built-in fields (frame range, trim handles...) are left out.
+    """
+    return {
+        key: str(value)
+        for key, value in (data or {}).items()
+        if key not in metadata_descriptors_service.BUILT_IN_ENTITY_DATA_FIELDS
+    }
+
+
 def prepare_asset(asset):
     """
     Prepare a indexation document from given asset.
@@ -449,10 +463,7 @@ def prepare_asset(asset):
     asset_type = entity_types_service.get_asset_type(
         asset_serialized["entity_type_id"]
     )
-    metadatas = {}
-    if asset_serialized["data"]:
-        for k, v in asset_serialized["data"].items():
-            metadatas[f"{k}"] = str(v)
+    metadatas = prepare_metadatas(asset_serialized["data"])
     name = asset_serialized["name"]
     name = name + " " + name.replace("_", " ").replace("-", " ")
     name = asset_type["name"] + " " + name
@@ -509,17 +520,7 @@ def prepare_shot(shot):
     elif sequence is not None:
         name = f"{sequence.name} {name}"
 
-    metadatas = {}
-    if shot_serialized["data"]:
-        for k, v in shot_serialized["data"].items():
-            if k not in [
-                "frame_in",
-                "frame_out",
-                "fps",
-                "handle_in",
-                "handle_out",
-            ]:
-                metadatas[f"{k}"] = str(v)
+    metadatas = prepare_metadatas(shot_serialized["data"])
 
     data = {
         "id": shot_serialized["id"],

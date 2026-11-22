@@ -140,7 +140,7 @@ class PrepareDocumentTestCase(ApiDBTestCase):
 
     def test_prepare_asset(self):
         asset = self.generate_fixture_asset(name="main_character")
-        asset.update({"data": {"size": 3}})
+        asset.update({"data": {"size": 3, "handle_in": 5, "handle_out": 80}})
 
         document = index_service.prepare_asset(asset)
 
@@ -153,7 +153,8 @@ class PrepareDocumentTestCase(ApiDBTestCase):
             document["name"], "Props main_character main character"
         )
         self.assertEqual(document["project_id"], str(self.project.id))
-        # Stored as strings: the index has one type per field.
+        # Stored as strings: the index has one type per field. The trim
+        # handles are not worth searching on.
         self.assertEqual(document["metadatas"], {"size": "3"})
 
     def test_prepare_person(self):
@@ -168,7 +169,16 @@ class PrepareDocumentTestCase(ApiDBTestCase):
         are part of what the studio types to find it, the same way the
         asset type is for an asset.
         """
-        self.shot.update({"data": {"fps": 25, "camera": "A"}})
+        self.shot.update(
+            {
+                "data": {
+                    "fps": 25,
+                    "handle_in": 5,
+                    "max_retakes": 3,
+                    "camera": "A",
+                }
+            }
+        )
 
         document = index_service.prepare_shot(self.shot)
 
