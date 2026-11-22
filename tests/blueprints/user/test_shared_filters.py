@@ -1051,17 +1051,17 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
         self.put(path, {"search_filter_group_id": group_id}, 400)
 
     def test_a_query_of_the_column_length_is_kept(self):
-        self.create("long", query="q" * 500)
+        self.create("long", query="q" * 5000)
         self.assertEqual(self.visible_names(), ["long"])
 
     def test_a_query_longer_than_its_column_is_refused(self):
-        self.post(self.path, self.payload("long", query="q" * 501), 400)
+        self.post(self.path, self.payload("long", query="q" * 5001), 400)
         self.assertEqual(self.visible_names(), [])
 
     def test_editing_a_query_beyond_the_column_length_is_refused(self):
         created = self.create("mine")
         self.put(
-            f"{self.path}{created['id']}", {"search_query": "q" * 501}, 400
+            f"{self.path}{created['id']}", {"search_query": "q" * 5001}, 400
         )
         self.assertEqual(self.saved_query(), "props")
 

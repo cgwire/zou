@@ -11,7 +11,7 @@ from zou.app.utils.validation import BaseSchema
 # The column lengths of search_filter and search_filter_group: Postgres
 # refuses a longer value with an internal error.
 FilterName = Annotated[str, Field(min_length=1, max_length=200)]
-FilterQuery = Annotated[str, Field(min_length=1, max_length=500)]
+FilterQuery = Annotated[str, Field(min_length=1, max_length=5000)]
 FilterType = Annotated[str, Field(max_length=80)]
 FilterColor = Annotated[str, Field(max_length=8)]
 
