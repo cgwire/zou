@@ -70,6 +70,8 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - UUIDs everywhere for primary keys (`UUIDType(binary=False)`)
 - **String formatting: f-strings only** for any new or edited code. Do not introduce `"... %s" % x` or `.format(...)`. Pre-existing `%`-formatted lines in a file you're editing can stay — don't scope-creep — but every new line you add uses f-strings. Multi-line: implicit concatenation of f-string literals, not `+`.
 - **Imports sorted alphabetically** inside a parenthesized `from x import (...)` block. Adding a name to a block that is not sorted yet means sorting the whole block, never appending at the end.
+- **No leading underscore on a name another module uses**: `other_service._helper()` is a smell, make it public. When a function moves between modules, rename it if it now crosses modules.
+- **One service, one test file**: tests of `x_service.py` live in `tests/services/test_x_service.py`, and move with the function when it moves.
 - **No parentheses around tuple literals** where they add nothing: write `return a, b`, not `return (a, b)`. Same for unpacking. Don't refactor untouched code for this.
 - **Docstrings: opening and closing `"""` each on their own line.** Always put a newline immediately after the opening `"""` and immediately before the closing `"""`, even for one-liners. Do not write `"""Summary on the same line."""` or `"""First line\n    second line."""`.
 
@@ -247,7 +249,7 @@ from zou.app.utils import permissions
 permissions.check_admin_permissions()                # admin only
 permissions.check_manager_permissions()              # admin or manager
 permissions.check_at_least_supervisor_permissions()  # supervisor+
-user_service.check_project_access(project_id)        # user is team member
+permissions_service.check_project_access(project_id)        # user is team member
 ```
 
 ### Order matters: resolve the project first
@@ -270,10 +272,10 @@ those reads the *global* role, silently:
 # Wrong — reads the global role, per-project role never applies
 if permissions.has_client_permissions():
     raise permissions.PermissionDenied
-user_service.check_project_access(task["project_id"])
+permissions_service.check_project_access(task["project_id"])
 
 # Right
-user_service.check_project_access(task["project_id"])
+permissions_service.check_project_access(task["project_id"])
 if permissions.has_client_permissions():
     raise permissions.PermissionDenied
 ```
