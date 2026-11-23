@@ -7,7 +7,10 @@ from sqlalchemy import event
 
 from tests.base import ApiDBTestCase
 from zou.app import app, db
-from zou.app.exceptions import PlaylistNotFoundException
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PlaylistNotFoundException,
+)
 from zou.app.models.entity import Entity
 from zou.app.models.project import ProjectPersonLink
 from zou.app.services import (
@@ -1462,6 +1465,13 @@ class CommentAccessTestCase(PermissionsTestCase):
         with self.as_role("client"):
             with self.denied():
                 permissions_service.check_comment_access(comment_id)
+
+    def test_a_missing_comment_is_not_found_for_an_artist(self):
+        self.join_team(self.a_user("artist"))
+
+        with self.as_role("artist"):
+            with self.assertRaises(CommentNotFoundException):
+                permissions_service.check_comment_access(UNKNOWN)
 
     def test_the_rule_is_read_for_any_person_outside_a_request(self):
         """

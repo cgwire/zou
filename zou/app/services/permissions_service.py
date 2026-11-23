@@ -24,6 +24,7 @@ Where a rule lives:
 from flask import g
 from sqlalchemy import or_
 
+from zou.app.exceptions import CommentNotFoundException
 from zou.app.models.comment import (
     Comment,
     department_mentions_table,
@@ -34,7 +35,7 @@ from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 from zou.app.services import (
-    comments_service,
+    base_service,
     entities_service,
     entity_types_service,
     metadata_descriptors_service,
@@ -605,7 +606,9 @@ def check_comment_access(comment_id, comment=None):
         return True
     else:
         if comment is None:
-            comment = comments_service.get_comment(comment_id)
+            comment = base_service.get_instance(
+                Comment, comment_id, CommentNotFoundException
+            ).serialize()
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
         if task is None:
