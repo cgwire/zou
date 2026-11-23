@@ -729,6 +729,23 @@ def _serialize_notification(
     if role == "client" and is_current_user_artist:
         comment_text = ""
         reply_text = ""
+    # The author of the notification is the author of the reply, or of the
+    # comment when there is no reply.
+    if (
+        comment is not None
+        and project_id is not None
+        and not permissions_service.can_read_reply(
+            str(notification.person_id),
+            {
+                "person_id": str(comment.person_id),
+                "for_client": comment.for_client,
+            },
+            notification.author_id,
+            str(project_id),
+        )
+    ):
+        comment_text = ""
+        reply_text = ""
 
     return fields.serialize_dict(
         {

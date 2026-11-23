@@ -30,7 +30,7 @@ from zou.app.models.comment import (
     mentions_table,
 )
 from zou.app.models.entity import AssetInstanceLink, EntityLink
-from zou.app.models.person import DepartmentLink
+from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 from zou.app.services import (
@@ -94,10 +94,11 @@ def get_project_role(person_id, project_id):
     """
     Return the effective role of given person on given project: the
     project-specific role when one is set on the team link, the person's
-    global role otherwise.
+    global role otherwise. An admin role on the link is invalid data and
+    reads as the global role, as in permissions._effective_role.
     """
     role = projects_service.get_team_roles(str(project_id)).get(str(person_id))
-    if role is not None:
+    if role not in (None, "admin"):
         return role
     return persons_service.get_person(person_id)["role"]
 
@@ -400,6 +401,28 @@ def check_task_access(task_id):
     return True
 
 
+def can_access_task(person_id, task):
+    """
+    Return true if given person can reach given task: the rule of
+    check_task_access for any person, not only the current user. An admin
+    reaches every task, anyone else has to be in the team of the project,
+    and a vendor needs a task of their own on the entity.
+    """
+    if persons_service.get_person(person_id)["role"] == "admin":
+        return True
+    project_id = str(task["project_id"])
+    if str(person_id) not in projects_service.get_team_person_ids(project_id):
+        return False
+    if get_project_role(person_id, project_id) != "vendor":
+        return True
+    return (
+        Task.query.filter(Task.entity_id == task["entity_id"])
+        .filter(Task.assignees.any(Person.id == person_id))
+        .count()
+        > 0
+    )
+
+
 def check_task_action_access(task_id):
     """
     Return true if current user can have access to a task action.
@@ -533,6 +556,45 @@ def check_supervisor_project_task_type_access(project_id, task_type_id):
     return is_allowed
 
 
+def can_read_comment(person_id, comment, project_id):
+    """
+    Return true if the role given person holds on given project lets them
+    read given comment. The access to the project and to the entity is not
+    checked here. Any person can be given, not only the current user: the
+    notifications ask it for each of their recipients.
+    """
+    if persons_service.get_person(person_id)["role"] == "admin":
+        return True
+    role = get_project_role(person_id, project_id)
+    if role in ("manager", "supervisor"):
+        return True
+    is_author_client = (
+        get_project_role(comment["person_id"], project_id) == "client"
+    )
+    if role != "client":
+        return not is_author_client
+    if comment.get("for_client", False):
+        return True
+    project = projects_service.get_project(str(project_id))
+    if project.get("is_clients_isolated", False):
+        return comment["person_id"] == str(person_id)
+    return is_author_client
+
+
+def can_read_reply(person_id, comment, author_id, project_id):
+    """
+    Return true if given person can read a reply written by given author
+    under given comment. A reply is read with its comment: a client who
+    reads the comment reads every reply to it. What a client writes stays
+    hidden from an artist and from a vendor, in a reply as in a comment.
+    """
+    # The reply as a comment for the clients: only its author counts.
+    reply = {"person_id": str(author_id), "for_client": True}
+    return can_read_comment(
+        person_id, comment, project_id
+    ) and can_read_comment(person_id, reply, project_id)
+
+
 def check_comment_access(comment_id, comment=None):
     """
     Return true if current user can have access to a comment. The comment
@@ -544,7 +606,6 @@ def check_comment_access(comment_id, comment=None):
     else:
         if comment is None:
             comment = comments_service.get_comment(comment_id)
-        person_id = comment["person_id"]
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
         if task is None:
@@ -553,28 +614,11 @@ def check_comment_access(comment_id, comment=None):
         check_project_access(task["project_id"])
         check_entity_access(task["entity_id"])
 
-        if (
-            permissions.has_supervisor_permissions()
-            or permissions.has_manager_permissions()
+        current_user = persons_service.get_current_user()
+        if not can_read_comment(
+            current_user["id"], comment, task["project_id"]
         ):
-            return True
-        elif permissions.has_client_permissions():
-            current_user = persons_service.get_current_user()
-            project = projects_service.get_project(task["project_id"])
-            if project.get("is_clients_isolated", False):
-                if comment["person_id"] != current_user[
-                    "id"
-                ] and not comment.get("for_client", False):
-                    raise permissions.PermissionDenied
-            if get_project_role(
-                person_id, task["project_id"]
-            ) == "client" or comment.get("for_client", False):
-                return True
-            else:
-                raise permissions.PermissionDenied
-        elif get_project_role(person_id, task["project_id"]) == "client":
             raise permissions.PermissionDenied
-
         return True
 
 

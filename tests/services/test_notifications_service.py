@@ -5,9 +5,11 @@ from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.services import (
     comments_service,
+    emails_service,
     notifications_service,
     projects_service,
     subscriptions_service,
+    tasks_service,
 )
 
 
@@ -467,6 +469,187 @@ class CommentNotificationTestCase(NotificationsTestCase):
             [notification["task_id"] for notification in result],
             [self.task_dict["id"]],
         )
+
+
+class CommentVisibilityTestCase(NotificationsTestCase):
+    """
+    The bell blanks the text its reader may not read, a mail cannot: a
+    recipient who may not read a comment keeps the notification and gets
+    no mail.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.client_id = str(self.generate_fixture_user_client()["id"])
+        projects_service.add_team_member(str(self.project.id), self.client_id)
+        subscriptions_service.subscribe_to_task(
+            self.client_id, str(self.task.id)
+        )
+
+    def a_comment(self, author_id, for_client=False):
+        return comments_service.new_comment(
+            self.task.id,
+            self.task_status.id,
+            author_id,
+            "a note",
+            for_client=for_client,
+        )
+
+    def mailed(self, kind, action, *args):
+        """
+        The people given action sends a mail of given kind to.
+        """
+        with patch.object(emails_service, f"send_{kind}_notification") as send:
+            action(*args)
+        return sorted(call.args[0] for call in send.call_args_list)
+
+    def test_an_internal_comment_is_not_mailed_to_a_client(self):
+        mailed = self.mailed(
+            "comment",
+            notifications_service.create_notifications_for_task_and_comment,
+            self.task_dict,
+            self.comment,
+        )
+        self.assertEqual(mailed, [self.assignee_id])
+        self.assertIn(("comment", self.client_id), self.kinds())
+
+    def test_a_comment_for_the_clients_is_mailed_to_them(self):
+        mailed = self.mailed(
+            "comment",
+            notifications_service.create_notifications_for_task_and_comment,
+            self.task_dict,
+            self.a_comment(self.admin_id, for_client=True),
+        )
+        self.assertEqual(mailed, sorted([self.assignee_id, self.client_id]))
+
+    def test_a_client_comment_is_not_mailed_to_an_artist(self):
+        mailed = self.mailed(
+            "comment",
+            notifications_service.create_notifications_for_task_and_comment,
+            self.task_dict,
+            self.a_comment(self.client_id),
+        )
+        self.assertEqual(mailed, [])
+        self.assertEqual(self.kinds(), [("comment", self.assignee_id)])
+
+    def test_a_mention_in_an_internal_comment_is_not_mailed_to_a_client(self):
+        self.comment["mentions"] = [self.client_id, self.outsider_id]
+        mailed = self.mailed(
+            "mention",
+            notifications_service.create_notifications_for_task_and_comment,
+            self.task_dict,
+            self.comment,
+        )
+        self.assertEqual(mailed, [self.outsider_id])
+        self.assertIn(("mention", self.client_id), self.kinds())
+
+    def test_a_mention_added_to_an_internal_comment_is_not_mailed_to_a_client(
+        self,
+    ):
+        self.comment["mentions"] = [self.client_id, self.outsider_id]
+        mailed = self.mailed(
+            "mention",
+            notifications_service.reset_notifications_for_mentions,
+            self.comment,
+            self.admin_id,
+            {"mentions": [], "department_mentions": []},
+        )
+        self.assertEqual(mailed, [self.outsider_id])
+
+    def test_a_reply_to_an_internal_comment_is_not_mailed_to_a_client(self):
+        mailed = self.mailed(
+            "reply",
+            comments_service.reply_comment,
+            self.comment["id"],
+            "a reply",
+            self.outsider_id,
+        )
+        self.assertEqual(mailed, sorted([self.assignee_id, self.admin_id]))
+        self.assertIn(("reply", self.client_id), self.kinds())
+
+    def test_a_reply_to_their_own_comment_is_mailed_to_a_client(self):
+        """
+        The answer of the studio to a client: the artist on the task, who
+        may not read the comment of the client, gets no mail.
+        """
+        comment = self.a_comment(self.client_id)
+        mailed = self.mailed(
+            "reply",
+            comments_service.reply_comment,
+            comment["id"],
+            "a reply",
+            self.admin_id,
+        )
+        self.assertEqual(mailed, [self.client_id])
+
+    def test_a_reply_of_a_client_is_not_mailed_to_an_artist(self):
+        comment = self.a_comment(self.admin_id, for_client=True)
+        mailed = self.mailed(
+            "reply",
+            comments_service.reply_comment,
+            comment["id"],
+            "a reply",
+            self.client_id,
+        )
+        self.assertEqual(mailed, [self.admin_id])
+        self.assertIn(("reply", self.assignee_id), self.kinds())
+
+
+class RecipientAccessTestCase(NotificationsTestCase):
+    """
+    Whatever made someone a recipient, nobody is told of a comment on a
+    task the API refuses them.
+    """
+
+    def leave_team(self, person_id):
+        projects_service.remove_team_member(str(self.project.id), person_id)
+
+    def notified(self, comment=None):
+        return sorted(
+            notifications_service.create_notifications_for_task_and_comment(
+                self.task_dict, comment or self.comment
+            )
+        )
+
+    def test_a_subscriber_who_left_the_team_is_not_notified(self):
+        subscriptions_service.subscribe_to_task(
+            self.outsider_id, str(self.task.id)
+        )
+        self.assertEqual(
+            self.notified(), sorted([self.assignee_id, self.outsider_id])
+        )
+
+        self.leave_team(self.outsider_id)
+        self.assertEqual(self.notified(), [self.assignee_id])
+
+    def test_a_vendor_hears_only_of_the_entities_they_work_on(self):
+        vendor_id = str(self.generate_fixture_user_vendor()["id"])
+        projects_service.add_team_member(str(self.project.id), vendor_id)
+        subscriptions_service.subscribe_to_task(vendor_id, str(self.task.id))
+        self.assertEqual(self.notified(), [self.assignee_id])
+
+        tasks_service.assign_task(self.task.id, vendor_id)
+        self.assertEqual(
+            self.notified(), sorted([self.assignee_id, vendor_id])
+        )
+
+    def test_a_mentioned_person_who_left_the_team_is_not_notified(self):
+        self.comment["mentions"] = [self.outsider_id]
+        self.leave_team(self.outsider_id)
+        self.notified()
+        self.assertEqual(self.kinds(), [("comment", self.assignee_id)])
+
+    def test_the_author_of_a_comment_who_left_the_team_hears_of_no_reply(
+        self,
+    ):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.outsider_id, "a note"
+        )
+        self.leave_team(self.outsider_id)
+        comments_service.reply_comment(
+            comment["id"], "a reply", person_id=self.assignee_id
+        )
+        self.assertEqual(self.kinds(), [])
 
 
 class AssignationNotificationTestCase(NotificationsTestCase):

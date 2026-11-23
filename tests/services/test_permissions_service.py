@@ -9,6 +9,7 @@ from tests.base import ApiDBTestCase
 from zou.app import app, db
 from zou.app.exceptions import PlaylistNotFoundException
 from zou.app.models.entity import Entity
+from zou.app.models.project import ProjectPersonLink
 from zou.app.services import (
     comments_service,
     entities_service,
@@ -559,6 +560,29 @@ class TaskAccessTestCase(PermissionsTestCase):
         self.asset_id = str(asset.id)
         self.other_task_id = str(other_task.id)
         self.other_asset_id = str(elsewhere.id)
+
+    def test_the_task_access_rule_is_read_for_any_person(self):
+        """
+        What the notifications ask for each recipient, outside a request:
+        the team for everyone but an admin, and a task of their own on the
+        entity for a vendor.
+        """
+        task = tasks_service.get_task(self.task_id)
+        artist = self.a_user("artist")
+        vendor = self.join_team(self.a_user("vendor"))
+
+        def can_access(person):
+            return permissions_service.can_access_task(person["id"], task)
+
+        self.assertTrue(can_access(self.user))
+        self.assertFalse(can_access(artist))
+        self.assertTrue(can_access(self.join_team(artist)))
+        self.assertFalse(can_access(vendor))
+
+        tasks_service.assign_task(self.other_task_id, vendor["id"])
+        self.assertFalse(can_access(vendor))
+        tasks_service.assign_task(self.task_id, vendor["id"])
+        self.assertTrue(can_access(vendor))
 
     def test_check_working_on_task(self):
         artist = self.join_team(self.a_user("artist"))
@@ -1438,6 +1462,82 @@ class CommentAccessTestCase(PermissionsTestCase):
         with self.as_role("client"):
             with self.denied():
                 permissions_service.check_comment_access(comment_id)
+
+    def test_the_rule_is_read_for_any_person_outside_a_request(self):
+        """
+        What the notifications ask: may this recipient read the comment,
+        with the role they hold on the production.
+        """
+        manager = self.join_team(self.a_user("manager"))
+        artist = self.join_team(self.a_user("artist"))
+        client = self.join_team(self.a_user("vendor"), role="client")
+        internal = comments_service.get_comment(self.a_comment(manager))
+        from_client = comments_service.get_comment(self.a_comment(client))
+
+        def can_read(person, comment):
+            return permissions_service.can_read_comment(
+                person["id"], comment, self.project_id
+            )
+
+        self.assertTrue(can_read(self.user, from_client))
+        self.assertTrue(can_read(manager, from_client))
+        self.assertTrue(can_read(artist, internal))
+        self.assertFalse(can_read(artist, from_client))
+        self.assertTrue(can_read(client, from_client))
+        self.assertFalse(can_read(client, internal))
+
+    def test_a_reply_is_read_with_its_comment(self):
+        """
+        A client who reads a comment reads every reply to it, the answer
+        of the studio to their own comment first. What a client writes
+        stays hidden from an artist, in a reply as in a comment.
+        """
+        manager = self.join_team(self.a_user("manager"))
+        artist = self.join_team(self.a_user("artist"))
+        client = self.join_team(self.a_user("client"))
+        internal = comments_service.get_comment(self.a_comment(manager))
+        from_client = comments_service.get_comment(self.a_comment(client))
+        for_client = comments_service.get_comment(
+            self.a_comment(manager, for_client=True)
+        )
+
+        def can_read(person, comment, author):
+            return permissions_service.can_read_reply(
+                person["id"], comment, author["id"], self.project_id
+            )
+
+        self.assertTrue(can_read(client, from_client, manager))
+        self.assertTrue(can_read(client, for_client, manager))
+        self.assertFalse(can_read(client, internal, manager))
+        self.assertTrue(can_read(artist, internal, manager))
+        self.assertFalse(can_read(artist, for_client, client))
+
+    def test_an_admin_role_on_the_team_link_reads_as_the_global_role(self):
+        """
+        Invalid data the role checks of a request already read that way:
+        it must not turn a client into someone who reads internal comments.
+        """
+        manager = self.join_team(self.a_user("manager"))
+        client = self.join_team(self.a_user("client"))
+        internal = comments_service.get_comment(self.a_comment(manager))
+        link = ProjectPersonLink.query.filter_by(
+            project_id=self.project_id, person_id=client["id"]
+        ).first()
+        link.role = "admin"
+        db.session.commit()
+        projects_service.clear_project_cache(self.project_id)
+
+        self.assertEqual(
+            permissions_service.get_project_role(
+                client["id"], self.project_id
+            ),
+            "client",
+        )
+        self.assertFalse(
+            permissions_service.can_read_comment(
+                client["id"], internal, self.project_id
+            )
+        )
 
 
 class EntitiesBelongToProjectTestCase(ApiDBTestCase):

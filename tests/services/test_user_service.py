@@ -17,6 +17,7 @@ from zou.app.models.task import Task
 from zou.app.services import (
     comments_service,
     projects_service,
+    subscriptions_service,
     tasks_service,
     user_service,
 )
@@ -80,7 +81,7 @@ class NotificationTestCase(UserContextTestCase):
         projects_service.add_team_member(self.project_id, self.artist["id"])
         tasks_service.assign_task(self.task_id, self.artist["id"])
 
-    def a_comment(self, author=None, text="A note"):
+    def a_comment(self, author=None, text="A note", for_client=False):
         """
         A comment on the task the artist holds, which rings their bell.
         """
@@ -92,6 +93,7 @@ class NotificationTestCase(UserContextTestCase):
             [],
             {},
             None,
+            for_client=for_client,
         )
 
     def bell(self, **kwargs):
@@ -122,6 +124,26 @@ class NotificationTestCase(UserContextTestCase):
         self.a_comment(self.user_client, text="Wrong picture")
 
         self.assertEqual(self.texts(), ["", "Lets go"])
+
+    def test_an_internal_comment_comes_back_without_its_text_to_a_client(
+        self,
+    ):
+        """
+        The same the other way round: a client following the task may not
+        read what the studio did not write for the clients.
+        """
+        client_id = str(self.user_client["id"])
+        projects_service.add_team_member(self.project_id, client_id)
+        subscriptions_service.subscribe_to_task(client_id, self.task_id)
+        self.a_comment(text="Between us")
+        self.a_comment(text="For you", for_client=True)
+
+        with self.as_user(self.user_client):
+            texts = [
+                notification["comment_text"]
+                for notification in user_service.get_last_notifications()
+            ]
+        self.assertEqual(texts, ["For you", ""])
 
     def test_the_bell_holds_one_notification(self):
         self.a_comment(text="Lets go")

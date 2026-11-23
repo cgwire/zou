@@ -15,7 +15,11 @@ from tests.base import ApiDBTestCase
 from zou.app import app, db
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
-from zou.app.services import auth_service, comments_service
+from zou.app.services import (
+    auth_service,
+    comments_service,
+    projects_service,
+)
 from zou.app.utils import auth
 
 
@@ -198,6 +202,11 @@ class NotificationsTestCase(ApiDBTestCase):
             self.generate_fixture_person(
                 first_name="Jane", email="jane.doe@example.com"
             ).id
+        )
+        # Not on the task, but on the production: nobody outside the team
+        # of a production is told of its comments.
+        projects_service.add_team_member(
+            str(self.project.id), self.outsider_id
         )
         self.admin_id = self.user["id"]
 

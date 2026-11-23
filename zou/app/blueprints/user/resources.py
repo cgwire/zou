@@ -26,7 +26,6 @@ from zou.app.services import (
     projects_service,
     search_filters_service,
     shots_service,
-    tasks_service,
     time_spents_service,
     todos_service,
     user_service,
@@ -511,8 +510,7 @@ class TaskSubscribeResource(MethodView):
         """
         Subscribe to task
         """
-        task = tasks_service.get_task(task_id)
-        permissions_service.check_project_access(task["project_id"])
+        permissions_service.check_task_access(task_id)
         return user_service.subscribe_to_task(task_id), 201
 
 
@@ -536,8 +534,7 @@ class TasksSubscribeResource(MethodView):
         """
         body = validation.validate_request_body(SubscribeTasksSchema)
         for task_id in body.task_ids:
-            task = tasks_service.get_task(task_id)
-            permissions_service.check_project_access(task["project_id"])
+            permissions_service.check_task_access(task_id)
         return [
             user_service.subscribe_to_task(task_id)
             for task_id in body.task_ids
