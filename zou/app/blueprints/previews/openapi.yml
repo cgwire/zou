@@ -1187,6 +1187,7 @@ UpdatePreviewTrimResource_put:
       description: You cannot edit the trim of this shot
     404:
       description: The preview file does not exist
+
 UpdatePreviewPositionResource_put:
   summary: Change the position of a preview
   description: Change the position of a preview in its revision. A revision
