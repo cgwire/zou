@@ -75,7 +75,7 @@ def get_client_team_person_ids():
     """
     return {
         str(person.id)
-        for project in related_projects_raw()
+        for project in related_projects_raw(with_team=True)
         for person in project.team
     }
 
@@ -86,7 +86,7 @@ def get_persons_for_client():
     """
     persons = {
         str(person.id): person.present_client()
-        for project in related_projects_raw()
+        for project in related_projects_raw(with_team=True)
         for person in project.team
     }
     return sorted(persons.values(), key=lambda person: person["full_name"])
@@ -101,13 +101,14 @@ def related_projects():
     return Project.serialize_list(projects)
 
 
-def related_projects_raw():
+def related_projects_raw(with_team=False):
     """
     Return all projects related to current user: open projects of which the user
-    is part of the team as models.
+    is part of the team as models. With with_team, their teams are loaded in
+    one query, not one per project when they are read.
     """
     current_user = persons_service.get_current_user()
-    projects = (
+    query = (
         Project.query.join(
             ProjectStatus, Project.project_status_id == ProjectStatus.id
         )
@@ -115,9 +116,10 @@ def related_projects_raw():
         .filter(ProjectPersonLink.person_id == current_user["id"])
         .filter(projects_service.build_open_project_filter())
         .distinct()
-        .all()
     )
-    return projects
+    if with_team:
+        query = query.options(selectinload(Project.team))
+    return query.all()
 
 
 def get_tasks_for_entity(entity_id):

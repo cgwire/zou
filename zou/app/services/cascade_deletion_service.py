@@ -297,7 +297,9 @@ def remove_person(person_id, force=True):
         LoginLog.delete_all_by(person_id=person_id)
         Subscription.delete_all_by(person_id=person_id)
         TimeSpent.delete_all_by(person_id=person_id)
-        for project in Project.query.filter(Project.team.contains(person)):
+        for project in Project.query.options(
+            selectinload(Project.team)
+        ).filter(Project.team.contains(person)):
             project.team = [
                 member
                 for member in project.team
