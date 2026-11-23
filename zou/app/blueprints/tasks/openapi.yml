@@ -48,8 +48,8 @@ AddExtraPreviewResource_delete:
     400:
       description: An identifier is not valid
     403:
-      description: You cannot do actions on this task, or you use force and
-        you are not a manager
+      description: You cannot do actions on this task, you cannot read the
+        comment, or you use force and you are not a manager
     404:
       description: The task, the comment or the preview does not exist, or
         they are not linked
@@ -64,8 +64,9 @@ AddExtraPreviewResource_post:
     revision. The route creates the metadata only. Upload the file after, with
     the preview file upload route. Administrators and the managers of the
     project can use this route. Other users must be assignees of the task,
-    supervisors of its department, or creators of its entity. A client of the
-    project cannot use this route.
+    supervisors of its department, or creators of its entity. You must also
+    be able to read the comment. A client of the project cannot use this
+    route.
   parameters:
     - in: path
       name: task_id
@@ -121,7 +122,8 @@ AddExtraPreviewResource_post:
     400:
       description: The project allows one preview per revision
     403:
-      description: You cannot do actions on this task
+      description: You cannot do actions on this task, or you cannot read the
+        comment
     404:
       description: The task, the comment or the preview file does not exist,
         or they are not linked
@@ -135,7 +137,8 @@ AddPreviewResource_post:
     the revision, the route uses the last revision plus 1. Administrators and
     the managers of the project can use this route. Other users must be
     assignees of the task, supervisors of its department, or creators of its
-    entity. A client of the project cannot use this route.
+    entity. You must also be able to read the comment. A client of the
+    project cannot use this route.
   parameters:
     - in: path
       name: task_id
@@ -199,7 +202,8 @@ AddPreviewResource_post:
       description: The body is not valid, the revision already exists on this
         task, or the project allows one preview per revision
     403:
-      description: You cannot do actions on this task
+      description: You cannot do actions on this task, or you cannot read the
+        comment
     404:
       description: The task or the comment does not exist, or the comment is
         on another task

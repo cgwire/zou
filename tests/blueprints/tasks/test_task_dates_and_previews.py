@@ -480,12 +480,12 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertEqual(result, [shot_task_id])
         self.get_404(f"/data/tasks/{shot_task_id}")
 
-    def generate_comment_with_preview(self, task):
+    def generate_comment_with_preview(self, task, person=None):
         """
-        Post a comment on given task with a preview attached to it, as a
-        revision publish does. Return both as dicts.
+        Post a comment on given task, by given person if any, with a preview
+        attached to it, as a revision publish does. Return both as dicts.
         """
-        comment = self.generate_fixture_comment(task_id=task.id)
+        comment = self.generate_fixture_comment(person=person, task_id=task.id)
         preview_file = comments_service.add_preview_file_to_comment(
             comment["id"], comment["person_id"], str(task.id)
         )
@@ -741,6 +741,27 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             [preview_file["id"], extra_preview_file["id"]],
         )
 
+    def test_add_extra_preview_to_a_client_comment_as_an_assigned_artist(self):
+        # What a client writes stays hidden from an artist, who adds no
+        # preview to it either.
+        self.generate_fixture_user_client()
+        comment, preview_file = self.generate_comment_with_preview(
+            self.task, person=self.user_client
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        self.add_extra_comment_preview(
+            self.task.id, comment["id"], preview_file["id"], 403
+        )
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+        self.assertEqual(
+            self.get_task_preview_ids(self.task), [preview_file["id"]]
+        )
+
     def test_add_extra_preview_to_a_comment_of_another_task(self):
         # The new preview goes to the task of the path: a comment of another
         # task would hold a preview that is not on its task.
@@ -828,6 +849,44 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
 
         self.assertEqual(
             self.get_comment_preview_ids(comment_id), [preview_file_id]
+        )
+
+    def test_add_preview_to_comment_as_an_assigned_artist(self):
+        # An assignee publishes a revision on their own comment.
+        self.generate_fixture_user_cg_artist()
+        comment = self.generate_fixture_comment(
+            person=self.user_cg_artist, task_id=self.task.id
+        )
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        preview_file = self.add_comment_preview(self.task.id, comment["id"])
+
+        self.assertEqual(preview_file["task_id"], str(self.task.id))
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
+        )
+
+    def test_add_preview_to_a_client_comment_as_an_assigned_artist(self):
+        # What a client writes stays hidden from an artist, who adds no
+        # revision to it either. A manager reads it, and adds one.
+        self.generate_fixture_user_client()
+        comment = self.generate_fixture_comment(
+            person=self.user_client, task_id=self.task.id
+        )
+        self.generate_fixture_user_cg_artist()
+        self.log_in_member(self.user_cg_artist, assigned=True)
+
+        self.add_comment_preview(self.task.id, comment["id"], 403)
+
+        self.assertEqual(self.get_comment_preview_ids(comment["id"]), [])
+        self.assertEqual(self.get_task_preview_ids(self.task), [])
+
+        self.generate_fixture_user_manager()
+        self.log_in_member(self.user_manager)
+        preview_file = self.add_comment_preview(self.task.id, comment["id"])
+
+        self.assertEqual(
+            self.get_comment_preview_ids(comment["id"]), [preview_file["id"]]
         )
 
     def test_add_preview_to_a_comment_moved_to_another_task(self):

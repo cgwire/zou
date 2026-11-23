@@ -69,7 +69,10 @@ class AddPreviewResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(CommentPreviewSchema)
 
         permissions_service.check_task_work_access(task_id)
-        comments_service.get_task_comment(task_id, comment_id)
+        comment = comments_service.get_task_comment(task_id, comment_id)
+        # What a client writes stays hidden from an artist and from a vendor,
+        # who add no revision to it either.
+        permissions_service.check_comment_access(comment_id, comment=comment)
 
         person = persons_service.get_current_user()
         preview_file = comments_service.add_preview_file_to_comment(
@@ -90,6 +93,9 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         related_preview_file = comments_service.get_comment_preview_file(
             task_id, comment_id, preview_file_id
         )
+        # What a client writes stays hidden from an artist and from a vendor,
+        # who add no preview to it either.
+        permissions_service.check_comment_access(comment_id)
 
         person = persons_service.get_current_user()
         preview_file = comments_service.add_preview_file_to_comment(
