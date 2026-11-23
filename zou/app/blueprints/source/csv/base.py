@@ -12,9 +12,14 @@ from zou.app import app
 from zou.app.blueprints.crud.base import build_db_error_message
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    entities_service,
+    entity_types_service,
     metadata_descriptors_service,
     permissions_service,
     persons_service,
+    projects_service,
+    shots_service,
+    tasks_service,
 )
 from zou.app.utils import permissions, string
 
@@ -237,6 +242,36 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         project.
         """
         return permissions_service.check_manager_project_access(project_id)
+
+    def get_or_create_episode(self, project_id, name):
+        """
+        Return the episode of given name. When the production does not have
+        it yet, create it with a task for each Episode task type of the
+        project, as Kitsu and the episodes import do.
+        """
+        is_missing = (
+            entities_service.find_entity_raw(
+                name=name,
+                project_id=project_id,
+                entity_type_id=entity_types_service.get_episode_type()["id"],
+            )
+            is None
+        )
+        episode = shots_service.create_episode(
+            project_id, name, created_by=self.current_user_id
+        )
+        if is_missing:
+            # Serialized first: create_tasks commits, which expires the
+            # model instances.
+            task_types = [
+                task_type.serialize()
+                for task_type in projects_service.get_project_task_types_raw(
+                    project_id, "Episode"
+                )
+            ]
+            for task_type in task_types:
+                tasks_service.create_tasks(task_type, [episode])
+        return episode
 
     def get_descriptor_field_map(self, project_id, entity_type):
         descriptor_map = {}

@@ -163,11 +163,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if self.is_tv_show:
             episode_key = f"{project_id}-{episode_name}"
             if episode_key not in self.episodes:
-                self.episodes[episode_key] = shots_service.create_episode(
-                    project_id,
-                    episode_name,
-                    "running",
-                    created_by=self.current_user_id,
+                self.episodes[episode_key] = self.get_or_create_episode(
+                    project_id, episode_name
                 )
 
             sequence_key = f"{project_id}-{episode_name}-{sequence_name}"

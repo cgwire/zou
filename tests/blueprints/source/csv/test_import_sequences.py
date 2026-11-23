@@ -238,3 +238,28 @@ class ImportCsvSequencesTestCase(ApiDBTestCase):
             sorted(str(person.id) for person in Task.query.one().assignees),
             sorted([str(self.person.id), self.user["id"]]),
         )
+
+    def test_a_missing_episode_gets_its_tasks(self):
+        """
+        As an episode created in Kitsu or by the episodes import does.
+        """
+        self.project.update({"production_type": "tvshow"})
+        task_type = TaskType.create(
+            name="Script",
+            short_name="sc",
+            color="#FFFFFF",
+            for_entity="Episode",
+        )
+        projects_service.add_task_type_setting(self.project.id, task_type.id)
+        self.upload_file(
+            self.path, self.write_csv("Episode,Name\nE01,SQ01\nE01,SQ02\n")
+        )
+
+        (episode,) = self.get_episodes()
+        self.assertEqual(
+            [
+                (str(task.entity_id), task.task_type_id)
+                for task in Task.query.all()
+            ],
+            [(episode["id"], task_type.id)],
+        )
