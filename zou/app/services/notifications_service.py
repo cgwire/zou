@@ -79,6 +79,21 @@ def get_notification_recipients(task, replies=None):
     return recipients
 
 
+def _with_task_access(person_ids, task):
+    """
+    Keep the people who can reach given task: whatever made them a
+    recipient, nobody is told of a comment on a task the API refuses them.
+    """
+    kept = []
+    for person_id in person_ids:
+        try:
+            if permissions_service.can_access_task(person_id, task):
+                kept.append(person_id)
+        except PersonNotFoundException:
+            pass
+    return kept
+
+
 def create_notifications_for_task_and_comment(task, comment, change=False):
     """
     For given task and comment, create a notification for every assignee
@@ -89,6 +104,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
         recipient_ids.remove(comment["person_id"])
     author_id = comment["person_id"]
     task = tasks_service.get_task(comment["object_id"])
+    recipient_ids = _with_task_access(recipient_ids, task)
 
     for recipient_id in recipient_ids:
         try:
@@ -112,7 +128,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
             pass
 
     mentions = get_mentioned_people(task["project_id"], comment)
-    for recipient_id in mentions:
+    for recipient_id in _with_task_access(mentions, task):
         if recipient_id != comment["person_id"]:
             notification = create_notification(
                 recipient_id,
@@ -161,6 +177,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
     if author_id != comment["person_id"]:
         recipient_ids.add(comment["person_id"])
     task = tasks_service.get_task(comment["object_id"])
+    recipient_ids = _with_task_access(recipient_ids, task)
     for recipient_id in recipient_ids:
         try:
             notification = create_notification(
@@ -184,7 +201,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
             pass
 
     mentions = get_mentioned_people(task["project_id"], reply)
-    for recipient_id in mentions:
+    for recipient_id in _with_task_access(mentions, task):
         if recipient_id != reply["person_id"]:
             notification = create_notification(
                 recipient_id,
@@ -242,8 +259,8 @@ def reset_notifications_for_mentions(comment, editor_id, previous_mentions):
         )
     }
     notifications = []
-    for recipient_id in (
-        mentions - named_before - notified_ids - {str(editor_id)}
+    for recipient_id in _with_task_access(
+        mentions - named_before - notified_ids - {str(editor_id)}, task
     ):
         notification = create_notification(
             recipient_id,

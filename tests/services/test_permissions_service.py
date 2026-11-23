@@ -561,6 +561,29 @@ class TaskAccessTestCase(PermissionsTestCase):
         self.other_task_id = str(other_task.id)
         self.other_asset_id = str(elsewhere.id)
 
+    def test_the_task_access_rule_is_read_for_any_person(self):
+        """
+        What the notifications ask for each recipient, outside a request:
+        the team for everyone but an admin, and a task of their own on the
+        entity for a vendor.
+        """
+        task = tasks_service.get_task(self.task_id)
+        artist = self.a_user("artist")
+        vendor = self.join_team(self.a_user("vendor"))
+
+        def can_access(person):
+            return permissions_service.can_access_task(person["id"], task)
+
+        self.assertTrue(can_access(self.user))
+        self.assertFalse(can_access(artist))
+        self.assertTrue(can_access(self.join_team(artist)))
+        self.assertFalse(can_access(vendor))
+
+        tasks_service.assign_task(self.other_task_id, vendor["id"])
+        self.assertFalse(can_access(vendor))
+        tasks_service.assign_task(self.task_id, vendor["id"])
+        self.assertTrue(can_access(vendor))
+
     def test_check_working_on_task(self):
         artist = self.join_team(self.a_user("artist"))
 

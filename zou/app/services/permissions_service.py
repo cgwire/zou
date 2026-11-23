@@ -30,7 +30,7 @@ from zou.app.models.comment import (
     mentions_table,
 )
 from zou.app.models.entity import AssetInstanceLink, EntityLink
-from zou.app.models.person import DepartmentLink
+from zou.app.models.person import DepartmentLink, Person
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.task import Task
 from zou.app.services import (
@@ -399,6 +399,28 @@ def check_task_access(task_id):
     check_project_access(task["project_id"])
     check_entity_access(task["entity_id"])
     return True
+
+
+def can_access_task(person_id, task):
+    """
+    Return true if given person can reach given task: the rule of
+    check_task_access for any person, not only the current user. An admin
+    reaches every task, anyone else has to be in the team of the project,
+    and a vendor needs a task of their own on the entity.
+    """
+    if persons_service.get_person(person_id)["role"] == "admin":
+        return True
+    project_id = str(task["project_id"])
+    if str(person_id) not in projects_service.get_team_person_ids(project_id):
+        return False
+    if get_project_role(person_id, project_id) != "vendor":
+        return True
+    return (
+        Task.query.filter(Task.entity_id == task["entity_id"])
+        .filter(Task.assignees.any(Person.id == person_id))
+        .count()
+        > 0
+    )
 
 
 def check_task_action_access(task_id):

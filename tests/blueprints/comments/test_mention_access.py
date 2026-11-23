@@ -196,8 +196,11 @@ class MentionAccessTestCase(ApiDBTestCase):
 
     def log_in_manager_of_the_production(self):
         self.generate_fixture_user_manager()
-        self.project.team.append(Person.get(self.user_manager["id"]))
-        self.project.save()
+        # Through the service: it drops the cached team of the project,
+        # which posting the comment has just filled.
+        projects_service.add_team_member(
+            str(self.project.id), self.user_manager["id"]
+        )
         self.log_in_manager()
 
     def mention_rows(self, comment):

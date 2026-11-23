@@ -9,6 +9,7 @@ from zou.app.services import (
     notifications_service,
     projects_service,
     subscriptions_service,
+    tasks_service,
 )
 
 
@@ -592,6 +593,63 @@ class CommentVisibilityTestCase(NotificationsTestCase):
         )
         self.assertEqual(mailed, [self.admin_id])
         self.assertIn(("reply", self.assignee_id), self.kinds())
+
+
+class RecipientAccessTestCase(NotificationsTestCase):
+    """
+    Whatever made someone a recipient, nobody is told of a comment on a
+    task the API refuses them.
+    """
+
+    def leave_team(self, person_id):
+        projects_service.remove_team_member(str(self.project.id), person_id)
+
+    def notified(self, comment=None):
+        return sorted(
+            notifications_service.create_notifications_for_task_and_comment(
+                self.task_dict, comment or self.comment
+            )
+        )
+
+    def test_a_subscriber_who_left_the_team_is_not_notified(self):
+        subscriptions_service.subscribe_to_task(
+            self.outsider_id, str(self.task.id)
+        )
+        self.assertEqual(
+            self.notified(), sorted([self.assignee_id, self.outsider_id])
+        )
+
+        self.leave_team(self.outsider_id)
+        self.assertEqual(self.notified(), [self.assignee_id])
+
+    def test_a_vendor_hears_only_of_the_entities_they_work_on(self):
+        vendor_id = str(self.generate_fixture_user_vendor()["id"])
+        projects_service.add_team_member(str(self.project.id), vendor_id)
+        subscriptions_service.subscribe_to_task(vendor_id, str(self.task.id))
+        self.assertEqual(self.notified(), [self.assignee_id])
+
+        tasks_service.assign_task(self.task.id, vendor_id)
+        self.assertEqual(
+            self.notified(), sorted([self.assignee_id, vendor_id])
+        )
+
+    def test_a_mentioned_person_who_left_the_team_is_not_notified(self):
+        self.comment["mentions"] = [self.outsider_id]
+        self.leave_team(self.outsider_id)
+        self.notified()
+        self.assertEqual(self.kinds(), [("comment", self.assignee_id)])
+
+    def test_the_author_of_a_comment_who_left_the_team_hears_of_no_reply(
+        self,
+    ):
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.outsider_id, "a note"
+        )
+        self.leave_team(self.outsider_id)
+        comments_service.reply_comment(
+            comment["id"], "a reply", person_id=self.assignee_id
+        )
+        self.assertEqual(self.kinds(), [])
 
 
 class AssignationNotificationTestCase(NotificationsTestCase):
