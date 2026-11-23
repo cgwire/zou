@@ -181,6 +181,32 @@ class FidoRoutesTestCase(ApiDBTestCase):
         self.assertFalse(person.fido_enabled)
         self.assertEqual(person.fido_credentials, [])
 
+    def test_unregister_a_removed_device_keeps_the_recovery_code(self):
+        # A key removed from another tab is refused before the 2FA code,
+        # which a recovery code would spend for nothing.
+        codes = self._register_device()["otp_recovery_codes"]
+        self._register_device("second-key", recovery_code=codes[0])
+
+        def unregister(device_name, recovery_code):
+            return self.app.delete(
+                "auth/fido",
+                data=json.dumps(
+                    {
+                        "device_name": device_name,
+                        "recovery_code": recovery_code,
+                    }
+                ),
+                headers=self.post_headers,
+            )
+
+        self.assertEqual(unregister("second-key", codes[1]).status_code, 200)
+        refused = unregister("second-key", codes[2])
+        self.assertEqual(refused.status_code, 400)
+        self.assertEqual(
+            json.loads(refused.data)["message"], "FIDO device not found."
+        )
+        self.assertEqual(unregister("security-key", codes[2]).status_code, 200)
+
     def test_unregister_device_wrong_otp(self):
         self._register_device()
         response = self.app.delete(
