@@ -576,3 +576,29 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             "The Episode cell must be empty outside a TV show",
         )
         self.assertEqual(Entity.query.all(), [])
+
+    def test_a_missing_episode_gets_its_tasks(self):
+        self.project.update({"production_type": "tvshow"})
+        task_type = TaskType.create(
+            name="Script",
+            short_name="sc",
+            color="#FFFFFF",
+            for_entity="Episode",
+        )
+        projects_service.add_task_type_setting(self.project.id, task_type.id)
+        path = f"/import/csv/projects/{self.project.id}/assets"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_empty_episode.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        (episode,) = shots_service.get_episodes(
+            {"project_id": self.project.id}
+        )
+        self.assertEqual(
+            [
+                (str(task.entity_id), task.task_type_id)
+                for task in Task.query.all()
+            ],
+            [(episode["id"], task_type.id)],
+        )

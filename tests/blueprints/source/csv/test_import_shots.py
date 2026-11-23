@@ -8,6 +8,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.services import index_service, projects_service, shots_service
 
 
@@ -391,3 +392,35 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
             [str(self.person.id)],
         )
         self.assertEqual(Comment.query.all(), [])
+
+    def test_only_a_missing_episode_gets_its_tasks(self):
+        """
+        E01 exists before the import: it keeps the tasks it has, none here,
+        so a task removed on purpose does not come back.
+        """
+        self.project.update({"production_type": "tvshow"})
+        task_type = TaskType.create(
+            name="Script",
+            short_name="sc",
+            color="#FFFFFF",
+            for_entity="Episode",
+        )
+        projects_service.add_task_type_setting(self.project.id, task_type.id)
+        shots_service.create_episode(self.project.id, "E01")
+        path = f"/import/csv/projects/{self.project.id}/shots"
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+
+        episode_ids = {
+            episode["name"]: episode["id"]
+            for episode in shots_service.get_episodes()
+        }
+        self.assertEqual(
+            [
+                (str(task.entity_id), task.task_type_id)
+                for task in Task.query.all()
+            ],
+            [(episode_ids["E02"], task_type.id)],
+        )
