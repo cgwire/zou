@@ -312,6 +312,10 @@ class FIDONotEnabledException(Exception):
     pass
 
 
+class FIDODeviceNotFoundException(Exception):
+    pass
+
+
 class EmailOTPAlreadyEnabledException(Exception):
     pass
 

@@ -33,6 +33,7 @@ from zou.app.blueprints.auth.schemas import (
 from zou.app.exceptions import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
+    FIDODeviceNotFoundException,
     FIDONoPreregistrationException,
     FIDONotEnabledException,
     FIDOServerException,
@@ -758,9 +759,9 @@ class TOTPResource(MethodView, ArgsMixin):
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            if not auth_service.person_two_factor_authentication_enabled(
-                person
-            ):
+            # Checked before the 2FA code: checking it uses up a recovery
+            # code or an email code.
+            if not person["totp_enabled"]:
                 raise TOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
@@ -887,9 +888,9 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            if not auth_service.person_two_factor_authentication_enabled(
-                person
-            ):
+            # Checked before the 2FA code: checking it uses up a recovery
+            # code or an email code.
+            if not person["email_otp_enabled"]:
                 raise EmailOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
@@ -1019,6 +1020,10 @@ class FIDOResource(MethodView, ArgsMixin):
             person = persons_service.get_current_user(unsafe=True)
             if not person["fido_enabled"]:
                 raise FIDONotEnabledException
+            # Checked before the 2FA code: checking it uses up a recovery
+            # code or an email code, for nothing on a key already removed.
+            if body.device_name not in person["fido_devices"]:
+                raise FIDODeviceNotFoundException
             if not auth_service.check_two_factor_authentication(
                 person,
                 body.totp,
@@ -1041,6 +1046,11 @@ class FIDOResource(MethodView, ArgsMixin):
         except FIDONotEnabledException:
             return (
                 {"error": True, "message": "FIDO not enabled."},
+                400,
+            )
+        except FIDODeviceNotFoundException:
+            return (
+                {"error": True, "message": "FIDO device not found."},
                 400,
             )
 
