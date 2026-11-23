@@ -1089,6 +1089,52 @@ class EmailOTPTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_disable_email_otp_turned_off_elsewhere_keeps_the_recovery_code(
+        self,
+    ):
+        """
+        DELETE /auth/email-otp refuses an email OTP that another tab turned
+        off before it checks the 2FA code: a recovery code sent with it
+        stays valid.
+        """
+        _, headers = self.login()
+        response = self.app.put("auth/totp", headers=headers)
+        otp_secret = json.loads(response.data)["otp_secret"]
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": pyotp.TOTP(otp_secret).now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        codes = json.loads(response.data)["otp_recovery_codes"]
+        self.app.put("auth/email-otp", headers=headers)
+        person = self.get_person().serialize()
+        count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
+        email_otp = pyotp.HOTP(person["email_otp_secret"]).at(int(count))
+        response = self.app.post(
+            "auth/email-otp",
+            data=json.dumps(
+                {"email_otp": email_otp, "recovery_code": codes[0]}
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        def disable(path, recovery_code):
+            return self.app.delete(
+                path,
+                data=json.dumps({"recovery_code": recovery_code}),
+                headers=headers,
+            )
+
+        self.assertEqual(disable("auth/email-otp", codes[1]).status_code, 200)
+        refused = disable("auth/email-otp", codes[2])
+        self.assertEqual(refused.status_code, 400)
+        self.assertEqual(
+            json.loads(refused.data)["message"], "OTP by email not enabled."
+        )
+        self.assertEqual(disable("auth/totp", codes[2]).status_code, 200)
+
     def test_disable_email_otp_wrong_code(self):
         """
         DELETE /auth/email-otp returns 400 with wrong code.
@@ -1381,6 +1427,51 @@ class TOTPTestCase(ApiDBTestCase):
         """
         _, headers = self.login()
         self.call_2fa("delete", "auth/totp", headers, "123456", status=400)
+
+    def test_disable_totp_turned_off_elsewhere_keeps_the_recovery_code(self):
+        """
+        DELETE /auth/totp refuses a TOTP that another tab turned off before
+        it checks the 2FA code: a recovery code sent with it stays valid.
+        """
+        _, headers = self.login()
+        self.call_2fa("put", "auth/email-otp", headers)
+        person = self.get_person().serialize()
+        count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
+        email_otp = pyotp.HOTP(person["email_otp_secret"]).at(int(count))
+        response = self.app.post(
+            "auth/email-otp",
+            data=json.dumps({"email_otp": email_otp}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        codes = json.loads(response.data)["otp_recovery_codes"]
+        otp_secret = self.call_2fa("put", "auth/totp", headers)["otp_secret"]
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps(
+                {
+                    "totp": pyotp.TOTP(otp_secret).now(),
+                    "recovery_code": codes[0],
+                }
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        def disable(path, recovery_code):
+            return self.app.delete(
+                path,
+                data=json.dumps({"recovery_code": recovery_code}),
+                headers=headers,
+            )
+
+        self.assertEqual(disable("auth/totp", codes[1]).status_code, 200)
+        refused = disable("auth/totp", codes[2])
+        self.assertEqual(refused.status_code, 400)
+        self.assertEqual(
+            json.loads(refused.data)["message"], "TOTP not enabled."
+        )
+        self.assertEqual(disable("auth/email-otp", codes[2]).status_code, 200)
 
     def test_disable_totp_wrong_code(self):
         """

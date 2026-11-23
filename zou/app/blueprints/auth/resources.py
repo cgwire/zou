@@ -758,9 +758,9 @@ class TOTPResource(MethodView, ArgsMixin):
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            if not auth_service.person_two_factor_authentication_enabled(
-                person
-            ):
+            # Checked before the 2FA code: checking it uses up a recovery
+            # code or an email code.
+            if not person["totp_enabled"]:
                 raise TOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
@@ -887,9 +887,9 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            if not auth_service.person_two_factor_authentication_enabled(
-                person
-            ):
+            # Checked before the 2FA code: checking it uses up a recovery
+            # code or an email code.
+            if not person["email_otp_enabled"]:
                 raise EmailOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
