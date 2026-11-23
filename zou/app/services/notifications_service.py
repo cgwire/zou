@@ -7,6 +7,7 @@ from zou.app.models.project import ProjectPersonLink
 from zou.app.models.task import Task
 from zou.app.services import (
     emails_service,
+    permissions_service,
     persons_service,
     projects_service,
     subscriptions_service,
@@ -100,9 +101,12 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
                 change=change,
                 type="comment",
             )
-            emails_service.send_comment_notification(
-                recipient_id, author_id, comment, task
-            )
+            if permissions_service.can_read_comment(
+                recipient_id, comment, task["project_id"]
+            ):
+                emails_service.send_comment_notification(
+                    recipient_id, author_id, comment, task
+                )
             _emit_notification(notification, recipient_id, task["project_id"])
         except PersonNotFoundException:
             pass
@@ -117,9 +121,12 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
                 task_id=comment["object_id"],
                 type="mention",
             )
-            emails_service.send_mention_notification(
-                recipient_id, author_id, comment, task
-            )
+            if permissions_service.can_read_comment(
+                recipient_id, comment, task["project_id"]
+            ):
+                emails_service.send_mention_notification(
+                    recipient_id, author_id, comment, task
+                )
             _emit_notification(notification, recipient_id, task["project_id"])
 
     return recipient_ids
@@ -166,9 +173,12 @@ def create_notifications_for_task_and_reply(task, comment, reply):
                 type="reply",
                 created_at=reply["created_at"],
             )
-            emails_service.send_reply_notification(
-                recipient_id, author_id, comment, task, reply
-            )
+            if permissions_service.can_read_reply(
+                recipient_id, comment, author_id, task["project_id"]
+            ):
+                emails_service.send_reply_notification(
+                    recipient_id, author_id, comment, task, reply
+                )
             _emit_notification(notification, recipient_id, task["project_id"])
         except PersonNotFoundException:
             pass
@@ -185,9 +195,12 @@ def create_notifications_for_task_and_reply(task, comment, reply):
                 read=False,
                 type="reply-mention",
             )
-            emails_service.send_mention_notification(
-                recipient_id, author_id, comment, task
-            )
+            if permissions_service.can_read_reply(
+                recipient_id, comment, author_id, task["project_id"]
+            ):
+                emails_service.send_mention_notification(
+                    recipient_id, author_id, comment, task
+                )
             _emit_notification(notification, recipient_id, task["project_id"])
 
     return recipient_ids
@@ -239,9 +252,12 @@ def reset_notifications_for_mentions(comment, editor_id, previous_mentions):
             task_id=comment["object_id"],
             type="mention",
         )
-        emails_service.send_mention_notification(
-            recipient_id, author_id, comment, task
-        )
+        if permissions_service.can_read_comment(
+            recipient_id, comment, task["project_id"]
+        ):
+            emails_service.send_mention_notification(
+                recipient_id, author_id, comment, task
+            )
         notifications.append(notification)
         _emit_notification(notification, recipient_id, task["project_id"])
     return notifications
