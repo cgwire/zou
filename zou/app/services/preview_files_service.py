@@ -172,6 +172,38 @@ def update_preview_file(preview_file_id, data, silent=False):
     return update_preview_file_raw(preview_file, data, silent=silent)
 
 
+TRIM_KEYS = ("handle_in", "handle_out")
+
+
+def get_preview_file_trim(data):
+    """
+    The in/out handles stored in the data of a preview file, None when unset.
+    """
+    data = data if isinstance(data, dict) else {}
+    return {key: data.get(key) for key in TRIM_KEYS}
+
+
+def update_preview_file_trim(preview_file_id, trim):
+    """
+    Set the in/out handles of given preview file, a None value clears the
+    handle. The extra previews of a revision carry their own trim there: the
+    trim of the main preview stays on the shot, like before.
+
+    The other keys of the data are kept, like the other writers of this
+    column do (the stored movie prefixes).
+    """
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    data = files_service.get_preview_file_data(preview_file)
+    if trim:
+        data = {
+            key: value
+            for key, value in {**data, **trim}.items()
+            if key not in trim or value is not None
+        }
+        update_preview_file_raw(preview_file, {"data": data})
+    return {"id": str(preview_file.id), **get_preview_file_trim(data)}
+
+
 def update_preview_file_raw(preview_file, data, silent=False):
     """
     Same as update_preview_file, on an active record already loaded.

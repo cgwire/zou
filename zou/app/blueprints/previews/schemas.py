@@ -43,3 +43,13 @@ class AnnotationsUpdateSchema(BaseSchema):
     additions: list = Field(default_factory=list)
     updates: list = Field(default_factory=list)
     deletions: list = Field(default_factory=list)
+
+
+class PreviewFileTrimSchema(BaseSchema):
+    """
+    Body for setting the in/out handles of a preview file. Only the sent
+    keys change, null clears a handle.
+    """
+
+    handle_in: Optional[int] = Field(None, ge=0)
+    handle_out: Optional[int] = Field(None, ge=0)
