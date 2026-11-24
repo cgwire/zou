@@ -165,6 +165,7 @@ class PersonTestCase(PersonFixtureTestCase):
     def test_create_too_much_person(self):
         from zou.app import config
 
+        self.addCleanup(setattr, config, "USER_LIMIT", config.USER_LIMIT)
         config.USER_LIMIT = 4
         data = {
             "first_name": "John3",
@@ -173,24 +174,21 @@ class PersonTestCase(PersonFixtureTestCase):
         }
         resp = self.post("data/persons", data, 400)
         self.assertEqual(resp["data"]["limit"], 4)
-        config.USER_LIMIT = 100
 
     def test_create_person_non_admin_at_user_limit(self):
         from zou.app import config
 
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
+        self.addCleanup(setattr, config, "USER_LIMIT", config.USER_LIMIT)
         config.USER_LIMIT = 1
-        try:
-            data = {
-                "first_name": "John3",
-                "last_name": "Doe",
-                "email": "john3.doe@example.com",
-            }
-            resp = self.post("data/persons", data, 403)
-            self.assertNotIn("data", resp)
-        finally:
-            config.USER_LIMIT = 100
+        data = {
+            "first_name": "John3",
+            "last_name": "Doe",
+            "email": "john3.doe@example.com",
+        }
+        resp = self.post("data/persons", data, 403)
+        self.assertNotIn("data", resp)
 
     def test_create_person_with_no_data(self):
         data = {}
@@ -484,6 +482,7 @@ class PersonTestCase(PersonFixtureTestCase):
     def test_set_active_when_too_much_person(self):
         from zou.app import config
 
+        self.addCleanup(setattr, config, "USER_LIMIT", config.USER_LIMIT)
         config.USER_LIMIT = 3
         persons = self.get("data/persons")
         person = [

@@ -127,6 +127,10 @@ class ApiTestCase(unittest.TestCase):
         app_context = app.app_context()
         app_context.push()
         self.addCleanup(app_context.pop)
+        # Building the app writes the config entries to their store, where
+        # they take precedence over zou.app.config: flush it now too, so that
+        # the first test of a process starts like the others.
+        config_store.config_store.flushall()
         # The fakeredis stores are module-level: without a flush, revoked
         # tokens and config entries leak from one test to the next.
         self.addCleanup(auth_tokens_store.revoked_tokens_store.flushall)
