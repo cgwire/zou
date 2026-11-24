@@ -2,6 +2,7 @@ from zou.app.blueprints.source.csv.base import (
     BaseCsvImportResource,
     RowException,
 )
+from zou.app.exceptions import IsUserLimitReachedException
 from zou.app.models.person import (
     CONTRACT_TYPES,
     POSITION_TYPES,
@@ -9,7 +10,7 @@ from zou.app.models.person import (
     SENIORITY_TYPES,
     normalize_country,
 )
-from zou.app.services import persons_service
+from zou.app.services import organisation_service, persons_service
 from zou.app.utils import auth, permissions
 from zou.app.utils.openapi import load_specs, swag_from
 from zou.app.utils.string import strtobool
@@ -112,9 +113,13 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         if departments_value:
             department_ids = self.resolve_departments(departments_value)
 
-        return persons_service.import_person(
-            email, data, department_ids, update=self.is_update
-        )
+        try:
+            return persons_service.import_person(
+                email, data, department_ids, update=self.is_update
+            )
+        except IsUserLimitReachedException:
+            limit = organisation_service.get_user_limit()
+            raise RowException(f"User limit reached (limit {limit}).")
 
     def map_choice(self, label, value, choice_map):
         """

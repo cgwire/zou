@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from zou.app import config, db, file_store
 from zou.app.exceptions import (
+    IsUserLimitReachedException,
     PersonInProtectedAccounts,
     PersonNotFoundException,
     SSOIdentityMismatchException,
@@ -288,13 +289,23 @@ def import_person(email, data, department_ids=None, update=False):
     """
     Create the person of given email from the columns of an import file,
     or update it when update is set and it exists. Departments are set
-    when given. Return the safe serialization of the person.
+    when given. Return the safe serialization of the person. Raise
+    IsUserLimitReachedException when the row would add an active user
+    once the user limit is reached.
     """
     person = Person.get_by(email=email, is_bot=False)
     created = person is None
     if created:
+        if data.get("active", True) and is_user_limit_reached():
+            raise IsUserLimitReachedException()
         person = Person.create(email=email, password=None, **data)
     elif update:
+        if (
+            not person.active
+            and data.get("active", False)
+            and is_user_limit_reached()
+        ):
+            raise IsUserLimitReachedException()
         person.update(data)
     if created or update:
         if department_ids is not None:

@@ -6,6 +6,7 @@ from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.person import Person
 from zou.app.models.studio import Studio
+from zou.app.services import persons_service
 
 
 class ImportCsvPersonsTestCase(ApiDBTestCase):
@@ -245,15 +246,111 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         self.assertIsNotNone(Person.get_by(email="valid.user@example.com"))
         self.assertIsNone(Person.get_by(email="broken.user@example.com"))
 
-    def _csv(self, **overrides):
-        values = {column: "" for column in self.columns}
-        values["First Name"] = "Test"
-        values["Last Name"] = "User"
-        values["Email"] = "test.user@example.com"
-        values.update(overrides)
+    def test_import_persons_stops_at_the_user_limit(self):
+        limit = self._set_user_limit(persons_service.count_active_users() + 2)
+        error = self._upload_csv(
+            self._rows_csv(
+                [{"Email": f"user{index}@example.com"} for index in range(4)]
+            ),
+            code=400,
+        )
+        self.assertEqual(
+            error["message"], f"User limit reached (limit {limit})."
+        )
+        self.assertEqual(error["line_number"], 4)
+        self.assertEqual(error["imported_rows"], 2)
+        self.assertIsNotNone(Person.get_by(email="user1@example.com"))
+        self.assertIsNone(Person.get_by(email="user2@example.com"))
+        self.assertIsNone(Person.get_by(email="user3@example.com"))
+
+    def test_import_persons_inactive_at_the_user_limit(self):
+        self._set_user_limit(persons_service.count_active_users())
+        error = self._upload_csv(
+            self._rows_csv(
+                [
+                    {"Email": "user0@example.com", "Active": "false"},
+                    {"Email": "user1@example.com", "Active": "no"},
+                    {"Email": "user2@example.com"},
+                ]
+            ),
+            code=400,
+        )
+        self.assertEqual(error["line_number"], 4)
+        self.assertEqual(error["imported_rows"], 2)
+        self.assertFalse(Person.get_by(email="user0@example.com").active)
+        self.assertFalse(Person.get_by(email="user1@example.com").active)
+        self.assertIsNone(Person.get_by(email="user2@example.com"))
+
+    def test_import_persons_update_at_the_user_limit(self):
+        """
+        At the limit, the update option still edits people, but a row that
+        activates an inactive person fails.
+        """
+        self._upload_csv(
+            self._rows_csv(
+                [
+                    {"Email": "active.user@example.com"},
+                    {"Email": "inactive.user@example.com", "Active": "false"},
+                ]
+            )
+        )
+        limit = self._set_user_limit(persons_service.count_active_users())
+        self._upload_csv(
+            self._rows_csv(
+                [
+                    {
+                        "Email": "active.user@example.com",
+                        "Phone": "0102030405",
+                        "Active": "true",
+                    },
+                    {
+                        "Email": "inactive.user@example.com",
+                        "Phone": "0607080910",
+                    },
+                ]
+            ),
+            update=True,
+        )
+        self.assertEqual(
+            Person.get_by(email="active.user@example.com").phone, "0102030405"
+        )
+        inactive_user = Person.get_by(email="inactive.user@example.com")
+        self.assertEqual(inactive_user.phone, "0607080910")
+        self.assertFalse(inactive_user.active)
+        error = self._upload_csv(
+            self._csv(Email="inactive.user@example.com", Active="true"),
+            code=400,
+            update=True,
+        )
+        self.assertEqual(
+            error["message"], f"User limit reached (limit {limit})."
+        )
+        self.assertFalse(
+            Person.get_by(email="inactive.user@example.com").active
+        )
+
+    def _set_user_limit(self, limit):
+        self.addCleanup(setattr, config, "USER_LIMIT", config.USER_LIMIT)
+        config.USER_LIMIT = limit
+        return limit
+
+    def _rows_csv(self, rows):
         header = ";".join(f'"{column}"' for column in self.columns)
-        row = ";".join(f'"{values[column]}"' for column in self.columns)
-        return f"{header}\n{row}\n"
+        lines = [header]
+        for overrides in rows:
+            values = {column: "" for column in self.columns}
+            values["First Name"] = "Test"
+            values["Last Name"] = "User"
+            values.update(overrides)
+            lines.append(
+                ";".join(f'"{values[column]}"' for column in self.columns)
+            )
+        return "\n".join(lines) + "\n"
+
+    def _csv(self, **overrides):
+        return self._rows_csv(
+            [{"Email": "test.user@example.com", **overrides}]
+        )
 
     def _upload_csv(self, content, code=201, update=False):
         path = "/import/csv/persons"
