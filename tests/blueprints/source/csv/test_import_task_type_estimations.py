@@ -558,56 +558,49 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
             ["2017-02-22", None, "2024-01-12"],
         )
 
-    def log_in_team_member(self, person, log_in):
+    def import_real_dates_as(self, person, log_in):
         projects_service.add_team_member(self.project.id, person["id"])
         log_in()
+        return self.import_in_expert_mode(
+            "Parent,Entity,Start date,WIP date,Feedback date,Approval date\n"
+            "Props,Tree,2024-01-08,2024-01-05,2024-01-10,2024-01-12\n"
+        )
 
     def test_expert_mode_leaves_the_real_dates_to_admins(self):
         """
-        A manager or a supervisor of the production can import estimations.
-        In expert mode, only an administrator can change the real dates. If
-        a manager or a supervisor changes a real date, the import refuses
-        the row.
-        """
-        for person, log_in in [
-            (self.generate_fixture_user_manager(), self.log_in_manager),
-            (self.generate_fixture_user_supervisor(), self.log_in_supervisor),
-        ]:
-            with self.subTest(role=person["role"]):
-                self.generate_fixture_task()
-                self.log_in_team_member(person, log_in)
-                for cells in ["2024-01-05,", "2017-02-22,05/01/2024"]:
-                    result = self.import_real_dates_with_error(
-                        "Parent,Entity,Start date,WIP date,Approval date\n"
-                        f"Props,Tree,2024-01-08,{cells}\n"
-                    )
-                    self.assertRegex(
-                        result["message"],
-                        "only an administrator can change the "
-                        "(WIP|Approval) date",
-                    )
-                task = Task.get(self.task.id)
-                self.assertNotEqual(
-                    task.start_date.strftime("%Y-%m-%d"), "2024-01-08"
-                )
-                self.assertEqual(
-                    self.get_real_dates(task), ["2017-02-22", None, None]
-                )
-                self.log_in_admin()
-
-    def test_expert_mode_lets_a_manager_import_an_export_back(self):
-        """
-        An export gives the stored real dates. A manager can import these
-        dates again without changes. The import then reads the other
-        columns.
+        A manager of the production imports estimations, but in expert mode
+        only an administrator changes the real dates: the import ignores
+        their columns for anybody else.
         """
         self.generate_fixture_task()
-        self.log_in_team_member(
+        task = self.import_real_dates_as(
             self.generate_fixture_user_manager(), self.log_in_manager
         )
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
+
+    def test_expert_mode_ignores_the_real_dates_of_a_supervisor(self):
+        self.generate_fixture_task()
+        task = self.import_real_dates_as(
+            self.generate_fixture_user_supervisor(), self.log_in_supervisor
+        )
+        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
+        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
+
+    def test_expert_mode_does_not_check_the_real_dates_of_a_manager(self):
+        """
+        The import does not read the real date columns for a manager: an
+        invalid value there does not stop it.
+        """
+        self.generate_fixture_task()
+        self.generate_fixture_user_manager()
+        projects_service.add_team_member(
+            self.project.id, self.user_manager["id"]
+        )
+        self.log_in_manager()
         task = self.import_in_expert_mode(
-            "Parent,Entity,Start date,WIP date,Feedback date\n"
-            "Props,Tree,2024-01-08,2017-02-22,\n"
+            "Parent,Entity,Start date,WIP date\n"
+            "Props,Tree,2024-01-08,05/01/2024\n"
         )
         self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
         self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])

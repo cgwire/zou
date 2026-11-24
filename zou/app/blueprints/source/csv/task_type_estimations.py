@@ -98,9 +98,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def prepare_import(self, project_id, task_type, episode_id=None):
         self.organisation = organisation_service.get_organisation()
-        is_admin = permissions.has_admin_permissions()
-        self.reads_real_dates = config.EXPERT_MODE_ENABLED and is_admin
-        self.locks_real_dates = config.EXPERT_MODE_ENABLED and not is_admin
+        self.reads_real_dates = (
+            config.EXPERT_MODE_ENABLED and permissions.has_admin_permissions()
+        )
         self.for_entity = task_type["for_entity"]
         self.own_episode_id = None
         self.candidates = {}
@@ -369,8 +369,6 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                         row, column, CHANGED_REAL_DATE_FORMAT
                     )
             self.check_real_dates(task, new_data, parent, name)
-        elif self.locks_real_dates:
-            self.check_real_dates_unchanged(row, task, parent, name)
 
         # Merge descriptor cells into the task's own metadata instead of
         # replacing it, so columns absent from the CSV are preserved.
@@ -429,20 +427,6 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                         f"({days[field]}) comes after the {later_column} "
                         f"({days[later_field]})"
                     )
-
-    def check_real_dates_unchanged(self, row, task, parent, name):
-        """
-        In expert mode, only an administrator can change the real dates.
-        Other users can import an export again without changes. If they
-        change a real date, the import refuses the row and tells them why.
-        """
-        for column, field in REAL_DATE_COLUMNS.items():
-            value = (row.get(column) or "").strip()
-            if value and value != (task[field] or "")[:10]:
-                raise RowException(
-                    f"{self.describe_row(parent, name)}: only an "
-                    f"administrator can change the {column}"
-                )
 
     def read_cell(self, row, column, value_format):
         """

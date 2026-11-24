@@ -679,15 +679,13 @@ TaskTypeEstimationsCsvImportResource_post:
     its time; any other must be from 2000 to 2100. An empty cell keeps the
     date. A Feedback date needs a feedback or done status. An Approval date
     needs a done status. The WIP date comes first, then the Feedback date, then
-    the Approval date. In expert mode, if you are not an administrator and you
-    change a real date, the import refuses the line. Without the expert mode,
-    the route ignores these columns, invalid values included. Send the CSV
-    file in
-    a multipart form. The route finds the separator of the file. Each line is
-    imported in order. If a line is not valid, the import stops. You
-    must be an administrator, a manager of the project, or a supervisor of
-    the project. A supervisor must have no department, or the department of
-    the task type must be one of their departments.
+    the Approval date. Without the expert mode, or for anybody but an
+    administrator, the route ignores these columns, invalid values included.
+    Send the CSV file in a multipart form. The route finds the separator of
+    the file. Each line is imported in order. If a line is not valid, the
+    import stops. You must be an administrator, a manager of the project, or
+    a supervisor of the project. A supervisor must have no department, or the
+    department of the task type must be one of their departments.
   parameters:
     - in: path
       name: project_id
@@ -784,13 +782,11 @@ TaskTypeEstimationsEpisodeCsvImportResource_post:
     whose UTC day does not change keeps its time; any other must be from
     2000 to 2100. An empty cell keeps the date. A Feedback date needs a
     feedback or done status. An Approval date needs a done status. The WIP date
-    comes first, then the Feedback date, then the Approval date. In expert
-    mode, if you are not an administrator and you change a real date, the
-    import refuses the line. Without the expert mode, the route ignores these
-    columns,
-    invalid values included. Send the CSV file in a multipart form. The route
-    finds the separator of the file. Each line is imported in order. If a line
-    is not valid, the import stops. You must be an administrator, a
+    comes first, then the Feedback date, then the Approval date. Without the
+    expert mode, or for anybody but an administrator, the route ignores these
+    columns, invalid values included. Send the CSV file in a multipart form.
+    The route finds the separator of the file. Each line is imported in order.
+    If a line is not valid, the import stops. You must be an administrator, a
     manager of the project, or a supervisor of the project. A supervisor must
     have no department, or the department of the task type must be one of
     their departments.
