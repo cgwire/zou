@@ -1,7 +1,7 @@
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
-from zou.app import db
+from zou.app import config, db
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
@@ -9,6 +9,7 @@ from zou.app.blueprints.source.shotgun.base import (
 from zou.app.blueprints.source.shotgun.exception import (
     ShotgunEntryImportFailed,
 )
+from zou.app.exceptions import PersonInProtectedAccounts
 from zou.app.models.department import Department
 from zou.app.models.person import DepartmentLink, Person
 from zou.app.services import (
@@ -108,7 +109,9 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
 
 class ImportRemoveShotgunPersonResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
-        ImportRemoveShotgunBaseResource.__init__(self, Person)
+        ImportRemoveShotgunBaseResource.__init__(
+            self, Person, self.delete_func
+        )
 
     @jwt_required()
     @swag_from(SPECS["ImportRemoveShotgunPersonResource_post"])
@@ -117,3 +120,10 @@ class ImportRemoveShotgunPersonResource(ImportRemoveShotgunBaseResource):
         Remove shotgun person
         """
         return super().post()
+
+    def delete_func(self, person):
+        if person.email in config.PROTECTED_ACCOUNTS:
+            raise PersonInProtectedAccounts(
+                "Can't delete this person it's a protected account."
+            )
+        person.delete()

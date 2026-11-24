@@ -251,7 +251,8 @@ ImportRemoveShotgunPersonResource_post:
   summary: Remove a Shotgun person
   description: Remove a person that was imported from Shotgun. Send the
     Shotgun identifier of the row in the body. If no row has this identifier,
-    the response is a success. You must be an administrator.
+    the response is a success. You must be an administrator. You cannot
+    remove a protected account.
   tags:
     - Import
   requestBody:
@@ -289,7 +290,7 @@ ImportRemoveShotgunPersonResource_post:
     400:
       description: The body is not JSON
     403:
-      description: You are not an administrator
+      description: You are not an administrator, or the account is protected
     500:
       description: The body has no id, or the id is not an integer
 

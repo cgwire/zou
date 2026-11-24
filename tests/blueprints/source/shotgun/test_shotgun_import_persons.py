@@ -1,9 +1,28 @@
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
+from zou.app import config
+from zou.app.models.person import Person
 
 
 class ImportShotgunPersonTestCase(ShotgunTestCase):
     def setUp(self):
         super().setUp()
+
+    def test_remove_person(self):
+        self.load_fixture("persons")
+        person_id = Person.get_by(shotgun_id=2).id
+        self.post("/import/shotgun/remove/person", {"id": 2}, 200)
+        self.assertIsNone(Person.get(person_id))
+
+    def test_remove_protected_person(self):
+        self.load_fixture("persons")
+        person = Person.get_by(shotgun_id=2)
+        person_id = person.id
+        self.addCleanup(
+            setattr, config, "PROTECTED_ACCOUNTS", config.PROTECTED_ACCOUNTS
+        )
+        config.PROTECTED_ACCOUNTS = [person.email]
+        self.post("/import/shotgun/remove/person", {"id": 2}, 403)
+        self.assertIsNotNone(Person.get(person_id))
 
     def test_import_persons(self):
         self.persons = self.load_fixture("persons")
