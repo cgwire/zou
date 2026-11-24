@@ -563,6 +563,26 @@ class PersonWriteTestCase(PersonsTestCase):
         # Anything else about them stays editable.
         persons_service.update_person(self.person_id, {"phone": "0123"})
 
+    def test_a_protected_account_keeps_its_email(self):
+        self.addCleanup(
+            setattr,
+            config,
+            "PROTECTED_ACCOUNTS",
+            config.PROTECTED_ACCOUNTS,
+        )
+        config.PROTECTED_ACCOUNTS = [self.person_email]
+
+        self.assertRaises(
+            PersonInProtectedAccounts,
+            persons_service.update_person,
+            self.person_id,
+            {"email": "new.address@example.com"},
+        )
+        # Sending the current address back passes.
+        persons_service.update_person(
+            self.person_id, {"email": self.person_email, "phone": "0123"}
+        )
+
     def test_the_protected_accounts_guard_can_be_bypassed(self):
         """
         The guard is about what a request may do. The LDAP synchronisation

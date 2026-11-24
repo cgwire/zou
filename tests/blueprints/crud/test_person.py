@@ -831,6 +831,43 @@ class PersonColumnExposureTestCase(PersonFixtureTestCase):
         self.get("data/persons?totp_secret=SECRETSEED", 400)
 
 
+class PersonProtectedAccountTestCase(ApiDBTestCase):
+    """
+    Updates of a protected account, by another person and by the account
+    itself.
+    """
+
+    NEW_EMAIL = "new.address@example.com"
+
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(
+            setattr, config, "PROTECTED_ACCOUNTS", config.PROTECTED_ACCOUNTS
+        )
+        person = self.generate_fixture_person()
+        self.person_id = str(person.id)
+        self.email = person.email
+        self.path = f"data/persons/{self.person_id}"
+        config.PROTECTED_ACCOUNTS = [self.email]
+
+    def get_email(self):
+        return Person.get(self.person_id).email
+
+    def test_another_person_cannot_change_its_email(self):
+        self.put(self.path, {"email": self.NEW_EMAIL}, 403)
+        self.assertEqual(self.get_email(), self.email)
+
+    def test_unchanged_email_passes(self):
+        self.put(self.path, {"email": self.email, "phone": "0123"})
+        self.assertEqual(Person.get(self.person_id).phone, "0123")
+
+    def test_the_account_changes_its_own_email(self):
+        self.log_in(self.email)
+        data = {"email": self.NEW_EMAIL, "current_password": "mypassword"}
+        self.put(self.path, data)
+        self.assertEqual(self.get_email(), self.NEW_EMAIL)
+
+
 @pytest.mark.real_bcrypt
 class PersonOwnEmailTestCase(ApiDBTestCase):
     """

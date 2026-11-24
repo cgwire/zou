@@ -617,6 +617,8 @@ def update_person(person_id, data, bypass_protected_accounts=False):
             )
         elif data.get("role") is not None:
             message = "Can't change the role of this person it's a protected account."
+        elif "email" in data and data["email"] != person.email:
+            message = "Can't change the email of this person it's a protected account."
 
         if message is not None:
             raise PersonInProtectedAccounts(message)
