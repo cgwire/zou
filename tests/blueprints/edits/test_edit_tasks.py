@@ -1,3 +1,5 @@
+import datetime
+
 from tests.blueprints.edits.base import BaseEditTestCase
 from zou.app.services import (
     edits_service,
@@ -22,6 +24,51 @@ class EditTasksTestCase(BaseEditTestCase):
         self.assertEqual(
             edits[0]["tasks"][0]["assignees"][0], str(self.person_id)
         )
+
+    def test_get_edits_and_tasks_gives_the_real_dates(self):
+        """
+        Kitsu shows the WIP, feedback, and approval dates of the tasks of an
+        edit task type, like those of the shots and the assets. A client
+        gets them blank.
+        """
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project.id, self.user_client["id"]
+        )
+        tasks_service.update_task(
+            self.task.id,
+            {
+                "real_start_date": datetime.datetime(2024, 1, 5, 10),
+                "end_date": datetime.datetime(2024, 1, 10, 10),
+                "done_date": datetime.datetime(2024, 1, 12, 10),
+            },
+        )
+
+        def get_real_dates():
+            edits = self.get(
+                f"data/edits/with-tasks?project_id={self.project.id}"
+            )
+            task = next(
+                task
+                for task in edits[0]["tasks"]
+                if task["id"] == str(self.task.id)
+            )
+            return [
+                task["real_start_date"],
+                task["end_date"],
+                task["done_date"],
+            ]
+
+        self.assertEqual(
+            get_real_dates(),
+            [
+                "2024-01-05T10:00:00",
+                "2024-01-10T10:00:00",
+                "2024-01-12T10:00:00",
+            ],
+        )
+        self.log_in_client()
+        self.assertEqual(get_real_dates(), [None, None, None])
 
     def test_get_edits_and_tasks_vendor(self):
         self.generate_fixture_task(name="Secondary", entity_id=self.edit_id)

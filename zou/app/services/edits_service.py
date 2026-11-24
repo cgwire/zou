@@ -34,6 +34,7 @@ EDITS_AND_TASKS_TASK_FIELDS = [
     "due_date",
     "entity_id",
     "end_date",
+    "done_date",
     "estimation",
     "last_comment_date",
     "last_preview_file_id",
