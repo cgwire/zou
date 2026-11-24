@@ -504,6 +504,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                 message = "Can't change the role of this person it's a protected account."
             elif "email" in data and data["email"] != instance_dict["email"]:
                 message = "Can't change the email of this person it's a protected account."
+            elif (
+                "is_bot" in data and data["is_bot"] != instance_dict["is_bot"]
+            ):
+                message = "Can't change the bot flag of this person it's a protected account."
 
             if message is not None:
                 raise PersonInProtectedAccounts(message)

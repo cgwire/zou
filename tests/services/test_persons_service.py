@@ -583,6 +583,26 @@ class PersonWriteTestCase(PersonsTestCase):
             self.person_id, {"email": self.person_email, "phone": "0123"}
         )
 
+    def test_a_protected_account_keeps_its_bot_flag(self):
+        self.addCleanup(
+            setattr,
+            config,
+            "PROTECTED_ACCOUNTS",
+            config.PROTECTED_ACCOUNTS,
+        )
+        config.PROTECTED_ACCOUNTS = [self.person_email]
+
+        self.assertRaises(
+            PersonInProtectedAccounts,
+            persons_service.update_person,
+            self.person_id,
+            {"is_bot": True},
+        )
+        # Sending the current flag back passes.
+        persons_service.update_person(
+            self.person_id, {"is_bot": False, "phone": "0123"}
+        )
+
     def test_the_protected_accounts_guard_can_be_bypassed(self):
         """
         The guard is about what a request may do. The LDAP synchronisation

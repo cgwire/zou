@@ -136,7 +136,7 @@ PersonResource_put:
     two-factor authentication is enabled. You cannot change id, created_at, updated_at,
     password, jti, the two-factor fields and the preview account fields. You
     cannot change a preview account. You cannot deactivate a protected account
-    of another person or change its role or email. You cannot activate a
+    of another person or change its role, email, or bot flag. You cannot activate a
     person who is not a bot when the user limit is reached. The route checks role,
     contract_type, country, locale, display_date_format,
     two_factor_authentication, email and expiration_date. A new expiration
@@ -253,7 +253,7 @@ PersonResource_put:
     403:
       description: The person is not you and you are not an administrator,
         the person is a preview account, or you try to deactivate or change
-        the role or the email of a protected account
+        the role, the email, or the bot flag of a protected account
     404:
       description: The person does not exist
 

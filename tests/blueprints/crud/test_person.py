@@ -867,6 +867,14 @@ class PersonProtectedAccountTestCase(ApiDBTestCase):
         self.put(self.path, data)
         self.assertEqual(self.get_email(), self.NEW_EMAIL)
 
+    def test_another_person_cannot_change_its_bot_flag(self):
+        self.put(self.path, {"is_bot": True}, 403)
+        self.assertFalse(Person.get(self.person_id).is_bot)
+
+    def test_unchanged_bot_flag_passes(self):
+        self.put(self.path, {"is_bot": False, "phone": "0123"})
+        self.assertEqual(Person.get(self.person_id).phone, "0123")
+
 
 @pytest.mark.real_bcrypt
 class PersonOwnEmailTestCase(ApiDBTestCase):
