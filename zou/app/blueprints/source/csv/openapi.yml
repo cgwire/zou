@@ -354,7 +354,7 @@ PersonsCsvImportResource_post:
     phone, role, departments, studio, country, contract type, position,
     seniority, daily salary and active status. Send the CSV file in a
     multipart form. The route finds the separator of the file. Each line is
-    imported in order. If a line is not valid, the import stops. Without
+    imported in order. If a line cannot be imported, the import stops. Without
     update=true, the lines of the entities that exist are skipped. You must be
     an administrator.
   parameters:
@@ -427,8 +427,8 @@ PersonsCsvImportResource_post:
                   example: true
     400:
       description: The file is not encoded in UTF-8 or has no clear delimiter
-        (nothing is imported), or a line of the file is not valid (the lines
-        before it are imported).
+        (nothing is imported), or a line of the file cannot be imported (the
+        lines before it are imported).
       content:
         application/json:
           schema:
@@ -440,7 +440,7 @@ PersonsCsvImportResource_post:
                 type: string
               line_number:
                 type: integer
-                description: Number of the line that is not valid
+                description: Number of the line that cannot be imported
               imported_rows:
                 type: integer
                 description: Number of lines that are imported
