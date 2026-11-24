@@ -98,9 +98,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def prepare_import(self, project_id, task_type, episode_id=None):
         self.organisation = organisation_service.get_organisation()
-        self.reads_real_dates = (
-            config.EXPERT_MODE_ENABLED and permissions.has_admin_permissions()
-        )
+        is_admin = permissions.has_admin_permissions()
+        self.reads_real_dates = config.EXPERT_MODE_ENABLED and is_admin
+        self.locks_real_dates = config.EXPERT_MODE_ENABLED and not is_admin
         self.for_entity = task_type["for_entity"]
         self.own_episode_id = None
         self.candidates = {}
@@ -368,6 +368,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                     new_data[field] = self.read_cell(
                         row, column, CHANGED_REAL_DATE_FORMAT
                     )
+            self.check_real_dates(task, new_data, parent, name)
+        elif self.locks_real_dates:
+            self.check_real_dates_unchanged(row, task, parent, name)
 
         # Merge descriptor cells into the task's own metadata instead of
         # replacing it, so columns absent from the CSV are preserved.
@@ -378,6 +381,68 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         self.tasks_map[entity["id"]] = tasks_service.update_task(
             task["id"], new_data
         )
+
+    def check_real_dates(self, task, new_data, parent, name):
+        """
+        Refuse the real dates that do not agree with the task status or
+        with each other. A status change sets these dates with the same
+        rules. A Feedback date needs a feedback status or a done status. An
+        Approval date needs a done status. The WIP date comes first, then
+        the Feedback date, then the Approval date. This check looks only at
+        the dates that the row changes. Thus an export that you import
+        again without changes passes.
+        """
+        status = task_types_service.get_task_status(task["task_status_id"])
+        if "end_date" in new_data and not (
+            status["is_feedback_request"] or status["is_done"]
+        ):
+            raise RowException(
+                f"{self.describe_row(parent, name)} cannot get a Feedback "
+                f"date: its task status '{status['name']}' is not a feedback "
+                "or done status"
+            )
+        if "done_date" in new_data and not status["is_done"]:
+            raise RowException(
+                f"{self.describe_row(parent, name)} cannot get an Approval "
+                f"date: its task status '{status['name']}' is not a done "
+                "status"
+            )
+        days = {
+            field: (
+                new_data[field].date().isoformat()
+                if field in new_data
+                else (task[field] or "")[:10]
+            )
+            for field in REAL_DATE_COLUMNS.values()
+        }
+        columns = list(REAL_DATE_COLUMNS.items())
+        for index, (column, field) in enumerate(columns):
+            for later_column, later_field in columns[index + 1 :]:
+                if (
+                    (field in new_data or later_field in new_data)
+                    and days[field]
+                    and days[later_field]
+                    and days[field] > days[later_field]
+                ):
+                    raise RowException(
+                        f"{self.describe_row(parent, name)}: the {column} "
+                        f"({days[field]}) comes after the {later_column} "
+                        f"({days[later_field]})"
+                    )
+
+    def check_real_dates_unchanged(self, row, task, parent, name):
+        """
+        In expert mode, only an administrator can change the real dates.
+        Other users can import an export again without changes. If they
+        change a real date, the import refuses the row and tells them why.
+        """
+        for column, field in REAL_DATE_COLUMNS.items():
+            value = (row.get(column) or "").strip()
+            if value and value != (task[field] or "")[:10]:
+                raise RowException(
+                    f"{self.describe_row(parent, name)}: only an "
+                    f"administrator can change the {column}"
+                )
 
     def read_cell(self, row, column, value_format):
         """
