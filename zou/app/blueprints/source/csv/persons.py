@@ -105,7 +105,12 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         if phone:
             data["phone"] = phone
         if active:
-            data["active"] = strtobool(active)
+            try:
+                data["active"] = strtobool(active)
+            except ValueError:
+                raise ValueError(
+                    f"Active: {active} (accepted values: yes, no)"
+                )
 
         # Resolve departments before any write so an unknown name fails the
         # row without leaving an orphan person behind.

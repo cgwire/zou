@@ -191,6 +191,13 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
     def test_import_persons_invalid_daily_salary(self):
         self._upload_csv(self._csv(**{"Daily Salary": "lots"}), code=400)
 
+    def test_import_persons_invalid_active(self):
+        error = self._upload_csv(self._csv(Active="VRAI"), code=400)
+        self.assertIn(
+            "Active: VRAI (accepted values: yes, no)", error["message"]
+        )
+        self.assertIsNone(Person.get_by(email="test.user@example.com"))
+
     def test_import_persons_unknown_studio(self):
         self._upload_csv(self._csv(Studio="Ghost Studio"), code=400)
         self.assertIsNone(Person.get_by(email="test.user@example.com"))
