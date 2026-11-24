@@ -232,6 +232,100 @@ class CommentRoutesTestCase(CommentTestCase):
         texts = [c["text"] for c in comments]
         self.assertIn("Batch comment", texts)
 
+    def _batch_entry(self, task, text):
+        return {
+            "object_id": str(task.id),
+            "task_status_id": str(self.task_status.id),
+            "comment": text,
+        }
+
+    def _comment_many(self, entries):
+        return self.post(
+            f"/actions/projects/{self.project.id}/tasks/comment-many",
+            entries,
+        )
+
+    def _texts(self, task):
+        return [c["text"] for c in comments_service.get_comments(task.id)]
+
+    def test_comment_many_leaves_its_own_tasks_to_their_comment(self):
+        # The hashtag of the first comment names the second task, which
+        # already gets the same text from the batch.
+        modeling_task = self._make_sibling_task()
+
+        self._comment_many(
+            [
+                self._batch_entry(task, "Ready #modeling")
+                for task in [self.task, modeling_task]
+            ]
+        )
+
+        self.assertEqual(self._texts(modeling_task), ["Ready #modeling"])
+
+    def test_comment_many_reposts_a_text_its_task_does_not_get(self):
+        modeling_task = self._make_sibling_task()
+
+        self._comment_many(
+            [
+                self._batch_entry(self.task, "Camera too low #modeling"),
+                self._batch_entry(modeling_task, "Arm pops at frame 12"),
+            ]
+        )
+
+        self.assertCountEqual(
+            self._texts(modeling_task),
+            [
+                "Arm pops at frame 12",
+                "Camera too low #modeling\n\n____\nFrom Shaders task",
+            ],
+        )
+
+    def test_comment_many_reposts_on_the_task_of_a_skipped_entry(self):
+        modeling_task = self._make_sibling_task()
+
+        self._comment_many(
+            [
+                self._batch_entry(self.task, "Ready #modeling"),
+                # Without a status, the route skips this entry.
+                {
+                    "object_id": str(modeling_task.id),
+                    "comment": "Ready #modeling",
+                },
+            ]
+        )
+
+        self.assertEqual(
+            self._texts(modeling_task),
+            ["Ready #modeling\n\n____\nFrom Shaders task"],
+        )
+
+    def test_comment_many_reposts_once_on_a_task_outside_the_batch(self):
+        modeling_task = self._make_sibling_task()
+        concept_task = Task.create(
+            name="Concept task",
+            project_id=self.project.id,
+            task_type_id=self.task_type_concept.id,
+            task_status_id=self.task_status.id,
+            entity_id=self.asset.id,
+            assigner_id=self.assigner.id,
+        )
+
+        self._comment_many(
+            [
+                self._batch_entry(task, "Ready #all")
+                for task in [self.task, modeling_task]
+            ]
+        )
+
+        self.assertEqual(
+            len(comments_service.get_comments(concept_task.id)), 1
+        )
+        self.assertEqual(
+            len(comments_service.get_comments(modeling_task.id)), 1
+        )
+        # The first comment of the fixture, then the one of the batch.
+        self.assertEqual(len(comments_service.get_comments(self.task.id)), 2)
+
     def test_get_comment_embeds_author(self):
         comment = self.get(f"/data/comments/{self.comment['id']}")
         self.assertEqual(comment["person"]["id"], comment["person_id"])

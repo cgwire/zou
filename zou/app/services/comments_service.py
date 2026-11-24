@@ -100,11 +100,16 @@ def create_comment(
     links=None,
     with_hashtags=True,
     for_client=False,
+    posted_comments=None,
     _fired_automations=None,
     _automation_depth=0,
 ):
     """
     Create a new comment and related: news, notifications and events.
+
+    A batch passes posted_comments, the set of the (task id string, text)
+    pairs it posts: the hashtags repost a text on no task the set pairs
+    with it, and add the pairs of their reposts to the set.
 
     The two private arguments carry a cascade of status automations to the
     comments the automations post; callers leave them out.
@@ -135,7 +140,7 @@ def create_comment(
     )
 
     if with_hashtags:
-        _handle_hashtags(author, task_type, task, text)
+        _handle_hashtags(author, task_type, task, text, posted_comments)
 
     # Read from the row: get_task is memoized, and a sync import updates the
     # row without dropping that cache.
@@ -157,16 +162,27 @@ def create_comment(
     return comment
 
 
-def _handle_hashtags(person, task_type, task, text):
+def _handle_hashtags(person, task_type, task, text, posted_comments=None):
     """
     Post the same comment on the sibling tasks the hashtags of the text
     name, so a supervisor can address several task types at once.
+
+    posted_comments, when given, is a mutable set of (task id string, text)
+    pairs a batch posts: a sibling paired with this text is left alone, and
+    the pairs of the reposts are added to the set.
     """
     hashtags = get_comment_hashtags(text)
     if len(hashtags) > 0:
         entity = entities_service.get_entity(entity_id=task["entity_id"])
         tasks = tasks_service.get_entity_tasks(entity)
         tasks = filter_tasks_by_hashtags(tasks, hashtags, task_type)
+        if posted_comments is not None:
+            tasks = [
+                _task
+                for _task in tasks
+                if (str(_task["id"]), text) not in posted_comments
+            ]
+            posted_comments.update((str(_task["id"]), text) for _task in tasks)
         if len(tasks) > 0:
             status_ids = set(t["task_status_id"] for t in tasks)
             statuses_map = {

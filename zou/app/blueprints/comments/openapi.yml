@@ -165,6 +165,8 @@ CommentManyTasksResource_post:
     text is skipped. A manager of the project can comment all the tasks. A
     supervisor can comment the tasks of their departments. Other users can
     comment their assigned tasks only. The other entries are skipped.
+    Hashtags copy the text as they do for a single comment. No copy goes to
+    a task that gets the same text from the list or from an earlier copy.
   tags:
     - Comments
   parameters:
