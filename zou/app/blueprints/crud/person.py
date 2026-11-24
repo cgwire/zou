@@ -498,7 +498,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and instance_dict.get("is_bot", False) == False
         ):
             message = None
-            if data.get("active") is False:
+            if "active" in data and not data["active"]:
                 message = "Can't set this person as inactive it's a protected account."
             elif data.get("role") is not None:
                 message = "Can't change the role of this person it's a protected account."

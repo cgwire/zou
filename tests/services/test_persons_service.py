@@ -552,7 +552,12 @@ class PersonWriteTestCase(PersonsTestCase):
         )
         config.PROTECTED_ACCOUNTS = [self.person_email]
 
-        for data in ({"active": False}, {"role": "user"}):
+        for data in (
+            {"active": False},
+            {"active": 0},
+            {"active": None},
+            {"role": "user"},
+        ):
             with self.subTest(data=data):
                 self.assertRaises(
                     PersonInProtectedAccounts,
@@ -560,6 +565,8 @@ class PersonWriteTestCase(PersonsTestCase):
                     self.person_id,
                     data,
                 )
+        # Keeping them active passes.
+        persons_service.update_person(self.person_id, {"active": True})
         # Anything else about them stays editable.
         persons_service.update_person(self.person_id, {"phone": "0123"})
 

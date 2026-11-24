@@ -611,7 +611,7 @@ def update_person(person_id, data, bypass_protected_accounts=False):
         and not person.is_bot
     ):
         message = None
-        if data.get("active") is False:
+        if "active" in data and not data["active"]:
             message = (
                 "Can't set this person as inactive it's a protected account."
             )

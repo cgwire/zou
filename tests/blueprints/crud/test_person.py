@@ -875,6 +875,16 @@ class PersonProtectedAccountTestCase(ApiDBTestCase):
         self.put(self.path, {"is_bot": False, "phone": "0123"})
         self.assertEqual(Person.get(self.person_id).phone, "0123")
 
+    def test_another_person_cannot_deactivate_it(self):
+        for value in (False, 0, None):
+            with self.subTest(active=value):
+                self.put(self.path, {"active": value}, 403)
+        self.assertTrue(Person.get(self.person_id).active)
+
+    def test_active_true_passes(self):
+        self.put(self.path, {"active": True, "phone": "0123"})
+        self.assertEqual(Person.get(self.person_id).phone, "0123")
+
 
 @pytest.mark.real_bcrypt
 class PersonOwnEmailTestCase(ApiDBTestCase):
