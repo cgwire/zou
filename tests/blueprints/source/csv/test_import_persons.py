@@ -329,6 +329,59 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
             Person.get_by(email="inactive.user@example.com").active
         )
 
+    def test_import_persons_without_update_at_the_user_limit(self):
+        """
+        At the limit, the rows of people who exist already do not stop an
+        import without the update option: they add no user.
+        """
+        self._upload_csv(
+            self._rows_csv(
+                [
+                    {"Email": "active.user@example.com"},
+                    {"Email": "inactive.user@example.com", "Active": "false"},
+                ]
+            )
+        )
+        self._set_user_limit(persons_service.count_active_users())
+        self._upload_csv(
+            self._rows_csv(
+                [
+                    {
+                        "Email": "active.user@example.com",
+                        "Phone": "0102030405",
+                    },
+                    {"Email": "inactive.user@example.com", "Active": "true"},
+                ]
+            )
+        )
+        self.assertNotEqual(
+            Person.get_by(email="active.user@example.com").phone, "0102030405"
+        )
+        self.assertFalse(
+            Person.get_by(email="inactive.user@example.com").active
+        )
+
+    def test_import_persons_inactive_row_frees_a_seat(self):
+        """
+        At the limit, a row that sets someone inactive frees a seat for the
+        rows after it.
+        """
+        self._upload_csv(self._csv(Email="leaving.user@example.com"))
+        self._set_user_limit(persons_service.count_active_users())
+        self._upload_csv(
+            self._rows_csv(
+                [
+                    {"Email": "leaving.user@example.com", "Active": "false"},
+                    {"Email": "new.user@example.com"},
+                ]
+            ),
+            update=True,
+        )
+        self.assertFalse(
+            Person.get_by(email="leaving.user@example.com").active
+        )
+        self.assertTrue(Person.get_by(email="new.user@example.com").active)
+
     def _set_user_limit(self, limit):
         self.addCleanup(setattr, config, "USER_LIMIT", config.USER_LIMIT)
         config.USER_LIMIT = limit
