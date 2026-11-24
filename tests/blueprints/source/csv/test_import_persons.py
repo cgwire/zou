@@ -389,6 +389,47 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         )
         self.assertTrue(Person.get_by(email="new.user@example.com").active)
 
+    def test_import_persons_update_of_a_protected_account(self):
+        email = "kept.user@example.com"
+        self._upload_csv(self._csv(Email=email, Role="admin"))
+        self._set_protected_accounts([email])
+        self._upload_csv(
+            self._csv(
+                Email=email, Role="admin", Active="yes", Phone="0102030405"
+            ),
+            update=True,
+        )
+        self.assertEqual(Person.get_by(email=email).phone, "0102030405")
+        for overrides, message in (
+            ({"Role": "user"}, "The role of this person can't be changed."),
+            ({"Active": "no"}, "This person can't be set as inactive."),
+        ):
+            with self.subTest(overrides=overrides):
+                error = self._upload_csv(
+                    self._csv(Email=email, **overrides), code=400, update=True
+                )
+                self.assertEqual(error["message"], message)
+        person = Person.get_by(email=email)
+        self.assertEqual(person.role.code, "admin")
+        self.assertTrue(person.active)
+        person.update({"active": False})
+        self._upload_csv(self._csv(Email=email, Active="no"), update=True)
+
+    def test_import_persons_update_of_their_own_protected_account(self):
+        self._set_protected_accounts([self.user["email"]])
+        self._upload_csv(
+            self._csv(Email=self.user["email"], Role="manager"), update=True
+        )
+        self.assertEqual(
+            Person.get_by(email=self.user["email"]).role.code, "manager"
+        )
+
+    def _set_protected_accounts(self, emails):
+        self.addCleanup(
+            setattr, config, "PROTECTED_ACCOUNTS", config.PROTECTED_ACCOUNTS
+        )
+        config.PROTECTED_ACCOUNTS = emails
+
     def _set_user_limit(self, limit):
         self.addCleanup(setattr, config, "USER_LIMIT", config.USER_LIMIT)
         config.USER_LIMIT = limit

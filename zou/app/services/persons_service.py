@@ -291,7 +291,8 @@ def import_person(email, data, department_ids=None, update=False):
     or update it when update is set and it exists. Departments are set
     when given. Return the safe serialization of the person. Raise
     IsUserLimitReachedException when the row would add an active user
-    once the user limit is reached.
+    once the user limit is reached, and WrongParameterException for a
+    change that the person update route refuses.
     """
     person = Person.get_by(email=email, is_bot=False)
     created = person is None
@@ -300,6 +301,18 @@ def import_person(email, data, department_ids=None, update=False):
             raise IsUserLimitReachedException()
         person = Person.create(email=email, password=None, **data)
     elif update:
+        if (
+            person.email in config.PROTECTED_ACCOUNTS
+            and str(person.id) != get_current_user()["id"]
+        ):
+            if person.active and data.get("active") is False:
+                raise WrongParameterException(
+                    "This person can't be set as inactive."
+                )
+            if data.get("role", person.role.code) != person.role.code:
+                raise WrongParameterException(
+                    "The role of this person can't be changed."
+                )
         if (
             not person.active
             and data.get("active", False)
