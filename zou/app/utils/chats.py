@@ -131,6 +131,7 @@ def send_to_discord(token, userid, message):
 
     if token:
         if userid:
+            loop = None
             try:
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(
