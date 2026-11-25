@@ -1,3 +1,13 @@
+"""
+Breakdown can be represented in two ways:
+
+* Relation entries linking an asset and a shot. A number of number of
+  occurences can be mentioned.
+* Storing an entry for each instance of an asset casted in a shot or a scene.
+
+Warning: These two representations are not linked. Data are not synchronized.
+"""
+
 from flask import current_app
 from slugify import slugify
 from sqlalchemy import desc
@@ -25,16 +35,6 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import events, fields
-
-"""
-Breakdown can be represented in two ways:
-
-* Relation entries linking an asset and a shot. A number of number of
-  occurences can be mentioned.
-* Storing an entry for each instance of an asset casted in a shot or a scene.
-
-Warning: These two representations are not linked. Data are not synchronized.
-"""
 
 
 def get_casting(shot_id):

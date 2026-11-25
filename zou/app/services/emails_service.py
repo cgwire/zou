@@ -480,7 +480,7 @@ def send_share_invitation(
         )
 
 
-def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+def send_password_changed_by_admin_email(person, person_IP=None):
     """
     Send an email to the person notifying that an admin changed their password.
     """
@@ -489,7 +489,7 @@ def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
     )
 
 
-def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
+def send_2fa_disabled_by_admin_email(person, person_IP=None):
     """
     Send an email to the person notifying that an admin disabled their 2FA.
     """

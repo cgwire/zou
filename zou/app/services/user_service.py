@@ -449,7 +449,7 @@ def update_notification(notification_id, read):
     return notification.serialize()
 
 
-def get_unread_notifications_count(notification_id=None):
+def get_unread_notifications_count():
     """
     Return the number of unread notifications.
     """

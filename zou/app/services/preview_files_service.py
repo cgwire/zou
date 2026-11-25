@@ -1209,10 +1209,7 @@ def extract_frame_from_preview_file(preview_file, frame_number):
         # Imported via sync-push: only metadata is here, the binary lives
         # elsewhere and will arrive via the file sync. Skip silently.
         return None
-    try:
-        project = get_project_from_preview_file(preview_file["id"])
-    except PreviewFileNotFoundException:
-        raise PreviewFileNotFoundException
+    project = get_project_from_preview_file(preview_file["id"])
 
     if preview_file["extension"] == "mp4":
         preview_file_path = locate_stored_movie(preview_file)

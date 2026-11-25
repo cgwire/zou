@@ -1,6 +1,5 @@
 from sqlalchemy import func, or_
 from sqlalchemy.orm import aliased, subqueryload
-from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
 
 from zou.app import db
@@ -513,8 +512,6 @@ def get_open_tasks(filters, order_by=None, limit=200, page=None):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
 
-    from zou.app import db
-
     query_stats = (
         db.session.query(
             func.count().label("amount"),
@@ -750,8 +747,6 @@ def get_open_tasks_stats():
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
-
-    from zou.app import db
 
     query_stats = (
         db.session.query(

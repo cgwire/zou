@@ -324,7 +324,6 @@ def update_guest_comment(comment_id, guest_id, data, token):
     and also to reject ``task_status_id`` values that are not flagged as
     client-allowed (a guest must not be able to set a manager-only status).
     """
-    from zou.app.models.comment import Comment
 
     instance = _load_guest_comment(comment_id, guest_id, token)
 

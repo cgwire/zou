@@ -651,7 +651,7 @@ class ProjectTimeSpentTestCase(TimeSpentsTestCase):
         # month used to land in the previous one for users west of UTC.
         self.log(self.task_id, "2018-07-01", 100)
         result = time_spents_service.get_project_month_time_spents(
-            str(self.project.id), timezone="America/Los_Angeles"
+            str(self.project.id)
         )
         person = result[self.task_type.department_id][self.person.id]
         self.assertEqual(person["2018-07"], 100)

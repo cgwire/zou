@@ -1184,10 +1184,7 @@ class ProductionMonthTimeSpentsResource(MethodView, ArgsMixin):
         """
         permissions.check_admin_permissions()
         self.check_id_parameter(project_id)
-        user = persons_service.get_current_user()
-        return time_spents_service.get_project_month_time_spents(
-            project_id, user["timezone"]
-        )
+        return time_spents_service.get_project_month_time_spents(project_id)
 
 
 class ProductionScheduleVersionTaskLinksResource(MethodView, ArgsMixin):

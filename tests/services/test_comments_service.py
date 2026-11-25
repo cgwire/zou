@@ -542,19 +542,19 @@ class MentionTestCase(CommentsTestCase):
     def test_a_department_is_mentioned_by_name(self):
         self.assertEqual(
             comments_service.get_comment_department_mentions(
-                self.project_id, "nothing to mention"
+                "nothing to mention"
             ),
             [],
         )
         self.assertEqual(
             comments_service.get_comment_department_mentions(
-                self.project_id, "mention @Animation"
+                "mention @Animation"
             ),
             [self.department_animation],
         )
         self.assertEqual(
             comments_service.get_comment_department_mention_ids(
-                self.project_id, "mention @Animation"
+                "mention @Animation"
             ),
             [str(self.department_animation.id)],
         )

@@ -116,7 +116,6 @@ def clear_asset_type_cache(asset_type_id=None):
     an asset type is named, also drop its entity type cache.
     """
     if asset_type_id is not None:
-        cache.cache.delete_memoized(get_asset_type, asset_type_id)
         clear_entity_type_cache(asset_type_id)
     cache.cache.delete_memoized(get_all_asset_types)
     # get_asset_type carries the task types of the workflow, so editing it
@@ -358,15 +357,9 @@ def clear_entity_type_cache(entity_type_id):
 
 def get_temporal_entity_type_by_name(name):
     """
-    Return the entity type matching given name, creating it if needed. A
-    cached None (the type did not exist yet when it was first looked up) is
-    dropped and looked up again.
+    Return the entity type matching given name, creating it if needed.
     """
-    entity_type = get_entity_type_by_name(name)
-    if entity_type is None:
-        cache.cache.delete_memoized(get_entity_type_by_name, name)
-        entity_type = get_entity_type_by_name(name)
-    return entity_type
+    return get_entity_type_by_name(name)
 
 
 def is_edit(entity):

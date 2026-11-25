@@ -394,7 +394,7 @@ def remove_asset(asset_id, force=False):
     return deleted_asset
 
 
-def cancel_asset(asset_id, force=True):
+def cancel_asset(asset_id):
     """
     Set cancel flag on asset to true. Send an event to event queue.
     """
@@ -497,7 +497,6 @@ def remove_sequence(sequence_id, force=False):
         ScheduleItem.delete_all_by(object_id=sequence_id)
 
         deletion_service.remove_tasks_for_entity(sequence_id)
-        Subscription.delete_all_by(entity_id=sequence_id)
         deletion_service.remove_output_files_for_entity(sequence_id)
     try:
         sequence.delete()

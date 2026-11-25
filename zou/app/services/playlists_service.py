@@ -942,37 +942,3 @@ def get_base_asset_for_playlist(entity, task_id):
         asset_type_id=asset_type["id"],
         asset_type_name=asset_type["name"],
     )
-
-
-def get_preview_files_for_task_raw(task_id):
-    """
-    Return all preview file active records for given task.
-    """
-    preview_files = (
-        PreviewFile.query.filter_by(task_id=task_id)
-        .order_by(PreviewFile.revision.desc())
-        .all()
-    )
-    return _get_playlist_preview_file_list(preview_files)
-
-
-def _get_playlist_preview_file_list(preview_files):
-    """
-    Turn preview file active records into preview file dict that match the
-    playlist data structure.
-    """
-    return [
-        {
-            "id": str(preview_file.id),
-            "revision": preview_file.revision,
-            "extension": preview_file.extension,
-            "width": preview_file.width,
-            "height": preview_file.height,
-            "duration": float(preview_file.duration or 0),
-            "status": fields.serialize_value(preview_file.status),
-            "annotations": preview_file.annotations,
-            "created_at": fields.serialize_value(preview_file.created_at),
-            "task_id": str(preview_file.task_id),
-        }
-        for preview_file in preview_files
-    ]

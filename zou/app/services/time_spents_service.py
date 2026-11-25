@@ -668,7 +668,7 @@ def get_timezoned_interval(start, end):
     return date_helpers.get_timezoned_interval(start, end, timezone)
 
 
-def get_project_month_time_spents(project_id, timezone=None):
+def get_project_month_time_spents(project_id):
     """
     Get aggregated time spents by department by person by month for given
     project.

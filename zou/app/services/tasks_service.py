@@ -177,7 +177,7 @@ def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
     Get all tasks of the entities under given sequence (shots and scenes).
     """
-    query = _get_entity_task_query(relations=relations)
+    query = _get_entity_task_query()
     query = query.filter(Entity.parent_id == sequence_id)
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
@@ -187,7 +187,7 @@ def get_shot_tasks_for_episode(episode_id, relations=False):
     Get all tasks of the entities under the sequences of given episode
     (shots and scenes).
     """
-    query = _get_entity_task_query(relations=relations)
+    query = _get_entity_task_query()
     Sequence = aliased(Entity, name="sequence")
     query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
         Sequence.parent_id == episode_id
@@ -200,7 +200,7 @@ def get_edit_tasks_for_episode(episode_id, relations=False):
     Get all edit tasks for given episode.
     """
     query = (
-        _get_entity_task_query(relations=relations)
+        _get_entity_task_query()
         # An edit hangs straight off its episode, where a shot goes through
         # a sequence, so the entity type is what tells them apart here.
         .filter(
@@ -215,7 +215,7 @@ def get_asset_tasks_for_episode(episode_id, relations=False):
     Get all assets tasks for given episode.
     """
     query = (
-        _get_entity_task_query(relations=relations)
+        _get_entity_task_query()
         .filter(entity_types_service.build_asset_type_filter())
         .filter(Entity.source_id == episode_id)
     )
@@ -227,12 +227,12 @@ def get_task_dicts_for_entity(entity_id, relations=True):
     Return all tasks related to given entity. Add extra information like
     project name, task type name, etc.
     """
-    query = _get_entity_task_query(relations=relations)
+    query = _get_entity_task_query()
     query = query.filter(Task.entity_id == entity_id)
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
 
-def _get_entity_task_query(relations=False):
+def _get_entity_task_query():
     """
     Base query joining a task to everything the detailed task view needs:
     project, task type, task status, entity and assignees. No SQL

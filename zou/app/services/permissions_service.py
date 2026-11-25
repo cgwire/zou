@@ -632,9 +632,6 @@ def check_comment_access(comment_id, comment=None):
             ).serialize()
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
-        if task is None:
-            tasks_service.clear_task_cache(task_id)
-            task = tasks_service.get_task(task_id)
         check_project_access(task["project_id"])
         check_entity_access(task["entity_id"])
 
