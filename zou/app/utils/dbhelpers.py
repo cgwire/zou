@@ -34,13 +34,13 @@ def drop_all():
 
 def is_init():
     """
-    Return True when the person table exists and exactly two project
-    statuses are stored.
+    Return True when the person table exists and at least one project
+    status is stored.
     """
     from zou.app import db
     from zou.app.models.project_status import ProjectStatus
 
     return (
         inspect(db.engine).has_table("person")
-        and db.session.query(ProjectStatus).count() == 2
+        and db.session.query(ProjectStatus).count() > 0
     )
