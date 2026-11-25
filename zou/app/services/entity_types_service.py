@@ -297,7 +297,7 @@ def is_asset_dict(entity):
     Returns true if given entity is an asset: its type is not a temporal
     type. It supposes that the entity is represented as a dict.
     """
-    return entity["entity_type_id"] not in get_temporal_type_ids()
+    return str(entity["entity_type_id"]) not in get_temporal_type_ids()
 
 
 def is_asset_type(entity_type):

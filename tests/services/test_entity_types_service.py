@@ -133,6 +133,12 @@ class AssetReadTestCase(AssetsTestCase):
         self.assertFalse(
             entity_types_service.is_asset_dict(self.shot.serialize())
         )
+        # Ids read straight from a row are UUID objects, not strings.
+        self.assertFalse(
+            entity_types_service.is_asset_dict(
+                {"entity_type_id": self.shot.entity_type_id}
+            )
+        )
 
 
 class ConceptsServiceTestCase(ApiDBTestCase):
