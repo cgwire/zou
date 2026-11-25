@@ -5,6 +5,7 @@ import ldap3
 
 from tests.base import ApiDBTestCase
 from tests.services.ldap_fixtures import BASE_DN, LdapDirectoryMixin, ad_user
+from zou.app import app
 from zou.app.commands import commands_service
 from zou.app.exceptions import (
     InactiveUserException,
@@ -211,6 +212,75 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         with self.assertRaises(LdapGroupNotFoundException):
             ldap_service.find_user_entry(conn, settings, "jdoe")
 
+    def test_check_group_exists_group_is_not_a_dn(self):
+        settings = self.directory(
+            [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],
+            LDAP_GROUP="Kitsu",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        for error in (
+            ldap3.core.exceptions.LDAPInvalidDNSyntaxResult,
+            ldap3.core.exceptions.LDAPInvalidDnError,
+        ):
+            with mock.patch.object(conn, "search", side_effect=error("bad")):
+                with self.assertRaises(LdapGroupNotFoundException):
+                    ldap_service.check_group_exists(conn, settings)
+
+    def test_find_user_entry_openldap_group(self):
+        def person(login):
+            return {
+                "objectClass": ["person", "inetOrgPerson"],
+                "uid": login,
+                "cn": login,
+                "sn": login.title(),
+                "givenName": "Given",
+                "mail": f"{login}@studio.local",
+                "organizationalStatus": "active",
+            }
+
+        settings = self.directory(
+            [
+                (f"uid=alice,ou=People,{BASE_DN}", person("alice")),
+                (f"uid=bob,ou=People,{BASE_DN}", person("bob")),
+                (
+                    f"cn=Kitsu,ou=Groups,{BASE_DN}",
+                    {
+                        "objectClass": "groupOfUniqueNames",
+                        "cn": "Kitsu",
+                        "uniqueMember": [
+                            f"UID=Alice, OU=people,{BASE_DN.upper()}"
+                        ],
+                    },
+                ),
+            ],
+            LDAP_IS_AD_SIMPLE=False,
+            LDAP_GROUP="Kitsu",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        entry = ldap_service.find_user_entry(conn, settings, "alice")
+        self.assertEqual(entry.entry_dn, f"uid=alice,ou=People,{BASE_DN}")
+        self.assertIsNone(ldap_service.find_user_entry(conn, settings, "bob"))
+
+    def test_is_excluded(self):
+        settings = {"LDAP_EXCLUDED_ACCOUNTS": ""}
+        self.assertFalse(ldap_service.is_excluded(settings, ""))
+        self.assertFalse(ldap_service.is_excluded(settings, "svc1"))
+        settings = {"LDAP_EXCLUDED_ACCOUNTS": "svc1, svc2,"}
+        self.assertTrue(ldap_service.is_excluded(settings, "svc1"))
+        self.assertTrue(ldap_service.is_excluded(settings, "svc2"))
+        self.assertFalse(ldap_service.is_excluded(settings, ""))
+        self.assertFalse(ldap_service.is_excluded(settings, "svc3"))
+
+    def test_get_server_short_timeout(self):
+        settings = {"LDAP_HOST": "h", "LDAP_PORT": "389", "LDAP_SSL": False}
+        with mock.patch.object(ldap3, "Server") as server:
+            ldap_service.get_server(settings)
+            ldap_service.get_server(settings, get_info=ldap3.NONE)
+        first, second = server.call_args_list
+        self.assertEqual(first.kwargs["get_info"], ldap3.ALL)
+        self.assertEqual(second.kwargs["get_info"], ldap3.NONE)
+        self.assertEqual(first.kwargs["connect_timeout"], 5)
+
     def test_find_user_entry_stale_ldap_uid(self):
         settings = self.directory(
             [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))]
@@ -286,7 +356,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         with mock.patch.object(ldap_service, "connect") as connect:
             ldap_service.check_user_password(settings, entry, "pw")
         connect.assert_called_once_with(
-            settings, "STUDIO\\jdoe", "pw", ldap3.NTLM
+            settings, "STUDIO\\jdoe", "pw", ldap3.NTLM, get_info=ldap3.NONE
         )
 
 
@@ -378,6 +448,38 @@ class LdapPersonTestCase(ApiDBTestCase):
         person_id = ldap_service.provision_person(build_user(), person)
         self.assertEqual(person_id, created["id"])
         self.assertEqual(Person.get(person_id).ldap_uid, "uid-jdoe")
+
+    def test_provision_person_logs_a_rewritten_ldap_uid(self):
+        self.create_person(
+            "jdoe@studio.local",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+            ldap_uid="old-uid",
+        )
+        person = ldap_service.find_ldap_person(build_user())
+        with self.assertLogs(app.logger, "WARNING") as logs:
+            ldap_service.provision_person(build_user(), person)
+        output = "".join(logs.output)
+        self.assertIn(person["id"], output)
+        self.assertIn("old-uid", output)
+        self.assertIn("uid-jdoe", output)
+
+    def test_provision_person_email_collision(self):
+        created = self.create_person(
+            "old@studio.local",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+            ldap_uid="uid-jdoe",
+        )
+        other = self.create_person("jdoe@studio.local")
+        person = ldap_service.find_ldap_person(build_user())
+        with self.assertLogs(app.logger, "ERROR") as logs:
+            with self.assertRaises(LdapAccountConflictException):
+                ldap_service.provision_person(build_user(), person)
+        output = "".join(logs.output)
+        self.assertIn(created["id"], output)
+        self.assertIn(other["id"], output)
+        self.assertEqual(Person.get(created["id"]).email, "old@studio.local")
 
     def test_provision_person_reactivation_user_limit(self):
         created = self.create_person(

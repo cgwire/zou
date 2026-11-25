@@ -23,6 +23,9 @@ from zou.app.services import persons_service
 # Patched to ldap3.MOCK_SYNC in tests.
 CLIENT_STRATEGY = ldap3.SYNC
 
+# Seconds to wait for the directory to accept the connection.
+CONNECT_TIMEOUT = 5
+
 
 def get_settings():
     """
@@ -64,23 +67,25 @@ def get_login_attribute(settings):
     return "uid"
 
 
-def get_server(settings):
+def get_server(settings, get_info=ldap3.ALL):
     """
-    The directory server described by the settings.
+    The directory server described by the settings. Reading its info (schema
+    included) costs requests: ask for it only when it is needed.
     """
     return ldap3.Server(
         f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}",
-        get_info=ldap3.ALL,
+        get_info=get_info,
         use_ssl=settings["LDAP_SSL"],
+        connect_timeout=CONNECT_TIMEOUT,
     )
 
 
-def connect(settings, user, password, authentication):
+def connect(settings, user, password, authentication, get_info=ldap3.ALL):
     """
     Open a connection to the directory and bind it with the given identity.
     """
     conn = ldap3.Connection(
-        get_server(settings),
+        get_server(settings, get_info=get_info),
         user=user,
         password=password,
         authentication=authentication,
@@ -178,7 +183,12 @@ def is_excluded(settings, desktop_login):
     """
     Whether the login is in the list of accounts to leave out.
     """
-    return desktop_login in settings["LDAP_EXCLUDED_ACCOUNTS"].split(",")
+    excluded = [
+        account.strip()
+        for account in settings["LDAP_EXCLUDED_ACCOUNTS"].split(",")
+        if account.strip()
+    ]
+    return desktop_login in excluded
 
 
 def get_desktop_login(entry, settings):
@@ -300,7 +310,11 @@ def check_group_exists(conn, settings):
                 "(objectClass=group)",
                 search_scope=ldap3.BASE,
             )
-        except ldap3.core.exceptions.LDAPNoSuchObjectResult:
+        except (
+            ldap3.core.exceptions.LDAPNoSuchObjectResult,
+            ldap3.core.exceptions.LDAPInvalidDNSyntaxResult,
+            ldap3.core.exceptions.LDAPInvalidDnError,
+        ):
             raise LdapGroupNotFoundException(
                 f"LDAP group not found: {settings['LDAP_GROUP']}"
             )
@@ -398,7 +412,9 @@ def check_user_password(settings, entry, password):
         user = entry.entry_dn
         authentication = ldap3.SIMPLE
     try:
-        conn = connect(settings, user, password, authentication)
+        conn = connect(
+            settings, user, password, authentication, get_info=ldap3.NONE
+        )
     except ldap3.core.exceptions.LDAPInvalidCredentialsResult:
         raise WrongPasswordException()
     conn.unbind()
@@ -465,6 +481,23 @@ def provision_person(user, person=None):
         and persons_service.is_user_limit_reached()
     ):
         raise IsUserLimitReachedException()
+    if user["email"] != person["email"]:
+        try:
+            holder = persons_service.get_person_by_email(user["email"])
+        except PersonNotFoundException:
+            holder = None
+        if holder is not None and holder["id"] != person["id"]:
+            current_app.logger.error(
+                f"LDAP login refused for {user['desktop_login']}: the "
+                f"directory email belongs to person {holder['id']}, not to "
+                f"person {person['id']}."
+            )
+            raise LdapAccountConflictException()
+    if person["ldap_uid"] and person["ldap_uid"] != user["ldap_uid"]:
+        current_app.logger.warning(
+            f"ldap_uid of person {person['id']} changed from "
+            f"{person['ldap_uid']} to {user['ldap_uid']}."
+        )
     fields = {
         "email": user["email"],
         "first_name": user["first_name"],

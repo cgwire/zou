@@ -13,6 +13,8 @@ from tests.services.ldap_fixtures import BASE_DN, LdapDirectoryMixin, ad_user
 from zou.app import app, config, db
 from zou.app.exceptions import (
     InactiveUserException,
+    IsUserLimitReachedException,
+    LdapAmbiguousUserException,
     LdapGroupNotFoundException,
     MissingOTPException,
     NoAuthStrategyConfigured,
@@ -312,6 +314,85 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         ):
             self.assertRaises(LDAPSocketOpenError, self.login, "jdoe")
         self.assertTrue(Person.get(person["id"]).active)
+
+    def test_ambiguous_result_deactivates_nobody(self):
+        self.use_directory(
+            [
+                self.jdoe(),
+                self.jdoe(dn=f"cn=jdoe2,ou=Paris,{BASE_DN}", cn="jdoe2"),
+            ]
+        )
+        person = self.ldap_person()
+        with mock.patch.object(
+            ldap_service,
+            "find_user_entry",
+            side_effect=LdapAmbiguousUserException("two"),
+        ):
+            self.assertRaises(WrongUserException, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_ambiguous_directory_deactivates_nobody(self):
+        self.use_directory(
+            [
+                self.jdoe(mail="shared@studio.com"),
+                self.jdoe(
+                    dn=f"cn=jdoe2,ou=Paris,{BASE_DN}",
+                    mail="shared@studio.com",
+                    cn="jdoe2",
+                ),
+            ]
+        )
+        person = self.ldap_person()
+        self.assertRaises(WrongUserException, self.login, "shared@studio.com")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_search_error_deactivates_nobody(self):
+        self.use_directory([self.jdoe()])
+        person = self.ldap_person()
+        with mock.patch.object(
+            ldap_service,
+            "search_entries",
+            side_effect=LDAPSocketOpenError("lost"),
+        ):
+            self.assertRaises(LDAPSocketOpenError, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_user_limit_reached_creates_nobody(self):
+        self.use_directory([self.jdoe()])
+        count = Person.query.count()
+        with mock.patch.object(
+            persons_service, "is_user_limit_reached", return_value=True
+        ):
+            self.assertRaises(IsUserLimitReachedException, self.login, "jdoe")
+        self.assertEqual(Person.query.count(), count)
+
+    def test_service_account_bind_failure(self):
+        self.use_directory([self.jdoe()], LDAP_PASSWORD="wrong")
+        person = self.ldap_person()
+        with self.assertLogs(app.logger, "ERROR") as logs:
+            self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertIn("service account bind failed", "".join(logs.output))
+        self.assertNotIn("wrong", "".join(logs.output))
+        self.assertTrue(Person.get(person["id"]).active)
+        with mock.patch.object(
+            ldap_service,
+            "open_service_connection",
+            side_effect=LDAPInvalidCredentialsResult("bad"),
+        ):
+            self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_email_collision_with_a_local_account(self):
+        self.use_directory([self.jdoe(mail="taken@studio.local")])
+        person = self.ldap_person(ldap_uid="{old}")
+        local = persons_service.create_person(
+            "taken@studio.local", b"x", "Local", "Account"
+        )
+        with self.assertLogs(app.logger, "ERROR"):
+            self.assertRaises(WrongUserException, self.login, "jdoe")
+        self.assertEqual(Person.get(person["id"]).email, "jdoe@studio.local")
+        self.assertEqual(Person.get(local["id"]).email, "taken@studio.local")
+        self.assertEqual(Person.get(local["id"]).first_name, "Local")
 
     def test_wrong_password_counted_once(self):
         self.use_directory([self.jdoe()])

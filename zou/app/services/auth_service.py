@@ -20,7 +20,11 @@ from flask_jwt_extended import (
     create_refresh_token,
     get_jti,
 )
-from ldap3.core.exceptions import LDAPSocketOpenError
+from ldap3.core.exceptions import (
+    LDAPBindError,
+    LDAPInvalidCredentialsResult,
+    LDAPSocketOpenError,
+)
 from sqlalchemy import func
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -357,6 +361,12 @@ def find_search_bind_user(person, identifier, password, app):
             f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
         )
         raise
+    except (LDAPBindError, LDAPInvalidCredentialsResult):
+        app.logger.error(
+            "LDAP service account bind failed: check LDAP_USER and "
+            "LDAP_PASSWORD."
+        )
+        raise NoAuthStrategyConfigured()
     try:
         if person is None:
             entry = ldap_service.find_user_entry(conn, settings, identifier)
@@ -408,7 +418,10 @@ def search_bind_auth_strategy(person, entry, user, password, app):
             ldap_service.deactivate_person(person)
         raise WrongUserException()
 
-    person_id = ldap_service.provision_person(user, person)
+    try:
+        person_id = ldap_service.provision_person(user, person)
+    except LdapAccountConflictException:
+        raise WrongUserException()
     return persons_service.get_person_raw(person_id).serialize()
 
 

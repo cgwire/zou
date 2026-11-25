@@ -88,6 +88,8 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_EXCLUDED_ACCOUNTS` | (none) | Comma-separated logins left out by the sync and refused by the search-bind login |
 | `EMAIL_DOMAIN` | studio.local | Domain of the email built for a directory user without `mail`, and preferred among several addresses |
 
+Accounts listed in `PROTECTED_ACCOUNTS` always keep the legacy bind (the DN is rebuilt from `LDAP_BASE_DN`), even with `LDAP_SEARCH_BIND`. They must sit directly under `LDAP_BASE_DN` (or use NTLM / `LDAP_FALLBACK`).
+
 ## SAML
 
 | Variable | Default | Description |
