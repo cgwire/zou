@@ -87,9 +87,8 @@ def get_weighted_quotas(
         query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
-        # One EXISTS on the assignees, instead of one per member of the
-        # studio; a studio without members then matches nothing, where the
-        # empty or_() matched everything.
+        # One EXISTS on the assignees: a studio without members matches
+        # nothing.
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
@@ -153,9 +152,8 @@ def get_weighted_quotas(
         query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
-        # One EXISTS on the assignees, instead of one per member of the
-        # studio; a studio without members then matches nothing, where the
-        # empty or_() matched everything.
+        # One EXISTS on the assignees: a studio without members matches
+        # nothing.
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
     result = query.all()
 
@@ -248,9 +246,8 @@ def get_raw_quotas(
         query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
-        # One EXISTS on the assignees, instead of one per member of the
-        # studio; a studio without members then matches nothing, where the
-        # empty or_() matched everything.
+        # One EXISTS on the assignees: a studio without members matches
+        # nothing.
         query = query.filter(Task.assignees.any(Person.studio_id == studio_id))
 
     result = query.all()
@@ -373,8 +370,8 @@ def _add_quota_entry(
 ):
     """
     Add one shot, or the share of it given by count, to the quotas of a
-    person, counted at once on its day, its week and its month. Seconds are
-    derived from the frame count and the project fps.
+    person, counted at once on its day, its week, its month and its year.
+    Seconds are derived from the frame count and the project fps.
     """
     nb_seconds = nb_frames / fps
     # TimeSpent dates are plain calendar days, already the user's working
@@ -419,8 +416,8 @@ def _add_quota_entry(
 
 def _init_quota_date(quotas, entry_id, date_str, week, month):
     """
-    Make sure the day, week and month buckets of given dates exist before
-    counts are added to them.
+    Make sure the day, week, month and year buckets of given dates exist
+    before counts are added to them.
     """
     year = month[:4]
     week_year = week[:4]
@@ -457,8 +454,8 @@ def _init_quota_date(quotas, entry_id, date_str, week, month):
 
 def _init_quota_entry(quotas, entry_id):
     """
-    Make sure the quota entry of a person exists, with its three
-    granularities and their four counters.
+    Create the quota entry of a person, with its day, week, month and year
+    buckets and their counters.
     """
     quotas[entry_id] = {
         "day": {

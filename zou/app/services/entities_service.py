@@ -158,8 +158,10 @@ def _collect_parent_ids(entities_map):
 def get_full_entity_name(entity_id):
     """
     Get full entity name whether it's an asset or a shot. If it's a shot
-    the result is "Episode name / Sequence name / Shot name". If it's an
-    asset the result is "Asset type name / Asset name".
+    the name is "Episode name / Sequence name / Shot name". If it's a
+    sequence the name is "Episode name / Sequence name". If it's an asset
+    the name is "Asset type name / Asset name". Return a tuple
+    (name, episode_id, preview_file_id).
     """
     entity = get_entity(entity_id)
     episode_id = None
@@ -213,7 +215,6 @@ def get_full_entity_names(entity_ids):
     all_entities.update(parents_map)
     all_entities.update(entities_map)
 
-    # Get type IDs for classification
     shot_type = entity_types_service.get_shot_type()
     episode_type = entity_types_service.get_episode_type()
     sequence_type = entity_types_service.get_sequence_type()
@@ -235,7 +236,6 @@ def get_full_entity_names(entity_ids):
             ).all()
         }
 
-    # Build names
     result = {}
     for eid in unique_ids:
         str_eid = str(eid)
@@ -297,7 +297,7 @@ def find_entity_raw(**lookup):
 
 def get_entity_raw(entity_id):
     """
-    Return an entity type matching given id, as an active record. Raises an
+    Return an entity matching given id, as an active record. Raises an
     exception if nothing is found.
     """
     return base_service.get_instance(
@@ -314,11 +314,11 @@ def _get_entity_cached(entity_id):
 
 def get_entity(entity_id):
     """
-    Return an entity type matching given id, as a dict. Raises an exception if
+    Return an entity matching given id, as a dict. Raises an exception if
     nothing is found.
 
     The id is normalised before it reaches the memoization: see
-    get_entity_type.
+    entity_types_service.get_entity_type.
     """
     return _get_entity_cached(str(entity_id))
 

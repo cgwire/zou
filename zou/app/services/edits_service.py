@@ -84,7 +84,8 @@ def get_edit(edit_id, relations=False):
 @cache.memoize_function_single_flight(120)
 def get_full_edit(edit_id):
     """
-    Return given edit as a dictionary with extra data like project.
+    Return given edit as a dictionary with its tasks and extra data like
+    project and episode names.
     """
     edits = get_edits_and_tasks({"id": edit_id}, for_client=False)
     if len(edits) == 0:
@@ -133,9 +134,9 @@ def get_edits(criterions=None, **paging):
 def get_edits_and_tasks(criterions=None, for_client=None):
     """
     Get all edits for given criterions with related tasks for each edit,
-    as a list of dicts. Flat narrow queries through
-    entities_service.fetch_entity_task_map instead of a row-multiplying
-    join; response shape unchanged.
+    as a list of dicts. The tasks come from flat queries through
+    entities_service.fetch_entity_task_map, not from a join that repeats
+    each edit row once per task.
     """
     if criterions is None:
         criterions = {}
@@ -281,7 +282,9 @@ def create_edit(
     created_by=None,
 ):
     """
-    Create edit for given project and episode.
+    Create edit for given project and episode and emit an edit:new event.
+    If an edit with the same name already exists there, return it
+    unchanged.
     """
     if data is None:
         data = {}
@@ -334,8 +337,9 @@ def update_edit(edit_id, data_dict):
 
 def get_edit_versions(edit_id):
     """
-    Edit metadata changes are versioned. This function returns all versions
-    of a given edit.
+    Return all versions of given edit, most recent first. Versions are
+    recorded only for shots (frame range or name changes), so an edit
+    usually has none.
     """
     versions = (
         EntityVersion.query.filter_by(entity_id=edit_id)

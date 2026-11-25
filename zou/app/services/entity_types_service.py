@@ -80,8 +80,8 @@ def is_episode(entity):
 def get_base_entity_type_name(entity_dict):
     """
     Return the entity type name of given entity, as the API names it:
-    Shot, Sequence, Episode, Edit, Concept, ConceptFolder, or Asset for
-    everything else.
+    Shot, Sequence, Episode, Edit, Scene, Concept, ConceptFolder, or Asset
+    for everything else.
     """
     type_name = "Asset"
     if is_shot(entity_dict):
@@ -112,8 +112,8 @@ def get_edit_type():
 
 def clear_asset_type_cache(asset_type_id=None):
     """
-    Drop the memoized asset type list, and the serialization of given
-    asset type when one is named.
+    Drop the memoized asset type list and every memoized asset type. When
+    an asset type is named, also drop its entity type cache.
     """
     if asset_type_id is not None:
         cache.cache.delete_memoized(get_asset_type, asset_type_id)
@@ -151,8 +151,8 @@ def get_temporal_type_ids():
 
 def build_asset_type_filter():
     """
-    Generate a query filter to filter entity that are assets (it means not shot,
-    not sequence, not episode and not scene)
+    Generate a query filter to filter entity that are assets (it means their
+    type is not one of get_temporal_type_ids).
     """
     ids_to_exclude = get_temporal_type_ids()
     return ~Entity.entity_type_id.in_(ids_to_exclude)
@@ -161,7 +161,7 @@ def build_asset_type_filter():
 def build_entity_type_asset_type_filter():
     """
     Generate a query filter to filter entity types that are asset types (it
-    means not shot, not sequence, not episode and not scene)
+    means not one of get_temporal_type_ids).
     """
     ids_to_exclude = get_temporal_type_ids()
     return ~EntityType.id.in_(ids_to_exclude)
@@ -190,10 +190,9 @@ def get_asset_types(criterions=None):
                 )
             )
         )
-    # The queried table is EntityType. Handing the helper Entity built the
-    # filters against the other table, which cross joined the two: the
-    # project criterion then restricted nothing and the name criterion,
-    # read off the assets rather than off their types, matched nothing.
+    # Build the filters against EntityType, the queried table: against
+    # Entity, the helper cross joins the two tables, and the criteria then
+    # restrict nothing or match nothing.
     query = query_utils.apply_criterions_to_db_query(
         EntityType, query, criterions
     )
@@ -273,7 +272,9 @@ def find_asset_type_by_name(name):
 
 def get_or_create_asset_type(name):
     """
-    For a given name, get matching asset type. Create if it does not exist.
+    For a given name, get matching asset type as a dict. Create if it does
+    not exist, and emit an asset-type:new event. Raise
+    WrongParameterException when the name is the one of a temporal type.
     """
     asset_type = find_asset_type_by_name(name)
     if asset_type is None:
@@ -286,22 +287,24 @@ def get_or_create_asset_type(name):
 
 def is_asset(entity):
     """
-    Returns true if given entity is an asset, not a shot.
+    Returns true if given entity (an active record) is an asset: its type
+    is not a temporal type (shot, sequence, edit...).
     """
     return str(entity.entity_type_id) not in get_temporal_type_ids()
 
 
 def is_asset_dict(entity):
     """
-    Returns true if given entity is an asset, not a shot.
-    It supposes that the entity is represented as a dict.
+    Returns true if given entity is an asset: its type is not a temporal
+    type. It supposes that the entity is represented as a dict.
     """
     return entity["entity_type_id"] not in get_temporal_type_ids()
 
 
 def is_asset_type(entity_type):
     """
-    Returns true if given entity type is an asset, not a shot.
+    Returns true if given entity type (a dict or an active record) is an
+    asset type: it is not a temporal type.
     """
     entity_type_id = ""
     if isinstance(entity_type, dict):

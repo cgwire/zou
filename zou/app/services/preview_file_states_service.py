@@ -44,6 +44,9 @@ GENERIC_FILES = [("files", "previews")]
 
 
 def file_key(bucket, prefix):
+    """
+    Return the "bucket/prefix" key of a stored file.
+    """
     return f"{bucket}/{prefix}"
 
 
@@ -81,10 +84,16 @@ def _get_file_states(preview_file_id):
 
 
 def clear_file_states_cache(preview_file_id):
+    """
+    Drop the memoized states of given preview file.
+    """
     cache.cache.delete_memoized(_get_file_states, str(preview_file_id))
 
 
 def get_state(states, bucket, prefix):
+    """
+    Return the state of given file in given states, or None when unknown.
+    """
     entry = states.get(file_key(bucket, prefix))
     return entry["state"] if entry is not None else None
 
@@ -118,7 +127,8 @@ def record_file_states(preview_file_id, states, refresh=False):
     The upsert itself is atomic (a single `INSERT ... ON CONFLICT`), so
     concurrent requests do not lose each other's writes. It emits no
     event and never raises: a lost state costs a storage round trip, not
-    a request. Return whether anything was written.
+    a request. The memoized states are cleared after the write. Return
+    whether anything was written.
     """
     preview_file_id = str(preview_file_id)
     if not refresh:
@@ -177,6 +187,9 @@ def record_file_states(preview_file_id, states, refresh=False):
 
 
 def record_file_state(preview_file_id, bucket, prefix, state, refresh=False):
+    """
+    Record the state of one stored file, see record_file_states.
+    """
     return record_file_states(
         preview_file_id, {(bucket, prefix): state}, refresh=refresh
     )
@@ -216,9 +229,9 @@ def probe_preview_files(
 ):
     """
     Probe the storage for the files of the ready preview files and record
-    their states. Return how many files are missing or failed, per
-    "bucket/prefix". Sequential: one round trip per file, meant for
-    off-hours.
+    their states, unless dry_run is set. Return how many files are
+    missing, per "bucket/prefix". Sequential: one round trip per file,
+    meant for off-hours.
     """
     query = PreviewFile.query.filter(PreviewFile.status == "ready")
     if project_id is not None:

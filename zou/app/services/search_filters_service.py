@@ -378,7 +378,8 @@ def get_filter_group(search_filter_group_id):
 
 def update_filter_group(search_filter_group_id, data):
     """
-    Update given filter group from database.
+    Update given filter group from database. The filters of the group
+    follow its new department and its is_shared value.
     """
     current_user = persons_service.get_current_user()
     search_filter_group = _get_own_or_as_admin(
@@ -434,7 +435,8 @@ def update_filter_group(search_filter_group_id, data):
 
 def remove_filter_group(search_filter_group_id):
     """
-    Remove given filter group from database.
+    Remove given filter group from database, with the filters its owner
+    put in it. The filters of the other members stay, out of the group.
     """
     current_user = persons_service.get_current_user()
     search_filter_group = _get_own_or_as_admin(
@@ -524,6 +526,7 @@ def _check_project_and_department_exist(project_id=None, department_id=None):
 
 def _check_group_is_in_project(search_filter_group, project_id):
     """
+    Raise WrongParameterException when given group is not in given project.
     Sharing a group takes a manager of its project, and its filters follow it:
     a filter of another project would reach a team beyond that right.
     """
@@ -580,9 +583,10 @@ def remove_search_filters(**kw):
     """
     Delete the search filters and search filter groups matching given
     column values. A group takes the filters it holds with it, whoever
-    owns them, as removing a single group does: they go first, since they
-    reference their group. A shared filter shows in the listing of every
-    user, so the memoized listings are dropped for all of them.
+    owns them, unlike remove_filter_group, which keeps the filters of the
+    other members: they go first, since they reference their group. A
+    shared filter shows in the listing of every user, so the memoized
+    listings are dropped for all of them.
     """
 
     group_ids = SearchFilterGroup.query.with_entities(

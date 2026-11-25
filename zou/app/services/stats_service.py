@@ -149,8 +149,8 @@ def add_entry_to_stats(
     entity_nb_frames,
 ):
     """
-    Add to stats results, information of given count for given entity, task
-    type and task satus.
+    Add to stats results, information of given count for given episode, task
+    type and task satus, and add it to the "all" aggregate of the episode.
     """
     episode_id = str(episode_id)
     task_type_id = str(task_type_id)
@@ -193,7 +193,7 @@ def add_entry_to_all_stats(
 ):
     """
     Add to aggregated entry of stats results, information of given count for
-    given entity, task type and task satus.
+    given task type and task satus, summed over all episodes.
     """
     task_type_id = str(task_type_id)
     task_status_id = str(task_status_id)
@@ -413,9 +413,8 @@ def _add_evolution_stats(
         # They represent the dynamics of the production
         max_retake_count = results[key1][key2]["max_retake_count"]
         evolution_data = results[key1][key2]["evolution"]
-        # Note that tasks can have both `is_done` and `is_retake` values:
-        # We simply count them twice in two different takes
-        # (at take `retake_count` and take `retake_count+1`).
+        # A task counts as a retake at each take up to its retake count,
+        # then as done or other at the later takes. is_retake is not read.
         for i in range(1, max_retake_count + 1):
             take_number = str(i)
             if take_number not in evolution_data:

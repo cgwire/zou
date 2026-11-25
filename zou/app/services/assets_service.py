@@ -488,7 +488,7 @@ def get_full_asset(asset_id):
 
 def create_asset_types(asset_type_names):
     """
-    For each name, create a new asset type.
+    For each name, return the asset type, created when it does not exist.
     """
     asset_types = []
     for asset_type_name in asset_type_names:
@@ -513,8 +513,9 @@ def create_asset(
     index=True,
 ):
     """
-    Create a new asset from given parameters. A bulk import passes
-    index=False and indexes all its assets at the end.
+    Create a new asset from given parameters, index it and emit an
+    asset:new event. A source_id shorter than a UUID is ignored. A bulk
+    import passes index=False and indexes all its assets at the end.
     """
     project = projects_service.get_project_raw(project_id)
     asset_type = entity_types_service.get_asset_type_raw(asset_type_id)
@@ -572,7 +573,9 @@ def set_shared_assets(
     with_events=False,
 ):
     """
-    Set all assets of a project to is_shared=True or False.
+    Set is_shared on the assets matching given project, asset type and
+    asset ids, and drop their cache. Emit an asset:update event for each
+    asset when with_events is set.
     """
 
     query = Entity.query.filter(entity_types_service.build_asset_type_filter())
@@ -608,8 +611,9 @@ def set_shared_assets(
 
 def get_shared_assets_used_in_project(project_id, episode_id=None, **paging):
     """
-    Get all shared assets used in a project, with the paging options of
-    query_utils.get_paginated_results.
+    Get the shared assets of other projects that are cast in the shots of
+    given project (narrowed to given episode), canceled ones excluded,
+    with the paging options of query_utils.get_paginated_results.
     """
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")

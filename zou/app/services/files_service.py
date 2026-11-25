@@ -250,10 +250,8 @@ def get_last_working_files_for_task(task_id):
         ),
     )
 
-    # query
     working_files = fields.serialize_models(query.all())
 
-    # group by name
     working_files_by_name = {
         k: list(v)[0]
         for k, v in itertools.groupby(working_files, key=itemgetter("name"))
@@ -289,7 +287,9 @@ def create_new_working_revision(
 ):
     """
     Create a new working file revision for given task. An author (user) and
-    a software are required.
+    a software are required. Emit a working-file:new event and return the
+    working file as a dict. Raise EntryAlreadyExistsException when the
+    revision exists.
     """
     task = Task.get(task_id)
     if revision == 0:
@@ -346,6 +346,9 @@ def create_new_output_revision(
     The `temporal_entity_id` concerns only asset instance output files. It is
     here to describe if the output is generated in the context of a shot or in
     the context of a scene.
+
+    Emit an output-file:new event and return the output file as a dict.
+    Raise EntryAlreadyExistsException when the revision exists.
     """
 
     if revision < 1:
@@ -495,10 +498,9 @@ def get_last_output_revision(
     temporal_entity_id=None,
 ):
     """
-    Get output with highest revision created for given entity, output type, task
-    type and name.
-    If an asset instance is given, it will look for last output file for this
-    instance instead of given entity.
+    Get output with highest revision created for given entity, output type,
+    task type and name. If an asset instance is given, it will look for last
+    output file for this instance instead of given entity.
     """
     query = (
         OutputFile.query.filter_by(
@@ -703,7 +705,6 @@ def get_last_output_files_for_entity(
         ),
     )
 
-    # query
     output_files = query.all()
     return fields.serialize_models(output_files)
 
@@ -718,7 +719,8 @@ def get_last_output_files_for_instance(
     file_status_id=None,
 ):
     """
-    Get last output files for given entity grouped by output type and name.
+    Get last output files for given asset instance and temporal entity,
+    grouped by task type, output type, name and representation.
     """
     # Query maximum revision for each possible arguments
     # Only group and filter by file status if specified. Otherwise this could
@@ -921,7 +923,7 @@ def record_movie_prefixes_later(
     Probe the storage for the versions of a movie and write them on the
     preview file, on the job queue when there is one: the probe costs one
     round trip per version, which the first byte of a cold movie should
-    not wait for. Without a queue it runs inline, as it always did.
+    not wait for. Without a queue it runs inline.
     """
     if config.ENABLE_JOB_QUEUE:
         queue_store.job_queue.enqueue(
@@ -939,9 +941,11 @@ def probe_and_record_movie_prefixes(
     preview_file_id, served_prefix, recorded_prefixes
 ):
     """
-    A probe that misses the version just served failed itself and is not
-    recorded. Runs from a job as well as from a request: it brings its
-    own app context when there is none.
+    Probe the storage for the versions of a movie and record them on the
+    preview file when they differ from the recorded ones. A probe that misses
+    the version just served failed itself and is not recorded. Runs from a job
+    as well as from a request: it brings its own app context when there is
+    none.
     """
     from flask import has_app_context
 
@@ -1172,7 +1176,8 @@ def get_preview_background_files():
 
 def reset_default_preview_background_files(preview_background_file_id):
     """
-    Set all preview background files as is_default=False except the one matching given id.
+    Set all preview background files as is_default=False except the one
+    matching given id.
     """
     query = PreviewBackgroundFile.query.filter(
         PreviewBackgroundFile.id != preview_background_file_id,

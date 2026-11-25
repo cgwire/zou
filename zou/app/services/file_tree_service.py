@@ -374,7 +374,7 @@ def _get_template(tree, mode, entity, section):
     malformed: the KeyError is turned into the domain exception.
     """
     # The tree is read inside each branch, not hoisted: the entity kind is
-    # resolved first, as it always was, so a malformed tree keeps surfacing
+    # resolved first, so a malformed tree keeps surfacing
     # after the dispatch rather than before it.
     try:
         if entity["type"] == "AssetInstance":
@@ -858,6 +858,10 @@ def apply_style(file_name, style):
 
 
 class PathTokens(object):
+    """
+    Names of the tokens a file tree template can hold.
+    """
+
     PROJECT = "Project"
     EPISODE = "Episode"
     SEQUENCE = "Sequence"
@@ -1040,7 +1044,9 @@ def _get_child_by_name(name, entity_type_id, constraints, parent_token):
 
 def get_data_from_token(type_token, value_token, constraints=None):
     """
-    Get the first corresponding data using the given type and value tokens.
+    Get the first corresponding data using the given type and value tokens:
+    an active record, a string for a name or a representation, an int for a
+    version. Return None when nothing matches or a constraint is missing.
     """
     if not constraints:
         constraints = {}
@@ -1364,7 +1370,6 @@ def guess_from_path(project_id, file_path, sep="/"):
                 else:
                     continue
 
-                # Try to get data from database using token and its value
                 data = get_data_from_token(token, token_value, template_data)
 
                 # Stop trying to get data from given template on latest valid

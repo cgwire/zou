@@ -36,10 +36,10 @@ logger = logging.getLogger(__name__)
 
 def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
     """
-    Retrieve all files for a given playlist into the temporary folder. The
-    copies land in tmp_dir, which the caller owns and removes once done:
-    they used to pile up in TMP_DIR and two previews sharing an upload name
-    overwrote each other.
+    Copy the files of given previews into tmp_dir (TMP_DIR when None). With
+    full, copy every preview file of the same revision. The caller owns
+    tmp_dir and removes it once done. Return a list of (copy path, file
+    name) tuples.
     """
     if tmp_dir is None:
         tmp_dir = config.TMP_DIR
@@ -67,9 +67,10 @@ def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
 
 def retrieve_playlist_tmp_file(preview_file, tmp_dir=None, index=0):
     """
-    Download one preview of a playlist to the temp folder, so ffmpeg can
-    concatenate it locally. The copy is prefixed by its index so that two
-    previews carrying the same display name keep their own file.
+    Copy one preview of a playlist to tmp_dir (TMP_DIR when None), so
+    ffmpeg can concatenate it locally. The copy is prefixed by its index so
+    that two previews carrying the same display name keep their own file.
+    Return the copy path and the file name.
     """
     if tmp_dir is None:
         tmp_dir = config.TMP_DIR
@@ -155,7 +156,9 @@ def build_playlist_zip_file(playlist):
 
 def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     """
-    Build a movie for all files for a given playlist into the temporary folder.
+    Build the movie of given playlist from the movie previews of given
+    shots, locally or through a remote job, and store it. End the build job
+    and return it as a dict. Raise an exception when the build fails.
     """
     success = False
     message = None
@@ -193,7 +196,8 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                             movie.concat_demuxer,
                         )
 
-                    # Try again using concat filter
+                    # The concat filter re-encodes: the fallback of the
+                    # demuxer, and the only mode of a full build.
                     if not success:
                         success, _ = _run_concatenation(
                             playlist,
@@ -230,13 +234,13 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
             app.logger.error(exc)
             success = False
 
-        # exception will be logged by rq
         finally:
             if tmp_dir is not None:
                 shutil.rmtree(tmp_dir, ignore_errors=True)
             if not handed_over:
                 job = end_build_job(playlist, job, success, message)
 
+    # rq logs this exception and flags the job as failed.
     if not success:
         raise Exception(f"Failure while building playlist {playlist['id']!r}")
 
@@ -248,8 +252,8 @@ def _run_concatenation(
 ):
     """
     Concatenate the downloaded previews into the playlist movie, then
-    store it and clean the temporary files up. Return whether it
-    succeeded, along with the concatenation message, if any.
+    store it. Return whether it succeeded, along with the concatenation
+    message, if any.
     """
     success = False
     message = None
@@ -283,8 +287,9 @@ def _run_remote_job_build_playlist(
     app, job, previews, params, movie_file_path, full
 ):
     """
-    Hand the concatenation over to a remote worker instead of running it
-    in process, when a job queue is configured.
+    Hand the concatenation over to a remote Nomad job instead of running it
+    in process. Then download the stored movie to the local cache and
+    return its path.
     """
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
@@ -379,16 +384,15 @@ def end_build_job(playlist, job, success, message=None):
 
 def build_playlist_job(playlist, job, shots, params, email, full, remote):
     """
-    Build playlist file (concatenate all movie previews). This function is
-    aimed at being run as a job in a job queue.
+    Build playlist file (concatenate all movie previews) and email the
+    download link to given address on success. This function is aimed at
+    being run as a job in a job queue.
     """
     # The job dict handed to the queue still says "running": the status
     # to test is the one end_build_job returns, empty when the job was
     # deleted during the build.
     job = build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
-    # Just in case, since rq jobs which encounter an error raise an
-    # exception in order to be flagged as failed.
     if job.get("status") == "succeeded":
         from zou.app import app
 
@@ -439,7 +443,7 @@ def get_playlist_download_context_name(project, playlist):
 
 def get_playlist_movie_file_path(build_job):
     """
-    Build file path for the movie file matching given playlist.
+    Build file path for the movie file matching given build job.
     """
     movie_file_name = f"cache-playlists-{build_job['id']}.mp4"
     return os.path.join(config.TMP_DIR, movie_file_name)
@@ -491,8 +495,8 @@ def remove_build_job_files(job_dict):
 
 def remove_build_job_impl(playlist, job_dict):
     """
-    Remove one build job (file + DB record + event). Caller must pass
-    serialized job dict to avoid re-fetching when deleting multiple jobs.
+    Remove one build job (files + DB record + event). Caller passes the
+    serialized job dict. Return the path of the cache file.
     """
     build_job_id = job_dict["id"]
     movie_file_path = remove_build_job_files(job_dict)
@@ -509,8 +513,9 @@ def remove_build_job_impl(playlist, job_dict):
 
 def remove_build_job(playlist, build_job_id):
     """
-    Remove build job from database and remove related temporary file from
-    hard drive.
+    Remove build job from database and remove its movie from the cache and
+    the storage. Return the path of the cache file, or None when the job
+    does not exist.
     """
     job = BuildJob.get(build_job_id)
     if job is None:

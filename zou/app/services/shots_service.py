@@ -481,8 +481,8 @@ def get_shot(shot_id, relations=False):
 @cache.memoize_function_single_flight(120)
 def get_full_shot(shot_id):
     """
-    Return given shot as a dictionary with extra data like project and
-    sequence names.
+    Return given shot as a dictionary with its tasks and extra data like
+    project and sequence names.
     """
     if not fields.is_valid_id(shot_id):
         raise ShotNotFoundException
@@ -695,7 +695,8 @@ def get_episode_by_shotgun_id(shotgun_id):
 
 def get_or_create_first_episode(project_id, created_by=None):
     """
-    Get the first episode of the production.
+    Get the first episode of the production, by name. If the production
+    has no episode, create one named E01.
     """
     episode_type = entity_types_service.get_episode_type()
     episode = (
@@ -847,7 +848,9 @@ def create_episode(
     created_by=None,
 ):
     """
-    Create episode for given project.
+    Create episode for given project and emit an episode:new event. An
+    unknown status becomes "running". If an episode with the same name
+    already exists, return it unchanged.
     """
     if data is None:
         data = {}
@@ -877,7 +880,10 @@ def create_sequence(
     project_id, episode_id, name, description="", data=None, created_by=None
 ):
     """
-    Create sequence for given project and episode.
+    Create sequence for given project and episode and emit a sequence:new
+    event. If a sequence with the same name already exists there, return
+    it unchanged. Raise EpisodeNotFoundException if the episode is not in
+    the project.
     """
     if data is None:
         data = {}
@@ -928,8 +934,9 @@ def create_shot(
     index=True,
 ):
     """
-    Create shot for given project and sequence. A bulk import passes
-    index=False and indexes all its shots at the end.
+    Create shot for given project and sequence and emit a shot:new event.
+    If a shot with the same name already exists there, return it unchanged.
+    A bulk import passes index=False and indexes all its shots at the end.
     """
     if data is None:
         data = {}
@@ -937,7 +944,7 @@ def create_shot(
 
     sequence = None
     if sequence_id is not None:
-        # raises SequenceNotFound if it fails.
+        # raises SequenceNotFoundException if it fails.
         sequence = get_sequence(sequence_id)
         if sequence["project_id"] != str(project_id):
             raise SequenceNotFoundException
@@ -984,12 +991,13 @@ def create_shot(
 
 def create_scene(project_id, sequence_id, name, created_by=None):
     """
-    Create scene for given project and sequence.
+    Create scene for given project and sequence and emit a scene:new event.
+    If a scene with the same name already exists there, return it unchanged.
     """
     scene_type = entity_types_service.get_scene_type()
 
     if sequence_id is not None:
-        # raises SequenceNotFound if it fails.
+        # raises SequenceNotFoundException if it fails.
         sequence = get_sequence(sequence_id)
         if sequence["project_id"] != str(project_id):
             raise SequenceNotFoundException

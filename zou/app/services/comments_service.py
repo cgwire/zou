@@ -661,7 +661,9 @@ def _apply_status_change(
     """
     Post the comment moving the first task, by name, of the output task
     type to the output status, authored by the author of the triggering
-    comment.
+    comment. Skip it when the target guard refuses the task or when the
+    automation already fired on the entity. When the automation asks for
+    it, import the last revision of the source task into the new comment.
     """
     tasks_to_update = tasks_service.get_tasks_for_entity_and_task_type(
         task["entity_id"], automation["out_task_type_id"]
@@ -795,7 +797,8 @@ def new_comment(
 ):
     """
     Create a new comment for given object (by default, it considers this object
-    as a Task).
+    as a Task), with its attachments. Emit comment:new and return the
+    comment as a dict.
     """
     if files is None:
         files = {}
@@ -1010,8 +1013,9 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
 
 def reply_comment(comment_id, text, person_id=None, files=None):
     """
-    Add a reply entry to the JSONB field of given comment model. Create
-    notifications needed for this.
+    Add a reply entry to the JSONB field of given comment model, with its
+    attachments. Emit comment:reply, create the notifications needed for
+    this and return the reply as a dict.
     """
     if files is None:
         files = {}
@@ -1135,8 +1139,9 @@ def get_comment_mention_ids(project_id, text):
 
 def get_comment_department_mentions(project_id, text):
     """
-    Check for department mention (@name) in text and returns matching person
-    active records.
+    Check for department mention (@name) in text and returns matching
+    department active records. project_id is not used: every department
+    of the studio can be mentioned.
     """
     return [
         department
@@ -1210,7 +1215,8 @@ def filter_tasks_by_hashtags(tasks, hashtags, original_task_type):
 def add_attachments_to_comment(comment, files, reply_id=None):
     """
     Create an attachment entry and for each given uploaded files and tie it
-    to given comment.
+    to given comment. The comment dict is changed in place. Return the
+    comment and the list of the new attachment files.
     """
     if comment.get("attachment_files", None) is None:
         comment["attachment_files"] = []
@@ -1247,7 +1253,10 @@ def clear_comment_cache(comment_id):
 
 def get_comments(task_id, is_client=False, is_manager=False):
     """
-    Return all comments related to given task.
+    Return the comments of given task the caller may read, newest first.
+    A client gets the comments flagged for clients and the client comments
+    the project shows them. A studio comment with previews stays, with its
+    text, attachments, checklist and replies blanked.
     """
     comments = []
     query = prepare_query(task_id, is_client, is_manager)
@@ -1316,8 +1325,9 @@ def get_comments(task_id, is_client=False, is_manager=False):
 
 def prepare_query(task_id, is_client, is_manager):
     """
-    Build the comment query of a task, scoped to what the caller may read:
-    a client only sees the comments flagged for clients.
+    Build the comment query of a task. A caller who is neither a manager
+    nor a client does not get the comments of clients. The scoping of a
+    client is done afterwards by get_comments.
     """
     Editor = aliased(Person, name="editor_id")
     query = (
@@ -1470,7 +1480,7 @@ def _build_department_mention_map_for_comments(comment_ids):
 def build_preview_map_for_comments(comment_ids, is_client=False):
     """
     Return the previews attached to each comment. Clients never get the
-    previews of a revision that is not published to them.
+    rejected previews.
     """
     preview_map = {}
     query = (
@@ -1620,7 +1630,10 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     Add a preview to comment preview list. Auto set the revision field
     (add 1 if it's a new preview, keep the preview revision in other cases).
     A revision of None means "auto-pick the next revision"; an explicit 0
-    is a valid, stored revision.
+    is a valid, stored revision. Raise TooManyPreviewFilesException when
+    the project allows a single preview per revision and the revision has
+    one. Emit preview-file:new and comment:update, and return the preview
+    file as a dict.
     """
     comment = get_comment_raw(comment_id)
     news = News.get_by(comment_id=comment_id)
@@ -1688,6 +1701,8 @@ def copy_preview_file_in_another_one(
 ):
     """
     Copy preview file data/files from one preview file to another one.
+    Emit comment:update and preview-file:add-file when the target preview
+    belongs to a comment. Return the updated preview file as a dict.
     """
     original_preview_file = files_service.get_preview_file(
         original_preview_file_id

@@ -271,8 +271,11 @@ def get_asset_type_casting(project_id, asset_type_id):
 
 def update_casting(entity_id, casting):
     """
-    Update casting for given entity. Casting is an array of dictionaries made of
-    two fields: `asset_id` and `nb_occurences`.
+    Replace the casting of given entity. Casting is an array of dictionaries
+    made of `asset_id`, `nb_occurences` and an optional `label`. Entries
+    without `asset_id` or `nb_occurences` are skipped. On an episode, the
+    dropped assets also leave the casting of its shots. Return the given
+    casting.
     """
 
     entity = entities_service.get_entity_raw(entity_id)
@@ -421,7 +424,10 @@ def _clear_casting_cache(entity_id):
 
 def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     """
-    Add a link between given entity and given asset.
+    Create or update the link between given entity and given asset. A new
+    link on a shot also casts the asset in its episode. Duplicate link
+    errors from concurrent requests are logged, not raised. Return the
+    link, or None when a concurrent request created it first.
     """
     try:
         link = EntityLink.get_by(
@@ -575,11 +581,10 @@ def _detach_asset_from_episode_if_unused(asset_id, episode_id):
 def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
     """
     When an asset is casted in a shot, the asset is automatically casted in
-    the episode.
+    the episode, with a link flagged as auto.
     """
     # A shot laid out before its sequences exist hangs from nothing, and
-    # then there is no episode to cast the asset in: reading the sequence
-    # anyway turned the whole casting into a 404.
+    # then there is no episode to cast the asset in.
     if (
         entity_types_service.is_shot(entity)
         and entity["parent_id"] is not None
@@ -617,7 +622,7 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
 
 def get_cast_in(asset_id):
     """
-    Get the list of shots where an asset is casted in.
+    Get the list of shots, then of assets, where an asset is casted in.
     """
     cast_in = []
     Sequence = aliased(Entity, name="sequence")
@@ -866,7 +871,7 @@ def add_asset_instance_to_asset(
     asset_id, asset_to_instantiate_id, description=""
 ):
     """
-    Create a new asset instance for given asset and scene.
+    Create a new instance of the asset to instantiate inside given asset.
     """
     instance = (
         AssetInstance.query.filter(AssetInstance.target_asset_id == asset_id)
@@ -947,7 +952,8 @@ def refresh_casting_stats(asset):
 def refresh_shot_casting_stats(shot, priority_map=None):
     """
     For all tasks related to given shot, it computes how many assets are
-    available for this task and saves the result on the task level.
+    available for this task and saves the result on the task level. It
+    also resyncs the shot nb_entities_out with its live links.
     """
     if priority_map is None:
         priority_map = _get_task_type_priority_map(shot["project_id"])

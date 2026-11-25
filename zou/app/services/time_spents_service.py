@@ -111,7 +111,7 @@ def get_year_table(
     studio_id=None,
 ):
     """
-    Return a table giving time spent by user and by month for given year.
+    Return a table giving time spent by user and by year, over all years.
     """
     return get_yearly_table(
         None,
@@ -202,9 +202,9 @@ def get_yearly_table(
     studio_id=None,
 ):
     """
-    Return a table giving time spent by user and by week or month for given
-    year. Week or month detail level can be selected through *detail_level*
-    argument.
+    Return a table giving time spent by user and by year, month or week for
+    given year, or for all years when year is None. The detail level is
+    selected through the *detail_level* argument.
     """
     time_spents = get_time_spents_for_year(
         year=year,
@@ -226,7 +226,8 @@ def get_time_spents_for_year(
     studio_id=None,
 ):
     """
-    Return all time spents for given year.
+    Return all time spents for given year, or for all years when year is
+    None.
     """
     query = TimeSpent.query
 
@@ -261,7 +262,8 @@ def get_time_spents_for_month(
     studio_id=None,
 ):
     """
-    Return all time spents for given month.
+    Return all time spents for given month. Raise WrongDateFormatException
+    when the month is not between 1 and 12.
     """
     month_int = int(month)
     if month_int < 1 or month_int > 12:
@@ -286,7 +288,7 @@ def get_time_spents_for_month(
 def get_table_from_time_spents(time_spents, detail_level="month"):
     """
     Buid a time spent table based on given time spents and given level
-    of detail (week, day or month).
+    of detail (year, month, week or day).
     """
     result = {}
     for time_spent in time_spents:
@@ -415,7 +417,7 @@ def get_year_time_spents(
     person_id, year, project_id=None, department_ids=None, scope=None
 ):
     """
-    Return aggregated time spents at task level for given person and month.
+    Return aggregated time spents at task level for given person and year.
     """
     start, end = date_helpers.get_year_interval(year)
     return _get_interval_time_spents(
@@ -618,7 +620,7 @@ def get_person_day_offs_for_week(person_id, year, week):
 
 def get_person_day_offs_for_month(person_id, year, month):
     """
-    Get all day off entries for given person, year and week.
+    Get all day off entries for given person, year and month.
     """
     start, end = _last_day_of(date_helpers.get_month_interval(year, month))
     return get_day_offs_between(start, end, person_id=person_id)
@@ -698,7 +700,8 @@ def get_project_task_type_time_spents(
     project_id, task_type_id, start_date, end_date
 ):
     """
-    Returns time spents for project and task type in a date range.
+    Returns time spents for project and task type in a date range, grouped
+    by person ID.
     """
     try:
         query = TimeSpent.query.join(Task).filter(
@@ -732,7 +735,9 @@ def get_day_offs_between_for_project(
     current_user_id=None,
 ):
     """
-    Get all day off entries for project, start and end date.
+    Get all day off entries of the project team for start and end date,
+    grouped by person ID. Day offs of other persons than the current user
+    are serialized safe, unless safe is True.
     """
     project = projects_service.get_project(project_id, relations=True)
     try:
@@ -791,8 +796,11 @@ def _apply_time_spent_duration(time_spent, duration, add, project_id):
 
 def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
-    Create a new time spent if it doesn't exist. If it exists, it update it
-    with the new duration and returns it from the database.
+    Create a new time spent if it doesn't exist. If it exists, set its
+    duration, or add to it when add is True. Then recompute the task
+    duration and emit the time spent and task events. Return the time
+    spent as a dictionary. Raise TimeSpentNotFoundException when a
+    concurrent request deletes the row.
     """
     try:
         return _create_or_update_time_spent(
@@ -850,7 +858,8 @@ def _create_or_update_time_spent(task_id, person_id, date, duration, add):
 
 def delete_time_spent(task_id, person_id, date):
     """
-    Delete time spent for given task, person and date.
+    Delete time spent for given task, person and date, then recompute the
+    task duration.
     """
     time_spent = _get_time_spent_raw(task_id, person_id, date)
 
@@ -880,7 +889,8 @@ def delete_time_spent(task_id, person_id, date):
 
 def get_time_spents_for_task(task_id, date=None):
     """
-    Return time spents for given task.
+    Return time spents for given task, all dates if none given, grouped by
+    person ID, with the sum of their durations under "total".
     """
     result = collections.defaultdict(list)
     result["total"] = 0

@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 def get_index(index_name):
     """
-    Retrieve meilisearch index from disk. It is required to perform any operations.
+    Retrieve the Meilisearch index of given name from the indexer. It is
+    required to perform any operations.
     """
     return indexing.get_index(index_name)
 
@@ -113,7 +114,7 @@ def _remove_entry_index(get_entry_index, document_id):
 
 def reset_index():
     """
-    Delete index and rebuild it by looping on all the assets listed in the
+    Delete the asset, person and shot indexes and rebuild them from the
     database.
     """
     reset_asset_index()
@@ -129,8 +130,9 @@ def reset_entry_index(
     filterable_fields=None,
 ):
     """
-    Clear and rebuild index for given parameters: folder name of the index,
-    func to get entries to index, func to index a given entry.
+    Create the index when needed, clear it and rebuild it for given
+    parameters: name of the index, func to get entries to index, func to
+    build the document of a given entry. Return the indexed entries.
     """
     if searchable_fields is None:
         searchable_fields = []
@@ -274,8 +276,8 @@ def search_assets(query, project_ids=None, limit=3, offset=0):
 def search_shots(query, project_ids=None, limit=3, offset=0):
     """
     Perform a search on the index. The query is a simple string. The result is
-    a list of shots with extra data like the project name and the asset type
-    name (3 results maximum by default).
+    a list of shots with extra data like the project name, the sequence
+    name and, for a TV show, the episode (3 results maximum by default).
     """
     if project_ids is None:
         project_ids = []
@@ -293,7 +295,6 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
     shots_raw = Entity.query.filter(Entity.id.in_(shot_ids)).all()
     shots_map = {str(e.id): e.serialize(obj_type="Shot") for e in shots_raw}
 
-    # Collect sequence IDs and project IDs
     sequence_ids = set()
     project_ids_set = set()
     preview_ids = set()
@@ -314,7 +315,6 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
             ).all()
         }
 
-    # Collect episode IDs from sequences
     episode_ids = set()
     for seq in sequences_map.values():
         if seq.get("parent_id") is not None:
@@ -575,7 +575,8 @@ def get_all_raw_shots():
 
 def get_all_raw_active_persons():
     """
-    Return all active persons without serialization. Guests are excluded.
+    Return all active persons without serialization. Guests and preview
+    accounts are excluded.
     """
     return Person.query.filter(
         Person.active,

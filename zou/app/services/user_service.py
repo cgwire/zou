@@ -287,7 +287,8 @@ def get_scenes_for_sequence(sequence_id):
 def get_open_projects(name=None):
     """
     Get all open projects for which current user is part of the team, the
-    metadata descriptors of each narrowed on the role held on it.
+    metadata descriptors of each narrowed on the role held on it. An admin
+    gets every open project.
     """
     query = Project.query.join(
         ProjectStatus, Project.project_status_id == ProjectStatus.id
@@ -353,7 +354,8 @@ def get_descriptor_visibilities(project_ids):
 
 def get_open_project_ids():
     """
-    Get all open project ids for which current user is part of the team.
+    Get all open project ids for which current user is part of the team, or
+    every open project id for an admin.
     """
     return [project["id"] for project in get_open_projects()]
 
@@ -417,7 +419,9 @@ def get_notification(notification_id):
 
 def update_notification(notification_id, read):
     """
-    Update read status of given notification.
+    Update read status of given notification and emit notification:read
+    or notification:unread. Raise NotificationNotFoundException when the
+    notification does not belong to the current user.
     """
     current_user = persons_service.get_current_user()
     notification = Notification.get_by(
@@ -787,8 +791,9 @@ def _serialize_notification(
 
 def mark_notifications_as_read():
     """
-    Mark all recent notifications for current_user as read. It is useful
-    to mark a list of notifications as read after an user retrieved them.
+    Mark all unread notifications for current_user as read and emit
+    notification:all-read. It is useful to mark a list of notifications as
+    read after an user retrieved them.
     """
     from sqlalchemy import update
 

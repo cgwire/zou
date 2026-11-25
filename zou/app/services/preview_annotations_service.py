@@ -45,14 +45,16 @@ def update_preview_file_annotations(
     only_own_objects=False,
 ):
     """
-    Update annotations for given preview file.
+    Update annotations for given preview file, clear its cache, emit
+    preview-file:annotation-update and return the preview file as a dict.
     Uses a Redis lock to prevent race conditions when multiple processes update
-    annotations on the same preview file concurrently.
+    annotations on the same preview file concurrently. Raise
+    AnnotationLockTimeoutException when the lock cannot be acquired.
 
-    With ``only_own_objects`` (guests), the added objects are stamped with
-    ``person_id`` and the updates and deletions are kept to the objects it
-    stamped before: a guest never touches a drawing of the team or of
-    another guest.
+    With ``only_own_objects`` (guests), the added and updated objects are
+    stamped with ``person_id`` and the updates and deletions are kept to the
+    objects it stamped before: a guest never touches a drawing of the team
+    or of another guest.
     """
     if additions is None:
         additions = []
@@ -391,9 +393,11 @@ def extract_annotation_frame_from_preview_file(
     pictures, `frame_number` is ignored and the first annotation entry is
     used.
 
-    Raises AnnotationNotFoundException when no annotation matches. Returns
-    the path to the composited PNG (caller must delete it), or None when
-    the preview binary is not available.
+    Raises AnnotationNotFoundException when no annotation matches, and
+    WrongParameterException when a movie gets no frame number or the
+    extension is not supported. Returns the path to the composited PNG
+    (caller must delete it), or None when the preview binary is not
+    available.
     """
     extension = (preview_file.get("extension") or "").lower()
     annotations = preview_file.get("annotations") or []
@@ -562,7 +566,7 @@ def _build_annotated_frame_entries(preview_file):
 
 def _build_movie_annotation_entries(preview_file, annotations, base_name):
     """
-    Returns a list of (arcname, temp_png_path) tuples ready to be zipped,
+    Returns a list of (arcname, temp_png_path) tuples ready to be bundled,
     or None if the movie binary is unavailable. Cleans up partial work on
     failure.
 
@@ -608,8 +612,8 @@ def _build_movie_annotation_entries(preview_file, annotations, base_name):
 
 def _build_picture_annotation_entries(preview_file, annotations, base_name):
     """
-    Build the annotated frame entries of a picture preview: at most one,
-    since a picture carries a single annotation time.
+    Build the annotated frame entries of a picture preview: one copy of the
+    picture per annotation, each with that annotation burnt in.
     """
     entries = []
     try:

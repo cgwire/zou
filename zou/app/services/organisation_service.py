@@ -27,7 +27,8 @@ def clear_organisation_cache():
 
 def update_organisation(organisation_id, data):
     """
-    Update organisation entry with data given in parameter.
+    Update organisation entry with data given in parameter, emit
+    organisation:update and clear the organisation cache.
     """
     organisation = base_service.get_instance(
         Organisation, organisation_id, OrganisationNotFoundException

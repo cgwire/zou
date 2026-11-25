@@ -31,8 +31,8 @@ def get_person_done_tasks(person_id, projects):
 
 def get_person_related_tasks(person_id, task_type_id, projects):
     """
-    Retrieve all tasks for given task types and to entiities
-    that have at least one person assignation, in given projects.
+    Retrieve all tasks of given task type on the entities where given
+    person is assigned to at least one task, in given projects.
     """
     person = Person.get(person_id)
     project_ids = [project["id"] for project in projects]
@@ -55,7 +55,9 @@ def get_person_related_tasks(person_id, task_type_id, projects):
 
 def get_person_tasks(person_id, projects, is_done=None):
     """
-    Retrieve all tasks for given person and projects.
+    Retrieve the tasks assigned to given person in given projects. With
+    is_done, return the finished ones, most recent end date first;
+    otherwise return the unfinished ones.
     """
     Person.get(person_id)
     project_ids = [project["id"] for project in projects]
@@ -104,7 +106,6 @@ def get_person_tasks(person_id, projects, is_done=None):
     else:
         query = query.filter(TaskStatus.is_done == False)
 
-    # Execute query once and reuse results
     query_results = query.all()
 
     # Add episodes linked to assets
@@ -129,8 +130,6 @@ def get_person_tasks(person_id, projects, is_done=None):
             cast_in_episode_names[asset_id] = []
         cast_in_episode_ids[asset_id].append(episode_id)
         cast_in_episode_names[asset_id].append(episode_name)
-
-    # Build the result
 
     tasks = []
     for row in query_results:
@@ -507,7 +506,9 @@ def _apply_open_tasks_filters(query, filters):
 
 def get_open_tasks(filters, order_by=None, limit=200, page=None):
     """
-    Return all tasks matching given filters from open projects.
+    Return a page of the tasks matching given filters from open projects,
+    as a dict with data, stats, limit, is_more and page. Concept tasks are
+    left out unless a task type is given.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -948,8 +949,10 @@ def get_tasks_to_check(
     limit=100,
 ):
     """
-    Get all tasks waiting for feedback in the user department. When a page
-    number is given, return a pagination envelope instead of a bare list.
+    Get all tasks waiting for feedback that the current user supervises:
+    all of them for an admin, every task of a managed project, the tasks of
+    the user departments on a supervised project. When a page number is
+    given, return a pagination envelope instead of a bare list.
     """
     allowed, project_ids, scope = _get_tasks_to_check_scope()
     if not allowed:
@@ -976,7 +979,7 @@ def get_tasks_to_check(
 def get_tasks_to_check_filter_values():
     """
     Return the distinct filter values available for the tasks waiting for
-    feedback in the user department.
+    feedback that the current user supervises.
     """
     allowed, project_ids, scope = _get_tasks_to_check_scope()
     if not allowed:

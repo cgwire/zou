@@ -99,7 +99,7 @@ def open_projects(name=None):
 
 def open_project_ids():
     """
-    Return all open project ids. Allow to filter projects by name.
+    Return all open project ids.
     """
     return [project["id"] for project in open_projects()]
 
@@ -108,10 +108,10 @@ def get_projects_with_extra_data(
     query, for_client=False, vendor_departments=None
 ):
     """
-    Helpers function to attach:
-    * First episode name to current project when it's a TV Show.
-    * Add metadata descriptors for this project.
-    * Add task types and task statuses for this project.
+    Run given project query and return the projects as dicts with their
+    extra data: project status name, metadata descriptors, task type and
+    task status links, asset type workflows and, for a TV show, the id of
+    the first episode.
     """
     projects_list = with_project_relations(query).all()
     project_ids = [project.id for project in projects_list]
@@ -468,7 +468,8 @@ def get_project_by_name(project_name):
 
 def update_project(project_id, data):
     """
-    Update project matching given id with data from *data* dict.
+    Update project matching given id with data from *data* dict, drop its
+    cache and emit a project:update event.
     """
     project = get_project_raw(project_id)
     project.update(data)
@@ -1232,7 +1233,8 @@ def get_task_type_links(project_id, for_entity="Asset"):
 
 def get_department_team(project_id, department_id):
     """
-    Get all persons in a given department for a given project.
+    Get all persons in a given department for a given project, as active
+    records.
     """
     persons = (
         Person.query.join(

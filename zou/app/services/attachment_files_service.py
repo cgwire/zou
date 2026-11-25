@@ -25,7 +25,7 @@ def get_attachment_file_raw(attachment_file_id):
 @cache.memoize_function(120)
 def get_attachment_file(attachment_file_id):
     """
-    Return attachment file model matching given id.
+    Return attachment file matching given id as a dictionary.
     """
     attachment_file = get_attachment_file_raw(attachment_file_id)
     return attachment_file.serialize()
@@ -57,7 +57,9 @@ def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
     """
     Store an uploaded file and tie the matching attachment entry to given
     comment. With randomize, the file name gets a random suffix, which is
-    how a name collision on the same comment is resolved.
+    how a name collision on the same comment is resolved. A reply_id that
+    is not a reply of the comment is ignored. If the storage fails, the
+    attachment entry is deleted and the error is raised again.
     """
     tmp_folder = current_app.config["TMP_DIR"]
     filename = uploaded_file.filename
@@ -165,7 +167,8 @@ def build_attachment_map_for_comments(comment_ids):
 def remove_attachment_file(attachment_file):
     """
     Remove all files related to given attachment file, then remove the
-    attachment file entry from the database.
+    attachment file entry from the database. Return the attachment file
+    as it was before the deletion.
     """
 
     files_service.remove_quietly(
@@ -180,7 +183,8 @@ def remove_attachment_file(attachment_file):
 def remove_attachment_file_by_id(attachment_file_id):
     """
     Remove all files related to given attachment file, then remove the
-    attachment file entry from the database.
+    attachment file entry from the database. Raise
+    AttachmentFileNotFoundException if the attachment file does not exist.
     """
     attachment_file = AttachmentFile.get(attachment_file_id)
     if attachment_file is None:

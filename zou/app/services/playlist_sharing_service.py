@@ -82,7 +82,7 @@ def create_share_link(
     token = str(uuid.uuid4())
     # Hash the password at rest so a DB leak (or a manager fetching the
     # share link list) never exposes the cleartext credential. An empty
-    # or missing password is stored as NULL — the validate path then
+    # or missing password is stored as NULL: check_share_link_password then
     # treats the link as unprotected. encrypt_password returns bytes;
     # decode to str so it lands in the String column as a real hash
     # rather than the literal bytes repr.
@@ -790,7 +790,8 @@ def enrich_shots_with_entity_info(playlist_dict):
     keeps preview/entity references — in the shared context, consumers
     have no auth'd access to entity/asset/shot stores, so names must be
     inlined here. In a playlist for all episodes, the sequence of a shot
-    comes with its episode.
+    comes with its episode. The project name and fps, and the task type
+    and task status color of each shot, are inlined too.
     """
     _enrich_shared_playlist_project_line(playlist_dict)
 

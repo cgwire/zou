@@ -260,7 +260,8 @@ def purge(files, remove_object):
 def get_files_to_purge(limit=100, grace_delay=0):
     """
     Objects marked deleted at least grace_delay seconds ago, not purged
-    yet, that the purge is allowed to remove. The oldest come first.
+    yet, that the purge is allowed to remove, as dicts. The oldest come
+    first, at most limit of them.
     """
     deleted_before = date_helpers.get_utc_now_datetime() - timedelta(
         seconds=grace_delay
@@ -281,6 +282,10 @@ def get_files_to_purge(limit=100, grace_delay=0):
 
 
 def get_stored_file(bucket, prefix, file_id):
+    """
+    Return the registry row of given object as a dict, or None when the
+    object is not recorded.
+    """
     stored_file = StoredFile.get_by(
         bucket=bucket, key=make_key(prefix, file_id)
     )

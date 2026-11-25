@@ -67,9 +67,11 @@ def send_notification(
     person_id, subject, messages, title="", force_email=False, locale=None
 ):
     """
-    Send email notification to given person. Use the job queue if it is
-    activated. If locale is provided, the email Content-Language header
-    is set accordingly.
+    Send a notification to given person: by email when the person enabled
+    email notifications or force_email is set, and on each chat channel
+    (Slack, Mattermost, Discord) the person enabled. Use the job queue if
+    it is activated. If locale is provided, the email Content-Language
+    header is set accordingly.
     """
     person = persons_service.get_person(person_id)
     email_message = messages["email_message"]

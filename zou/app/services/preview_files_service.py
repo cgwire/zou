@@ -104,8 +104,8 @@ def get_preview_file_dimensions(project, entity=None):
 
 def get_preview_file_fps(project, entity=None):
     """
-    Return fps set at project level or default fps if the dimensions are not
-    set.
+    Return fps set at entity level, else at project level, else 25, as a
+    string with three decimals.
     """
     fps = "25.00"
     if project.get("fps", None) is not None:
@@ -187,7 +187,7 @@ def update_preview_file_trim(preview_file_id, trim):
     """
     Set the in/out handles of given preview file, a None value clears the
     handle. The extra previews of a revision carry their own trim there: the
-    trim of the main preview stays on the shot, like before.
+    trim of the main preview stays on the shot.
 
     The other keys of the data are kept, like the other writers of this
     column do (the stored movie prefixes).
@@ -429,7 +429,9 @@ def prepare_and_store_movie(
     build the thumbnails and the tile, then record the metadata and which
     versions are stored. Any failure marks the preview file as broken
     (the job timeout goes through, so that rq records the failure), and
-    the temporary files are removed whatever happens.
+    the temporary files are removed whatever happens. In a job, an object
+    storage authentication failure returns a Retry instead while attempts
+    remain.
     """
     from zou.app import app as current_app
 
@@ -509,7 +511,8 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
     """
     Build the variants of an uploaded picture, store them and mark the
     preview file ready. Runs from a job as well as from a request: it
-    brings its own app context when there is none.
+    brings its own app context when there is none. A failure marks the
+    preview file as broken and is raised again.
     """
     from flask import has_app_context
 
@@ -1004,8 +1007,9 @@ def save_variants(
 ):
     """
     Build variants of a picture file and save them in the main storage.
-    The generated variants are removed afterwards, the original too
-    unless remove_original is False: the caller then owns it.
+    Each stored variant is recorded as ok. The generated variants are
+    removed afterwards, the original too unless remove_original is False:
+    the caller then owns it.
     """
     variants = thumbnail_utils.generate_preview_variants(
         original_picture_path, preview_file_id
@@ -1050,7 +1054,8 @@ def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
 def update_preview_file_position(preview_file_id, position):
     """
     Change positions for preview files of given task and revision.
-    Given position is the new position for given preview file.
+    Given position is the new position for given preview file. A position
+    out of range changes nothing. Return the preview files of the revision.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     task_id = preview_file.task_id
@@ -1084,8 +1089,8 @@ def get_preview_files_for_revision(task_id, revision):
 
 def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     """
-    Return preview files for all productions with status equals to broken,
-    missing or processing using cursor-based pagination.
+    Return preview files for all open productions with status equals to
+    broken, missing or processing using cursor-based pagination.
     """
     query = (
         PreviewFile.query.join(Task)
@@ -1177,7 +1182,7 @@ def unpin_foreign_preview_files(shots):
 
 def get_last_preview_file_for_task(task_id):
     """
-    Get last preview published for given task.
+    Get the first preview file of the last revision of given task, or None.
     """
     preview = (
         PreviewFile.query.filter(PreviewFile.task_id == task_id)
@@ -1195,7 +1200,10 @@ def get_last_preview_file_for_task(task_id):
 
 def extract_frame_from_preview_file(preview_file, frame_number):
     """
-    Extract one frame of a movie preview as a picture.
+    Extract one frame of a movie preview as a picture and return its path,
+    or None for an imported preview without binary. Raise
+    PreviewFileNotFoundException when the preview is not a movie or no
+    stored version is found.
     """
     if (preview_file.get("data") or {}).get("imported_only"):
         # Imported via sync-push: only metadata is here, the binary lives
@@ -1275,7 +1283,8 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
 def extract_tile_from_preview_file(preview_file):
     """
     Build the tile sheet of a movie preview, the strip of thumbnails the
-    player scrubs on.
+    player scrubs on, and return its path. Return None for an imported
+    preview without binary.
     """
     if (preview_file.get("data") or {}).get("imported_only"):
         # Imported via sync-push: metadata only. Skip silently.
@@ -1292,7 +1301,7 @@ def extract_tile_from_preview_file(preview_file):
 def retrieve_stored_movie(preview_file):
     """
     Local path of the smallest stored version of a movie, low def first,
-    or None when the storage holds none of them. A tile is 100 pixels
+    or None when no version could be fetched. A tile is 100 pixels
     high: the high def movie only costs a longer decode.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
@@ -1379,7 +1388,8 @@ def retrieve_preview_file(config, file_store, prefix, preview_file):
 
 def generate_thumbnails(preview_file, preview_file_path, total, index):
     """
-    Regenerate the thumbnail variants of one preview and store them.
+    Regenerate the thumbnail variants of one preview and store them. A
+    failure is logged, not raised.
     """
     try:
         original_picture_path = preview_file_path
@@ -1401,7 +1411,9 @@ def generate_tiles(
     file_store, preview_file, preview_file_path, total, index, force=False
 ):
     """
-    Regenerate the tile sheet of one movie preview and store it.
+    Regenerate the tile sheet of one movie preview and store it, unless
+    a tile is already stored and force is False. A failure is recorded and
+    logged, not raised.
     """
     try:
         if preview_file.extension == "mp4" and (
@@ -1477,7 +1489,9 @@ def get_preview_file_name(preview_file_id):
     """
     Build unique and human readable file name for preview downloads. The
     convention followed is:
-    [project_name]_[entity_name]_[task_type_name]_v[revivision].[extension].
+    [project_name]_[entity_name]_[task_type_name]_v[revision].[extension].
+    When the organisation uses original file names, the original name is
+    used instead. A position above 1 adds a -[position] suffix.
     """
     organisation = organisation_service.get_organisation()
     preview_file = files_service.get_preview_file(preview_file_id)

@@ -59,7 +59,8 @@ def _get_preview_files_to_reset(extension):
 
 def reset_movie_files_metadata():
     """
-    Reset preview files size informations of open projects.
+    Recompute the width, height, file size and duration of the mp4
+    previews of open projects, from the stored movies, and save them.
     """
     for preview_file in _get_preview_files_to_reset("mp4"):
         try:
@@ -93,7 +94,8 @@ def reset_movie_files_metadata():
 
 def reset_picture_files_metadata():
     """
-    Reset preview files size informations of open projects.
+    Recompute the width, height and file size of the png previews of open
+    projects, from the stored pictures, and save them.
     """
     for preview_file in _get_preview_files_to_reset("png"):
         try:
@@ -209,7 +211,8 @@ def queue_missing_tiles(
     rest cost one storage round trip, whose answer is recorded on the
     way. A movie attempted within the hour is skipped unless force is
     set. The limit caps the jobs queued, newest movies first. Return the
-    counts per outcome.
+    counts per outcome. Raise JobQueueDisabledException when the job queue
+    is off.
     """
     if not config.ENABLE_JOB_QUEUE:
         raise JobQueueDisabledException(
@@ -310,8 +313,10 @@ def generate_preview_extra(
     progress=None,
 ):
     """
-    Generate tiles for all movie previews and reset previews file size
-    informations of open projects.
+    Go through the mp4 and png previews of open projects that are not
+    broken, missing or processing. For each, build the tiles (with_tiles),
+    recompute the size information (with_metadata) and build the
+    thumbnails (with_thumbnails). Return the number of previews found.
     """
     progress = progress or NullProgress()
     logger.info("Generating preview extras...")
@@ -414,7 +419,7 @@ def generate_tile_later(preview_file_id):
     attempt younger than an hour, running or failed, is not repeated: a
     Redis key remembers it, shared by every process and kept across a
     reboot, so a movie ffmpeg cannot tile does not cost a job per hover on
-    the progress bar.
+    the progress bar. Return True when a job is queued.
     """
     if not config.ENABLE_JOB_QUEUE:
         return False
@@ -472,7 +477,9 @@ def generate_missing_tile(preview_file_id):
 def _run_remote_tile_job(app, preview_file):
     """
     Hand the tile build over to the Nomad runner and wait for it. The
-    runner tries the recorded prefixes first, then the others.
+    runner tries the recorded prefixes first, then the others. The tile is
+    recorded in the stored file registry before the job, and its storage
+    state after it.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
         files_service.MOVIE_PREFIXES_KEY

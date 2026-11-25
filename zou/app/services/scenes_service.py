@@ -5,7 +5,7 @@ from zou.app.utils import events
 def add_shot_to_scene(scene, shot):
     """
     Link a shot to a scene. Once done, the scene is considered as the source
-    of the scene.
+    of the shot.
     """
     shot = shots_service.update_shot(shot["id"], {"source_id": scene["id"]})
     events.emit(

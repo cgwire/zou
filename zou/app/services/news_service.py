@@ -129,7 +129,7 @@ def create_news_for_task_and_comment(
 ):
     """
     For given task and comment, create a news matching comment and change
-    that occured on the task.
+    that occured on the task, then emit a news:new event.
     """
     task = tasks_service.get_task(task["id"])
     news = create_news(
@@ -199,8 +199,9 @@ def get_last_news_for_project(
     filters=None, news_id=None, entity_id=None, page=1, limit=50
 ):
     """
-    Return last 50 news for given project. Add related information to make it
-    displayable.
+    Return a page of the last news matching given filters (50 news per page
+    by default), as a dict with data, total, nb_pages, limit, offset and
+    page. Add related information to make each news displayable.
     """
     filters = filters or NewsFilters()
     offset = (page - 1) * limit
@@ -341,6 +342,7 @@ def get_last_news_for_project(
 def get_news_stats_for_project(filters=None):
     """
     Return the number of news by task status for given project and filters.
+    Only the news that record a status change are counted.
     { "task-status-1": 24, "task-status-2": 58 }
     """
     query = (
@@ -377,6 +379,7 @@ def get_news(project_id, news_id):
 
 def get_news_for_entity(entity_id):
     """
-    Get all news related to a given entity.
+    Get the last 2000 news related to a given entity, in the same page
+    format as get_last_news_for_project.
     """
     return get_last_news_for_project(entity_id=entity_id, limit=2000)

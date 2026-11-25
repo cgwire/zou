@@ -61,6 +61,9 @@ def get_last_events(
     caller asked for: it restricts the result to the projects the caller is
     allowed to see. Events without a project are never returned when it is
     set, since an IN clause does not match NULL.
+
+    Raise WrongParameterException when a filter value is invalid or when
+    the cursor event does not exist.
     """
     query = ApiEvent.query.order_by(ApiEvent.created_at.desc())
 
@@ -200,6 +203,8 @@ def get_last_login_logs(
     """
     Return paginated login logs using cursor-based pagination.
     If cursor_login_log_id is set, it returns login logs older than this log.
+    Raise WrongParameterException when a person id is invalid or when the
+    cursor log does not exist.
     """
     query = LoginLog.query.order_by(LoginLog.created_at.desc())
 

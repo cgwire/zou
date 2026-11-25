@@ -81,7 +81,8 @@ def all_playlists_for_project(
     task_type_id=None,
 ):
     """
-    Return all playlists created for given project.
+    Return one page of the playlists created for given project, as the
+    light dicts of build_playlist_dict.
     """
     result = []
     query = Playlist.query.filter(Playlist.project_id == project_id)
@@ -114,9 +115,12 @@ def all_playlists_for_episode(
     for_entity=None,
 ):
     """
-    Return all playlists created for given episode. The "all" pseudo-episode
-    lists the production-wide playlists of every entity type unless
-    `for_entity` narrows them (Kitsu splits them into All assets / All shots).
+    Return one page of the playlists created for given episode, as the
+    light dicts of build_playlist_dict. The "main" pseudo-episode lists the
+    playlists without episode that are not for all episodes. The "all"
+    pseudo-episode lists the production-wide playlists of every entity type
+    unless `for_entity` narrows them (Kitsu splits them into All assets /
+    All shots).
     """
     result = []
     query = Playlist.query
@@ -267,8 +271,8 @@ def get_playlist_with_preview_file_revisions(
 
 def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
     """
-    Add the state of the last build job to a playlist dict, so the client
-    knows whether a movie is available or still building.
+    Add the build jobs of the playlist to a playlist dict, newest first, so
+    the client knows whether a movie is available or still building.
     """
     playlist_dict["build_jobs"] = []
     for build_job in reversed(playlist.build_jobs):
@@ -279,7 +283,9 @@ def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
 def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     """
     Retrieve all preview files related to entities listed in given playlist.
-    Add to each entity a dict with task as keys and preview list as values.
+    Add to each entity a dict with task type ids as keys and preview lists
+    as values (an empty list when the entity has no preview). Return the
+    playlist dict and a map of the preview files by id.
 
     Annotation blobs are included only when with_annotations is True; the web
     client opts out and loads them on demand to keep the payload light.
@@ -383,7 +389,8 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
 
 def get_entity_previews_by_task_type(entity_id):
     """
-    Get all preview files available for given shot.
+    Get all preview files available for given entity, as a dict with task
+    type ids as keys and preview lists grouped by revision as values.
     """
     previews = {}
     query = (
@@ -600,7 +607,9 @@ def add_entities_to_playlist(playlist_id, entities):
     with different previews, so only exact duplicate couples are skipped.
     When a couple has no preview_file_id, the latest preview for the entity
     is resolved (highest revision, restricted to the playlist task type when
-    one is set).
+    one is set). Emit a playlist:add_entity event for each added couple.
+    Raise PlaylistLockTimeoutException when the playlist lock is not
+    acquired.
     """
     couples = [
         (
@@ -687,7 +696,6 @@ def playlist_previews(shots, only_movies=False):
     if not preview_file_ids:
         return []
 
-    # Single query for all preview files (batch fetch)
     preview_rows = (
         PreviewFile.query.with_entities(PreviewFile.id, PreviewFile.extension)
         .filter(PreviewFile.id.in_(preview_file_ids))
@@ -717,7 +725,8 @@ def playlist_previews(shots, only_movies=False):
 
 def get_playlists_for_project(project_id, page=0):
     """
-    Return all playlists for given project.
+    Return the playlists of given project with their relations, paginated
+    as query_utils.get_paginated_results does.
     """
     query = Playlist.query.filter(Playlist.project_id == project_id)
     return query_utils.get_paginated_results(query, page, relations=True)

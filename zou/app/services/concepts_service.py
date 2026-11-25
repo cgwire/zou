@@ -140,7 +140,7 @@ def get_concepts_and_tasks(criterions=None, for_client=None):
     Get all concepts for given criterions with related tasks for each
     concept, as a list of dicts. Flat narrow queries through
     entities_service.fetch_entity_task_map instead of a row-multiplying
-    join; response shape unchanged.
+    join.
     """
     if criterions is None:
         criterions = {}
@@ -284,7 +284,8 @@ def create_concept(
 ):
     """
     Create concept for given project, in given concept folder when one is
-    named.
+    named. A concept already carrying this name is returned as is. Linked
+    entity IDs that match no entity are skipped.
     """
     if data is None:
         data = {}

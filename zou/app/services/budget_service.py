@@ -10,9 +10,9 @@ from zou.app.utils import events, fields
 
 def _clean_exceptions(data):
     """
-    Normalize the exception map of a budget entry: a missing map becomes an
-    empty one, and months set to zero or to null are dropped rather than
-    stored.
+    Normalize the exception map of a budget entry: a null map becomes an
+    empty one, and months set to null, to zero or below are dropped rather
+    than stored.
     """
     if "exceptions" in data:
         if data["exceptions"] is None:
@@ -56,7 +56,8 @@ def get_budgets(project_id):
 
 def create_budget(project_id, name, currency=None):
     """
-    Create a new budget for given project ID.
+    Create a new budget for given project ID. Its revision is the last
+    revision of the project budgets plus one.
     """
     last_budget = (
         Budget.query.filter_by(project_id=project_id)
@@ -99,7 +100,7 @@ def update_budget(budget_id, name=None, currency=None):
 
 def delete_budget(budget_id):
     """
-    Delete budget corresponding to given budget ID.
+    Delete budget corresponding to given budget ID, with all its entries.
     """
     budget = get_budget_raw(budget_id)
     BudgetEntry.delete_all_by(budget_id=budget_id)

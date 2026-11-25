@@ -541,7 +541,7 @@ def set_production_schedule_version_task_links_from_production(
 ):
     """
     Set task links for given production schedule version from tasks in the
-    production.
+    production. Return a summary with the number of copied links.
     """
     production_schedule_version = get_production_schedule_version(
         production_schedule_version_id
@@ -583,7 +583,10 @@ def set_production_schedule_version_task_links_from_production_schedule_version(
     production_schedule_version_id, other_production_schedule_version_id
 ):
     """
-    Set task links for given production schedule version from another.
+    Set task links for given production schedule version from another, and
+    record the source version in production_schedule_from. Return a summary
+    with the number of copied links. Raise WrongParameterException if both
+    versions are the same.
     """
     if production_schedule_version_id == other_production_schedule_version_id:
         raise WrongParameterException(
@@ -652,7 +655,9 @@ def apply_production_schedule_version_to_production(
     production_schedule_version_id,
 ):
     """
-    Apply production schedule version to production.
+    Apply production schedule version to production: copy the dates and
+    estimations of its task links to the tasks, lock the version and mark
+    the project as built from it. Emit a task:update event per task.
     """
     stmt = (
         update(Task)
@@ -702,7 +707,7 @@ def get_persons_tasks_dates(
 ):
     """
     For schedule usages, for each active person, it returns the first start
-    date of all tasks of assigned to this person and the last end date.
+    date of all tasks of assigned to this person and the last due date.
 
     Scoping (project_id takes precedence over project_ids):
     - project_id, when set, scopes the lookup to that single project and

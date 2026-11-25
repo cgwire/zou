@@ -99,8 +99,10 @@ def get_project_template(template_id):
 
 def create_project_template(name, description=None, **settings):
     """
-    Create a new empty template. Extra keyword arguments are forwarded as
-    production settings.
+    Create a new empty template. Extra keyword arguments are forwarded when
+    they are production settings, file_tree, data or metadata_descriptors.
+    Other ones are ignored. Raise WrongParameterException when the name is
+    empty or already used.
     """
     if not name:
         raise WrongParameterException("name is required")
@@ -230,9 +232,9 @@ def add_task_type_to_template(
     is_client_visible=None,
 ):
     """
-    Link a task type to given template, or update its priority and its
-    movie bitrates when the link already exists. Bitrates left to None are
-    not touched, so a reorder keeps them.
+    Link a task type to given template, or update its priority, its movie
+    bitrates and its client visibility when the link already exists. Values
+    left to None are not touched, so a reorder keeps them.
     """
     _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
     template = _ensure_template_exists(template_id)
@@ -603,7 +605,6 @@ def remove_preview_background_file_from_template(
             template.save()
         except ValueError:
             pass
-    # Clear default if it was the removed one
     if str(template.default_preview_background_file_id or "") == str(
         preview_background_file_id
     ):
@@ -688,13 +689,15 @@ def create_template_from_project(project_id, name, description=None):
     """
     Extract the configuration of an existing project into a new template.
 
-    Copies: production settings, task type links (with priorities), task
-    status links (with priorities and roles_for_board), asset type links,
-    status automation links, metadata descriptors (serialized to JSONB),
+    Copies: production settings, task type links (with priorities, bitrates
+    and client visibility), task status links (with priorities,
+    roles_for_board and client permission), asset type links and their
+    workflows, status automation links, preview background links and the
+    default background, metadata descriptors (serialized to JSONB),
     file_tree and data (free metadata).
 
     Does NOT copy: team members, dates, man_days, nb_episodes, episode_span,
-    preview backgrounds, project_status, or any production data.
+    project_status, or any production data.
     """
     project = projects_service.get_project_raw(project_id)
 
@@ -831,7 +834,10 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
     Apply a template's configuration to a project. Existing links are kept;
     duplicates are skipped (additive strategy). Production settings are
     written to the project unless `override_settings` provides an explicit
-    value for that field.
+    value for that field: the override is written instead. The template
+    also adds its asset type workflows, preview backgrounds, default
+    background and metadata descriptors. Clear the project cache, emit
+    project:update and return the project as a dict.
     """
     project = projects_service.get_project_raw(project_id)
     template = get_project_template_raw(template_id)
@@ -980,7 +986,6 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
             }
         )
 
-    # Apply metadata descriptors snapshot
     descriptors_snapshot = template.metadata_descriptors or []
     for descriptor in descriptors_snapshot:
         _create_descriptor_from_snapshot(project.id, descriptor)
@@ -993,8 +998,9 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
 def _create_descriptor_from_snapshot(project_id, descriptor):
     """
     Create a MetadataDescriptor on the target project from the JSONB
-    snapshot. Skips silently if a descriptor with the same (entity_type,
-    name) already exists.
+    snapshot and return it as a dict. Return the existing descriptor, as an
+    ORM object, when one with the same (entity_type, name, task_type_id)
+    already exists. Return None when the snapshot is incomplete or invalid.
     """
     name = descriptor.get("name") or ""
     entity_type = descriptor.get("entity_type")

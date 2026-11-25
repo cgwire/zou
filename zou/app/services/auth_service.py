@@ -102,9 +102,13 @@ def check_auth(
 ):
     """
     Depending on the configured strategy, check that the given email and
-    password match an active user in the database. Raise the exception
-    fitting the error met (no auth strategy configured, wrong email, wrong
-    password, unactive user).
+    password match an active user in the database, then check the second
+    factor when one is enabled. Raise the exception fitting the error met
+    (no auth strategy configured, wrong email, wrong password, too many
+    failed attempts, unactive user, missing or wrong second factor).
+    Count a failed attempt on a wrong password or a wrong second factor,
+    and reset the counter on success. Return the person as a dict, without
+    its sensitive fields.
 
     The account state is read only once the password has been proven.
     Reading it earlier answered "this account exists and is deactivated" to
@@ -166,9 +170,9 @@ def check_auth(
         update_login_failed_attempts(person["id"], 0)
 
     # This dict is what the login route hands back to the client, and it
-    # was read with the unsafe serialization to reach the secrets above.
-    # Strip on the model's own list rather than naming the fields here:
-    # named one by one, jti was missed and rode along to the client.
+    # comes from the unsafe serialization that carries the secrets above.
+    # Strip on the model's own list rather than naming the fields here, so
+    # that no sensitive field is missed.
     # A copy, since the dict may come straight from the memoize cache.
     return {
         key: value
@@ -191,11 +195,10 @@ def local_auth_strategy(person, password, app=None):
     to given password).
     Password hash comparison is based on BCrypt.
     """
-    # Refusing an account whose stored value cannot be compared answered
-    # in a millisecond, where an unknown address pays the bcrypt
-    # _spend_password_check_time deliberately costs. That identified a
-    # registered address in a single request, by response time alone, and
-    # both cases are ordinary: a person imported from a CSV has no
+    # An account whose stored value cannot be compared pays the same
+    # bcrypt cost as an unknown address (_spend_password_check_time): an
+    # immediate refusal identifies a registered address by response time
+    # alone. Both cases are ordinary: a person imported from a CSV has no
     # password at all, and the LDAP sync stores the literal b"default",
     # which is not a hash.
     password_hash = person["password"] or ""
@@ -339,7 +342,9 @@ def check_two_factor_authentication(
     recovery_code=None,
 ):
     """
-    Check multifactor authentication for a person.
+    Check multifactor authentication for a person. Return True when the
+    given code is right, False otherwise. Raise MissingOTPException when
+    no code is given for an enabled method.
     """
     if person["totp_enabled"] and totp is not None:
         return check_totp(person, totp)
@@ -402,7 +407,8 @@ def _disable_two_factor_method(person, method):
 
 def is_user_exempt_from_2fa(person, app):
     """
-    Check if user is exempt from mandatory 2FA requirement.
+    Check if user is exempt from mandatory 2FA requirement: a preview
+    account, or an email listed in TWO_FA_EXEMPT_USERS.
     """
     if person.get("preview_project_id") is not None:
         return True
@@ -435,7 +441,8 @@ def get_two_factor_authentication_enabled(person):
 
 def remove_otp_revovery_code(person_id, recovery_hash):
     """
-    Remove an otp recovery code for a person_id.
+    Remove an otp recovery code for a person_id, clear the person cache
+    and return the person as a dict.
     """
     # recovery_hash may arrive as str (serialized login path) or bytes
     # (raw ORM value from get_current_user(unsafe=True)); normalize to the
@@ -475,7 +482,8 @@ def check_email_otp(person, email_otp, consume=True):
 
 def check_recovery_code(person, recovery_code):
     """
-    Check recovery code for a person.
+    Check recovery code for a person. A matching code is removed from the
+    person: it works once.
     """
     for recovery_hash in person["otp_recovery_codes"]:
         if auth.check_password(recovery_hash, recovery_code):
@@ -508,7 +516,8 @@ def check_fido(person, authentication_response):
 
 def pre_enable_totp(person_id):
     """
-    Pre-enable TOTP for a person.
+    Pre-enable TOTP for a person: store a new secret. Return the
+    provisioning URI and the secret.
     """
     person = Person.get(person_id)
     if person.totp_enabled:
@@ -531,6 +540,8 @@ def enable_totp(person_id, totp, check_existing_factor=None):
     Enable TOTP for a person. check_existing_factor is called once the new
     code is known to be right, before anything is stored: it raises to
     refuse. Called first, it would use up a factor for a code that fails.
+    Return the new recovery codes, or None when the person already had
+    some.
     """
     person = Person.get(person_id)
     if person.totp_enabled:
@@ -564,7 +575,8 @@ def disable_totp(person_id):
 
 def pre_enable_email_otp(person_id):
     """
-    Pre-enable mail OTP for a person.
+    Pre-enable mail OTP for a person: store a new secret and send a first
+    code by email.
     """
     person = Person.get(person_id)
     if person.email_otp_enabled:
@@ -582,7 +594,8 @@ def enable_email_otp(person_id, email_otp, check_existing_factor=None):
     """
     Enable mail OTP for a person. check_existing_factor is called once the
     new code is known to be right, before anything is stored: it raises to
-    refuse.
+    refuse. Return the new recovery codes, or None when the person already
+    had some.
     """
     person = Person.get(person_id)
     if person.email_otp_enabled:
@@ -687,7 +700,8 @@ def get_fido_attested_credential_data_from_person(
 
 def pre_register_fido(person_id):
     """
-    Pre-register FIDO device for a person.
+    Pre-register FIDO device for a person. Keep the registration state in
+    the session and return the registration options.
     """
     person = Person.get(person_id)
     options, state = current_app.extensions["fido_server"].register_begin(
@@ -712,7 +726,8 @@ def register_fido(
     """
     Register FIDO device for a person. check_existing_factor is called once
     the registration is known to be right, before anything is stored: it
-    raises to refuse.
+    raises to refuse. Return the new recovery codes, or None when the
+    person already had some.
     """
     person = Person.get(person_id)
     state_key = f"fido-registration-state-{person.id}"
@@ -773,7 +788,8 @@ def unregister_fido(person_id, device_name):
 
 def get_challenge_fido(person_id):
     """
-    Get new FIDO challenge for a person.
+    Get new FIDO challenge for a person. Keep the authentication state in
+    the session and return the options.
     """
     person = Person.get(person_id)
     options, state = current_app.extensions["fido_server"].authenticate_begin(
@@ -954,7 +970,7 @@ def check_login_failed_attempts(person):
     An elapsed window closes the burst and clears the counter. Leaving it
     at its ceiling meant a single wrong password re-locked the account for
     another minute, so anyone knowing an address could hold it shut
-    indefinitely at one request a minute — the owner included, correct
+    indefinitely at one request a minute, the owner included, correct
     password and all. Rearming now costs a fresh burst.
 
     The counter is read from the row, not from the person dict: that dict

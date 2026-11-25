@@ -46,7 +46,8 @@ def _serialize_message(message):
 
 def get_chat_raw(entity_id):
     """
-    Return chat corresponding to given entity ID.
+    Return chat corresponding to given entity ID as an active record. Create
+    the chat when the entity has none yet.
     """
     chat = Chat.get_by(object_id=entity_id)
     if chat is None:
@@ -56,7 +57,8 @@ def get_chat_raw(entity_id):
 
 def get_chat(entity_id):
     """
-    Return chat corresponding to given entity ID.
+    Return chat corresponding to given entity ID as a dict. Create the chat
+    when the entity has none yet.
     """
     chat = get_chat_raw(entity_id)
     return chat.serialize(relations=True)
@@ -64,7 +66,7 @@ def get_chat(entity_id):
 
 def get_chat_by_id(chat_id):
     """
-    Return chat corresponding to given entity ID.
+    Return chat corresponding to given chat ID.
     """
     chat = Chat.get(chat_id)
     return chat.serialize(relations=True)
@@ -87,7 +89,7 @@ def get_chat_message(chat_message_id):
 
 def join_chat(entity_id, person_id):
     """
-    Join chat for given entity ID.
+    Join chat for given entity ID and emit chat:joined.
     """
     chat = get_chat_raw(entity_id)
     person = persons_service.get_person_raw(person_id)
@@ -103,7 +105,7 @@ def join_chat(entity_id, person_id):
 
 def leave_chat(entity_id, person_id):
     """
-    Leave chat for given entity ID.
+    Leave chat for given entity ID and emit chat:left.
     """
     chat = get_chat_raw(entity_id)
     person = persons_service.get_person_raw(person_id)
@@ -140,7 +142,9 @@ def get_chat_messages_for_entity(entity_id):
 
 def create_chat_message(chat_id, person_id, message, files=None):
     """
-    Create a new chat message.
+    Create a new chat message with the given uploaded files as attachments.
+    Update the last message date of the chat and emit chat:new-message.
+    Raise ChatNotFoundException when the chat does not exist.
     """
     chat = base_service.get_instance(Chat, chat_id, ChatNotFoundException)
     chat_message = ChatMessage.create(
@@ -164,7 +168,8 @@ def create_chat_message(chat_id, person_id, message, files=None):
 
 def delete_chat_message(chat_message_id):
     """
-    Delete chat message.
+    Delete chat message with its attachment files and emit
+    chat:deleted-message.
     """
     message = get_chat_message_raw(chat_message_id)
 
@@ -190,7 +195,7 @@ def delete_chat_message(chat_message_id):
 
 def build_participant_filter(person_id):
     """
-    Query filter for returning chats for current user.
+    Query filter for returning chats for given person.
     """
     person = persons_service.get_person_raw(person_id)
     return Chat.participants.contains(person)
@@ -198,7 +203,7 @@ def build_participant_filter(person_id):
 
 def get_chats_for_person(person_id):
     """
-    Return chats for current user.
+    Return the chats given person takes part in, in open projects only.
     """
     chats = (
         Chat.query.join(Entity, Chat.object_id == Entity.id)
@@ -266,7 +271,7 @@ def _create_attachment(message, uploaded_file, randomize=False):
 
     # Store attachment file. On failure, drop the database entry to avoid
     # a ghost attachment pointing to a missing object; the temporary file
-    # is removed in every case (it used to leak for non-image files).
+    # is removed in every case.
     attachment_file_id = str(attachment_file.id)
     tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
     image_path = None

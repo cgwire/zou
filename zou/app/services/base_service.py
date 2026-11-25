@@ -43,8 +43,9 @@ def get_typed_instance(model, instance_id, entity_type_id, exception):
 
 def get_or_create_instance_by_name(model, **kwargs):
     """
-    Get instance of any model by name. If it doesn't exist it creates a new
-    instance of this model from positional arguments dict.
+    Get instance of any model by name. If it doesn't exist, create a new
+    instance of this model from the given keyword arguments and emit a
+    `<table>:new` event. Return the instance as a dictionary.
     """
     instance = model.get_by(name=kwargs["name"])
     if instance is None:

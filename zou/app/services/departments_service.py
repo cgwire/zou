@@ -148,7 +148,8 @@ def add_software_to_department(department_id, software_id):
 
 def remove_software_from_department(department_id, software_id):
     """
-    Remove a software item from a department.
+    Remove a software item from a department. Return the removed link as a
+    dict, or None when the software was not linked.
     """
     _check_department_exists(department_id)
     _check_software_exists(software_id)
@@ -175,7 +176,8 @@ def add_hardware_item_to_department(department_id, hardware_item_id):
 
 def remove_hardware_item_from_department(department_id, hardware_item_id):
     """
-    Remove a hardware item from a department.
+    Remove a hardware item from a department. Return the removed link as a
+    dict, or None when the hardware item was not linked.
     """
     _check_department_exists(department_id)
     _check_hardware_item_exists(hardware_item_id)
@@ -225,7 +227,8 @@ def get_department_from_task_type(task_type_id):
 def get_or_create_department(name, color="#000000"):
     """
     Create a new department it doesn't exist. If it exists, it returns the
-    department from database.
+    department from database. Return the department as a dict. A creation
+    emits a department:new event.
     """
     department = Department.get_by(name=name)
     if department is None:

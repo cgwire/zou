@@ -51,6 +51,7 @@ from zou.app.utils import permissions
 def check_working_on_entity(entity_id):
     """
     Return True if user has task assigned which is related to given entity.
+    Raise PermissionDenied otherwise.
     """
     current_user = persons_service.get_current_user_raw()
     query = Task.query.filter(Task.assignees.contains(current_user)).filter(
@@ -65,7 +66,8 @@ def check_working_on_entity(entity_id):
 
 def check_working_on_task(task_id):
     """
-    Return True if user has task assigned.
+    Return True if user has given task assigned. Raise PermissionDenied
+    otherwise.
     """
     current_user = persons_service.get_current_user_raw()
     query = Task.query.filter(Task.assignees.contains(current_user)).filter(
@@ -80,7 +82,8 @@ def check_working_on_task(task_id):
 
 def check_person_access(person_id):
     """
-    Return True if user is an admin or is matching given person id.
+    Return True if user is an admin or is matching given person id. Raise
+    PermissionDenied otherwise.
     """
     if (
         permissions.has_admin_permissions()
@@ -106,12 +109,12 @@ def get_project_role(person_id, project_id):
 
 def check_belong_to_project(project_id):
     """
-    Return true if current user is assigned to a task of the given project or
-    if current_user is part of the project team. As a side effect, resolve
-    the member's effective role for this project into flask.g so that
-    subsequent role checks apply the project role. A failed check clears the
+    Return true if current user is part of the project team. As a side
+    effect, resolve the member's effective role for this project into
+    flask.g so that subsequent role checks apply the project role. An admin
+    keeps the global role: the slot is cleared. A failed check clears the
     slot so a role resolved for another project earlier in the request never
-    leaks into this one.
+    leaks into this one. Never raises.
     """
     if project_id is None:
         g.project_role = None
@@ -147,8 +150,9 @@ def resolve_project_role(project_id):
 
 def has_project_access(project_id):
     """
-    Return true if current user is an admin or has a task assigned for this
-    project.
+    Return true if current user is an admin or is part of the project
+    team. An admin clears the project role slot, anyone else gets the
+    project role resolved as a side effect (see check_belong_to_project).
     """
     if permissions.has_admin_permissions():
         # An admin keeps the global role: clear the slot so that nothing
@@ -160,8 +164,9 @@ def has_project_access(project_id):
 
 def check_project_access(project_id):
     """
-    Return true if current user is a manager or has a task assigned for this
-    project. Raise a PermissionDenied exception if not.
+    Return true if current user is an admin or is part of the project
+    team. Raise a PermissionDenied exception if not. Resolve the project
+    role as a side effect, see has_project_access.
     """
     is_allowed = has_project_access(project_id)
     if not is_allowed:
@@ -173,7 +178,8 @@ def check_project_edition_access(project_id):
     """
     Project access for the members who edit its structure, as the shots of
     a scene or the asset instances: neither a client nor a vendor. Raise a
-    PermissionDenied exception otherwise.
+    PermissionDenied exception otherwise. Resolve the project role first,
+    as a side effect of check_project_access.
     """
     check_project_access(project_id)
     block_access_to_client()
@@ -245,8 +251,9 @@ def mask_metadata_for_vendor(entity_type, entities, project_id=None):
 
 def check_entity_access(entity_id):
     """
-    Return true if current user is not a vendor or has a task assigned for this
-    project.
+    Return true if current user is not a vendor or has a task assigned on
+    given entity. Raise PermissionDenied otherwise. It filters vendors only
+    and never checks the project: call check_project_access first.
     """
     is_allowed = not permissions.has_vendor_permissions()
     if not is_allowed:
@@ -384,6 +391,8 @@ def check_chat_access(entity_id):
     Return true if current user may use the chat of given entity, or the
     files of its messages: the team of its project, but neither the vendors
     without a task on it nor the clients, by the role held on the project.
+    Resolve the project role as a side effect (see check_project_access).
+    Raise PermissionDenied otherwise.
     """
     entity = entities_service.get_entity(entity_id)
     check_project_access(entity["project_id"])
@@ -394,7 +403,10 @@ def check_chat_access(entity_id):
 
 def check_task_access(task_id):
     """
-    Return true if current user can have access to a task.
+    Return true if current user can have access to a task: project access
+    and, for a vendor, a task on its entity. Raise PermissionDenied
+    otherwise. Resolve the project role as a side effect (see
+    check_project_access).
     """
     task = tasks_service.get_task(task_id)
     check_project_access(task["project_id"])
@@ -426,7 +438,11 @@ def can_access_task(person_id, task):
 
 def check_task_action_access(task_id):
     """
-    Return true if current user can have access to a task action.
+    Return true if current user can have access to a task action: an admin, or
+    a member of the project team who is a manager, a client, an assignee of the
+    task, a supervisor of its department, or the creator of its entity. Raise
+    PermissionDenied otherwise. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     task = tasks_service.get_task(task_id, relations=True)
     is_allowed = False
@@ -533,7 +549,11 @@ def check_task_mention_access(task_id):
 
 def check_supervisor_project_task_type_access(project_id, task_type_id):
     """
-    Return true if current user can have access to a task type.
+    Return true if current user can have access to a task type: an admin,
+    a manager of the project team, or a supervisor of the project team in
+    the department of the task type (or in no department). Raise
+    PermissionDenied otherwise. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
@@ -600,7 +620,8 @@ def check_comment_access(comment_id, comment=None):
     """
     Return true if current user can have access to a comment. The comment
     dict can be passed in to spare a reload when the caller already holds
-    it.
+    it. Raise PermissionDenied otherwise. For anyone but an admin, resolve
+    the project role as a side effect (see check_project_access).
     """
     if permissions.has_admin_permissions():
         return True
@@ -627,8 +648,9 @@ def check_comment_access(comment_id, comment=None):
 
 def has_manager_project_access(project_id):
     """
-    Return true if current user is a manager and has a task assigned for this
-    project.
+    Return true if current user is an admin, or a manager on the project
+    team. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     return permissions.has_admin_permissions() or (
         check_belong_to_project(project_id)
@@ -681,8 +703,9 @@ def check_metadata_descriptor_access(descriptor):
 
 def check_manager_project_access(project_id):
     """
-    Return true if current user is a manager and has a task assigned for this
-    project. Raise a PermissionDenied exception if not.
+    Return true if current user is an admin, or a manager on the project team.
+    Raise a PermissionDenied exception if not. Resolve the project role as a
+    side effect (see check_belong_to_project).
     """
     is_allowed = has_manager_project_access(project_id)
     if not is_allowed:
@@ -692,10 +715,11 @@ def check_manager_project_access(project_id):
 
 def check_entity_delete_access(entity, force=False):
     """
-    A member of the project team deletes the entities they created, a
-    manager of the project every one of them. Only a manager of the project
-    forces a deletion, as it removes the work of others below the entity.
-    Raise a PermissionDenied exception otherwise.
+    A member of the project team deletes the entities they created, a manager
+    of the project every one of them. Only a manager of the project forces a
+    deletion, as it removes the work of others below the entity. Raise a
+    PermissionDenied exception otherwise. Resolve the project role as a side
+    effect (see check_belong_to_project).
     """
     if (
         not force
@@ -711,6 +735,8 @@ def check_time_spent_access(task_id, person_id):
     """
     Return true if current user is an admin, or if the person is assigned to
     the task and the current user is that person or a manager of the project.
+    Raise PermissionDenied otherwise. The manager branch resolves the
+    project role as a side effect (see check_belong_to_project).
     """
     task = tasks_service.get_task(task_id, relations=True)
     is_allowed = permissions.has_admin_permissions() or (
@@ -731,8 +757,9 @@ def check_time_spent_access(task_id, person_id):
 
 def check_supervisor_project_access(project_id):
     """
-    Return true if current user is a manager or a supervisor and has a task
-    assigned for this project.
+    Return true if current user is an admin, or a manager or a supervisor on
+    the project team. Raise PermissionDenied otherwise. Resolve the project
+    role as a side effect (see check_belong_to_project).
     """
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(project_id)
@@ -748,9 +775,11 @@ def check_supervisor_project_access(project_id):
 
 def check_supervisor_task_access(task, new_data=None):
     """
-    Return true if current user is a manager and has a task assigned related
-    to the project of this task or is a supervisor and can modify data accorded
-    to his departments
+    Return true if current user is an admin, a manager on the team of the
+    project of this task, or a supervisor on that team who only changes the
+    planning fields (priority, dates, estimation, difficulty, data) of a task
+    of their departments. Raise PermissionDenied otherwise. Resolve the project
+    role as a side effect (see check_belong_to_project).
     """
     if new_data is None:
         new_data = {}
@@ -794,9 +823,11 @@ def check_supervisor_task_access(task, new_data=None):
 
 def check_metadata_department_access(entity, new_data=None):
     """
-    Return true if current user is a manager and has a task assigned for this
-    project or is a supervisor and is allowed to modify data accorded to
-    his departments
+    Return true if current user is an admin, a manager or the creator of
+    the entity on the project team, or a supervisor on that team who only
+    changes metadata of descriptors of their departments. Raise
+    PermissionDenied otherwise. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     if new_data is None:
         new_data = {}
@@ -864,8 +895,11 @@ def check_metadata_department_access(entity, new_data=None):
 def check_task_department_access(task_id, person_id):
     """
     Return true if current user is an admin or is a manager and is in team
-    or is a supervisor in the department of the task or is an artist assigning
-    himself in the department of the task.
+    or is a supervisor in team in the department of the task who shares a
+    department with given person (or a supervisor with no department), or
+    is in team and assigns himself to a task of his department. Raise
+    PermissionDenied otherwise. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     user = persons_service.get_current_user(relations=True)
     task = tasks_service.get_task(task_id)
@@ -924,9 +958,11 @@ def check_person_is_not_bot(person_id, project_id=None):
 
 def check_task_department_access_for_unassign(task_id, person_id=None):
     """
-    Return true if current user is an admin or is a manager and is in team
-    or is a supervisor in the department of the task or is an artist assigning
-    himself in the department of the task.
+    Return true if current user is an admin, or is a manager and is in team, or
+    is a supervisor in team in the department of the task (or in no
+    department), or is an assignee of the task unassigning himself. Raise
+    PermissionDenied otherwise. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     user = persons_service.get_current_user(relations=True)
     # The last branch reads the assignees, which only the related
@@ -957,7 +993,10 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
 def check_all_departments_access(project_id, departments=None):
     """
     Return true if current user is admin or is manager and is in team or is
-    supervisor and is in team and have access to all departments.
+    supervisor and is in team, with departments given and every department
+    of the supervisor in them (or no department at all). Raise
+    PermissionDenied otherwise. Resolve the project role as a side effect (see
+    check_belong_to_project).
     """
     if departments is None:
         departments = []
@@ -1062,7 +1101,8 @@ def check_playlist_update_access(playlist):
 
 def check_day_off_access(day_off):
     """
-    Return true if current user is admin or day_off is for itself
+    Return true if current user is admin or day_off is for itself. Raise
+    PermissionDenied otherwise.
     """
     user = persons_service.get_current_user()
     is_admin = permissions.has_admin_permissions()

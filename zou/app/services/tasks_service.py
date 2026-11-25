@@ -1,14 +1,10 @@
 """
-Business logic for tasks: assignation, status changes, comments, time
-spent and the aggregated "todos"/"open tasks" views.
+Business logic for tasks: creation, assignation, status changes, previews
+and the reset of derived data. The "todos" and "open tasks" views live in
+todos_service.
 
-Two conventions matter when editing this module:
-- get_task()/get_task_status()/... return serialized dicts and are
-  memoized; every mutation must invalidate its entry (clear_task_cache
-  and friends) or clients keep reading stale data.
-- Several imports of other services are done lazily inside functions to
-  break import cycles (tasks <-> shots <-> entities). Keep them local
-  when adding cross-service calls.
+get_task() returns a serialized dict and is memoized: every mutation must
+invalidate its entry (clear_task_cache) or clients keep reading stale data.
 """
 
 import collections
@@ -179,7 +175,7 @@ def get_tasks_for_concept(concept_id, relations=False):
 
 def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
-    Get all shot tasks for given sequence.
+    Get all tasks of the entities under given sequence (shots and scenes).
     """
     query = _get_entity_task_query(relations=relations)
     query = query.filter(Entity.parent_id == sequence_id)
@@ -188,7 +184,8 @@ def get_shot_tasks_for_sequence(sequence_id, relations=False):
 
 def get_shot_tasks_for_episode(episode_id, relations=False):
     """
-    Get all shots tasks for given episode.
+    Get all tasks of the entities under the sequences of given episode
+    (shots and scenes).
     """
     query = _get_entity_task_query(relations=relations)
     Sequence = aliased(Entity, name="sequence")
@@ -260,7 +257,7 @@ def _get_entity_task_query(relations=False):
 def _convert_rows_to_detailed_tasks(rows, relations=False):
     """
     Turn the rows of _get_entity_task_query into the task dicts the API
-    returns, assignee ids included.
+    returns, sorted by name, with assignee ids when relations is set.
     """
     task_dicts = [
         {
@@ -334,9 +331,8 @@ def resolve_episode_and_build_task_dict(
 ):
     """
     Resolve episode info and build the base task dict with common fields.
-    Returns (task_dict, task, task_type_name, task_type_for_entity,
-    task_status_name, task_type_color, task_status_color,
-    task_status_short_name).
+    Returns (task_dict, task, task_type_name, task_status_name,
+    task_type_color, task_status_color, task_status_short_name).
     """
     if entity_preview_file_id is None:
         entity_preview_file_id = ""
@@ -523,7 +519,7 @@ def get_next_position(task_id, revision):
 
 def get_comment_by_preview_file_id(preview_file_id):
     """
-    Return comment related to given preview file as a dict.
+    Return comment related to given preview file as a dict, or None.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     comment = Comment.query.filter(
@@ -563,7 +559,8 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
 
 def get_last_comment_map(task_ids):
     """
-    Return the last comment of each given task, in one query.
+    Return the last comment of each given task, in one query. Comments
+    written by clients are ignored.
     """
     task_comment_map = {}
     comments = (
@@ -616,7 +613,9 @@ def _build_task_no_commit(task_type, task_status, entity, current_user_id):
 
 def create_tasks(task_type, entities):
     """
-    Create a new task for given task type and for each entity.
+    Create a new task for given task type and for each entity. Entities
+    that already have a task of this type are skipped. Return the created
+    tasks.
     """
     if not entities:
         return []
@@ -770,7 +769,8 @@ def create_tasks_for_entity(entity, task_types=None):
 
 def create_task(task_type, entity, name="main"):
     """
-    Create a new task for given task type and entity.
+    Create a new task for given task type and entity. Return None if the
+    task already exists.
     """
     task_status = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
@@ -806,8 +806,8 @@ def create_task(task_type, entity, name="main"):
 
 def _finalize_task_creation(task_type, task_status, task):
     """
-    Run what follows the insert of a task: cache invalidation and the
-    task:new event.
+    Run what follows the insert of a task: build its dict with the task
+    type and task status fields, and emit the task:new event.
     """
     task_dict = task.serialize()
     task_dict["assignees"] = []
@@ -831,7 +831,8 @@ def _finalize_task_creation(task_type, task_status, task):
 
 def update_task(task_id, data):
     """
-    Update task with given data.
+    Update task with given data. When the status changes, set end_date and
+    done_date to match the new status (data is modified in place).
     """
     task = get_task_raw(task_id)
 
@@ -966,8 +967,9 @@ def check_revision_is_unique_for_task(
 
 def update_preview_file_info(preview_file):
     """
-    Refresh the task fields derived from its last preview: revision,
-    last preview file id and preview counters.
+    For a preview at position 1, set it as the last preview of its task
+    and, if the project automates it, as the main preview of the entity.
+    Return the updated entity, or None.
     """
     entity = None
     task = get_task_raw(preview_file["task_id"])
@@ -1072,8 +1074,9 @@ def reset_tasks_data(project_id):
 
 def reset_task_data(task_id):
     """
-    Recompute the fields derived from the task comment history: status,
-    retake count, start, end and last comment dates.
+    Recompute the fields derived from the task comment history and time
+    spents: status, retake count, duration, start, end, done and last
+    comment dates.
     """
     task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     retake_count = 0

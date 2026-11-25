@@ -244,7 +244,9 @@ def add_metadata_descriptor(
     Register a custom field for the given `entity_type` in this project.
     Values are stored in `Entity.data` (Asset, Shot, …), in `Project.data`
     when `entity_type` is ``Project`` or in `Task.data` when it is
-    ``Task`` (scoped to `task_type_id`).
+    ``Task`` (scoped to `task_type_id`). Raise WrongParameterException when
+    the field name is the key of a built-in field or when the descriptor
+    already exists.
     """
     if not departments:
         departments = []
@@ -287,8 +289,8 @@ def get_metadata_descriptors(
     project_id, for_client=False, vendor_departments=None
 ):
     """
-    Get all metadata descriptors for given project and entity type, narrowed
-    for a client or a vendor as the open projects listing narrows them.
+    Get all metadata descriptors for given project, narrowed for a client
+    or a vendor as the open projects listing narrows them.
     """
     query = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id
@@ -402,6 +404,8 @@ def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
     Reorder metadata descriptors for a given project and entity type.
     Updates position field based on the order of descriptor IDs provided.
     Descriptors not in the list are added at the end, ordered by name.
+    Raise WrongParameterException when an ID is not a descriptor of this
+    project and entity type. Return the descriptors in their new order.
     """
     descriptors = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id,
@@ -441,7 +445,8 @@ def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
 
 def remove_metadata_descriptor(metadata_descriptor_id):
     """
-    Delete metadata descriptor and related informations.
+    Delete metadata descriptor and remove its values from the project,
+    task or entity data.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
     _remove_stored_values_for_metadata_descriptor(descriptor)
@@ -659,7 +664,7 @@ def remove_not_allowed_metadata_for_vendor(
 ):
     """
     Strip from a serialized listing the metadata a vendor of given departments
-    must not see, in place. No departments means nothing to narrow down.
+    must not see, in place. When departments is None, nothing is removed.
 
     The listings that carry the tasks pick their columns one by one and mask
     them while they build their rows. These hand back whole serialized

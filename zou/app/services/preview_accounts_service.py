@@ -59,7 +59,7 @@ def create_or_reset_preview_account(project_id):
     Create the preview account of given project, or replace its password.
     The access window is closed in both cases, which kills every session,
     and the pending password reset links of the account stop working.
-    Return the account and its clear password.
+    Return the account as a dict and its clear password.
     """
     if not is_available():
         raise PreviewAccountsUnavailableException(
@@ -98,6 +98,7 @@ def create_or_reset_preview_account(project_id):
 def set_preview_account_open(project_id, is_open):
     """
     Open or close the access window. Opening an open account only extends it.
+    Return the account as a dict.
     """
     person = get_preview_account_raw(project_id)
     if person is None:

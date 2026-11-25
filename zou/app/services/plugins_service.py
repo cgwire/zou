@@ -108,6 +108,7 @@ def uninstall_plugin(plugin_id):
     """
     Uninstall a plugin: call pre/post uninstall hooks, downgrade
     migrations, remove files, delete from database and remove folder.
+    Raise ValueError when the plugin has neither files nor a database entry.
     """
     logger.info(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
@@ -199,7 +200,7 @@ def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
 
 def print_added_routes(plugin_id, plugin_path):
     """
-    Print the added routes for a plugin.
+    Log the added routes for a plugin.
     """
     logger.info(f"[Plugins] Routes added by {plugin_id}:")
 

@@ -81,7 +81,8 @@ def remove_playlist_dependents(playlist_dict):
 
 def remove_playlist(playlist_id):
     """
-    Remove given playlist from database (and delete related build jobs).
+    Remove given playlist from database, with its notifications, build jobs
+    and share links, then emit a playlist:delete event.
     """
     playlist = playlists_service.get_playlist_raw(playlist_id)
     playlist_dict = playlist.serialize()
@@ -142,7 +143,9 @@ def remove_entities(project_id, entity_ids, force=False):
 
 def remove_episode(episode_id, force=False):
     """
-    Remove an episode and all related sequences and shots.
+    Remove an episode. With force, remove first all related sequences,
+    shots, assets, tasks and links. Raise ModelWithRelationsDeletionException
+    if data is still linked to the episode.
     """
 
     episode = shots_service.get_episode_raw(episode_id)
@@ -179,7 +182,8 @@ def remove_episode(episode_id, force=False):
 def remove_project(project_id):
     """
     Remove a project and everything it owns: previews, tasks, budgets, entity
-    links, playlists, entities, metadata, schedule and news.
+    links, playlists, events, output files, entities, metadata, milestones,
+    schedule, search filters, news and its preview account.
     """
 
     preview_files = (
@@ -261,7 +265,9 @@ def remove_person(person_id, force=True):
     """
     Remove a person. With force, everything they own is deleted or detached
     first: comments, notifications, logs, subscriptions, time spents, team
-    memberships and task assignations.
+    memberships, task assignations and files. Raise PersonInProtectedAccounts
+    for a protected account, and ModelWithRelationsDeletionException if data
+    is still linked to the person.
     """
     person = Person.get(person_id)
     if person.email in config.PROTECTED_ACCOUNTS:
@@ -450,8 +456,8 @@ def remove_shot(shot_id, force=False):
 
 def remove_scene(scene_id):
     """
-    Remove given scene from database. If it has tasks linked to it, it marks
-    the scene as canceled.
+    Remove given scene from database. If the deletion fails because data is
+    still linked to it, it marks the scene as canceled.
     """
     scene = shots_service.get_scene_raw(scene_id)
     try:
@@ -469,7 +475,9 @@ def remove_scene(scene_id):
 
 def remove_sequence(sequence_id, force=False):
     """
-    Remove a sequence and all related shots.
+    Remove a sequence. With force, remove first all related shots, scenes,
+    tasks and links. Raise ModelWithRelationsDeletionException if data is
+    still linked to the sequence.
     """
     sequence = shots_service.get_sequence_raw(sequence_id)
     if force:

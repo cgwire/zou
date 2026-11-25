@@ -84,8 +84,8 @@ def get_task_ids(*criterions, **kw):
 
 def remove_comment(comment_id):
     """
-    Remove a comment from database and everything related (notifs, news, and
-    preview files)
+    Remove a comment from database and everything related (notifs, news,
+    preview files and attachment files), then emit a comment:delete event.
     """
     comment = Comment.get(comment_id)
     if comment is None:
@@ -405,7 +405,7 @@ def remove_preview_background_file(preview_background_file, force=False):
 def _remove_files_quietly(files, force=False):
     """
     Mark deleted the given (bucket, prefix, id) stored files at once,
-    ignoring a failure, see _remove_quietly.
+    ignoring a failure, which is logged as a warning.
     """
     try:
         file_store.remove_files(files, force=force)

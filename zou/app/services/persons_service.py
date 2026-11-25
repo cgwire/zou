@@ -65,10 +65,11 @@ def clear_person_cache():
 @cache.memoize_function(120)
 def get_persons(minimal=False, include_guests=False):
     """
-    Return all person stored in database.
+    Return all persons stored in database as safe dicts, or as minimal dicts
+    when minimal is set. Preview accounts are always excluded.
 
     Guests (created by the shared playlist flow) are excluded by
-    default — they are not part of the studio team and would otherwise
+    default: they are not part of the studio team and would otherwise
     leak into the user context payload, the people page, and various
     person dropdowns. Pass ``include_guests=True`` to opt in.
     """
@@ -88,7 +89,8 @@ def get_persons(minimal=False, include_guests=False):
 @cache.memoize_function(120)
 def get_active_persons():
     """
-    Return all persons with flag active set to True. Guests are excluded.
+    Return all persons with flag active set to True. Guests and preview
+    accounts are excluded.
     """
     persons = (
         Person.query.filter(
@@ -145,10 +147,10 @@ def get_person_raw_cached(person_id):
     This avoids session conflicts by caching expunged objects and merging on retrieval.
 
     Uses load=False to avoid database query on merge - we trust the cached data.
-    Departments are loaded fresh after merging to ensure they're up-to-date.
+    The departments come from the cached object, eagerly loaded before it
+    was cached.
     """
     cached_person = _get_person_raw_for_cache(person_id)
-    # Merge into current session with load=False to avoid DB query
     merged_person = db.session.merge(cached_person, load=False)
     return merged_person
 
@@ -449,11 +451,9 @@ def get_current_user_raw():
     Return person from its auth token (the one that does the request) as an
     active record.
     """
-    # current_user is already a Person object from the auth callback
-    # which uses get_person_raw_cached(). However, when merging with load=False,
-    # relationships might not be loaded. We need to ensure departments are loaded.
-    # Accessing departments triggers lazy loading if not already loaded.
-    # Convert to list to force evaluation and ensure departments are loaded
+    # current_user comes from get_person_raw_cached() in the auth callback,
+    # merged with load=False: reading the departments makes sure they are
+    # loaded before the caller uses them.
     _ = (
         list(current_user.departments)
         if hasattr(current_user, "departments")
@@ -522,7 +522,12 @@ def create_person(
 ):
     """
     Create a new person entry in the database. No operation are performed on
-    password, so encrypted password is expected.
+    password, so encrypted password is expected. Index the person, emit
+    person:new and clear the person cache.
+
+    Return the serialized person, with an access token for a bot, or the
+    active record when serialize is False. Raise WrongParameterException
+    when the expiration date is in the past or not valid.
     """
     if departments is None:
         departments = []
@@ -602,7 +607,14 @@ def update_password(email, password):
 
 def update_person(person_id, data, bypass_protected_accounts=False):
     """
-    Update person entry with data given in parameter.
+    Update person entry with data given in parameter. Reindex the person,
+    emit person:update and clear the person cache. A bot whose expiration
+    date is in data gets a new access token, returned with the person.
+
+    Raise PersonInProtectedAccounts when data deactivates a protected
+    account or changes its role, email or bot flag, unless
+    bypass_protected_accounts is set. Raise WrongParameterException when
+    the expiration date is in the past or not valid.
     """
     person = Person.get(person_id)
     if (
@@ -684,7 +696,8 @@ def get_desktop_login_logs(person_id):
 
 def create_desktop_login_logs(person_id, date):
     """
-    Add a new log entry for desktop logins.
+    Add a new log entry for desktop logins and update the last presence of
+    the person.
     """
     log = DesktopLoginLog.create(person_id=person_id, date=date).serialize()
     update_person_last_presence(person_id)
@@ -915,7 +928,8 @@ def get_email_locale(person):
 def invite_person(person_id):
     """
     Send an invitation email to given person (a mail telling him/her how to
-    connect on Kitsu).
+    connect on Kitsu). The email holds a password reset link with a new token
+    valid for 7 days.
     """
     person = get_person(person_id)
     organisation = organisation_service.get_organisation()
@@ -961,7 +975,7 @@ def is_user_limit_reached():
 
 def add_to_department(department_id, person_id):
     """
-    Add to department.
+    Add to department. Clear the person cache and emit person:update.
     """
     person = get_person_raw(person_id)
     department = Department.get(department_id)
@@ -974,7 +988,7 @@ def add_to_department(department_id, person_id):
 
 def remove_from_department(department_id, person_id):
     """
-    Remove from department.
+    Remove from department. Clear the person cache and emit person:update.
     """
     person = get_person_raw(person_id)
     person.departments = [
@@ -1018,7 +1032,8 @@ def is_jti_revoked(jti):
 
 def create_access_token_for_raw_person(person):
     """
-    Create an access token for the given raw person.
+    Create an access token for the given raw person. Its id is saved on the
+    person, which revokes the token issued before.
     """
     expires_delta = False
     if person.expiration_date is not None:

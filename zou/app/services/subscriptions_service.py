@@ -32,15 +32,17 @@ def is_person_subscribed(person_id, task_id):
 
 def get_task_subscriptions(task):
     """
-    Return all notification subscriptions related to given task.
+    Return all notification subscriptions related to given task, as active
+    records.
     """
     return Subscription.get_all_by(task_id=task["id"])
 
 
 def get_sequence_subscriptions_for_task(task):
     """
-    Return all sequence subscriptions for given task. It returns something only
-    if the task is related to a shot of which the sequence has a subscription.
+    Return all sequence subscriptions for given task, as active records. It
+    returns something only if the task is related to a shot of which the
+    sequence has a subscription.
     """
     sequence_subscriptions = []
     entity = Entity.get(task["entity_id"])
