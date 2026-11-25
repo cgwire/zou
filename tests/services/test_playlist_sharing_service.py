@@ -186,6 +186,22 @@ class ShareTokenTestCase(SharedPlaylistTestCase):
             )
         send.assert_not_called()
 
+    def test_an_expired_link_invites_nobody(self):
+        yesterday = self.utc_today() - datetime.timedelta(days=1)
+        token = self.share(expiration_date=yesterday.isoformat())
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send:
+            self.assertRaises(
+                PlaylistShareLinkNotFoundException,
+                playlist_sharing_service.send_share_invitations,
+                self.playlist["id"],
+                token,
+                self.person.id,
+                emails=["reviewer@example.com"],
+            )
+        send.assert_not_called()
+
     def test_an_unknown_token_is_not_found(self):
         self.assertRaises(
             PlaylistShareLinkNotFoundException,

@@ -143,6 +143,15 @@ def validate_share_token(token):
     the service functions re-validating the token do not hold it.
     """
     share_link = get_share_link_by_token_raw(token)
+    check_share_link_usable(share_link)
+    return share_link.serialize()
+
+
+def check_share_link_usable(share_link):
+    """
+    Raise PlaylistShareLinkNotFoundException if given share link is
+    inactive or expired.
+    """
     if not share_link.is_active:
         raise PlaylistShareLinkNotFoundException
 
@@ -153,8 +162,6 @@ def validate_share_token(token):
             expiration = expiration.replace(tzinfo=datetime.timezone.utc)
         if now > expiration:
             raise PlaylistShareLinkNotFoundException
-
-    return share_link.serialize()
 
 
 def check_share_link_password(token, password):
@@ -987,8 +994,7 @@ def send_share_invitations(
     share_link = get_share_link_by_token_raw(token)
     if str(share_link.playlist_id) != str(playlist_id):
         raise PlaylistShareLinkNotFoundException
-    if not share_link.is_active:
-        raise PlaylistShareLinkNotFoundException
+    check_share_link_usable(share_link)
 
     playlist = playlists_service.get_playlist(playlist_id)
     project = projects_service.get_project(playlist["project_id"])
