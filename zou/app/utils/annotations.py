@@ -236,7 +236,7 @@ def _parse_color(value, default=None):
             return (int(r), int(g), int(b), alpha_255)
     try:
         rgb = ImageColor.getrgb(value)
-    except (ValueError, AttributeError):
+    except (AttributeError, TypeError, ValueError):
         return default
     if len(rgb) == 3:
         return rgb + (255,)

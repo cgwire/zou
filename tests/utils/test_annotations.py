@@ -1195,6 +1195,26 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelClose(image.getpixel((100, 160)), (0, 0, 0))
         self.assertPixelWhite(image.getpixel((20, 20)))
 
+    def test_a_gradient_fill_keeps_the_outline(self):
+        """
+        Fabric serializes a gradient fill as a dict. The rect is drawn
+        without a fill, with its outline.
+        """
+        image = self._render(
+            {
+                "type": "rect",
+                "left": 40,
+                "top": 40,
+                "width": 120,
+                "height": 120,
+                "fill": {"type": "linear", "colorStops": []},
+                "stroke": "#ff0000",
+                "strokeWidth": 4,
+            }
+        )
+        self.assertPixelClose(image.getpixel((40, 100)), (255, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
     def test_arrow_with_negative_head_size_draws_only_the_body(self):
         image = self._render(
             {
