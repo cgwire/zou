@@ -20,6 +20,7 @@ from zou.app.services import (
     assets_service,
     comments_service,
     deletion_service,
+    entities_service,
     projects_service,
     task_types_service,
     tasks_service,
@@ -97,7 +98,6 @@ class TaskAssignationTestCase(TaskTestCase):
 
     def test_clear_assignation_swallows_stale_data_error(self):
         tasks_service.assign_task(self.task.id, self.person.id)
-        task = tasks_service.get_task_raw(self.task_id)
 
         # A concurrent unassign makes the assignees flush delete a link that
         # is already gone, which SQLAlchemy reports as StaleDataError. clear_
@@ -105,8 +105,8 @@ class TaskAssignationTestCase(TaskTestCase):
         # rollback path can't be exercised here: the test harness keeps every
         # fixture in one uncommitted transaction, so any rollback wipes them.)
         with mock.patch.object(
-            type(task), "update", side_effect=StaleDataError("stale link")
-        ), mock.patch.object(tasks_service, "get_task_raw", return_value=task):
+            Task, "update", side_effect=StaleDataError("stale link")
+        ):
             result = tasks_service.clear_assignation(self.task_id)
 
         self.assertEqual(result["id"], self.task_id)
@@ -701,3 +701,47 @@ class EntityTestCase(ApiDBTestCase):
         self.assertEqual(
             [event["asset_id"] for event in captured], [self.asset_id]
         )
+
+
+class EntityTasksTestCase(ApiDBTestCase):
+    """
+    The tasks hanging off an entity, dispatched to the listing of the right
+    kind.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+
+    def assert_the_tasks_of_the_entity_are_listed(self, entity_id):
+        """
+        The listing carries every task of that entity and nothing else,
+        whatever kind of entity it is.
+        """
+        entity = entities_service.get_entity(str(entity_id))
+
+        tasks = tasks_service.get_entity_tasks(entity)
+
+        self.assertGreater(len(tasks), 0)
+        for task in tasks:
+            self.assertEqual(task["entity_id"], str(entity_id))
+            self.assertIn("task_type_name", task)
+            self.assertIn("id", task)
+
+    def test_get_entity_tasks_shot(self):
+        self.assert_the_tasks_of_the_entity_are_listed(self.shot.id)
+
+    def test_get_entity_tasks_asset(self):
+        self.assert_the_tasks_of_the_entity_are_listed(self.asset.id)
+
+    def test_get_entity_tasks_no_tasks(self):
+        shot = entities_service.get_entity(str(self.shot.id))
+        deletion_service.remove_task(str(self.shot_task.id), force=True)
+
+        self.assertEqual(tasks_service.get_entity_tasks(shot), [])

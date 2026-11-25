@@ -145,8 +145,8 @@ class MissingTileTestCase(PreviewFileTestCase):
 
     def test_tile_attempt_is_remembered_in_redis(self):
         """
-        The attempt mark outlives TMP_DIR, which a reboot empties: it is
-        kept in Redis, with the retry delay as its lifetime.
+        The attempt mark is kept in Redis, with the retry delay as its
+        lifetime: a second attempt within that delay queues nothing.
         """
         with self.job_queue() as job_queue:
             self.assertTrue(
@@ -154,12 +154,6 @@ class MissingTileTestCase(PreviewFileTestCase):
                     self.preview_file_id
                 )
             )
-            # What a reboot does to a mark kept in TMP_DIR.
-            mark_path = os.path.join(
-                config.TMP_DIR, f"tile-{self.preview_file_id}.mark"
-            )
-            if os.path.exists(mark_path):
-                os.remove(mark_path)
             self.assertFalse(
                 preview_maintenance_service.generate_tile_later(
                     self.preview_file_id
@@ -470,3 +464,29 @@ class QueueMissingTilesProgressTestCase(QueueMissingTilesTestCase):
             preview_maintenance_service.queue_missing_tiles(progress=progress)
         self.assertEqual(progress.advanced, 1)
         self.assertTrue(progress.stopped)
+
+
+class GeneratePreviewExtraTestCase(PreviewFileTestCase):
+    def test_preview_extra_keeps_the_metadata_on_a_transient_failure(self):
+        movie_fixture = self.get_fixture_file_path(
+            os.path.join("videos", "test_preview_tiles.mp4")
+        )
+        self.generate_fixture_preview_file()
+        self.preview_file.update({"width": 1920, "height": 1080})
+
+        def high_def_hiccup(config, get_path, open_file, prefix, *args, **kw):
+            if prefix == "previews":
+                raise preview_files_service.fs.FileNotFound("previews-x")
+            return movie_fixture
+
+        with patch.object(
+            preview_files_service.fs,
+            "get_file_path_and_file",
+            side_effect=high_def_hiccup,
+        ):
+            preview_maintenance_service.generate_preview_extra(
+                with_metadata=True
+            )
+        preview_file = PreviewFile.get(self.preview_file.id)
+        self.assertEqual(preview_file.width, 1920)
+        self.assertEqual(preview_file.height, 1080)

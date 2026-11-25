@@ -1,22 +1,15 @@
-import os
-import tempfile
+from unittest.mock import patch
 
 from sqlalchemy import event
 
 from tests.base import ApiDBTestCase
-from tests.services.cases import PreviewFileTestCase
 from zou.app import db
 from zou.app.exceptions import (
     ProjectNotFoundException,
     WrongParameterException,
 )
-from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
-from zou.app.services import (
-    breakdown_service,
-    cascade_deletion_service,
-    projects_service,
-)
+from zou.app.services import projects_service
 
 
 class ProjectServiceTestCase(ApiDBTestCase):
@@ -204,19 +197,6 @@ class ProjectServiceTestCase(ApiDBTestCase):
                     project_id, relations=True
                 )
                 self.assertEqual(project[relation], [])
-
-    def test_delete_project(self):
-        self.generate_fixture_asset_type()
-        self.generate_fixture_asset_types()
-        self.generate_assigned_task()
-        self.generate_fixture_episode()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        breakdown_service.create_casting_link(self.shot.id, self.asset.id)
-
-        project_id = str(self.project.id)
-        cascade_deletion_service.remove_project(project_id)
-        self.assertIsNone(Project.get(project_id))
 
     def test_is_tv_show(self):
         self.assertFalse(projects_service.is_tv_show(self.project.serialize()))
@@ -511,18 +491,69 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual([person.id for person in team], [here.id])
 
 
-class PreviewFileServiceTestCase(PreviewFileTestCase):
-    def _write_temp_movie(self, size=1024):
-        """
-        Create a non-empty temp file standing in for a movie.
-        """
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"\x00" * size)
-        tmp.close()
-        self.addCleanup(
-            lambda: os.path.exists(tmp.name) and os.remove(tmp.name)
+class MovieBitrateTestCase(ApiDBTestCase):
+    def test_a_resolution_is_two_numbers_around_an_x(self):
+        self.assertFalse(projects_service.is_valid_resolution(""))
+        self.assertFalse(projects_service.is_valid_resolution(None))
+        self.assertTrue(projects_service.is_valid_resolution("203x121"))
+        self.assertTrue(projects_service.is_valid_resolution("1920x1080"))
+        self.assertTrue(projects_service.is_valid_resolution("3840x2160"))
+        # A partial resolution is a height alone, so a full one is not one.
+        self.assertFalse(
+            projects_service.is_valid_partial_resolution("3840x2160")
         )
-        return tmp.name
+        self.assertTrue(projects_service.is_valid_partial_resolution("x2160"))
+
+    def test_movie_bitrates_cascade_from_link_to_project_to_config(self):
+        with patch.object(
+            projects_service.config, "MOVIE_HIGHDEF_BITRATE", 28
+        ), patch.object(projects_service.config, "MOVIE_LOWDEF_BITRATE", 6):
+            project = {
+                "hd_bitrate_compression": None,
+                "ld_bitrate_compression": None,
+            }
+            self.assertEqual(
+                projects_service.get_movie_bitrates(project), (28, 6)
+            )
+            project["hd_bitrate_compression"] = 20
+            self.assertEqual(
+                projects_service.get_movie_bitrates(project), (20, 6)
+            )
+            # Each version resolves on its own.
+            link = {
+                "hd_bitrate_compression": None,
+                "ld_bitrate_compression": 4,
+            }
+            self.assertEqual(
+                projects_service.get_movie_bitrates(project, link),
+                (20, 4),
+            )
+
+    def test_bitrate_validation_leaves_stored_values_to_the_encoder(self):
+        validate = projects_service.validate_movie_bitrates
+        project = {"hd_bitrate_compression": 28, "ld_bitrate_compression": 6}
+        # A link high def below the low def it inherits: the encoder caps
+        # that low def.
+        validate(
+            {"hd_bitrate_compression": 4, "ld_bitrate_compression": None},
+            inherited=project,
+        )
+        with patch.object(
+            projects_service.config, "MOVIE_HIGHDEF_BITRATE", 20
+        ):
+            # Bitrates stored above a ceiling lowered since do not lock the
+            # object, nor the links inheriting them.
+            validate({"name": "Renamed"}, current=project)
+            validate(
+                {"hd_bitrate_compression": None, "ld_bitrate_compression": 8},
+                inherited=project,
+            )
+            validate({"ld_bitrate_compression": 20}, current=project)
+            # Sent back with their stored values, they are not checked
+            # again.
+            validate(dict(project), current=project)
+        lowered = {"hd_bitrate_compression": 19, "ld_bitrate_compression": 20}
+        validate(dict(lowered), current=lowered)
 
     def test_movie_bitrate_validation(self):
         projects_service.validate_movie_bitrate(None)

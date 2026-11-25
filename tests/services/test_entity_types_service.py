@@ -187,31 +187,6 @@ class ConceptsServiceTestCase(ApiDBTestCase):
         self.assertFalse(entity_types_service.is_concept(asset))
 
 
-class EditUtilsTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-
-        self.generate_fixture_project()
-        self.generate_fixture_episode()
-        self.generate_fixture_edit(parent_id=self.episode.id)
-        self.generate_fixture_asset()
-
-    def the_chain_a_task_needs(self):
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task_type()
-
-    def test_get_edit_type(self):
-        edit_type = entity_types_service.get_edit_type()
-        self.assertEqual(edit_type["name"], "Edit")
-
-    def test_is_edit(self):
-        self.assertTrue(entity_types_service.is_edit(self.edit.serialize()))
-        self.assertFalse(entity_types_service.is_edit(self.asset.serialize()))
-
-
 class EntityTypeTestCase(ApiDBTestCase):
     """
     Entity types are a tiny, heavily read table: every lookup is memoized

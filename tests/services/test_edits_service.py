@@ -89,11 +89,6 @@ class EditUtilsTestCase(ApiDBTestCase):
         everything = edits_service.get_edits_and_tasks({"episode_id": "all"})
         self.assertEqual(len(everything), 2)
 
-    def test_get_edit(self):
-        self.assertEqual(
-            str(self.edit.id), edits_service.get_edit(self.edit.id)["id"]
-        )
-
     def test_get_full_edit(self):
         self.the_chain_a_task_needs()
         self.generate_fixture_edit_task()

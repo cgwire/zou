@@ -239,6 +239,30 @@ class TimeSpentScopeTestCase(TimeSpentsTestCase):
             [("P01", 300)],
         )
 
+    def animation_supervision_scope(self):
+        return user_service.build_supervision_scope_filter(
+            {str(self.project.id): "supervisor"},
+            [str(self.department_animation.id)],
+        )
+
+    def test_a_table_scoped_to_what_a_supervisor_supervises(self):
+        month_table = time_spents_service.get_month_table(
+            "2018", scope=self.animation_supervision_scope()
+        )
+        self.assertEqual(month_table, {"6": {self.person_id: 300}})
+
+    def test_entries_scoped_to_what_a_supervisor_supervises(self):
+        entries = time_spents_service.get_month_time_spents(
+            self.person_id,
+            "2018",
+            "6",
+            scope=self.animation_supervision_scope(),
+        )
+        self.assertEqual(
+            [(entry["entity_name"], entry["duration"]) for entry in entries],
+            [("P01", 300)],
+        )
+
 
 class TimeSpentEntryTestCase(TimeSpentsTestCase):
     """

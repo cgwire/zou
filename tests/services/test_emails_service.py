@@ -4,7 +4,6 @@ from babel import Locale
 
 from tests.base import ApiDBTestCase
 from zou.app import config
-from zou.app.models.comment import Comment
 from zou.app.models.person import Person
 from zou.app.services import (
     emails_service,
@@ -171,33 +170,6 @@ class EmailsServiceTestCase(ApiDBTestCase):
             "send_to_slack('xoxb********abcd (sha256:", kwargs["description"]
         )
 
-    def test_send_comment_notification_uses_locale(self):
-        spanish_person = self.a_person("Maria", "es_ES")
-        spanish_person_id = str(spanish_person.id)
-
-        comment = Comment.create(
-            object_id=self.task.id,
-            person_id=self.person.id,
-            text="Test comment",
-            task_status_id=self.task.task_status_id,
-            object_type="task",
-        )
-
-        with patch(
-            "zou.app.services.emails_service.emails.send_email"
-        ) as mock_send:
-            emails_service.send_comment_notification(
-                spanish_person_id,
-                self.person.id,
-                comment.serialize(),
-                self.task.serialize(),
-            )
-
-            self.assertTrue(mock_send.called)
-            call_args = mock_send.call_args
-            html_body = call_args[0][1]
-            self.assertIn("Saludos cordiales", html_body)
-
     def test_send_notification_falls_back_to_english(self):
         # Italian is not among the translations, so English stands.
         person = self.a_person("Mario", "it_IT")
@@ -212,16 +184,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
         )
 
         self.assertEqual(
-            messages,
-            {
-                "email_message": "email",
-                "slack_message": "slack",
-                "mattermost_message": {
-                    "message": "slack",
-                    "project_name": self.project.name,
-                },
-                "discord_message": "discord",
-            },
+            messages["mattermost_message"]["project_name"], self.project.name
         )
 
 

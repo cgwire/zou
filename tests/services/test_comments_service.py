@@ -13,6 +13,7 @@ from zou.app.models.comment import Comment
 from zou.app.models.news import News
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
 from zou.app.services import (
     attachment_files_service,
     comments_service,
@@ -23,6 +24,7 @@ from zou.app.services import (
     persons_service,
     preview_file_states_service as states_service,
     preview_files_service,
+    projects_service,
     tasks_service,
 )
 from zou.app.stores import file_store, redis_lock
@@ -1195,13 +1197,79 @@ class CommentReaderTestCase(TaskTestCase):
             3,
         )
 
+        self.assertEqual(len(self.client_comments(self.user_client)), 1)
+
+    def client_comments(self, client):
         with mock.patch.object(
-            persons_service, "get_current_user", return_value=self.user_client
+            persons_service, "get_current_user", return_value=client
         ):
-            comments = comments_service.get_comments(
-                self.task_id, is_client=True
-            )
-        self.assertEqual(len(comments), 1)
+            return comments_service.get_comments(self.task_id, is_client=True)
+
+    def test_a_studio_comment_with_previews_reaches_a_client_blank(self):
+        """
+        A client sees the previews of a studio comment, not what the studio
+        wrote around them.
+        """
+        self.generate_fixture_user_client()
+        comment_id = self.generate_fixture_comment()["id"]
+        comments_service.add_preview_file_to_comment(
+            comment_id, self.person_id, self.task_id
+        )
+
+        comments = self.client_comments(self.user_client)
+
+        self.assertEqual([comment["id"] for comment in comments], [comment_id])
+        self.assertEqual(comments[0]["text"], "")
+        self.assertEqual(len(comments[0]["previews"]), 1)
+
+    def test_an_isolated_client_reads_only_their_own_comments(self):
+        self.generate_fixture_user_client()
+        other_client = Person.create(
+            first_name="Jane",
+            last_name="Client",
+            role="client",
+            email="jane.client@example.com",
+        ).serialize()
+        own_id = self.generate_fixture_comment(person=self.user_client)["id"]
+        other_id = self.generate_fixture_comment(person=other_client)["id"]
+        self.assertEqual(
+            {
+                comment["id"]
+                for comment in self.client_comments(self.user_client)
+            },
+            {own_id, other_id},
+        )
+
+        projects_service.update_project(
+            self.project_id, {"is_clients_isolated": True}
+        )
+
+        self.assertEqual(
+            [
+                comment["id"]
+                for comment in self.client_comments(self.user_client)
+            ],
+            [own_id],
+        )
+
+    def test_a_rejected_preview_is_kept_from_a_client(self):
+        self.generate_fixture_user_client()
+        comment_id = self.generate_fixture_comment()["id"]
+        Comment.get(comment_id).update({"for_client": True})
+        preview_file = comments_service.add_preview_file_to_comment(
+            comment_id, self.person_id, self.task_id
+        )
+        PreviewFile.get(preview_file["id"]).update(
+            {"validation_status": "rejected"}
+        )
+
+        studio_comments = comments_service.get_comments(
+            self.task_id, is_manager=True
+        )
+        self.assertEqual(len(studio_comments[0]["previews"]), 1)
+        client_comments = self.client_comments(self.user_client)
+        self.assertEqual([c["id"] for c in client_comments], [comment_id])
+        self.assertEqual(client_comments[0]["previews"], [])
 
     def test_project_comments_cost_the_same_whatever_their_number(self):
         """

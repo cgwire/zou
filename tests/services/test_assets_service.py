@@ -21,17 +21,6 @@ class AssetListTestCase(AssetsTestCase):
         assets = assets_service.get_assets()
         self.assertEqual([asset["name"] for asset in assets], ["Tree"])
 
-    def test_a_shot_is_not_an_asset(self):
-        """
-        Assets and shots share the entity table: the listing tells them
-        apart by entity type, so the shot of the fixtures must not show
-        up in it.
-        """
-        self.assertNotIn(
-            str(self.shot.id),
-            [asset["id"] for asset in assets_service.get_assets()],
-        )
-
     def test_get_assets_with_episode_and_project_filters(self):
         """
         The episode criterion is a union of two sets: assets created in the

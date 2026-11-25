@@ -33,7 +33,7 @@ class TaskReaderTestCase(TaskTestCase):
 
     def test_get_tasks_for_project_loads_assignees_in_one_query(self):
         # selectinload batches 500 ids per IN, a large project sent
-        # one query per batch (KITSU-API-4W3).
+        # one query per batch (KITSU-API-4W3). 501 tasks make two batches.
         tasks = [
             Task(
                 name=f"Bulk {index}",
@@ -44,7 +44,7 @@ class TaskReaderTestCase(TaskTestCase):
                 assigner_id=self.task.assigner_id,
                 assignees=[self.person],
             )
-            for index in range(600)
+            for index in range(501)
         ]
         db.session.add_all(tasks)
         db.session.commit()
@@ -52,7 +52,7 @@ class TaskReaderTestCase(TaskTestCase):
         with self.collect_statements() as statements:
             result = todos_service.get_tasks_for_project(self.project.id)
 
-        self.assertEqual(len(result), 602)
+        self.assertEqual(len(result), 503)
         bulk = [task for task in result if task["name"].startswith("Bulk")]
         self.assertTrue(
             all(task["assignees"] == [self.person_id] for task in bulk)

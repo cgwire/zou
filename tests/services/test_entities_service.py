@@ -10,12 +10,10 @@ from zou.app.services import (
     assets_service,
     cascade_deletion_service,
     concepts_service,
-    deletion_service,
     edits_service,
     entities_service,
     entity_types_service,
     shots_service,
-    tasks_service,
 )
 
 UNKNOWN = "00000000-0000-0000-0000-000000000000"
@@ -152,10 +150,9 @@ class EntityListingTestCase(ApiDBTestCase):
         self.assertEqual([sequence["name"] for sequence in sequences], [here])
 
 
-class EntityTasksTestCase(ApiDBTestCase):
+class EntitiesAndTasksTestCase(ApiDBTestCase):
     """
-    The tasks hanging off an entity, dispatched to the listing of the right
-    kind.
+    The entities listed with their tasks.
     """
 
     def setUp(self):
@@ -167,33 +164,6 @@ class EntityTasksTestCase(ApiDBTestCase):
         self.generate_fixture_shot()
         self.generate_fixture_task()
         self.generate_fixture_shot_task()
-
-    def assert_the_tasks_of_the_entity_are_listed(self, entity_id):
-        """
-        The listing carries every task of that entity and nothing else,
-        whatever kind of entity it is.
-        """
-        entity = entities_service.get_entity(str(entity_id))
-
-        tasks = tasks_service.get_entity_tasks(entity)
-
-        self.assertGreater(len(tasks), 0)
-        for task in tasks:
-            self.assertEqual(task["entity_id"], str(entity_id))
-            self.assertIn("task_type_name", task)
-            self.assertIn("id", task)
-
-    def test_get_entity_tasks_shot(self):
-        self.assert_the_tasks_of_the_entity_are_listed(self.shot.id)
-
-    def test_get_entity_tasks_asset(self):
-        self.assert_the_tasks_of_the_entity_are_listed(self.asset.id)
-
-    def test_get_entity_tasks_no_tasks(self):
-        shot = entities_service.get_entity(str(self.shot.id))
-        deletion_service.remove_task(str(self.shot_task.id), force=True)
-
-        self.assertEqual(tasks_service.get_entity_tasks(shot), [])
 
     def test_get_entities_and_tasks(self):
         self.generate_fixture_sequence_task()

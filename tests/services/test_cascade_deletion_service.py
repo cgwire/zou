@@ -9,13 +9,14 @@ from tests.services.cases import (
     DeletionTestCase,
     ShotsTestCase,
 )
-from zou.app import db
+from zou.app import config, db
 from zou.app.exceptions import (
     AssetNotFoundException,
     ConceptNotFoundException,
     EditNotFoundException,
     EpisodeNotFoundException,
     ModelWithRelationsDeletionException,
+    PersonInProtectedAccounts,
     SceneNotFoundException,
     SequenceNotFoundException,
     ShotNotFoundException,
@@ -34,6 +35,7 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
+from zou.app.models.working_file import WorkingFile
 from zou.app.services import (
     assets_service,
     breakdown_service,
@@ -427,6 +429,56 @@ class RemovePersonTestCase(DeletionTestCase):
         for model, row_id in kept:
             self.assertIsNotNone(model.get(row_id), model.__name__)
 
+    def test_a_protected_account_is_not_removed(self):
+        self.addCleanup(
+            setattr,
+            config,
+            "PROTECTED_ACCOUNTS",
+            config.PROTECTED_ACCOUNTS,
+        )
+        config.PROTECTED_ACCOUNTS = [self.person.email]
+        person_id = str(self.person.id)
+
+        self.assertRaises(
+            PersonInProtectedAccounts,
+            cascade_deletion_service.remove_person,
+            person_id,
+        )
+        self.assertIsNotNone(Person.get(person_id))
+
+    def test_a_forced_removal_keeps_the_files_of_the_person(self):
+        """
+        The files, the tasks and the comments of others outlive the person:
+        only the links to the person go.
+        """
+        person_id = str(self.person.id)
+        self.task.update({"assigner_id": self.person.id})
+        comment_id = self.generate_fixture_comment(
+            person=self.assigner.serialize()
+        )["id"]
+        comment = Comment.get(comment_id)
+        comment.acknowledgements = [self.person]
+        comment.save()
+        self.generate_fixture_output_type()
+        files = [
+            (WorkingFile, str(self.generate_fixture_working_file().id)),
+            (OutputFile, str(self.generate_fixture_output_file().id)),
+            (PreviewFile, str(self.generate_fixture_preview_file().id)),
+        ]
+        task_id = str(self.task.id)
+
+        cascade_deletion_service.remove_person(person_id, force=True)
+
+        self.assertIsNone(Person.get(person_id))
+        for model, row_id in files:
+            row = model.get(row_id)
+            self.assertIsNotNone(row, model.__name__)
+            self.assertIsNone(row.person_id, model.__name__)
+        task = Task.get(task_id)
+        self.assertIsNone(task.assigner_id)
+        self.assertEqual(task.assignees, [])
+        self.assertEqual(Comment.get(comment_id).acknowledgements, [])
+
 
 class EditRemovalTestCase(ApiDBTestCase):
     def setUp(self):
@@ -611,3 +663,23 @@ class ShotRemovalTestCase(ShotsTestCase):
             shots_service.get_shot(shot_id)
         with pytest.raises(SceneNotFoundException):
             shots_service.get_scene(scene_id)
+
+
+class RemoveProjectCastingTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+        self.generate_fixture_project_closed()
+
+    def test_a_project_with_a_casting_is_removed(self):
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset_types()
+        self.generate_assigned_task()
+        self.generate_fixture_episode()
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        breakdown_service.create_casting_link(self.shot.id, self.asset.id)
+
+        project_id = str(self.project.id)
+        cascade_deletion_service.remove_project(project_id)
+        self.assertIsNone(Project.get(project_id))

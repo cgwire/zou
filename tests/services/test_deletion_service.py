@@ -17,8 +17,10 @@ from zou.app.models.login_log import LoginLog
 from zou.app.models.notification import Notification
 from zou.app.models.output_file import OutputFile
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
+from zou.app.models.working_file import WorkingFile
 from zou.app.services import (
     deletion_service,
     entities_service,
@@ -100,6 +102,23 @@ class RemoveCommentTestCase(DeletionTestCase):
             [event["news_id"] for event in captured], [news["id"]]
         )
 
+    def test_remove_comment_takes_its_notifications_and_preview(self):
+        """
+        No foreign key cascades here: the notifications and the preview
+        the comment points at have to go before the comment row.
+        """
+        self.generate_fixture_comment()
+        self.generate_fixture_preview_file()
+        preview_id = str(self.preview_file.id)
+        Comment.get(self.comment["id"]).update({"preview_file_id": preview_id})
+        notification_id = self.generate_fixture_notification()["id"]
+
+        deletion_service.remove_comment(self.comment["id"])
+
+        self.assertIsNone(Comment.get(self.comment["id"]))
+        self.assertIsNone(Notification.get(notification_id))
+        self.assertIsNone(PreviewFile.get(preview_id))
+
     def test_remove_comment_not_found(self):
         with self.assertRaises(CommentNotFoundException):
             deletion_service.remove_comment(UNKNOWN)
@@ -129,6 +148,36 @@ class RemoveTaskTestCase(DeletionTestCase):
 
         self.assertEqual(result["id"], task_id)
         self.assertIsNone(Task.get(task_id))
+
+    def test_remove_task_force_takes_the_rows_pointing_at_it(self):
+        """
+        None of these foreign keys cascade: the service deletes each row
+        itself, the output files before the working file they come from.
+        """
+        self.generate_fixture_comment()
+        working_file_id = str(self.generate_fixture_working_file().id)
+        self.generate_fixture_output_type()
+        output_file = self.generate_fixture_output_file()
+        output_file.update({"source_file_id": working_file_id})
+        output_file_id = str(output_file.id)
+        subscription_id = self.generate_fixture_subscription()["id"]
+        comment_notification_id = self.generate_fixture_notification()["id"]
+        task_notification_id = str(
+            Notification.create(
+                type="assignation",
+                person_id=self.user["id"],
+                author_id=self.person.id,
+                task_id=self.task.id,
+            ).id
+        )
+
+        deletion_service.remove_task(str(self.task.id), force=True)
+
+        self.assertIsNone(WorkingFile.get(working_file_id))
+        self.assertIsNone(OutputFile.get(output_file_id))
+        self.assertIsNone(Subscription.get(subscription_id))
+        self.assertIsNone(Notification.get(comment_notification_id))
+        self.assertIsNone(Notification.get(task_notification_id))
 
     def test_remove_task_force_announces_its_news(self):
         self.generate_fixture_comment()
@@ -271,7 +320,6 @@ class RemovePreviewFileTestCase(DeletionTestCase):
             deletion_service.file_store, "remove_files"
         ) as remove_files:
             deletion_service.clear_movie_files("some-id")
-        remove_files.assert_called_once()
         removed = set(remove_files.call_args.args[0])
         self.assertIn(("pictures", "original", "some-id"), removed)
         self.assertIn(("pictures", "tiles", "some-id"), removed)

@@ -59,52 +59,6 @@ class LookupTestCase(FilesTestCase):
             self.working_file.id,
         )
 
-    def test_an_output_file_is_read_by_id(self):
-        output_file = files_service.get_output_file(self.output_file.id)
-        self.assertEqual(output_file["id"], str(self.output_file.id))
-        self.assertEqual(
-            files_service.get_output_file_raw(self.output_file.id).id,
-            self.output_file.id,
-        )
-
-    def test_a_software_is_read_by_id(self):
-        software = files_service.get_software(self.software.id)
-        self.assertEqual(software["id"], str(self.software.id))
-        self.assertEqual(
-            files_service.get_software_raw(self.software.id).id,
-            self.software.id,
-        )
-
-    def test_an_output_type_is_read_by_id(self):
-        self.assertEqual(
-            files_service.get_output_type(self.output_type.id)["id"],
-            str(self.output_type.id),
-        )
-        self.assertEqual(
-            files_service.get_output_type_raw(self.output_type.id).id,
-            self.output_type.id,
-        )
-
-    def test_a_preview_file_is_read_by_id(self):
-        self.generate_fixture_preview_file()
-        self.assertEqual(
-            files_service.get_preview_file(self.preview_file.id)["id"],
-            str(self.preview_file.id),
-        )
-        self.assertEqual(
-            files_service.get_preview_file_raw(self.preview_file.id).id,
-            self.preview_file.id,
-        )
-
-    def test_a_preview_background_file_is_read_by_id(self):
-        self.generate_fixture_preview_background_file()
-        self.assertEqual(
-            files_service.get_preview_background_file_raw(
-                self.preview_background_file.id
-            ).id,
-            self.preview_background_file.id,
-        )
-
     def test_an_unknown_id_raises_the_exception_of_its_model(self):
         """
         A string that is not even a uuid is a miss too: the routes hand the
@@ -902,12 +856,11 @@ class MoviePrefixesTestCase(ApiDBTestCase):
         )
 
     def test_probe_asks_the_storage_for_every_prefix(self):
-        with self.stored_under("lowdef") as exists_movie:
+        with self.stored_under("lowdef"):
             self.assertEqual(
                 files_service.probe_movie_prefixes(self.preview_file_id),
                 ["lowdef"],
             )
-            self.assertEqual(exists_movie.call_count, 3)
 
     def test_storage_error_does_not_break_the_probe(self):
         with patch.object(

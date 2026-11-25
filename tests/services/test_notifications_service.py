@@ -567,6 +567,24 @@ class CommentVisibilityTestCase(NotificationsTestCase):
         self.assertEqual(mailed, sorted([self.assignee_id, self.admin_id]))
         self.assertIn(("reply", self.client_id), self.kinds())
 
+    def test_a_mention_in_a_reply_to_an_internal_comment_is_not_mailed_to_a_client(
+        self,
+    ):
+        with patch.object(
+            comments_service,
+            "get_comment_mention_ids",
+            return_value=[self.client_id, self.outsider_id],
+        ):
+            mailed = self.mailed(
+                "mention",
+                comments_service.reply_comment,
+                self.comment["id"],
+                "a reply",
+                self.admin_id,
+            )
+        self.assertEqual(mailed, [self.outsider_id])
+        self.assertIn(("reply-mention", self.client_id), self.kinds())
+
     def test_a_reply_to_their_own_comment_is_mailed_to_a_client(self):
         """
         The answer of the studio to a client: the artist on the task, who

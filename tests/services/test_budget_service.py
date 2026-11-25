@@ -48,15 +48,6 @@ class BudgetServiceTestCase(ApiDBTestCase):
         }
         return BudgetEntry.create(**fields)
 
-    def test_get_budget_raw(self):
-        budget = self.a_budget()
-
-        self.assertEqual(
-            budget_service.get_budget_raw(str(budget.id)).id, budget.id
-        )
-        with self.assertRaises(BudgetNotFoundException):
-            budget_service.get_budget_raw("123")
-
     def test_get_budget(self):
         budget = self.a_budget()
 
@@ -64,6 +55,8 @@ class BudgetServiceTestCase(ApiDBTestCase):
 
         self.assertEqual(result["id"], str(budget.id))
         self.assertEqual(result["name"], "Test Budget")
+        with self.assertRaises(BudgetNotFoundException):
+            budget_service.get_budget("123")
 
     def test_get_budgets_is_scoped_to_the_production(self):
         self.assertEqual(budget_service.get_budgets(str(self.project.id)), [])
@@ -149,21 +142,14 @@ class BudgetServiceTestCase(ApiDBTestCase):
 
         self.assertEqual([line["id"] for line in result], [str(entry.id)])
 
-    def test_get_budget_entry_raw(self):
-        entry = self.an_entry()
-
-        self.assertEqual(
-            budget_service.get_budget_entry_raw(str(entry.id)).id, entry.id
-        )
-        with self.assertRaises(BudgetEntryNotFoundException):
-            budget_service.get_budget_entry_raw("123")
-
     def test_get_budget_entry(self):
         entry = self.an_entry()
 
         result = budget_service.get_budget_entry(str(entry.id))
 
         self.assertEqual(result["id"], str(entry.id))
+        with self.assertRaises(BudgetEntryNotFoundException):
+            budget_service.get_budget_entry("123")
 
     def test_create_budget_entry(self):
         budget = self.a_budget()

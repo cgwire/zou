@@ -409,3 +409,22 @@ class RetakeStatsTestCase(ApiDBTestCase):
         )
 
         self.assertEqual(result["all"]["all"]["done"]["count"], 0)
+
+    def test_the_stats_hold_only_assigned_tasks_when_asked(self):
+        """
+        A vendor gets the stats of their own tasks. The assignee filter
+        reads the caller off the request.
+        """
+        mine = self.a_task("P01", self.task_status_done, nb_frames=10)
+        self.a_task("P02", self.task_status_done, nb_frames=20)
+        tasks_service.assign_task(str(mine.id), self.user["id"])
+
+        with app.test_request_context(headers=self.auth_headers):
+            verify_jwt_in_request()
+            stats = stats_service.get_episode_retake_stats_for_project(
+                self.project_id, only_assigned=True
+            )[self.episode_id]["all"]
+
+        self.assertEqual(
+            stats["done"], {"count": 1, "frames": 10, "drawings": 0}
+        )

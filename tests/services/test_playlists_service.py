@@ -464,7 +464,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         The other production keeps its own.
         """
         self.generate_fixture_playlists()
-        elsewhere = Playlist.create(
+        Playlist.create(
             name="Elsewhere", shots={}, project_id=self.project_standard.id
         )
 
@@ -474,7 +474,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
         names = sorted(playlist["name"] for playlist in playlists)
         self.assertEqual(names, ["Playlist 1", "Playlist 3", "Playlist 4"])
-        self.assertNotIn(elsewhere.name, names)
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()

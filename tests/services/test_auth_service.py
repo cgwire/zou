@@ -2,7 +2,10 @@ import datetime
 from unittest import mock
 
 import pytest
-from ldap3.core.exceptions import LDAPPasswordIsMandatoryError
+from ldap3.core.exceptions import (
+    LDAPInvalidCredentialsResult,
+    LDAPPasswordIsMandatoryError,
+)
 
 from tests.services.cases import AuthTestCase
 from zou.app import app, db
@@ -197,6 +200,16 @@ class LdapStrategyTestCase(AuthTestCase):
             )
             self.assertRaises(WrongPasswordException, self.authenticate, "")
         connection.assert_not_called()
+        self.assertEqual(self.failed_attemps(), 1)
+
+    def test_a_bind_the_directory_refuses_is_a_wrong_password(self):
+        self.person.update({"is_generated_from_ldap": True})
+        with mock.patch("ldap3.Connection") as connection:
+            self.assertEqual(self.authenticate()["first_name"], "John")
+            connection.return_value.bind.side_effect = (
+                LDAPInvalidCredentialsResult()
+            )
+            self.assertRaises(WrongPasswordException, self.authenticate)
         self.assertEqual(self.failed_attemps(), 1)
 
     def test_an_empty_password_leaves_local_people_to_their_rules(self):
