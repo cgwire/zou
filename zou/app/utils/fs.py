@@ -22,10 +22,10 @@ MISSING_OBJECT_ERROR_CODES = {
     "NotFound",
 }
 
-# Pause before the single retry of a transient storage failure. The
-# storage clients already retry on their own (FS_SWIFT_RETRIES, botocore's
-# retry mode), so this second chance only has to outlast a hiccup: a long
-# pause here holds a request worker for nothing.
+# Pause before the single retry after a transient storage failure. The
+# storage clients already do their own retries (FS_SWIFT_RETRIES, the
+# retry mode of botocore), so this second chance must only outlast a short
+# problem. A long pause here holds a request worker for nothing.
 TRANSIENT_RETRY_DELAY = 0.5
 
 STALE_PART_AGE = 3600
@@ -51,13 +51,14 @@ def copyfile(src, dest):
 
 def is_missing_file_error(exception):
     """
-    Tell a missing object apart from a transient storage failure.
+    Tell whether the error is a missing object, and not a transient
+    storage failure.
 
-    The file store raises FileNotFound for a missing object whatever the
-    backend, and lets the other failures through as they are: a Swift
-    ClientException, a botocore ClientError. Retrying a missing object is
-    pointless, and the sleep it comes with is paid on every request that
-    falls back from one prefix to another.
+    For a missing object, the file store raises FileNotFound with all
+    backends. It lets the other failures through as they are: a Swift
+    ClientException, a botocore ClientError. A retry for a missing object
+    is not useful, and each request that falls back from one prefix to
+    another pays the sleep of that retry.
     """
     if exception is None:
         return False
@@ -79,7 +80,8 @@ def is_missing_file_error(exception):
 
 def is_range_error(exception):
     """
-    Tell a byte range the object storage refused (416) from other failures.
+    Tell whether the error is a byte range that the object storage refused
+    (416), and not an other failure.
     """
     for attribute in ("http_status", "status", "status_code"):
         if getattr(exception, attribute, None) == 416:
@@ -98,9 +100,9 @@ def is_range_error(exception):
 def is_auth_failure(exception):
     """
     Tell whether a Swift operation failed because Keystone could not
-    hand out a token (a 503 on the identity service, for instance).
-    swiftclient raises it with no HTTP status and, unlike a 5xx from
-    Swift itself, never retries it.
+    give a token (for example, a 503 on the identity service).
+    swiftclient raises this error with no HTTP status. Unlike a 5xx from
+    Swift itself, swiftclient never retries it.
     """
     return getattr(exception, "http_status", "") is None and str(
         exception
@@ -110,23 +112,24 @@ def is_auth_failure(exception):
 class ConfirmedFileNotFound(FileNotFound):
     """
     The storage answered that the file does not exist: a 404, or a local
-    file absent, empty or of the wrong size. A plain FileNotFound may also
-    stand for a transient failure the retry did not get past.
+    file that is absent, empty or of the wrong size. A plain FileNotFound
+    can also come from a transient failure that the retry did not solve.
     """
 
 
 def is_confirmed_missing_error(exception):
     """
-    Tell an absence the storage itself confirmed (a 404, or an object
-    store's own missing-object code) apart from every other failure.
+    Tell whether the storage itself confirmed the absence (a 404, or the
+    missing-object code of an object store), and not an other failure.
 
-    Unlike is_missing_file_error, a bare FileNotFoundError or FileNotFound
-    is NOT confirmed here: download_to_file raises those for its own local
-    temp file too (TMP_DIR missing, or the .part removed from under it by
-    a concurrent _remove_stale_parts), which says nothing about whether
-    the remote object exists. Only an exception the storage backend itself
-    raised for a missing object - already a ConfirmedFileNotFound, or
-    carrying a 404 / a known missing-object code - confirms the absence.
+    Unlike is_missing_file_error, this function does NOT accept a bare
+    FileNotFoundError or FileNotFound as a confirmation. download_to_file
+    also raises them for its own local temp file (TMP_DIR missing, or the
+    .part that a concurrent _remove_stale_parts removed). These errors
+    tell nothing about the remote object. Only an exception that the
+    storage backend raised for a missing object confirms the absence:
+    a ConfirmedFileNotFound, or an error with a 404 or a known
+    missing-object code.
     """
     if exception is None:
         return False
@@ -150,7 +153,8 @@ def is_confirmed_missing_error(exception):
 
 def get_cache_file_path(config, prefix, instance_id, extension):
     """
-    Path of the local copy kept for a file stored on a remote backend.
+    Return the path of the local copy of a file that a remote backend
+    stores.
     """
     return os.path.join(
         config.TMP_DIR,
@@ -160,9 +164,10 @@ def get_cache_file_path(config, prefix, instance_id, extension):
 
 def _remove_stale_parts(file_path):
     """
-    A download killed with its process (OOM, SIGKILL, job timeout) never
-    reaches its cleanup and leaves its .part behind. A live download
-    keeps the mtime of its .part fresh, so an old one is safe to drop.
+    Remove the old .part files of `file_path`. If its process stops
+    abruptly (OOM, SIGKILL, job timeout), a download does not get to its
+    cleanup and leaves its .part file. A live download keeps the mtime of
+    its .part recent, so it is safe to remove an old one.
     """
     for part_path in glob.glob(f"{glob.escape(file_path)}.*.part"):
         try:
@@ -175,15 +180,15 @@ def _remove_stale_parts(file_path):
 def download_to_file(file_path, open_file, prefix, instance_id):
     """
     Download a stored file to the local cache. Return the exception that
-    interrupted it, or None. Old .part files left next to `file_path` by
-    killed downloads are removed first.
+    stopped the download, or None. First, remove the old .part files
+    that killed downloads left next to `file_path`.
 
-    The bytes land in a private temporary file that is renamed over the
-    cache entry once complete. Writing straight into it would truncate
-    what a concurrent request is already reading, and would leave a
-    partial file behind on any interruption: the size check that guards
-    the cache accepts a truncated file as valid, so it would be served
-    as is.
+    The bytes go into a private temporary file. When the download is
+    complete, the function renames this file over the cache entry. A
+    direct write into the cache entry would truncate the data that a
+    concurrent request reads. It would also leave a partial file after
+    an interruption. The size check of the cache accepts a truncated
+    file as valid, so the server would send it as it is.
     """
     _remove_stale_parts(file_path)
     exception = None
@@ -210,15 +215,16 @@ def download_to_file(file_path, open_file, prefix, instance_id):
 def fill_cache_in_background(file_path, open_file, prefix, instance_id):
     """
     Download a file to the local cache from a background thread, unless
-    another thread or worker process already is: the downloader holds a
-    flock on a sidecar lock file for the duration. Return whether a
-    download was started. The lock file is left behind: removing it would
-    race with the next locker.
+    another thread or worker process already does it. The downloader
+    holds a flock on a sidecar lock file during the download. Return
+    whether a download started. The lock file stays on disk: its removal
+    would cause a race with the next locker.
 
-    A worker runs at most MAX_CONCURRENT_CACHE_FILLS fills at once: a
-    playlist prefetching every cold movie would otherwise start one
-    thread per movie. The request is streamed from the storage either
-    way, a refused fill only means the next request tries again.
+    A worker runs a maximum of MAX_CONCURRENT_CACHE_FILLS fills at the
+    same time. Without this limit, a playlist that prefetches each cold
+    movie would start one thread for each movie. In all cases, the
+    request streams the file from the storage. A refused fill only means
+    that the next request tries again.
     """
     if not _cache_fill_slots.acquire(blocking=False):
         return False
@@ -236,8 +242,8 @@ def fill_cache_in_background(file_path, open_file, prefix, instance_id):
             exception = download_to_file(
                 file_path, open_file, prefix, instance_id
             )
-            # Keystone down is transient and the request did not depend
-            # on the fill: the next request fills the cache.
+            # A Keystone outage is transient and the request does not
+            # depend on the fill: the next request fills the cache.
             if is_auth_failure(exception):
                 logger.warning(
                     f"Cache fill failed for {prefix}-{instance_id}: "
@@ -268,12 +274,13 @@ def get_file_path_and_file(
     file_size=None,
 ):
     """
-    Return the local path of a stored file. On the local backend this is
-    the stored file itself. On a remote backend it is a cache entry,
-    downloaded when absent or invalid, with one retry after a transient
-    failure. Raises ConfirmedFileNotFound when the storage confirms the
-    file is missing (always the case for an invalid local file), and
-    FileNotFound when the download fails otherwise.
+    Return the local path of a stored file. On the local backend, this
+    path is the stored file itself. On a remote backend, it is a cache
+    entry. If the cache entry is absent or not valid, the function
+    downloads it, with one retry after a transient failure. If the
+    storage confirms that the file is missing (always true for a local
+    file that is not valid), raise ConfirmedFileNotFound. If the download
+    fails for an other reason, raise FileNotFound.
     """
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
@@ -286,13 +293,13 @@ def get_file_path_and_file(
             exception = download_to_file(
                 file_path, open_file, prefix, instance_id
             )
-            # The cache entry is only ever replaced as a whole, so a
-            # concurrent request may well have completed it while this
-            # one was failing: the disk is checked before paying for a
-            # retry. An object that is not there will not be there a
-            # moment later either, only a transient failure deserves the
-            # retry: the movie routes probe up to three prefixes and
-            # would otherwise sleep on each missing one.
+            # The code replaces the cache entry only as a whole, so a
+            # concurrent request can complete it while this one fails.
+            # Thus, examine the disk before a retry. If an object is not
+            # there now, it will not be there a moment later. Only a
+            # transient failure gets the retry: the movie routes try up
+            # to three prefixes, and would else sleep on each missing
+            # one.
             if is_invalid_file(
                 file_path, file_size
             ) and not is_missing_file_error(exception):
@@ -314,10 +321,11 @@ def get_file_path_and_file(
                         f"{prefix}-{instance_id}"
                     ) from exception
                 else:
-                    # The download reported success but the file is still
-                    # missing or empty: treat it as absent (404) like the
-                    # local backend does, not an unhandled 500. Not a
-                    # confirmed absence: the storage never said so.
+                    # The download reported success, but the file is
+                    # still missing or empty. Treat it as absent (404),
+                    # as the local backend does, not as an unhandled 500.
+                    # This is not a confirmed absence: the storage did
+                    # not say so.
                     raise FileNotFound(f"{prefix}-{instance_id}")
 
     return file_path
@@ -325,7 +333,8 @@ def get_file_path_and_file(
 
 def is_invalid_file(file_path, file_size=None):
     """
-    Check if file is absent, is empty or does not match given size.
+    Tell whether the file is absent, is empty or does not match the
+    given size.
     """
     if not os.path.exists(file_path):
         return True
@@ -338,8 +347,8 @@ def is_invalid_file(file_path, file_size=None):
 
 def save_file(tmp_folder, instance_id, file_to_save):
     """
-    Save file in given folder. The file must only be temporary saved via
-    this function.
+    Save the file in the given folder. Use this function only for a
+    temporary save of the file.
     """
     extension = "." + file_to_save.filename.split(".")[-1].lower()
     file_name = instance_id + extension.lower()
@@ -350,13 +359,13 @@ def save_file(tmp_folder, instance_id, file_to_save):
 
 def get_file_extension(filename):
     """
-    Return extension of given file name in lower case.
+    Return the extension of the given file name in lower case.
     """
     return filename.split(".")[-1].lower()
 
 
 def get_file_size(file_path):
     """
-    Return in bytes the file size of the file located at given path.
+    Return the size in bytes of the file at the given path.
     """
     return os.path.getsize(file_path)

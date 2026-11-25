@@ -5,8 +5,8 @@ from sqlalchemy_utils import create_database, database_exists
 
 def create_all():
     """
-    Create the database when it does not exist, then all the tables of
-    db.metadata.
+    Create the database if it does not exist, then create all the tables
+    of db.metadata.
     """
     from zou.app import config, db
 
@@ -18,7 +18,7 @@ def create_all():
 
 def drop_all():
     """
-    Drop the public schema with everything in it, then create it again
+    Drop the public schema with all its contents, then create it again
     empty. CASCADE also removes the plugin tables that db.metadata does not
     track.
     """
@@ -34,8 +34,8 @@ def drop_all():
 
 def is_init():
     """
-    Return True when the person table exists and at least one project
-    status is stored.
+    Tell whether the person table exists and the database stores at least
+    one project status.
     """
     from zou.app import db
     from zou.app.models.project_status import ProjectStatus

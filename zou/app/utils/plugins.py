@@ -149,9 +149,9 @@ class PluginManifest(MutableMapping):
 
 def load_plugin(app, plugin_path):
     """
-    Read the manifest at `plugin_path`, import the plugin module by its
-    id (the plugin folder must be in sys.path) and register its routes,
-    static frontend routes included, as a blueprint under
+    Read the manifest at `plugin_path` and import the plugin module by
+    its ID (the plugin folder must be in sys.path). Then register its
+    routes, with the static frontend routes, as a blueprint under
     /plugins/<id>. Return the plugin module.
     """
     plugin_path = Path(plugin_path)
@@ -169,8 +169,8 @@ def load_plugin(app, plugin_path):
 
 def load_plugins(app):
     """
-    Load plugins from the plugin folder. The plugin folder is kept in
-    sys.path so that plugin modules remain importable at runtime.
+    Load the plugins of the plugin folder. The plugin folder stays in
+    sys.path, so that the plugin modules stay importable at runtime.
     """
     plugin_folder = Path(app.config["PLUGIN_FOLDER"])
     if plugin_folder.exists():
@@ -197,13 +197,14 @@ def load_plugins(app):
 def _build_plugin_alembic_config(plugin_path):
     """
     Build an Alembic Config that uses the shared template (env.py,
-    script.py.mako, alembic.ini live under
-    ``zou/app/utils/plugin_alembic_template/``) but stores revisions in the
-    plugin's own ``migrations/versions/`` directory.
+    script.py.mako and alembic.ini are in
+    ``zou/app/utils/plugin_alembic_template/``), but stores the revisions
+    in the ``migrations/versions/`` directory of the plugin.
 
-    The plugin path is passed to env.py via ``config.attributes`` so the
-    shared env.py knows which manifest to load and which models.py to
-    register. Creates the versions directory when it is missing.
+    The function gives the plugin path to env.py through
+    ``config.attributes``, so that the shared env.py knows which manifest
+    to load and which models.py to register. If the versions directory is
+    missing, create it.
     """
     plugin_path = Path(plugin_path).absolute()
     versions_dir = plugin_path / "migrations" / "versions"
@@ -217,9 +218,9 @@ def _build_plugin_alembic_config(plugin_path):
         "script_location", str(PLUGIN_ALEMBIC_TEMPLATE_DIR)
     )
     alembic_cfg.set_main_option("version_locations", str(versions_dir))
-    # Escape % for configparser, which Alembic uses internally and would
-    # otherwise treat percent-encoded characters in the URI (e.g. a "!" in
-    # the DB password rendered as "%21") as interpolation tokens.
+    # Escape % for configparser. Alembic uses configparser internally, and
+    # else it would read percent-encoded characters in the URI (e.g. a "!"
+    # in the DB password, rendered as "%21") as interpolation tokens.
     alembic_cfg.set_main_option(
         "sqlalchemy.url",
         current_app.config["SQLALCHEMY_DATABASE_URI"].replace("%", "%%"),
@@ -230,9 +231,9 @@ def _build_plugin_alembic_config(plugin_path):
 
 def migrate_plugin_db(plugin_path, message):
     """
-    Generates Alembic migration files in path/migrations/versions,
-    importing the plugin's models.py first unless its tables are already
-    in db.metadata. Raises FileNotFoundError when models.py is missing.
+    Generate Alembic migration files in path/migrations/versions. First
+    import the models.py of the plugin, unless db.metadata already has
+    its tables. If models.py is missing, raise FileNotFoundError.
     """
     plugin_path = Path(plugin_path).absolute()
     models_path = plugin_path / "models.py"
@@ -244,8 +245,8 @@ def migrate_plugin_db(plugin_path, message):
     module_name = f"_plugin_models_{manifest['id']}"
     plugin_prefix = f"plugin_{manifest['id']}_"
 
-    # Only load models if plugin tables aren't already in db.metadata.
-    # The shared env.py performs the same check at upgrade time.
+    # Load the models only if db.metadata does not have the plugin tables.
+    # The shared env.py does the same check at upgrade time.
     plugin_tables = [
         t for t in db.metadata.tables if t.startswith(plugin_prefix)
     ]
@@ -270,9 +271,9 @@ def migrate_plugin_db(plugin_path, message):
 
 def run_plugin_migrations(plugin_path, plugin):
     """
-    Run plugin migrations up to head using the shared Alembic template,
-    then store the head revision on `plugin` (a DB write). Return the
-    head revision.
+    Run the plugin migrations up to head with the shared Alembic
+    template. Then store the head revision on `plugin` (a DB write).
+    Return the head revision.
     """
     alembic_cfg = _build_plugin_alembic_config(plugin_path)
     command.upgrade(alembic_cfg, "head")
@@ -287,8 +288,8 @@ def run_plugin_migrations(plugin_path, plugin):
 
 def downgrade_plugin_migrations(plugin_path):
     """
-    Downgrade plugin migrations to base. A failed downgrade is logged,
-    not raised.
+    Downgrade the plugin migrations to base. If the downgrade fails, log
+    the error and do not raise it.
     """
     plugin_path = Path(plugin_path)
     manifest = PluginManifest.from_plugin_path(plugin_path)
@@ -305,9 +306,9 @@ def downgrade_plugin_migrations(plugin_path):
 def create_plugin_package(path, output_path, force=False):
     """
     Zip the plugin folder at `path` and return the archive path (str).
-    When `output_path` does not end with .zip, it is a directory and the
-    archive is named <id>-<version>.zip. Raises FileExistsError when the
-    archive exists, unless `force` is set: then it is replaced.
+    If `output_path` does not end with .zip, it is a directory and the
+    archive name is <id>-<version>.zip. If the archive exists, raise
+    FileExistsError, unless `force` is set: then replace the archive.
     """
     path = Path(path)
     if not path.exists():
@@ -348,9 +349,9 @@ def create_plugin_skeleton(
 ):
     """
     Create a new plugin folder `path`/`id` from the plugin template and
-    fill its manifest with the given values. Raises FileExistsError when
-    the folder exists, unless `force` is set: then it is replaced. Return
-    the plugin folder path.
+    fill its manifest with the given values. If the folder exists, raise
+    FileExistsError, unless `force` is set: then replace the folder.
+    Return the plugin folder path.
     """
     plugin_template_path = (
         Path(__file__).parent.parent.parent / "plugin_template"
@@ -367,7 +368,7 @@ def create_plugin_skeleton(
 
     shutil.copytree(plugin_template_path, plugin_path)
 
-    # Rename .template files to their real extensions
+    # Rename the .template files to their real extensions
     for template_file in plugin_path.rglob("*.template"):
         template_file.rename(template_file.with_suffix(""))
 
@@ -396,8 +397,9 @@ def create_plugin_skeleton(
 def install_plugin_files(files_path, installation_path):
     """
     Copy a plugin folder (without .git) or extract a plugin zip into
-    `installation_path`, created if missing. Raises ValueError for any
-    other path. Return the installation path.
+    `installation_path`. If `installation_path` is missing, create it. If
+    `files_path` is not a folder or a zip, raise ValueError. Return the
+    installation path.
     """
     files_path = Path(files_path)
     installation_path = Path(installation_path)
@@ -430,7 +432,7 @@ def install_plugin_files(files_path, installation_path):
 
 def uninstall_plugin_files(plugin_path):
     """
-    Remove the plugin folder. Return False when it does not exist.
+    Remove the plugin folder. If the folder does not exist, return False.
     """
     plugin_path = Path(plugin_path)
     if plugin_path.exists():
@@ -442,7 +444,7 @@ def uninstall_plugin_files(plugin_path):
 def download_zip_url(url, temp_dir=None):
     """
     Download a zip file from a URL to a temporary directory.
-    Returns the path to the downloaded zip file.
+    Return the path of the downloaded zip file.
     """
     if temp_dir is None:
         temp_dir = tempfile.mkdtemp(prefix="zou_plugin_")
@@ -466,7 +468,7 @@ def download_zip_url(url, temp_dir=None):
 def clone_git_repo(git_url, temp_dir=None):
     """
     Clone a git repository to a temporary directory.
-    Returns the path to the cloned directory.
+    Return the path of the cloned directory.
     """
     if temp_dir is None:
         temp_dir = tempfile.mkdtemp(prefix="zou_plugin_")
@@ -497,8 +499,8 @@ def clone_git_repo(git_url, temp_dir=None):
 
 def add_static_routes(manifest, routes):
     """
-    Append the routes that serve the plugin frontend to `routes` (in
-    place) when the manifest enables a project or studio frontend.
+    If the manifest enables a project or studio frontend, append the
+    routes that serve the plugin frontend to `routes` (in place).
     """
 
     class PluginStaticResource(StaticResource):

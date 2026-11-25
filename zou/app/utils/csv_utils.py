@@ -7,7 +7,7 @@ from slugify import slugify
 
 def build_csv_response(csv_content, file_name="export"):
     """
-    Construct a Flask response that returns content of a csv a file.
+    Make a Flask response that returns the content of a CSV file.
     """
     file_name = build_csv_file_name(file_name)
     response_body = build_csv_string(csv_content)
@@ -19,9 +19,9 @@ def build_csv_response(csv_content, file_name="export"):
 
 def build_csv_stream_response(row_generator, file_name="export"):
     """
-    Construct a streaming Flask response from a row generator.
-    Each row is written and flushed immediately to avoid buffering
-    the entire CSV in memory.
+    Make a streaming Flask response from a row generator. Write and
+    flush each row immediately, so that the full CSV does not stay in a
+    memory buffer.
     """
     file_name = build_csv_file_name(file_name)
 
@@ -43,7 +43,7 @@ def build_csv_stream_response(row_generator, file_name="export"):
 
 def build_csv_file_name(file_name):
     """
-    Add application name as prefix of the file name.
+    Add the application name as a prefix of the file name.
     """
     return f"kitsu_{slugify(file_name, separator='_')}"
 
@@ -60,7 +60,8 @@ def build_csv_string(csv_content):
 
 def build_csv_headers(csv_response, file_name):
     """
-    Build HTTP response headers needed to return CSV content as a file.
+    Build the HTTP response headers that are necessary to return CSV
+    content as a file.
     """
     csv_response.headers["Content-Disposition"] = (
         f"attachment; filename={file_name}.csv"

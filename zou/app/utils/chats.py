@@ -36,8 +36,9 @@ def send_to_slack(token, userid, message):
                     as_user=True,
                 )
             except SlackApiError as exception:
-                # Slack answered and refused (revoked token, unknown
-                # user): a studio setting to fix, not a failure of ours.
+                # Slack answered with a refusal (revoked token, unknown
+                # user): the studio must fix a setting. It is not a failure
+                # of Zou.
                 logger.warning(
                     "Slack refused the notification: "
                     f"{exception.response.get('error')}"
@@ -75,8 +76,8 @@ def send_to_mattermost(webhook, userid, message):
                 response = requests.post(webhook, json=payload, timeout=30)
                 response.raise_for_status()
             except Exception as exception:
-                # The requests errors quote the webhook URL, whose path is
-                # the secret: log a redacted message, not the traceback.
+                # The requests errors include the webhook URL, and its path
+                # is the secret: log a redacted message, not the traceback.
                 error = str(exception).replace(webhook, mask_secret(webhook))
                 webhook_path = urlsplit(webhook).path
                 if webhook_path.strip("/"):
@@ -123,9 +124,9 @@ def send_to_discord(token, userid, message):
 
             await client.close()
 
-        # Leaving the context waits for the closing task that on_ready
-        # started: start() returns before it ends, and closing the loop
-        # then destroys it while pending.
+        # At the end of the context, the client waits for the close task
+        # that on_ready started. start() returns before this task ends. If
+        # the loop closes then, it destroys the pending task.
         async with client:
             await client.start(token)
 

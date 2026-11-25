@@ -1,13 +1,13 @@
 def configure_api_from_blueprint(blueprint, route_tuples, decorators=None):
     """
-    Register route tuples (path, resource class) on the given blueprint.
-    Resources are Flask MethodView classes; JSON serialization of dict and
-    list return values is handled natively by Flask through the app JSON
-    provider (orjson).
+    Register the route tuples (path, resource class) on the given
+    blueprint. The resources are Flask MethodView classes. Flask serializes
+    the dict and list return values to JSON natively, through the JSON
+    provider of the app (orjson).
 
-    A resource class may appear in several tuples: extra paths are
-    registered as aliases on the same view (used to keep deprecated
-    routes working after a rename).
+    A resource class can be in more than one tuple: the other paths become
+    aliases on the same view. Zou uses this to keep the deprecated routes
+    available after a rename.
     """
     view_funcs = {}
     for path, resource in route_tuples:

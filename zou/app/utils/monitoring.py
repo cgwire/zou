@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # The RQ integration sends the raw job arguments, and the default job
 # description repeats them: chat credentials, mail bodies and recipients.
-# The chat settings can also show up in the local variables of a frame.
+# The chat settings can also be in the local variables of a frame.
 SENTRY_SCRUBBED_KEYS = [
     "args",
     "chat_token_discord",
@@ -53,8 +53,8 @@ if config.PROMETHEUS_METRICS_ENABLED:
 
 def init_monitoring(app):
     """
-    Set up Sentry and the Prometheus metrics on given app, each one only
-    when enabled in the configuration.
+    Configure Sentry and the Prometheus metrics on the given app, each one
+    only if the configuration enables it.
     """
     if config.SENTRY_ENABLED:
         sentry_sdk.init(
@@ -111,12 +111,11 @@ def init_monitoring(app):
 
 def _register_inflight_gauge(app):
     """
-    Expose an in-progress HTTP request gauge per URL rule.
+    Expose a gauge of the HTTP requests in progress for each URL rule.
 
-    Consumed by the ``zou_top`` dashboard to show which endpoints are
-    currently being served. Uses ``multiprocess_mode='livesum'`` so that
-    concurrent gunicorn workers aggregate correctly.
-
+    The ``zou_top`` dashboard uses it to show the endpoints that Zou serves
+    at the moment. It uses ``multiprocess_mode='livesum'``, so that the
+    values of concurrent gunicorn workers add up correctly.
     """
     from flask import request
     from prometheus_client import Gauge
@@ -129,7 +128,8 @@ def _register_inflight_gauge(app):
             multiprocess_mode="livesum",
         )
     except ValueError:
-        # Already registered (e.g. reloader): do not add the hooks again.
+        # If the gauge is already registered (e.g. reloader), do not add
+        # the hooks again.
         return
 
     def _rule():

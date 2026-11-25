@@ -7,8 +7,8 @@ from zou.app import config
 def oidc_client_for(app):
     """
     Build the Authlib OAuth registry and register the configured OIDC
-    provider from its discovery document. The registered client is then
-    reachable as ``oauth.oidc``.
+    provider from its discovery document. Then, the registered client is
+    available as ``oauth.oidc``.
     """
     oauth = OAuth(app)
     oauth.register(
@@ -26,25 +26,25 @@ def oidc_client_for(app):
 
 def get_oidc_client():
     """
-    Return the registered OIDC client (``oauth.oidc``) stored on the app
-    extensions at startup.
+    Return the registered OIDC client (``oauth.oidc``), which the startup
+    stores on the app extensions.
     """
     return current_app.extensions["oidc_client"].oidc
 
 
 def get_email_from_claims(claims):
     """
-    Resolve the user email from the OIDC claims using the configured claim
-    name (``OIDC_EMAIL_CLAIM``, defaults to the standard ``email`` claim).
+    Return the user email from the OIDC claims, with the configured claim
+    name (``OIDC_EMAIL_CLAIM``, default: the standard ``email`` claim).
     """
     return claims.get(config.OIDC_EMAIL_CLAIM)
 
 
 def get_id_token_claims_options(client):
     """
-    Return the claims the ID token must match: the issuer of the discovery
-    document and our client id as audience. Authlib only checks the issuer
-    by default, and stops checking it as soon as options are given.
+    Return the claims that the ID token must match: the issuer of the
+    discovery document and our client ID as audience. By default, Authlib
+    checks only the issuer, and it stops this check when it gets options.
     """
     metadata = client.load_server_metadata()
     return {
@@ -55,16 +55,17 @@ def get_id_token_claims_options(client):
 
 def is_email_verified(claims):
     """
-    Return whether the email can be trusted.
+    Tell whether the email is trusted.
 
-    With ``OIDC_REQUIRE_EMAIL_VERIFIED`` enabled (the default), the provider
-    must explicitly assert ``email_verified == true``; an absent claim is
-    rejected. This guards against account takeover when linking/provisioning
-    by email against a provider that allows unverified addresses.
+    If ``OIDC_REQUIRE_EMAIL_VERIFIED`` is enabled (the default), the
+    provider must explicitly assert ``email_verified == true``. If the
+    claim is absent, reject the email. This prevents an account takeover
+    when Zou links or provisions an account by email with a provider that
+    allows unverified addresses.
 
-    With the flag disabled, we only reject when the provider explicitly
-    states the email is not verified, treating an absent claim as verified to
-    stay compatible with providers that do not emit it.
+    If the flag is disabled, reject the email only if the provider
+    explicitly states that it is not verified. An absent claim counts as
+    verified, for compatibility with providers that do not emit it.
     """
     verified = claims.get("email_verified")
     if config.OIDC_REQUIRE_EMAIL_VERIFIED:
@@ -74,9 +75,9 @@ def is_email_verified(claims):
 
 def map_claims(claims):
     """
-    Map OIDC claims to person fields using the configured claim names. Only
-    populated fields are returned so existing values are not overwritten with
-    empty strings.
+    Map the OIDC claims to person fields with the configured claim names.
+    Return only the fields that have a value, so that empty strings do not
+    overwrite the existing values.
     """
     person_info = {}
     first_name = claims.get(config.OIDC_GIVEN_NAME_CLAIM)

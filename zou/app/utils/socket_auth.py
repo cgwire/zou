@@ -1,12 +1,12 @@
 """
-Authentication of the event stream with the socket.io auth payload.
+Authentication of the event stream through the socket.io auth payload.
 
-A browser WebSocket cannot send a header, and a client without a Kitsu
-cookie (a desktop application) cannot connect with the handshake request
-only. The client sends `{"token": "<access token>"}` in the auth payload of
-the connection instead. The checks are the ones of verify_jwt_in_request:
-signature, expiry, token type, blocklist and user lookup (account found,
-active, 2FA set up when enforced).
+A browser WebSocket cannot send a header. A client without a Kitsu
+cookie (a desktop application) cannot connect with only the handshake
+request. Thus, the client sends `{"token": "<access token>"}` in the
+auth payload of the connection. The checks are the same as the checks of
+verify_jwt_in_request: signature, expiry, token type, blocklist and user
+lookup (account found, active, 2FA configured if it is mandatory).
 """
 
 import jwt
@@ -37,8 +37,8 @@ MISSING_TOKEN_MESSAGE = (
 
 def socket_token(auth):
     """
-    Return the access token of given socket.io auth payload, or None when
-    the payload has none.
+    Return the access token of the given socket.io auth payload, or None
+    if the payload has no token.
     """
     token = auth.get("token") if isinstance(auth, dict) else None
     if isinstance(token, str) and token:
@@ -48,10 +48,11 @@ def socket_token(auth):
 
 def load_socket_token(token):
     """
-    Check given access token as verify_jwt_in_request does for a request
-    and make it the JWT of the current event: get_jwt_identity() and
-    current_user then work in the handler. Raise when the token is not
-    valid (any more): see auth_error_message for the cases.
+    Check the given access token as verify_jwt_in_request does for a
+    request, and make it the JWT of the current event. Then,
+    get_jwt_identity() and current_user work in the handler. If the token
+    is not valid (or no longer valid), raise an error: see
+    auth_error_message for the cases.
     """
     header = jwt.get_unverified_header(token)
     decoded = decode_token(token)
@@ -66,8 +67,8 @@ def load_socket_token(token):
 
 def auth_error_message(error):
     """
-    Return the message for the client of given authentication error, one
-    per cause, without the internals of the token.
+    Return the message for the client of the given authentication error,
+    one message for each cause, without the internals of the token.
     """
     if isinstance(error, NoAuthorizationError):
         return MISSING_TOKEN_MESSAGE

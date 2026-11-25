@@ -1,15 +1,14 @@
 """
-Progress reporting for the long running commands. The services count
-their work through this interface and know nothing of the terminal: the
-CLI passes a reporter that draws a bar, everything else gets the silent
-one.
+Progress reports for the long commands. The services count their work
+through this interface and know nothing about the terminal. The CLI
+gives a reporter that draws a bar. All other callers get the silent one.
 """
 
 
 class NullProgress:
     """
-    Reports nothing. The default of every service, so that a loop never
-    has to check whether it was given a reporter.
+    Reporter that reports nothing. It is the default of every service, so
+    that a loop never has to check whether it has a reporter.
     """
 
     def start(self, total):

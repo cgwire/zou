@@ -11,15 +11,16 @@ from zou.app import config
 
 def saml_client_for(metadata_url):
     """
-    Download the IdP metadata at given URL (network call, 30 s timeout)
-    and return a Saml2Client configured with it for this service provider.
+    Download the IdP metadata at the given URL (network call, 30 s
+    timeout). Return a Saml2Client configured with it for this service
+    provider.
     """
     acs_url = (
         f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/api/auth/saml/sso"
     )
 
-    # saml_client_for is also called at runtime when the SAML login route
-    # rebuilds the client, so a hung IdP must not block a worker forever.
+    # The SAML login route also calls saml_client_for at runtime to rebuild
+    # the client, so a hung IdP must not block a worker forever.
     rv = requests.get(metadata_url, timeout=30)
 
     settings = {
@@ -33,11 +34,11 @@ def saml_client_for(metadata_url):
                         (acs_url, BINDING_HTTP_POST),
                     ],
                 },
-                # Don't verify that the incoming requests originate from us via
-                # the built-in cache for authn request ids in pysaml2
+                # Do not verify that the incoming requests come from us
+                # through the built-in cache of pysaml2 for authn request IDs.
                 "allow_unsolicited": True,
-                # Don't sign authn requests, since signed requests only make
-                # sense in a situation where you control both the SP and IdP
+                # Do not sign authn requests: signed requests are useful
+                # only if you control both the SP and the IdP.
                 "authn_requests_signed": False,
                 "logout_requests_signed": True,
                 "want_assertions_signed": True,
@@ -54,9 +55,10 @@ def saml_client_for(metadata_url):
 
 def get_subject_from_ava(ava):
     """
-    Return the provider's stable user id from the assertion attributes,
-    using the configured attribute name (``SAML_SUBJECT_ATTRIBUTE``). None
-    when it is absent or ambiguous.
+    Return the stable user ID of the provider from the assertion
+    attributes, with the configured attribute name
+    (``SAML_SUBJECT_ATTRIBUTE``). If it is absent or ambiguous, return
+    None.
     """
     value = ava.get(config.SAML_SUBJECT_ATTRIBUTE)
     if isinstance(value, list) and len(value) == 1:

@@ -22,38 +22,38 @@ PREVIEW_SIZE = 1200, 0
 BIG_SQUARE_SIZE = 400, 400
 BIG_RECTANGLE_SIZE = 300, 200
 SRGB_PROFILE = ImageCms.createProfile("sRGB")
-# Image.point() only scales I, I;16 and F: the byte order variants
-# (I;16B and friends) make it raise instead, and turning a colour problem
-# into a refused upload would be worse than leaving them as they were.
+# Image.point() scales only I, I;16 and F. The byte order variants
+# (I;16B and the others) make it raise an error. A refused upload because
+# of a colour problem is worse than a picture left as it was.
 HIGH_DEPTH_GREY_MODES = "I", "I;16"
 
 
 def to_srgb(im, mode="RGB"):
     """
-    Convert given picture to sRGB, honouring its embedded ICC profile.
+    Convert the given picture to sRGB with its embedded ICC profile.
 
     Image.convert() ignores that profile: it turns CMYK into RGB with a
-    plain arithmetic formula, which oversaturates pictures meant for print.
-    Wide gamut pictures (Adobe RGB, Display P3) suffer from the same problem
-    once a browser reads their pixels as sRGB.
+    plain arithmetic formula, which oversaturates pictures made for print.
+    Wide gamut pictures (Adobe RGB, Display P3) have the same problem when
+    a browser reads their pixels as sRGB.
 
-    Return the picture in `mode`, or in RGBA when it has an alpha channel.
-    Greyscale pictures deeper than 8 bits come back as L, and other modes
-    than CMYK, RGB and RGBA (L, LA, P...) come back unconverted.
+    Return the picture in `mode`, or in RGBA if it has an alpha channel.
+    Greyscale pictures deeper than 8 bits come back as L. Other modes
+    than CMYK, RGB and RGBA (L, LA, P...) come back without conversion.
     """
     if im.mode in HIGH_DEPTH_GREY_MODES:
         # A greyscale picture deeper than 8 bits (PNG colour type 0 at
-        # depth 16). Image.convert() clamps those samples at 255 instead of
-        # scaling them, so everything brighter than 1/256th of the range
-        # comes back solid white. Scale them down explicitly instead.
+        # depth 16). Image.convert() clamps these samples at 255 and does
+        # not scale them, so all values above 1/256th of the range come
+        # back solid white. Thus scale them down explicitly.
         im = im.point(lambda value: value / 256).convert("L")
     if im.mode not in ("CMYK", "RGB", "RGBA"):
         return im
     if im.mode == "RGB" and im.info.get("transparency") is not None:
-        # A tRNS colour key lives in im.info only, and littleCMS hands back
-        # a brand new picture whose info does not carry it over. Turn the
-        # key into a real alpha channel first, otherwise the colour it keys
-        # out (black, most of the time) comes back as an opaque background.
+        # A tRNS colour key is only in im.info, and littleCMS gives back a
+        # new picture whose info does not keep it. Thus turn the key into a
+        # real alpha channel first. Else the colour that the key makes
+        # transparent (usually black) comes back as an opaque background.
         im = im.convert("RGBA")
     if im.mode == "RGBA":
         mode = "RGBA"
@@ -64,23 +64,25 @@ def to_srgb(im, mode="RGB"):
                 im,
                 ImageCms.ImageCmsProfile(BytesIO(icc_profile)),
                 SRGB_PROFILE,
-                # littleCMS fills the alpha channel with zeroes when the
-                # source has none, so never ask it for RGBA out of CMYK.
+                # If the source has no alpha channel, littleCMS fills the
+                # alpha channel with zeroes. Thus never ask it for RGBA
+                # from CMYK.
                 outputMode="RGBA" if im.mode == "RGBA" else "RGB",
             )
         except (ImageCms.PyCMSError, OSError):
-            # A broken or unreadable profile is not worth failing an upload.
+            # Do not fail an upload because of a broken or unreadable
+            # profile.
             pass
     return im.convert(mode) if im.mode != mode else im
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
     """
-    Save the uploaded picture in given folder, converted to sRGB and
-    written as PNG data under the upload's own extension. The file must
-    only be temporary saved via this function. Raises
-    WrongParameterException when the upload is not a readable picture.
-    The file is removed on any failure.
+    Save the uploaded picture in the given folder. The function converts
+    it to sRGB and writes it as PNG data under the extension of the
+    upload. Use this function only for a temporary save of the file. If
+    the upload is not a readable picture, raise WrongParameterException.
+    On any failure, remove the file.
     """
     extension = "." + file_to_save.filename.split(".")[-1].lower()
     file_name = instance_id + extension.lower()
@@ -89,8 +91,8 @@ def save_file(tmp_folder, instance_id, file_to_save):
         file_to_save.save(file_path)
         try:
             im = Image.open(file_path)
-            # Image.open() only reads the header: decode the pixels now,
-            # so a broken picture fails here rather than at save() below.
+            # Image.open() reads only the header. Decode the pixels now,
+            # so that a broken picture fails here and not at save() below.
             im.load()
             im = to_srgb(im)
         except (
@@ -100,15 +102,15 @@ def save_file(tmp_folder, instance_id, file_to_save):
             ValueError,
             SyntaxError,
         ) as exception:
-            # The upload is not a picture we can read (a SVG or a PDF
-            # renamed .png), is broken past what LOAD_TRUNCATED_IMAGES
-            # rescues, or is far past MAX_IMAGE_PIXELS. Pillow reports
-            # those as anything from OSError to SyntaxError, depending on
-            # the plugin that claimed the header. The file is the problem,
-            # not the server, so answer 400 instead of letting it bubble
-            # up as a 500. The Pillow message carries the temporary path:
-            # it goes to the log, where support can read it, and stays
-            # out of the response.
+            # The upload is not a picture that Pillow can read (a SVG or a
+            # PDF with a .png name), is too broken for
+            # LOAD_TRUNCATED_IMAGES, or is far above MAX_IMAGE_PIXELS.
+            # Pillow reports these errors as any exception from OSError
+            # to SyntaxError: this depends on the plugin that claimed the
+            # header. The file is the problem, not the server, so answer
+            # 400 and not 500. The Pillow message contains the temporary
+            # path: it goes to the log, where support can read it, and
+            # not to the response.
             logger.warning(
                 f"Refusing upload {file_path}, not a readable picture: "
                 f"{type(exception).__name__}: {exception}"
@@ -118,8 +120,8 @@ def save_file(tmp_folder, instance_id, file_to_save):
             )
         im.save(file_path, "PNG")
     except Exception:
-        # Writing the upload and writing the converted picture back stay
-        # server side failures and keep their 500, but no path leaves a
+        # A failed write of the upload or of the converted picture stays
+        # a server failure and keeps its 500. But no path leaves a
         # temporary file behind.
         fs.rm_file(file_path)
         raise
@@ -128,8 +130,9 @@ def save_file(tmp_folder, instance_id, file_to_save):
 
 def convert_jpg_to_png(file_source_path):
     """
-    Convert .jpg file located at given path into a sRGB .png file with
-    same name, remove the source file and return the new path (a Path).
+    Convert the .jpg file at the given path into a sRGB .png file with
+    the same name. Remove the source file and return the new path (a
+    Path).
     """
     file_target_path = Path(file_source_path).with_suffix(".png")
 
@@ -141,7 +144,7 @@ def convert_jpg_to_png(file_source_path):
 
 def get_file_name(instance_id):
     """
-    Build thumbnail file name for given id.
+    Build the thumbnail file name for the given ID.
     """
     return f"{instance_id}.png"
 
@@ -158,12 +161,13 @@ def get_full_size_from_width(im, width):
 
 def make_im_bigger_if_needed(im, size):
     """
-    Scale a picture smaller than the target box up to it, keeping its ratio.
+    Enlarge a picture smaller than the target box to the box, and keep
+    its ratio.
 
-    Resizing straight to the target size stretches the picture: a 300x100
-    logo would come back square. Scale by the smaller of the two factors
-    instead, so the result fits in the box and fit_to_target_size has
-    nothing left to shorten.
+    A direct resize to the target size stretches the picture: a 300x100
+    logo would come back square. Thus scale by the smaller of the two
+    factors, so that the result fits in the box and fit_to_target_size
+    has nothing to make shorter.
     """
     im_width, im_height = im.size
     width, height = size
@@ -181,8 +185,8 @@ def make_im_bigger_if_needed(im, size):
 
 def fit_to_target_size(im, size):
     """
-    Make sure that the image is contained in the size given in parameter
-    (shorten width and/or height proporitionnally to expected ratio).
+    Make sure that the image fits in the given size (make the width, the
+    height or both shorter, in proportion to the expected ratio).
     """
     im_width, im_height = im.size
     width, height = size
@@ -202,7 +206,7 @@ def fit_to_target_size(im, size):
 
 def get_dimensions(file_path):
     """
-    Return dimensions of given picture (width and height).
+    Return the dimensions of the given picture (width and height).
     """
     im = Image.open(file_path)
     return im.size
@@ -210,10 +214,11 @@ def get_dimensions(file_path):
 
 def turn_into_thumbnail(file_path, size=None):
     """
-    Turn given picture into a thumbnail of exactly `size`, in place: a
-    sRGB RGBA PNG, the picture fitted in the box and centred on a
-    transparent background. A height of 0 follows the picture ratio, no
-    size keeps the picture size. Return file_path.
+    Turn the given picture into a thumbnail of exactly `size`, in place.
+    The thumbnail is a sRGB RGBA PNG, with the picture fitted in the box
+    and centred on a transparent background. If the height is 0, it
+    follows the picture ratio. If there is no size, the thumbnail keeps
+    the picture size. Return file_path.
     """
     im = to_srgb(Image.open(file_path), "RGBA")
 
@@ -238,8 +243,9 @@ def turn_into_thumbnail(file_path, size=None):
 
 def resize(file_path, size, crop=False):
     """
-    Resize given picture to `size`, in place, as a sRGB PNG. With `crop`,
-    crop it to the target ratio first instead of stretching it.
+    Resize the given picture to `size`, in place, as a sRGB PNG. If
+    `crop` is set, first crop the picture to the target ratio, and do not
+    stretch it.
     """
     im = to_srgb(Image.open(file_path))
     if crop:
@@ -251,14 +257,14 @@ def resize(file_path, size, crop=False):
 
 def prepare_image_for_thumbnail(im, size):
     """
-    Crop image to avoid deformation while building the target thumbnail.
+    Crop the image to prevent a deformation in the target thumbnail.
     """
     im_width, im_height = im.size
     width, height = size
     original_ratio = float(im_width) / float(im_height)
     target_ratio = float(width) / float(height)
     if target_ratio > original_ratio:
-        # image is too tall: take some off the top and bottom
+        # The image is too tall: remove some of the top and bottom
         scale_factor = float(target_ratio) / float(original_ratio)
         crop_width = im_width
         crop_height = math.floor(float(im_height) / scale_factor)
@@ -267,7 +273,7 @@ def prepare_image_for_thumbnail(im, size):
             flat(0, top_cut_line, crop_width, top_cut_line + crop_height)
         )
     else:
-        # image is too wide: take some off the sides
+        # The image is too wide: remove some of the sides
         scale_factor = float(original_ratio) / float(target_ratio)
         crop_width = math.ceil(float(im_width) / scale_factor)
         crop_height = im_height
@@ -280,7 +286,7 @@ def prepare_image_for_thumbnail(im, size):
 
 def generate_preview_variants(original_path, instance_id):
     """
-    Generate three thumbnails for given picture path, next to it.
+    Generate three thumbnails for the given picture path, next to it.
     Return a list of (picture type, path) tuples.
 
     1. Rectangle thumbnail
@@ -295,10 +301,10 @@ def generate_preview_variants(original_path, instance_id):
     ]
 
     result = []
-    # Derived from the original path, which carries its own unique suffix:
-    # two concurrent generations for the same preview (a double click on
-    # "set as thumbnail", a CLI pass during an upload) must not write and
-    # remove each other's files.
+    # The paths come from the original path, which has its own unique
+    # suffix. Two concurrent generations for the same preview (a double
+    # click on "set as thumbnail", a CLI pass during an upload) must not
+    # write and remove the files of each other.
     folder_path = os.path.dirname(original_path)
     original_name = os.path.basename(original_path)
     for picture_data in variants:
@@ -314,7 +320,8 @@ def generate_preview_variants(original_path, instance_id):
 
 def url_path(data_type, instance_id):
     """
-    Build thumbnail download path for given data type and instance ID.
+    Build the thumbnail download path for the given data type and
+    instance ID.
     """
     data_type = data_type.replace("_", "-")
     return f"pictures/thumbnails/{data_type}/{instance_id}.png"
@@ -322,7 +329,7 @@ def url_path(data_type, instance_id):
 
 def flat(*nums):
     """
-    Turn into an int tuple an a enumerable of numbers.
+    Turn the given numbers into a tuple of rounded ints.
     """
     return tuple(int(round(n)) for n in nums)
 
@@ -336,11 +343,11 @@ def turn_hdr_into_thumbnail(original_path, size=BIG_RECTANGLE_SIZE):
 
     file_target_path = Path(original_path).with_suffix(".png")
     hdr = cv2.imread(original_path, flags=cv2.IMREAD_ANYDEPTH)
-    # Simply clamp values to a 0-1 range for tone-mapping
+    # Clamp the values to a 0-1 range for the tone-mapping
     ldr = numpy.clip(hdr, 0, 1)
     # Color space conversion
     ldr = ldr ** (1 / 2.2)
-    # 0-255 remapping for bit-depth conversion
+    # Remap to 0-255 for the bit-depth conversion
     ldr = 255.0 * ldr
     cv2.imwrite(str(file_target_path), ldr)
     turn_into_thumbnail(file_target_path, size)

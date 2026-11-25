@@ -1,10 +1,10 @@
 """
 Render Fabric.js annotation objects on top of a still image with Pillow.
 
-This is a server-side approximation of the canvas-based renderer used in
-Kitsu's player. Shadows and gradients are not reproduced; position, scale,
-rotation, erasers and PSBrush pressure-varying stroke width map to
-ImageDraw primitives.
+This module is a server-side approximation of the canvas renderer of
+the Kitsu player. It does not draw shadows and gradients. Position,
+scale, rotation, erasers and the PSBrush stroke width (which changes
+with the pressure) map to ImageDraw primitives.
 """
 
 import logging
@@ -23,22 +23,23 @@ DEFAULT_FONT_PATHS = [
     "/Library/Fonts/Arial.ttf",
 ]
 
-# Render the overlay at this multiple of the target size, then LANCZOS
-# down to get cheap anti-aliasing. Pillow's ImageDraw primitives don't
-# AA on their own.
+# Render the overlay at this multiple of the target size, then scale it
+# down with LANCZOS for a cheap anti-aliasing. The ImageDraw primitives
+# of Pillow do not anti-alias on their own.
 SUPERSAMPLE = 2
 
 
-# CSS rgba() with alpha as float 0..1, which PIL.ImageColor.getrgb refuses.
+# CSS rgba() with the alpha as a float in 0..1. PIL.ImageColor.getrgb
+# refuses this form.
 _CSS_RGBA_RE = re.compile(
     r"^\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*"
     r"(?:,\s*(\d*\.?\d+)\s*)?\)\s*$",
     re.IGNORECASE,
 )
 
-# Pillow 13 (raqm 0.11) cannot lay out a line holding a paragraph
-# separator. Kitsu's canvas breaks the lines on \r?\n and draws a lone \r
-# as a space: draw the other separators as a space too.
+# Pillow 13 (raqm 0.11) cannot render a line that holds a paragraph
+# separator. The Kitsu canvas breaks the lines on \r?\n and draws a lone
+# \r as a space: draw the other separators as a space too.
 _PARAGRAPH_SEPARATOR_RE = re.compile("[\r\x1c-\x1e\x85\u2029]")
 
 _ELLIPSE_SAMPLES = 64
@@ -46,10 +47,10 @@ _ELLIPSE_SAMPLES = 64
 
 def render_annotation_on_image(image_path, annotation):
     """
-    Open `image_path`, draw the Fabric.js objects from
-    annotation["drawing"]["objects"] on top, then save the composite back
-    to the same path as an RGB PNG, whatever the extension. Leave the file
-    untouched when there is no object. Returns image_path.
+    Open `image_path` and draw the Fabric.js objects of
+    annotation["drawing"]["objects"] on top. Then save the composite back
+    to the same path as an RGB PNG, whatever the extension. If there is
+    no object, do not change the file. Return image_path.
     """
     objects = (annotation or {}).get("drawing", {}).get("objects", []) or []
     if not objects:
@@ -73,10 +74,11 @@ def _draw_object(overlay, obj, image_size):
     if not isinstance(obj, dict):
         return
     if isinstance(obj.get("eraser"), dict):
-        # The eraser punches holes via destination-out compositing, which
-        # Pillow primitives can't do in-place. Render the shape onto its
-        # own transparent layer, subtract the eraser mask from that layer's
-        # alpha channel, then composite the result back onto the overlay.
+        # The eraser makes holes with destination-out compositing, and
+        # Pillow primitives cannot do this in place. Render the shape onto
+        # its own transparent layer and subtract the eraser mask from the
+        # alpha channel of that layer. Then composite the result back
+        # onto the overlay.
         layer = Image.new("RGBA", overlay.size, (0, 0, 0, 0))
         _dispatch_shape(layer, obj, image_size)
         _apply_eraser(layer, obj, image_size)
@@ -121,19 +123,20 @@ def _dispatch_shape(target, obj, image_size):
 
 def _apply_eraser(layer, parent_obj, image_size):
     """
-    Subtract the eraser mask from `layer`'s alpha channel.
+    Subtract the eraser mask from the alpha channel of `layer`.
 
-    The eraser is a fabric Group of paths in the PARENT's local centered
-    coordinate frame (eraser group sits at origin (0, 0) with the parent's
-    untransformed dimensions, with default `originX/Y='center'`). Each
-    child path is positioned within that frame via its own
-    `left/top/scaleX/scaleY/angle`. Path commands run from the path-local
-    frame → parent-centered frame → canvas frame → image frame.
+    The eraser is a fabric Group of paths in the local centered
+    coordinate frame of the PARENT. The eraser group is at the origin
+    (0, 0), with the untransformed dimensions of the parent and the
+    default `originX/Y='center'`. Each child path gets its position in
+    that frame from its own `left/top/scaleX/scaleY/angle`. The path
+    commands go from the path-local frame → parent-centered frame →
+    canvas frame → image frame.
 
-    Pillow has no destination-out compositing, so we stamp the eraser
-    paths onto an L-mode mask (255 = erased) and subtract that mask from
-    the layer's alpha. Anti-aliasing comes from the renderer's overall
-    supersample + LANCZOS downsample.
+    Pillow has no destination-out compositing. Thus the function stamps
+    the eraser paths onto an L-mode mask (255 = erased) and subtracts
+    that mask from the alpha of the layer. The anti-aliasing comes from
+    the global supersample and LANCZOS downsample of the renderer.
     """
     eraser = parent_obj.get("eraser")
     if not isinstance(eraser, dict):
@@ -180,7 +183,8 @@ def _draw_eraser_path_on_mask(
     if not commands:
         return
     anchors = _extract_path_anchor_points(commands)
-    # Child path local → eraser-centered (= parent-centered) coords.
+    # From the local coordinates of the child path to the eraser-centered
+    # (= parent-centered) coordinates.
     child_transform = _centered_transform(
         _with_default_bbox(child, anchors),
         fallback_pivot=_bbox_centre(anchors),
@@ -191,9 +195,9 @@ def _draw_eraser_path_on_mask(
         cx_out, cy_out = parent_centered(ex, ey)
         return cx_out * scale_x, cy_out * scale_y
 
-    # Eraser stroke width sits in the parent's local frame: it scales
-    # with the parent's transform (scaleX) before reaching canvas, then
-    # again with the canvas → image factor.
+    # The eraser stroke width is in the local frame of the parent: it
+    # scales with the transform of the parent (scaleX) before it gets to
+    # the canvas, then again with the canvas → image factor.
     raw_width = child.get("strokeWidth", 1) or 1
     pillow_width = max(1, int(round(raw_width * parent_scale_x * scale_x)))
 
@@ -241,18 +245,18 @@ def _parse_color(value, default=None):
 
 def _stroke_color(obj):
     """
-    Return the stroke colour or None when no stroke was set. Shapes
-    that always need a visible line (path, line, arrow…) layer their own
-    fallback on top.
+    Return the stroke colour, or None if the object sets no stroke.
+    Shapes that always need a visible line (path, line, arrow…) add
+    their own fallback on top.
     """
     return _parse_color(obj.get("stroke"), default=None)
 
 
 def _line_color(obj):
     """
-    Stroke with a black default, for shapes whose body IS the stroke
-    (line, arrow, path, psstroke, polyline). If the JSON has no stroke
-    but a fill, use the fill; else default to opaque black.
+    Return the stroke colour with a black default, for shapes whose body
+    IS the stroke (line, arrow, path, psstroke, polyline). If the JSON
+    has no stroke but has a fill, use the fill. Else use opaque black.
     """
     return _stroke_color(obj) or _fill_color(obj) or (0, 0, 0, 255)
 
@@ -263,19 +267,20 @@ def _fill_color(obj):
 
 def _make_object_transform(obj, pivot_x, pivot_y):
     """
-    Build the affine transform fabric applies to a shape's local
-    coords:  T(center) ∘ R(angle) ∘ S(scaleX, scaleY) ∘ T(-pivot).
+    Build the affine transform that fabric applies to the local
+    coordinates of a shape:
+    T(center) ∘ R(angle) ∘ S(scaleX, scaleY) ∘ T(-pivot).
 
-    Returns a function (px, py) → (wx, wy) in CANVAS coordinates.
+    Return a function (px, py) → (wx, wy) in CANVAS coordinates.
 
-    The translate target matches fabric's `getRelativeCenterPoint()`:
-    the un-rotated bbox centre `(left + w/2 · scaleX, top + h/2 · scaleY)`
-    is itself rotated around `(left, top)` by `angle`. When a fabric UI
-    rotation happens, fabric updates `left`/`top` so the bbox centre
-    stays put visually: at render time, the rendering centre is no
-    longer `left + w/2` for rotated shapes. Without this extra rotation
-    the rendered position is off by an amount that looks like the
-    shape's own translation.
+    The translate target matches `getRelativeCenterPoint()` of fabric.
+    The function turns the centre of the un-rotated bbox,
+    `(left + w/2 · scaleX, top + h/2 · scaleY)`, around `(left, top)` by
+    `angle`. When a user rotates a shape in the fabric UI, fabric changes
+    `left`/`top` so that the bbox centre stays at the same visual
+    position. Thus, at render time, the render centre of a rotated shape
+    is not `left + w/2`. Without this extra rotation, the rendered
+    position has an offset that looks like the translation of the shape.
     """
     angle_rad = math.radians(obj.get("angle", 0) or 0)
     cos_a = math.cos(angle_rad)
@@ -306,8 +311,8 @@ def _make_object_transform(obj, pivot_x, pivot_y):
 
 def _bbox_transform(obj):
     """
-    Transform for shapes whose local coords are in the (0,0)–(w,h)
-    bbox: rect, ellipse, text.
+    Return the transform for shapes whose local coordinates are in the
+    (0,0)–(w,h) bbox: rect, ellipse, text.
     """
     width = obj.get("width", 0) or 0
     height = obj.get("height", 0) or 0
@@ -316,20 +321,20 @@ def _bbox_transform(obj):
 
 def _centered_transform(obj, fallback_pivot=None):
     """
-    Transform for shapes whose local coords are in fabric's centered
-    system (path commands, polyline points, line endpoints, PSBrush
-    strokePoints).
+    Return the transform for shapes whose local coordinates are in the
+    centered system of fabric (path commands, polyline points, line
+    endpoints, PSBrush strokePoints).
 
     Pivot resolution:
-    1. `pathOffset` from the JSON if present (Path serialises it).
-    2. `fallback_pivot` if the caller provides one: typically the
-    bbox centre of the shape's own anchor points, which is what
-    fabric would recompute on deserialisation as `calcDim.left +
-    w/2, calcDim.top + h/2`.
-    3. Otherwise `(left + w/2, top + h/2)`. That assumes the shape
-    was never translated: fine for rect-like data without a
-    pathOffset, broken for moved path/psstroke without an explicit
-    offset (use option 2 there).
+    1. `pathOffset` from the JSON if it is there (Path serialises it).
+    2. `fallback_pivot` if the caller gives one. It is usually the
+    bbox centre of the anchor points of the shape. Fabric computes the
+    same value again on deserialisation as `calcDim.left + w/2,
+    calcDim.top + h/2`.
+    3. Else `(left + w/2, top + h/2)`. This value assumes that the
+    shape never moved. It is correct for rect-like data without a
+    pathOffset, and wrong for a moved path or psstroke without an
+    explicit offset (use option 2 there).
     """
     path_offset = obj.get("pathOffset")
     if path_offset:
@@ -349,7 +354,7 @@ def _centered_transform(obj, fallback_pivot=None):
 
 def _bbox_centre(points):
     """
-    Mid-point of the bbox of a list of (x, y) tuples.
+    Return the mid-point of the bbox of a list of (x, y) tuples.
     """
     if not points:
         return 0, 0
@@ -360,13 +365,13 @@ def _bbox_centre(points):
 
 def _with_default_bbox(obj, anchor_points):
     """
-    Return `obj` itself when `left`/`top`/`width`/`height` are all set,
-    else a copy with the missing keys filled in from the anchor points'
-    bbox: fabric would compute those from `calcDim` on deserialisation.
-    A key present with a None value is not filled in. Required so that the
-    transform's centre and pivot align when the JSON only stores the
-    shape's own points (typical of test data and some external
-    integrations).
+    Return `obj` itself if `left`/`top`/`width`/`height` are all set.
+    Else return a copy that gets the missing keys from the bbox of the
+    anchor points: fabric computes these keys from `calcDim` on
+    deserialisation. If a key is present with a None value, the function
+    does not set it. This step is necessary to align the centre and the
+    pivot of the transform when the JSON stores only the points of the
+    shape. Test data and some external integrations do this.
     """
     if not anchor_points:
         return obj
@@ -395,9 +400,9 @@ def _to_image(point, scale_x, scale_y):
 
 def _stroke_outline_width(obj, scale_x):
     """
-    Outline width to pass to Pillow's `width` kwarg. Returns 0 (no
-    outline) when the shape has no stroke: this is what makes the
-    whiteboard sticker (a fill-only fabric.Rect) render correctly.
+    Return the outline width for the `width` kwarg of Pillow. If the
+    shape has no stroke, return 0 (no outline): this makes the whiteboard
+    sticker (a fabric.Rect with only a fill) render correctly.
     """
     if _stroke_color(obj) is None:
         return 0
@@ -406,9 +411,9 @@ def _stroke_outline_width(obj, scale_x):
 
 def _stroke_polygon(draw, points, color, width):
     """
-    Pillow's draw.polygon doesn't accept an outline-width kwarg, so
-    we draw each edge as a thick line. This is also what lets rotated
-    rects and ellipses keep their outline intact under transforms.
+    Draw each edge of the polygon as a thick line, because draw.polygon
+    of Pillow does not accept an outline-width kwarg. This also keeps the
+    outline of rotated rects and ellipses intact under transforms.
     """
     if color is None or width <= 0 or len(points) < 2:
         return
@@ -452,8 +457,8 @@ def _draw_ellipse(draw, obj, scale_x, scale_y):
         height = obj.get("height", 0) or 0
     if width <= 0 or height <= 0:
         return
-    # Build the transform with the resolved width/height so the pivot
-    # and centre line up for rx/ry-style ellipses too.
+    # Build the transform with the resolved width/height so that the
+    # pivot and the centre also align for rx/ry ellipses.
     sized = dict(obj)
     sized["width"] = width
     sized["height"] = height
@@ -566,9 +571,9 @@ def _draw_arrow(draw, obj, scale_x, scale_y):
     head_size = (obj.get("arrowHeadSize", 15) or 15) * scale_x
     angle = math.atan2((y2 - y1), (x2 - x1))
 
-    # Shorten the body so it sits fully inside the head triangle,
-    # otherwise Pillow's rounded end cap (radius = width/2) pokes past
-    # the geometric tip. Matches Kitsu's Arrow._toSVG export.
+    # Make the body shorter so that it stays fully inside the head
+    # triangle. Else the rounded end cap of Pillow (radius = width/2) goes
+    # past the geometric tip. This matches the Arrow._toSVG export of Kitsu.
     if head_size > 0:
         body_offset = head_size * 0.7
         body_end_x = x2 - body_offset * math.cos(angle)
@@ -607,10 +612,10 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     color = _fill_color(obj) or _stroke_color(obj) or (0, 0, 0, 255)
     background = _parse_color(obj.get("backgroundColor"), default=None)
 
-    # Render the text + optional background onto a transparent
-    # sub-image sized to the glyph bbox, then rotate/paste onto the
-    # overlay. Going through a sub-image is the only way Pillow can
-    # rotate text: `ImageDraw.text` has no rotation kwarg.
+    # Render the text and the optional background onto a transparent
+    # sub-image with the size of the glyph bbox. Then rotate the sub-image
+    # and paste it onto the overlay. A sub-image is the only way to rotate
+    # text with Pillow: `ImageDraw.text` has no rotation kwarg.
     measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     bbox = measure_draw.textbbox((0, 0), text, font=font)
     text_w = max(1, bbox[2] - bbox[0])
@@ -619,16 +624,16 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     text_draw = ImageDraw.Draw(text_img)
     if background is not None:
         text_draw.rectangle([0, 0, text_w, text_h], fill=background)
-    # textbbox can return a non-zero top: shift the draw origin so the
-    # glyph sits flush against the sub-image's top-left.
+    # textbbox can return a top that is not zero: move the draw origin so
+    # that the glyph touches the top-left corner of the sub-image.
     text_draw.text((-bbox[0], -bbox[1]), text, fill=color, font=font)
 
     angle = obj.get("angle", 0) or 0
     if angle:
         text_img = text_img.rotate(-angle, expand=True, resample=Image.BICUBIC)
 
-    # Position: centre of the un-rotated bbox anchored at (left, top),
-    # in image coords. Paste so the rotated sub-image is centred on it.
+    # Position: the centre of the un-rotated bbox anchored at (left, top),
+    # in image coordinates. Paste the rotated sub-image centred on it.
     obj_w = obj.get("width", 0) or text_w / scale_x
     obj_h = obj.get("height", 0) or text_h / scale_y
     obj_scale_x = obj.get("scaleX", 1) or 1
@@ -655,19 +660,19 @@ def _load_font(size):
 def _draw_psstroke(draw, obj, scale_x, scale_y):
     # PSBrush strokes (the freehand pen in Kitsu). Each segment uses
     # width = leading-point.pressure * strokeWidth (see
-    # fabricjs-psbrush index.mjs:421). Pillow can't vary width within a
-    # single line call, so we draw segment by segment and stamp a disk at
-    # each junction to round the joins.
+    # fabricjs-psbrush index.mjs:421). Pillow cannot change the width in
+    # one line call. Thus draw each segment separately, and stamp a disk
+    # at each junction to round the joins.
     points = obj.get("strokePoints") or []
     if len(points) < 2:
         return
     color = _line_color(obj)
-    # PSBrush stores its own strokeOffset (analogous to pathOffset) but
-    # it's not always serialised. Both the pivot and the bbox metadata
-    # fall back to what we can derive from strokePoints: fabric does
-    # the same in `_setPositionDimensions` on deserialisation, and that
-    # keeps the pivot fixed when the user drags the stroke so
-    # translations actually move the rendering.
+    # PSBrush stores its own strokeOffset (similar to pathOffset), but it
+    # does not always serialise it. The pivot and the bbox metadata both
+    # fall back to values from strokePoints. Fabric does the same in
+    # `_setPositionDimensions` on deserialisation. This keeps the pivot
+    # fixed when the user drags the stroke, so that translations really
+    # move the rendered stroke.
     anchors = [(p.get("x", 0) or 0, p.get("y", 0) or 0) for p in points]
     normalised = _with_default_bbox(obj, anchors)
     stroke_offset = obj.get("strokeOffset")
@@ -712,7 +717,7 @@ def _draw_psstroke(draw, obj, scale_x, scale_y):
         draw.line([a, b], fill=color, width=width)
         stamp_cap(a, width)
 
-    # Cap the trailing point with the last segment's width.
+    # Cap the last point with the width of the last segment.
     stamp_cap(to_screen(points[-1]), segment_width(points[-2]))
 
 
@@ -723,12 +728,12 @@ def _draw_path(draw, obj, scale_x, scale_y):
     commands = _parse_path_commands(raw)
     if not commands:
         return
-    # Apply fabric's full affine transform (T·R·S·T(-pathOffset)) so the
-    # path is positioned/scaled/rotated correctly even when the user
-    # transformed it. When pathOffset is absent from the JSON, fall
-    # back to the bbox centre of the path commands themselves: that's
-    # what fabric computes from `calcDim` and what makes translation
-    # `left` actually move the rendering.
+    # Apply the full affine transform of fabric (T·R·S·T(-pathOffset)),
+    # so that the path gets the correct position, scale and rotation, also
+    # after a user transform. If the JSON has no pathOffset, fall back to
+    # the bbox centre of the path commands. Fabric computes the same value
+    # from `calcDim`, and this makes a change of `left` really move the
+    # rendered path.
     color = _line_color(obj)
     width = _stroke_width(obj, scale_x)
     anchors = _extract_path_anchor_points(commands)
@@ -749,9 +754,9 @@ def _draw_path(draw, obj, scale_x, scale_y):
 def _path_to_segments(commands, to_point):
     """
     Flatten an SVG-like command list (M/L/Q/C/Z) into polyline
-    segments expressed via `to_point(px, py)` for every anchor and
-    sampled curve point. Shared by the path renderer and the eraser
-    mask renderer.
+    segments. Each anchor and each sampled curve point goes through
+    `to_point(px, py)`. The path renderer and the eraser mask renderer
+    both use this function.
     """
     segments = []
     current = None
@@ -810,8 +815,9 @@ def _parse_path_commands(raw):
 
 def _extract_path_anchor_points(commands):
     """
-    Pick the destination point of each M/L/Q/C command: enough to
-    bracket the path's bbox without flattening every Bezier.
+    Return the destination point of each M/L/Q/C command. These points
+    are enough to bracket the bbox of the path, without a flatten of each
+    Bezier curve.
     """
     points = []
     for cmd in commands:

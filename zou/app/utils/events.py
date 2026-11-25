@@ -13,9 +13,10 @@ logger = logging.getLogger(__name__)
 
 handlers = {}
 
-# Called with the event name once it is stored. This is how a service
-# reacts to the write path without this module importing the services:
-# events_service registers the invalidation of its name list here.
+# The hooks get the event name after the module stores the event. Thus,
+# a service reacts to the write path, and this module does not import the
+# services: events_service registers here the invalidation of its name
+# list.
 save_hooks = []
 
 publisher_store.init()
@@ -23,7 +24,8 @@ publisher_store.init()
 
 def add_save_hook(hook):
     """
-    Run given callable, with the event name, each time an event is stored.
+    Run the given callable, with the event name, each time that the module
+    stores an event.
     """
     if hook not in save_hooks:
         save_hooks.append(hook)
@@ -31,9 +33,9 @@ def add_save_hook(hook):
 
 def register(event, name, handler, app=None):
     """
-    Register a listener by linking an event name to an handler module.
-    The handler module exposes a function named `handle_event` which is
-    executed when linked event occurs.
+    Register a listener: link an event name to a handler module. The
+    handler module has a function named `handle_event`, which runs when
+    the linked event occurs.
     """
     if event not in handlers:
         handlers[event] = OrderedDict()
@@ -47,8 +49,8 @@ def register(event, name, handler, app=None):
 
 def register_all(event_map, app=None):
     """
-    Register all listeners described by the event map. The key is the event
-    name, the value is the module that must be loaded when event occurs
+    Register all the listeners of the event map. The key is the event
+    name, and the value is the module to load when the event occurs.
     """
     for event_name, handler_module in event_map.items():
         module_name = handler_module.__name__.split(".")[-1]
@@ -57,8 +59,8 @@ def register_all(event_map, app=None):
 
 def unregister(event, name):
     """
-    Remove handler with given name from registered listener list. The handler
-    will be no more executed when the event occurs.
+    Remove the handler with the given name from the list of registered
+    listeners. After this, the handler does not run when the event occurs.
     """
     if event in handlers:
         handlers[event].pop(name, None)
@@ -66,8 +68,8 @@ def unregister(event, name):
 
 def unregister_all():
     """
-    All event handlers are removed. Nothing will be executed anymore when an
-    event occurs.
+    Remove all the event handlers. After this, nothing runs when an event
+    occurs.
     """
     global handlers
     handlers = {}
@@ -75,11 +77,11 @@ def unregister_all():
 
 def emit(event, data=None, persist=True, project_id=None):
     """
-    Emit an event which leads to the execution of all event handlers registered
-    for that event name (queued as jobs when ENABLE_JOB_QUEUE is set).
-    It publishes too the event to other services
-    (like the realtime event daemon) and, when persist is True, stores it in
-    the database. A given project_id is added to the data dict of the caller.
+    Emit an event, which runs all the event handlers registered for that
+    event name (as queued jobs if ENABLE_JOB_QUEUE is set). It also
+    publishes the event to other services (such as the realtime event
+    daemon). If persist is True, it stores the event in the database. It
+    adds the given project_id to the data dict of the caller.
     """
     if data is None:
         data = {}
@@ -90,8 +92,8 @@ def emit(event, data=None, persist=True, project_id=None):
     data = fields.serialize_dict(data)
     publisher_store.publish(event, data)
     if persist:
-        # Create DB entry saving the data for the event, and include the ID in
-        # the data so that it can be read by the handlers.
+        # Create a DB entry that saves the data of the event, and put its ID
+        # in the data, so that the handlers can read it.
         api_event = save_event(event, data, project_id=project_id)
         data["id"] = str(api_event.id)
 
@@ -115,12 +117,13 @@ def emit(event, data=None, persist=True, project_id=None):
 
 def save_event(event, data, project_id=None):
     """
-    Store event information in the database, then run the save hooks.
-    Return the ApiEvent instance.
+    Store the event information in the database, then run the save hooks.
+    Return the ApiEvent active record.
     """
     try:
-        # The identity loaded by the JWT callback; outside a request, or
-        # without a token, the proxy raises and the event has no author.
+        # The identity that the JWT callback loads. Outside a request, or
+        # without a token, the proxy raises an error and the event has no
+        # author.
         person_id = current_user.id
     except Exception:
         person_id = None
@@ -136,8 +139,9 @@ def save_event(event, data, project_id=None):
         try:
             hook(event)
         except Exception:
-            # A hook must never break the write path: an unreachable cache
-            # only means the log filters stay stale until the entry expires.
+            # A hook must never break the write path. If the cache is not
+            # available, the log filters only stay stale until the entry
+            # expires.
             current_app.logger.warning(
                 f"Event save hook {hook.__name__} failed.", exc_info=1
             )
