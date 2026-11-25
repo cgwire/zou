@@ -314,12 +314,8 @@ class TokenTestCase(FileTreeTestCase):
                     **kwargs,
                 )
 
-    def test_a_sequence_named_after_its_number_is_normalized(self):
-        """
-        Seq2 and Seq02 name the same sequence to a human, so both land in
-        the same folder.
-        """
-        for name, expected in [("Seq2", "S002"), ("Seq02", "S002")]:
+    def test_a_sequence_folder_keeps_the_sequence_name(self):
+        for name, expected in [("Seq02", "Seq02"), ("MySeq02", "MySeq02")]:
             with self.subTest(name=name):
                 sequence = self.generate_fixture_sequence(name=name)
                 self.assertEqual(

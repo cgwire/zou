@@ -690,8 +690,7 @@ def get_folder_from_asset(asset, field="name"):
 def get_folder_from_sequence(entity, field="name"):
     """
     Value of the <Sequence> token, walking up from a shot or a scene to its
-    sequence. A name carrying "Seq" is rewritten as S plus the number padded
-    to three digits, so Seq2 and Seq02 land in the same folder.
+    sequence.
     """
     if entity_types_service.is_shot(entity) or entity_types_service.is_scene(
         entity
@@ -702,10 +701,6 @@ def get_folder_from_sequence(entity, field="name"):
         sequence_name = entity[field]
     else:
         sequence_name = ""
-
-    if "Seq" in sequence_name:
-        sequence_number = sequence_name[3:]
-        sequence_name = f"S{sequence_number.zfill(3)}"
     return sequence_name
 
 
