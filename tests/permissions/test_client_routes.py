@@ -144,6 +144,7 @@ class ClientOpenTasksTestCase(FreshRequestsTestCase):
         for path in self.paths:
             self.get(path, 403)
             self.get(f"{path}?project_id={self.project_id}", 403)
+        self.get("data/tasks/open-tasks/stats", 403)
 
     def test_vendors_are_refused(self):
         self.generate_fixture_user_vendor()
@@ -154,6 +155,7 @@ class ClientOpenTasksTestCase(FreshRequestsTestCase):
         for path in self.paths:
             self.get(path, 403)
             self.get(f"{path}?project_id={self.project_id}", 403)
+        self.get("data/tasks/open-tasks/stats", 403)
 
     def test_artists_keep_the_pool(self):
         projects_service.add_team_member(
@@ -163,6 +165,19 @@ class ClientOpenTasksTestCase(FreshRequestsTestCase):
         for path in self.paths:
             self.get(path, 200)
             self.get(f"{path}?project_id={self.project_id}", 200)
+
+    def test_an_artist_sees_only_the_pool_of_their_productions(self):
+        task_id = str(self.generate_fixture_task().id)
+        self.generate_fixture_task_standard()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        tasks = self.get("data/tasks/open-tasks")["data"]
+        self.assertEqual([task["id"] for task in tasks], [task_id])
+        stats = self.get("data/tasks/open-tasks/stats")
+        self.assertEqual(list(stats.keys()), [self.project_id])
 
     def test_a_client_on_the_project_is_refused_its_pool(self):
         projects_service.add_team_member(
