@@ -281,9 +281,12 @@ def _create_attachment(message, uploaded_file, randomize=False):
         file_store.add_file("attachments", attachment_file_id, tmp_file_path)
 
         # Create thumbnail for pictures
-        if "png" in mimetype or "jpg" in mimetype:
+        # The standard mimetype is image/jpeg, image/jpg is what some
+        # clients send.
+        is_jpg = "jpeg" in mimetype or "jpg" in mimetype
+        if "png" in mimetype or is_jpg:
             image_path = tmp_file_path
-            if "jpg" in mimetype:
+            if is_jpg:
                 image_path = thumbnail.convert_jpg_to_png(tmp_file_path)
             thumbnail.resize(image_path, (150, 150), True)
             file_store.add_picture(

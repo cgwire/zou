@@ -183,6 +183,25 @@ class ChatsServiceTestCase(ApiDBTestCase):
         tmp_file_path = os.path.join(config.TMP_DIR, f"{attachment['id']}.pdf")
         self.assertFalse(os.path.exists(tmp_file_path))
 
+    def test_create_attachment_jpeg_gets_a_thumbnail(self):
+        message = self.a_message()
+        with open("tests/fixtures/thumbnails/th01.jpg", "rb") as jpg:
+            uploaded_file = FileStorage(
+                stream=io.BytesIO(jpg.read()),
+                filename="photo.jpg",
+                content_type="image/jpeg",
+            )
+
+        with patch(
+            "zou.app.services.chats_service.file_store.add_picture"
+        ) as add_picture:
+            attachment = chats_service._create_attachment(
+                message, uploaded_file
+            )
+
+        add_picture.assert_called_once()
+        self.assertEqual(add_picture.call_args[0][1], attachment["id"])
+
     def test_create_attachment_failure_cleans_up(self):
         message = self.a_message()
         uploaded_file = FileStorage(
