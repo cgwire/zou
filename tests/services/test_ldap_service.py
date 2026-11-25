@@ -7,12 +7,15 @@ from tests.base import ApiDBTestCase
 from tests.services.ldap_fixtures import BASE_DN, LdapDirectoryMixin, ad_user
 from zou.app.commands import commands_service
 from zou.app.exceptions import (
+    InactiveUserException,
+    IsUserLimitReachedException,
+    LdapAccountConflictException,
     LdapAmbiguousUserException,
     LdapGroupNotFoundException,
     WrongPasswordException,
 )
 from zou.app.models.person import Person
-from zou.app.services import ldap_service
+from zou.app.services import ldap_service, persons_service
 
 
 class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
@@ -285,3 +288,116 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         connect.assert_called_once_with(
             settings, "STUDIO\\jdoe", "pw", ldap3.NTLM
         )
+
+
+def build_user(**overrides):
+    user = {
+        "first_name": "John",
+        "last_name": "Doe",
+        "email": "jdoe@studio.local",
+        "emails": ["jdoe@studio.local"],
+        "desktop_login": "jdoe",
+        "thumbnail": None,
+        "active": True,
+        "ldap_uid": "uid-jdoe",
+    }
+    user.update(overrides)
+    return user
+
+
+class LdapPersonTestCase(ApiDBTestCase):
+    def create_person(self, email, **kwargs):
+        return persons_service.create_person(
+            email, b"x", "First", "Last", **kwargs
+        )
+
+    def test_find_ldap_person_by_ldap_uid_then_login_then_email(self):
+        by_uid = self.create_person(
+            "a@x.org", is_generated_from_ldap=True, ldap_uid="uid-jdoe"
+        )
+        found = ldap_service.find_ldap_person(build_user())
+        self.assertEqual(found["id"], by_uid["id"])
+
+        Person.get(by_uid["id"]).update({"ldap_uid": "other"})
+        by_login = self.create_person(
+            "b@x.org", is_generated_from_ldap=True, desktop_login="jdoe"
+        )
+        found = ldap_service.find_ldap_person(build_user())
+        self.assertEqual(found["id"], by_login["id"])
+
+        Person.get(by_login["id"]).update({"desktop_login": "other"})
+        by_email = self.create_person(
+            "jdoe@studio.local", is_generated_from_ldap=True
+        )
+        found = ldap_service.find_ldap_person(build_user())
+        self.assertEqual(found["id"], by_email["id"])
+
+    def test_find_ldap_person_not_found(self):
+        self.assertIsNone(ldap_service.find_ldap_person(build_user()))
+
+    def test_find_ldap_person_local_conflict(self):
+        local = self.create_person("jdoe@studio.local")
+        with self.assertRaises(LdapAccountConflictException):
+            ldap_service.find_ldap_person(build_user())
+        person = Person.get(local["id"])
+        self.assertFalse(person.is_generated_from_ldap)
+        self.assertIsNone(person.ldap_uid)
+
+    def test_provision_person_creates(self):
+        person_id = ldap_service.provision_person(build_user())
+        person = Person.get(person_id)
+        self.assertTrue(person.is_generated_from_ldap)
+        self.assertEqual(person.ldap_uid, "uid-jdoe")
+        self.assertEqual(person.desktop_login, "jdoe")
+        self.assertEqual(person.email, "jdoe@studio.local")
+        self.assertTrue(person.active)
+
+    def test_provision_person_user_limit(self):
+        count = Person.query.count()
+        with mock.patch.object(
+            persons_service, "is_user_limit_reached", return_value=True
+        ):
+            with self.assertRaises(IsUserLimitReachedException):
+                ldap_service.provision_person(build_user())
+        self.assertEqual(Person.query.count(), count)
+
+    def test_provision_person_inactive_new_user_not_created(self):
+        count = Person.query.count()
+        with self.assertRaises(InactiveUserException):
+            ldap_service.provision_person(build_user(active=False))
+        self.assertEqual(Person.query.count(), count)
+
+    def test_provision_person_updates_stale_ldap_uid(self):
+        created = self.create_person(
+            "jdoe@studio.local",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+            ldap_uid="old-uid",
+        )
+        person = ldap_service.find_ldap_person(build_user())
+        person_id = ldap_service.provision_person(build_user(), person)
+        self.assertEqual(person_id, created["id"])
+        self.assertEqual(Person.get(person_id).ldap_uid, "uid-jdoe")
+
+    def test_provision_person_reactivation_user_limit(self):
+        created = self.create_person(
+            "jdoe@studio.local",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+            ldap_uid="uid-jdoe",
+            active=False,
+        )
+        person = ldap_service.find_ldap_person(build_user())
+        with mock.patch.object(
+            persons_service, "is_user_limit_reached", return_value=True
+        ):
+            with self.assertRaises(IsUserLimitReachedException):
+                ldap_service.provision_person(build_user(), person)
+        self.assertFalse(Person.get(created["id"]).active)
+
+    def test_deactivate_person(self):
+        created = self.create_person(
+            "jdoe@studio.local", is_generated_from_ldap=True
+        )
+        ldap_service.deactivate_person(created)
+        self.assertFalse(Person.get(created["id"]).active)

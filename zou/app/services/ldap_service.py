@@ -4,15 +4,21 @@ directory entries into the dicts the person sync understands.
 """
 
 import ldap3
+from flask import current_app
 from ldap3.utils.conv import escape_filter_chars
 from ldap3.utils.dn import to_dn
 
-from zou.app import app
+from zou.app import app, config
 from zou.app.exceptions import (
+    InactiveUserException,
+    IsUserLimitReachedException,
+    LdapAccountConflictException,
     LdapAmbiguousUserException,
     LdapGroupNotFoundException,
+    PersonNotFoundException,
     WrongPasswordException,
 )
+from zou.app.services import persons_service
 
 # Patched to ldap3.MOCK_SYNC in tests.
 CLIENT_STRATEGY = ldap3.SYNC
@@ -390,3 +396,91 @@ def check_user_password(settings, entry, password):
     except ldap3.core.exceptions.LDAPInvalidCredentialsResult:
         raise WrongPasswordException()
     conn.unbind()
+
+
+def find_ldap_person(user):
+    """
+    Return the person matching a directory user (by LDAP uid, then desktop
+    login, then each email) or None. Refuse local accounts and protected
+    accounts.
+    """
+    person = None
+    try:
+        person = persons_service.get_person_by_ldap_uid(user["ldap_uid"])
+    except PersonNotFoundException:
+        try:
+            person = persons_service.get_person_by_desktop_login(
+                user["desktop_login"]
+            )
+        except PersonNotFoundException:
+            for mail in user["emails"]:
+                try:
+                    person = persons_service.get_person_by_email(mail)
+                    break
+                except PersonNotFoundException:
+                    pass
+    if person is not None and (
+        not person["is_generated_from_ldap"]
+        or person["email"] in config.PROTECTED_ACCOUNTS
+    ):
+        current_app.logger.warning(
+            f"LDAP login refused for {user['desktop_login']}: "
+            f"person {person['id']} is not managed by LDAP."
+        )
+        raise LdapAccountConflictException()
+    return person
+
+
+def provision_person(user, person=None):
+    """
+    Create the person of a directory user, or update the existing one.
+    Return the person id.
+    """
+    if person is None:
+        if not user["active"]:
+            raise InactiveUserException()
+        if persons_service.is_user_limit_reached():
+            raise IsUserLimitReachedException()
+        created = persons_service.create_person(
+            user["email"],
+            "default".encode("utf-8"),
+            user["first_name"],
+            user["last_name"],
+            desktop_login=user["desktop_login"],
+            is_generated_from_ldap=True,
+            ldap_uid=user["ldap_uid"],
+            active=True,
+        )
+        return created["id"]
+
+    if (
+        not person["active"]
+        and user["active"]
+        and persons_service.is_user_limit_reached()
+    ):
+        raise IsUserLimitReachedException()
+    fields = {
+        "email": user["email"],
+        "first_name": user["first_name"],
+        "last_name": user["last_name"],
+        "active": user["active"],
+        "is_generated_from_ldap": True,
+        "desktop_login": user["desktop_login"],
+        "ldap_uid": user["ldap_uid"],
+    }
+    if any(person[key] != value for key, value in fields.items()):
+        persons_service.update_person(
+            person["id"], fields, bypass_protected_accounts=False
+        )
+    return person["id"]
+
+
+def deactivate_person(person):
+    """
+    Disable a person that is no longer active in the directory.
+    """
+    if person["active"]:
+        persons_service.update_person(person["id"], {"active": False})
+        current_app.logger.info(
+            f"User {person['desktop_login']} disabled (inactive in LDAP)."
+        )
