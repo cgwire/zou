@@ -18,7 +18,7 @@ import spdx_license_list
 import tomlkit
 from alembic import command
 from alembic.config import Config
-from flask import Blueprint, abort, current_app, send_from_directory
+from flask import Blueprint, current_app, send_from_directory
 from flask.views import MethodView
 
 from zou.app import db
@@ -46,10 +46,8 @@ class StaticResource(MethodView):
         if filename == "":
             filename = "index.html"
 
-        file_path = static_folder / filename
-        if not file_path.exists() or not file_path.is_file():
-            abort(404)
-
+        # send_from_directory refuses paths outside static_folder and
+        # answers 404 for a missing file or a directory.
         return send_from_directory(
             str(static_folder), filename, conditional=True, max_age=0
         )

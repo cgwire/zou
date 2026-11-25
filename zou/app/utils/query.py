@@ -262,8 +262,8 @@ def cast_value(value, field_key):
     if isinstance(field_key.type, sa_types.NullType):
         return value
 
-    # Some column types (ChoiceType, LocaleType, TimezoneType, ...) do not
-    # implement python_type and raise NotImplementedError. They go to the
+    # Some column types (LocaleType, for example) do not implement
+    # python_type and raise NotImplementedError. They go to the
     # generic cast below, and the request does not crash.
     try:
         python_type = field_key.type.python_type
