@@ -29,50 +29,6 @@ class MkdirTestCase(unittest.TestCase):
 
 
 class GetFilePathAndFileTestCase(unittest.TestCase):
-    def test_missing_remote_file_raises_file_not_found(self):
-        # A remote download that "succeeds" but yields an empty file must be
-        # reported as absent (FileNotFound -> 404), not an unhandled 500.
-        def open_file(prefix, instance_id):
-            yield from ()
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            with mock.patch("zou.app.utils.fs.time.sleep"):
-                with pytest.raises(FileNotFound):
-                    fs.get_file_path_and_file(
-                        FakeConfig(tmp_dir),
-                        get_local_path=lambda prefix, instance_id: "",
-                        open_file=open_file,
-                        prefix="previews",
-                        instance_id="does-not-exist",
-                        extension="png",
-                    )
-
-    def test_missing_object_is_not_retried(self):
-        # Sleeping three seconds and asking again for an object that is
-        # not there delays every fallback on the next prefix.
-        class SwiftClientException(Exception):
-            http_status = 404
-
-        calls = []
-
-        def open_file(prefix, instance_id):
-            calls.append(prefix)
-            raise SwiftClientException("Object GET failed: 404 Not Found")
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            with mock.patch("zou.app.utils.fs.time.sleep") as sleep:
-                with pytest.raises(FileNotFound):
-                    fs.get_file_path_and_file(
-                        FakeConfig(tmp_dir),
-                        get_local_path=lambda prefix, instance_id: "",
-                        open_file=open_file,
-                        prefix="lowdef",
-                        instance_id="does-not-exist",
-                        extension="mp4",
-                    )
-                sleep.assert_not_called()
-        self.assertEqual(calls, ["lowdef"])
-
     def test_transient_error_is_retried(self):
         class ServerError(Exception):
             http_status = 503
@@ -85,7 +41,7 @@ class GetFilePathAndFileTestCase(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             with mock.patch("zou.app.utils.fs.time.sleep") as sleep:
-                with pytest.raises(FileNotFound):
+                with pytest.raises(FileNotFound) as raised:
                     fs.get_file_path_and_file(
                         FakeConfig(tmp_dir),
                         get_local_path=lambda prefix, instance_id: "",
@@ -99,6 +55,7 @@ class GetFilePathAndFileTestCase(unittest.TestCase):
                 sleep.assert_called_once_with(fs.TRANSIENT_RETRY_DELAY)
         self.assertLessEqual(fs.TRANSIENT_RETRY_DELAY, 1)
         self.assertEqual(calls, ["lowdef", "lowdef"])
+        self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
 
 
 class IsMissingFileErrorTestCase(unittest.TestCase):
@@ -124,6 +81,45 @@ class IsMissingFileErrorTestCase(unittest.TestCase):
         exception = Exception("Service Unavailable")
         exception.http_status = 503
         self.assertFalse(fs.is_missing_file_error(exception))
+
+
+class IsRangeErrorTestCase(unittest.TestCase):
+    def test_swift_416_is_range_error(self):
+        exception = Exception("Object GET failed: 416")
+        exception.http_status = 416
+        self.assertTrue(fs.is_range_error(exception))
+
+    def test_other_errors_are_not_range_errors(self):
+        exception = Exception("Service Unavailable")
+        exception.http_status = 503
+        self.assertFalse(fs.is_range_error(exception))
+
+
+class IsConfirmedMissingErrorTestCase(unittest.TestCase):
+    def test_no_exception_is_not_confirmed(self):
+        self.assertFalse(fs.is_confirmed_missing_error(None))
+
+    def test_confirmed_file_not_found_is_confirmed(self):
+        self.assertTrue(
+            fs.is_confirmed_missing_error(fs.ConfirmedFileNotFound("key"))
+        )
+
+    def test_botocore_missing_object_is_confirmed(self):
+        exception = Exception("An error occurred (404)")
+        exception.response = {"ResponseMetadata": {"HTTPStatusCode": 404}}
+        self.assertTrue(fs.is_confirmed_missing_error(exception))
+
+        exception = Exception("An error occurred (NoSuchKey)")
+        exception.response = {"Error": {"Code": "NoSuchKey"}}
+        self.assertTrue(fs.is_confirmed_missing_error(exception))
+
+    def test_botocore_server_error_is_not_confirmed(self):
+        exception = Exception("An error occurred (InternalError)")
+        exception.response = {
+            "Error": {"Code": "InternalError"},
+            "ResponseMetadata": {"HTTPStatusCode": 500},
+        }
+        self.assertFalse(fs.is_confirmed_missing_error(exception))
 
 
 class DownloadToFileTestCase(unittest.TestCase):
@@ -201,6 +197,25 @@ class DownloadToFileTestCase(unittest.TestCase):
             self.cache_files(),
             ["cache-previews-id", "cache-previews-id.live.part"],
         )
+
+    def test_part_removed_by_a_concurrent_sweep_does_not_stop_download(self):
+        # A dangling link stands for a .part that an other download
+        # removed between the glob and the mtime read.
+        os.symlink(
+            os.path.join(self.tmp_dir.name, "gone"),
+            f"{self.file_path}.gone.part",
+        )
+
+        def open_file(prefix, instance_id):
+            yield b"movie"
+
+        exception = fs.download_to_file(
+            self.file_path, open_file, "previews", "id"
+        )
+
+        self.assertIsNone(exception)
+        with open(self.file_path, "rb") as cached:
+            self.assertEqual(cached.read(), b"movie")
 
     def test_concurrent_download_is_served_instead_of_a_404(self):
         # The other request completed the cache entry while this one was
@@ -393,28 +408,23 @@ class ConfirmedFileNotFoundTestCase(unittest.TestCase):
                 )
 
     def test_remote_404_is_confirmed(self):
+        # Sleeping and asking again for an object that is not there
+        # delays every fallback on the next prefix.
         class SwiftClientException(Exception):
             http_status = 404
 
+        calls = []
+
         def open_file(prefix, instance_id):
+            calls.append(prefix)
             raise SwiftClientException("404 Not Found")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with pytest.raises(fs.ConfirmedFileNotFound):
-                self.get(FakeConfig(tmp_dir), open_file)
-
-    def test_transient_error_is_not_confirmed(self):
-        class ServerError(Exception):
-            http_status = 503
-
-        def open_file(prefix, instance_id):
-            raise ServerError("Service Unavailable")
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            with mock.patch("zou.app.utils.fs.time.sleep"):
-                with pytest.raises(FileNotFound) as raised:
+            with mock.patch("zou.app.utils.fs.time.sleep") as sleep:
+                with pytest.raises(fs.ConfirmedFileNotFound):
                     self.get(FakeConfig(tmp_dir), open_file)
-        self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
+            sleep.assert_not_called()
+        self.assertEqual(calls, ["lowdef"])
 
     def test_empty_download_is_not_confirmed(self):
         def open_file(prefix, instance_id):
@@ -441,25 +451,42 @@ class ConfirmedFileNotFoundTestCase(unittest.TestCase):
                     self.get(FakeConfig(tmp_dir), open_file)
         self.assertNotIsInstance(raised.value, fs.ConfirmedFileNotFound)
 
+    def test_valid_cache_entry_is_served_without_download(self):
+        calls = []
 
-class FileStoreConfirmedFileNotFoundTestCase(unittest.TestCase):
-    def test_backend_404_is_confirmed(self):
-        from zou.app.stores import file_store
+        def open_file(prefix, instance_id):
+            calls.append(instance_id)
+            yield b"new-bytes"
 
-        class SwiftClientException(Exception):
-            http_status = 404
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = FakeConfig(tmp_dir)
+            cache_path = fs.get_cache_file_path(
+                config, "lowdef", "some-id", "mp4"
+            )
+            with open(cache_path, "wb") as cached:
+                cached.write(b"cached")
 
-        bucket = mock.MagicMock()
-        bucket.backend.read_chunks.side_effect = SwiftClientException("404")
-        with pytest.raises(fs.ConfirmedFileNotFound):
-            file_store._read_chunks(bucket, "tiles-some-id")
+            file_path = self.get(config, open_file, file_size=6)
 
-    def test_local_file_vanishing_on_read_is_confirmed(self):
-        from zou.app.stores import file_store
+            self.assertEqual(file_path, cache_path)
+            with open(file_path, "rb") as cached:
+                self.assertEqual(cached.read(), b"cached")
+        self.assertEqual(calls, [])
 
-        def read_stream():
-            raise FileNotFoundError("gone")
-            yield b""
+    def test_backend_confirmed_absence_is_raised_without_retry(self):
+        # file_store raises ConfirmedFileNotFound for a missing object:
+        # it must reach the caller as it is, with no retry.
+        missing = fs.ConfirmedFileNotFound("lowdef-some-id")
+        calls = []
 
-        with pytest.raises(fs.ConfirmedFileNotFound):
-            list(file_store._measured_read(read_stream(), "tiles-some-id"))
+        def open_file(prefix, instance_id):
+            calls.append(instance_id)
+            raise missing
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with mock.patch("zou.app.utils.fs.time.sleep") as sleep:
+                with pytest.raises(fs.ConfirmedFileNotFound) as raised:
+                    self.get(FakeConfig(tmp_dir), open_file)
+            sleep.assert_not_called()
+        self.assertIs(raised.value, missing)
+        self.assertEqual(calls, ["some-id"])
