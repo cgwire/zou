@@ -465,6 +465,18 @@ class ProjectServiceTestCase(ApiDBTestCase):
             [(str(self.task_type.id), 2)],
         )
 
+    def test_a_task_type_without_entity_kind_counts_as_asset(self):
+        self.link_the_same_task_type_to_both_productions(4, 9)
+        self.task_type.update({"for_entity": None})
+
+        priority_map = projects_service.get_task_type_priority_map(
+            self.project.id
+        )
+        links = projects_service.get_task_type_links(self.project.id)
+
+        self.assertEqual(priority_map, {str(self.task_type.id): 4})
+        self.assertEqual(len(links), 1)
+
     def test_get_department_team(self):
         """
         Scoped twice: the production and the department. A member of the

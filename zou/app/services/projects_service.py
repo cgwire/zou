@@ -1152,13 +1152,21 @@ def get_project_task_types_raw(project_id, for_entity=None):
     query = TaskType.query.join(ProjectTaskTypeLink).filter(
         ProjectTaskTypeLink.project_id == project_id
     )
+    if for_entity is not None:
+        query = _filter_task_types_for_entity(query, for_entity)
+    return query.all()
+
+
+def _filter_task_types_for_entity(query, for_entity):
+    """
+    Narrow a task type query to given entity kind. A NULL for_entity
+    means "Asset" (see get_project_task_types_raw).
+    """
     if for_entity == "Asset":
-        query = query.filter(
+        return query.filter(
             or_(TaskType.for_entity == "Asset", TaskType.for_entity.is_(None))
         )
-    elif for_entity is not None:
-        query = query.filter(TaskType.for_entity == for_entity)
-    return query.all()
+    return query.filter(TaskType.for_entity == for_entity)
 
 
 def get_project_task_types(project_id):
@@ -1207,11 +1215,10 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
     """
     Return a dict allowing to match a task type id with a priority.
     """
-    task_types = (
-        ProjectTaskTypeLink.query.join(TaskType)
-        .filter(ProjectTaskTypeLink.project_id == project_id)
-        .filter(TaskType.for_entity == for_entity)
-    ).all()
+    query = ProjectTaskTypeLink.query.join(TaskType).filter(
+        ProjectTaskTypeLink.project_id == project_id
+    )
+    task_types = _filter_task_types_for_entity(query, for_entity).all()
     return {
         str(task_type_link.task_type_id): task_type_link.priority
         for task_type_link in task_types
@@ -1222,12 +1229,14 @@ def get_task_type_links(project_id, for_entity="Asset"):
     """
     Return a lisk of links for given project and entity type.
     """
+    query = ProjectTaskTypeLink.query.join(TaskType).filter(
+        ProjectTaskTypeLink.project_id == project_id
+    )
     task_type_links = (
-        ProjectTaskTypeLink.query.join(TaskType)
-        .filter(ProjectTaskTypeLink.project_id == project_id)
-        .filter(TaskType.for_entity == for_entity)
+        _filter_task_types_for_entity(query, for_entity)
         .order_by(ProjectTaskTypeLink.priority.desc())
-    ).all()
+        .all()
+    )
     return ProjectTaskTypeLink.serialize_list(task_type_links)
 
 
