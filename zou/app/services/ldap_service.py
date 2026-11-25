@@ -171,12 +171,19 @@ def is_excluded(settings, desktop_login):
     return desktop_login in settings["LDAP_EXCLUDED_ACCOUNTS"].split(",")
 
 
+def get_desktop_login(entry, settings):
+    """
+    Desktop login of a directory entry.
+    """
+    return clean_value(getattr(entry, get_login_attribute(settings)))
+
+
 def entry_to_user(entry, settings):
     """
     Convert a directory entry into a dict the person sync understands.
     """
     ad = is_ad(settings)
-    desktop_login = clean_value(getattr(entry, get_login_attribute(settings)))
+    desktop_login = get_desktop_login(entry, settings)
     if ad:
         ldap_uid = clean_value(entry.objectGUID)
     elif entry.uniqueIdentifier:
@@ -258,13 +265,12 @@ def search_users(conn, settings):
     )
     users = []
     for entry in conn.entries:
-        user = entry_to_user(entry, settings)
-        if is_excluded(settings, user["desktop_login"]):
+        if is_excluded(settings, get_desktop_login(entry, settings)):
             continue
         if (
             group_members is not None
             and normalize_dn(entry.entry_dn) not in group_members
         ):
             continue
-        users.append(user)
+        users.append(entry_to_user(entry, settings))
     return users
