@@ -169,7 +169,7 @@ def send_comment_notification(person_id, author_id, comment, task):
 _{comment["text"]}_
 """
 
-            discord_message = f"""*{author["full_name"]}* wrote a comment on [{task_name}]({task_url})> and set the status to *{task_status_name}*.
+            discord_message = f"""*{author["full_name"]}* wrote a comment on [{task_name}]({task_url}) and set the status to *{task_status_name}*.
 
 _{comment["text"]}_
 """
