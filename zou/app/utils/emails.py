@@ -30,8 +30,8 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
     Send an email with given subject and HTML to given recipient, only
     when MAIL_ENABLED. The plain text body defaults to the HTML without
     its tags. If locale is provided (e.g. "en_US", "fr_FR"), the
-    Content-Language header is meant to be set so the recipient's client
-    can use the correct language. A send failure is logged, never raised.
+    Content-Language header is set so the recipient's client can use the
+    correct language. A send failure is logged, never raised.
     """
     from zou.app import app
 
@@ -43,20 +43,19 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
         with app.app_context():
             try:
                 mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
+                extra_headers = {}
+                if locale:
+                    extra_headers["Content-Language"] = locale.replace(
+                        "_", "-"
+                    )
                 message = Message(
                     sender=f"Kitsu Bot <{mail_default_sender}>",
                     body=body,
                     html=html,
                     subject=subject,
                     recipients=[recipient_email],
+                    extra_headers=extra_headers,
                 )
-                if locale:
-                    try:
-                        lang_tag = locale.replace("_", "-")
-                        if hasattr(message, "msg"):
-                            message.msg["Content-Language"] = lang_tag
-                    except Exception:
-                        pass
                 mail.send(message)
             except Exception as exception:
                 if is_recipient_refusal(exception):

@@ -1,3 +1,4 @@
+import email
 import smtplib
 from unittest.mock import patch
 
@@ -104,3 +105,25 @@ class EmailsSendFailureTestCase(ApiDBTestCase):
         records = self._send_with_failure(error)
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].levelname, "ERROR")
+
+
+class EmailsContentLanguageTestCase(ApiDBTestCase):
+    def _sent_message(self, **kwargs):
+        with patch.dict(app.config, {"MAIL_ENABLED": True}):
+            with patch("zou.app.utils.emails.mail.send") as send:
+                emails.send_email(
+                    "Subject",
+                    "<p>Hello</p>",
+                    "recipient@example.com",
+                    **kwargs,
+                )
+        with app.app_context():
+            return email.message_from_bytes(send.call_args.args[0].as_bytes())
+
+    def test_the_locale_is_sent_as_content_language(self):
+        message = self._sent_message(locale="fr_FR")
+        self.assertEqual(message["Content-Language"], "fr-FR")
+
+    def test_no_locale_sends_no_content_language(self):
+        message = self._sent_message()
+        self.assertIsNone(message["Content-Language"])
