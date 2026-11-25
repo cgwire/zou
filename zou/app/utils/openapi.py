@@ -7,6 +7,9 @@ import yaml
 
 @functools.cache
 def read_specs(path):
+    """
+    Return the YAML file at given path as a dict, read once per process.
+    """
     with open(path, encoding="utf-8") as spec_file:
         return yaml.safe_load(spec_file)
 

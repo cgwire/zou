@@ -151,7 +151,10 @@ class PluginManifest(MutableMapping):
 
 def load_plugin(app, plugin_path, init_plugin=True):
     """
-    Load a plugin from the plugin folder.
+    Read the manifest at `plugin_path`, import the plugin module by its
+    id (the plugin folder must be in sys.path) and register its routes,
+    static frontend routes included, as a blueprint under
+    /plugins/<id>. Return the plugin module. `init_plugin` is not used.
     """
     plugin_path = Path(plugin_path)
     manifest = PluginManifest.from_plugin_path(plugin_path)
@@ -202,7 +205,7 @@ def _build_plugin_alembic_config(plugin_path):
 
     The plugin path is passed to env.py via ``config.attributes`` so the
     shared env.py knows which manifest to load and which models.py to
-    register.
+    register. Creates the versions directory when it is missing.
     """
     plugin_path = Path(plugin_path).absolute()
     versions_dir = plugin_path / "migrations" / "versions"
@@ -229,7 +232,9 @@ def _build_plugin_alembic_config(plugin_path):
 
 def migrate_plugin_db(plugin_path, message):
     """
-    Generates Alembic migration files in path/migrations/versions.
+    Generates Alembic migration files in path/migrations/versions,
+    importing the plugin's models.py first unless its tables are already
+    in db.metadata. Raises FileNotFoundError when models.py is missing.
     """
     plugin_path = Path(plugin_path).absolute()
     models_path = plugin_path / "models.py"
@@ -267,7 +272,9 @@ def migrate_plugin_db(plugin_path, message):
 
 def run_plugin_migrations(plugin_path, plugin):
     """
-    Run plugin migrations using the shared Alembic template.
+    Run plugin migrations up to head using the shared Alembic template,
+    then store the head revision on `plugin` (a DB write). Return the
+    head revision.
     """
     alembic_cfg = _build_plugin_alembic_config(plugin_path)
     command.upgrade(alembic_cfg, "head")
@@ -282,7 +289,8 @@ def run_plugin_migrations(plugin_path, plugin):
 
 def downgrade_plugin_migrations(plugin_path):
     """
-    Downgrade plugin migrations to base.
+    Downgrade plugin migrations to base. A failed downgrade is logged,
+    not raised.
     """
     plugin_path = Path(plugin_path)
     manifest = PluginManifest.from_plugin_path(plugin_path)
@@ -298,7 +306,10 @@ def downgrade_plugin_migrations(plugin_path):
 
 def create_plugin_package(path, output_path, force=False):
     """
-    Create a plugin package.
+    Zip the plugin folder at `path` and return the archive path (str).
+    When `output_path` does not end with .zip, it is a directory and the
+    archive is named <id>-<version>.zip. Raises FileExistsError when the
+    archive exists, unless `force` is set: then it is replaced.
     """
     path = Path(path)
     if not path.exists():
@@ -337,6 +348,12 @@ def create_plugin_skeleton(
     icon=None,
     force=False,
 ):
+    """
+    Create a new plugin folder `path`/`id` from the plugin template and
+    fill its manifest with the given values. Raises FileExistsError when
+    the folder exists, unless `force` is set: then it is replaced. Return
+    the plugin folder path.
+    """
     plugin_template_path = (
         Path(__file__).parent.parent.parent / "plugin_template"
     )
@@ -380,7 +397,9 @@ def create_plugin_skeleton(
 
 def install_plugin_files(files_path, installation_path):
     """
-    Install plugin files.
+    Copy a plugin folder (without .git) or extract a plugin zip into
+    `installation_path`, created if missing. Raises ValueError for any
+    other path. Return the installation path.
     """
     files_path = Path(files_path)
     installation_path = Path(installation_path)
@@ -413,7 +432,7 @@ def install_plugin_files(files_path, installation_path):
 
 def uninstall_plugin_files(plugin_path):
     """
-    Uninstall plugin files.
+    Remove the plugin folder. Return False when it does not exist.
     """
     plugin_path = Path(plugin_path)
     if plugin_path.exists():
@@ -480,7 +499,8 @@ def clone_git_repo(git_url, temp_dir=None):
 
 def add_static_routes(manifest, routes):
     """
-    Add static routes to the manifest.
+    Append the routes that serve the plugin frontend to `routes` (in
+    place) when the manifest enables a project or studio frontend.
     """
 
     class PluginStaticResource(StaticResource):

@@ -37,6 +37,9 @@ def request_handover(signum=None, frame=None):
 
 
 def is_handover_requested():
+    """
+    Return True once the worker asked the job process to stop.
+    """
     return _handover_requested
 
 
@@ -52,6 +55,9 @@ def get_resumed_nomad_job_id():
 
 
 def is_resumed():
+    """
+    Return True when the current RQ job resumes a handed over Nomad job.
+    """
     return get_resumed_nomad_job_id() is not None
 
 
@@ -131,6 +137,10 @@ def run_job(app, config, nomad_job_name, params):
 
 
 def get_nomad_job_logs(ncli, nomad_jobid, nomad_job_name):
+    """
+    Return the stdout and stderr of the last allocation of given Nomad
+    job. For a task that never started, stdout holds its event messages.
+    """
     allocations = ncli.job.get_allocations(nomad_jobid)
     last = max(
         [(alloc["CreateIndex"], idx) for idx, alloc in enumerate(allocations)]
@@ -142,7 +152,7 @@ def get_nomad_job_logs(ncli, nomad_jobid, nomad_job_name):
         out = "\n".join([x["DisplayMessage"] for x in task["Events"]])
         err = ""
     else:
-        # Framed logs come as one JSON document per 64 KiB chunk.
+        # plain=True: framed logs come as one JSON document per 64 KiB chunk.
         err = ncli.client.stream_logs.stream(
             alloc_id, nomad_job_name, "stderr", plain=True
         )

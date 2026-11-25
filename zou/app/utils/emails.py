@@ -27,9 +27,11 @@ email_charset.add_charset(
 
 def send_email(subject, html, recipient_email, body=None, locale=None):
     """
-    Send an email with given subject and body to given recipient.
-    If locale is provided (e.g. "en_US", "fr_FR"), the Content-Language
-    header is set so the recipient's client can use the correct language.
+    Send an email with given subject and HTML to given recipient, only
+    when MAIL_ENABLED. The plain text body defaults to the HTML without
+    its tags. If locale is provided (e.g. "en_US", "fr_FR"), the
+    Content-Language header is meant to be set so the recipient's client
+    can use the correct language. A send failure is logged, never raised.
     """
     from zou.app import app
 
@@ -49,7 +51,6 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
                     recipients=[recipient_email],
                 )
                 if locale:
-                    # Set Content-Language so the recipient's client knows the language
                     try:
                         lang_tag = locale.replace("_", "-")
                         if hasattr(message, "msg"):

@@ -60,6 +60,10 @@ class ParsedUserAgent(UserAgent):
 
 
 def is_from_browser(user_agent):
+    """
+    Return True when the parsed user agent is one of the listed web
+    browsers.
+    """
     return user_agent.browser in [
         "Brave",
         "Chrome",
@@ -96,6 +100,10 @@ def rows_response(header, rows, stream=False):
 
 
 def wrong_auth_handler(identity_user=None):
+    """
+    Abort with a 401, except on the login and logout routes where
+    identity_user is returned.
+    """
     if request.path not in ["/auth/login", "/auth/logout"]:
         abort(401)
     else:

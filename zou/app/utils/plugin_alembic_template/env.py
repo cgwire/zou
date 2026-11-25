@@ -1,13 +1,14 @@
 """
 Shared Alembic env.py used by every Zou plugin.
 
-Zou owns this file (it lives under ``zou/app/utils/plugin_alembic_template/``)
-and points alembic at it via ``script_location``. Plugins only need to ship a
-``migrations/versions/`` directory with their revision files — they no longer
-have to copy boilerplate env.py / script.py.mako / alembic.ini around.
+Zou owns this file (it lives under
+``zou/app/utils/plugin_alembic_template/``) and points alembic at it via
+``script_location``. Plugins only need to ship a ``migrations/versions/``
+directory with their revision files, not env.py, script.py.mako or
+alembic.ini.
 
-The plugin path is passed in via ``alembic_cfg.attributes['plugin_path']`` by
-``run_plugin_migrations`` (and friends) in ``zou/app/utils/plugins.py``.
+The plugin path is passed in via ``alembic_cfg.attributes['plugin_path']``
+by ``_build_plugin_alembic_config`` in ``zou/app/utils/plugins.py``.
 """
 
 import importlib.util
@@ -24,10 +25,11 @@ from zou.app.utils.plugins import PluginManifest
 
 config = context.config
 
-# The plugin path is injected by zou.app.utils.plugins.run_plugin_migrations.
-# When env.py is invoked outside that flow (e.g. by hand) we fall back to a
-# best-effort guess based on the script_location's parent directory so the
-# old layout (env.py inside the plugin) keeps working.
+# The plugin path is injected by
+# zou.app.utils.plugins._build_plugin_alembic_config. When env.py is invoked
+# outside that flow (e.g. by hand) we fall back to a best-effort guess based
+# on the script_location's parent directory so the old layout (env.py inside
+# the plugin) keeps working.
 plugin_path = Path(
     config.attributes.get("plugin_path")
     or Path(config.get_main_option("script_location")).resolve().parent
@@ -90,6 +92,10 @@ def render_item(type_, obj, autogen_context):
 
 
 def run_migrations_online():
+    """
+    Run the plugin migrations against the database, tracking them in the
+    plugin's own alembic_version_<id> table.
+    """
     url = config.get_main_option("sqlalchemy.url")
     connectable = create_engine(url, poolclass=pool.NullPool)
     with connectable.connect() as connection:

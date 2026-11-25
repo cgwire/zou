@@ -76,8 +76,7 @@ def has_manager_permissions():
 def has_artist_permissions():
     """
     Return True if user is an artist on the resolved project. Without a
-    project context this is always False: Flask-Principal never granted a
-    "user" need, so the historical global fallback is preserved as-is.
+    project context this is always False: the global role is not read.
     """
     return _project_role() == "user"
 
@@ -116,7 +115,8 @@ def has_supervisor_permissions():
 
 def has_person_permissions():
     """
-    Return True if user is a person.
+    Return True if the identity is a person (session or person API
+    token), False for a bot.
     """
     return _auth_type() in ("person", "person_api")
 
@@ -153,8 +153,8 @@ def check_manager_permissions():
 
 def check_admin_permissions():
     """
-    Return True if user is admin. It raises a PermissionDenied exception in case
-    of failure.
+    Return True if user is admin. It raises a PermissionDenied exception in
+    case of failure.
     """
     if has_admin_permissions():
         return True
@@ -174,6 +174,10 @@ def check_person_permissions():
 
 
 def require_admin(function):
+    """
+    Decorate a function to run check_admin_permissions() before it.
+    """
+
     @wraps(function)
     def decorated_function(*args, **kwargs):
         check_admin_permissions()
@@ -183,6 +187,10 @@ def require_admin(function):
 
 
 def require_manager(function):
+    """
+    Decorate a function to run check_manager_permissions() before it.
+    """
+
     @wraps(function)
     def decorated_function(*args, **kwargs):
         check_manager_permissions()
@@ -192,6 +200,10 @@ def require_manager(function):
 
 
 def require_person(function):
+    """
+    Decorate a function to run check_person_permissions() before it.
+    """
+
     @wraps(function)
     def decorated_function(*args, **kwargs):
         check_person_permissions()

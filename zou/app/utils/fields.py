@@ -87,7 +87,7 @@ def serialize_dict(dict_value):
 
 def serialize_orm_arrays(array_value):
     """
-    Serialize a orm array into simple data structures (useful for json dumping).
+    Serialize a orm array into the list of the ids of its items.
     """
     return [serialize_value(val.id) for val in array_value]
 
@@ -112,14 +112,14 @@ def present_models(models):
 
 def gen_uuid():
     """
-    Generate a unique identifier (useful for json dumping).
+    Generate a random unique identifier, as a uuid.UUID.
     """
     return uuid.uuid4()
 
 
 def get_date_object(date_string, date_format="%Y-%m-%d"):
     """
-    Shortcut for date parsing (useful for json dumping).
+    Parse given string with given format and return a datetime.
     Format for full date string: %Y-%m-%dT%H:%M:%S
     """
     return datetime.datetime.strptime(date_string, date_format)
@@ -127,7 +127,8 @@ def get_date_object(date_string, date_format="%Y-%m-%d"):
 
 def get_default_date_object(date_string):
     """
-    Shortcut for date parsing at default format.
+    Parse given "%Y-%m-%dT%H:%M:%S" string and return a datetime, or None
+    when the string is empty or does not match.
     """
     date_obj = None
     if date_string is not None and len(date_string) > 0:
@@ -143,6 +144,7 @@ def get_default_date_object(date_string):
 def is_valid_id(value):
     """
     Check if a given value is a valid UUID or its string representation.
+    Return the match object (truthy) or None.
     """
     return _UUID_RE.match(str(value))
 

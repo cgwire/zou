@@ -57,6 +57,11 @@ def validate_email(email, check_deliverability=None):
 
 
 def validate_password(password, password_2=None):
+    """
+    Return True when the password is long enough and, if password_2 is
+    given, equal to it. Raise PasswordTooShortException or
+    PasswordsNoMatchException otherwise.
+    """
     if len(password) < config.MIN_PASSWORD_LENGTH:
         raise PasswordTooShortException()
     if password_2 is not None and password != password_2:

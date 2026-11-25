@@ -32,8 +32,8 @@ def add_save_hook(hook):
 def register(event, name, handler, app=None):
     """
     Register a listener by linking an event name to an handler module.
-    The handler module exposes a function named `handle_event` which is executed
-    when linked event occurs.
+    The handler module exposes a function named `handle_event` which is
+    executed when linked event occurs.
     """
     if event not in handlers:
         handlers[event] = OrderedDict()
@@ -76,9 +76,10 @@ def unregister_all():
 def emit(event, data=None, persist=True, project_id=None):
     """
     Emit an event which leads to the execution of all event handlers registered
-    for that event name.
+    for that event name (queued as jobs when ENABLE_JOB_QUEUE is set).
     It publishes too the event to other services
-    (like the realtime event daemon).
+    (like the realtime event daemon) and, when persist is True, stores it in
+    the database. A given project_id is added to the data dict of the caller.
     """
     if data is None:
         data = {}
@@ -114,7 +115,8 @@ def emit(event, data=None, persist=True, project_id=None):
 
 def save_event(event, data, project_id=None):
     """
-    Store event information in the database.
+    Store event information in the database, then run the save hooks.
+    Return the ApiEvent instance.
     """
     try:
         # The identity loaded by the JWT callback; outside a request, or

@@ -8,22 +8,38 @@ from zou.app.exceptions import WrongDateFormatException
 
 
 def get_now():
+    """
+    Return the current UTC time as a "YYYY-MM-DDTHH:MM:SS" string.
+    """
     return get_string_with_timezone_from_date(get_utc_now_datetime(), "UTC")
 
 
 def get_utc_now_datetime():
+    """
+    Return the current UTC time as a naive datetime.
+    """
     return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
 
 
 def get_date_from_now(nb_days):
+    """
+    Return the date nb_days before today (server local date).
+    """
     return datetime.date.today() - datetime.timedelta(days=nb_days)
 
 
 def get_date_diff(date_a, date_b):
+    """
+    Return the absolute difference between two dates, in seconds (float).
+    """
     return abs((date_b - date_a).total_seconds())
 
 
 def get_date_string(date_obj, milliseconds=False):
+    """
+    Return given datetime as an ISO string without timezone, with
+    microseconds when milliseconds is True.
+    """
     if milliseconds:
         return date_obj.strftime("%Y-%m-%dT%H:%M:%S.%f")
     else:
@@ -65,7 +81,7 @@ def get_today_string_with_timezone(timezone):
 
 def get_date_from_string(date_str):
     """
-    Parse a date string and returns a date object.
+    Parse a "YYYY-MM-DD" string and return a datetime at midnight.
     """
     return datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
@@ -167,7 +183,8 @@ def get_utc_from_local_datetime(date_obj, timezone):
 
 def add_business_days_to_date(date, nb_days):
     """
-    Add a number of business days to a date. Business days are Monday to Friday.
+    Add a number of business days to a date. Business days are Monday to
+    Friday.
     """
     while nb_days > 0:
         date += datetime.timedelta(days=1)

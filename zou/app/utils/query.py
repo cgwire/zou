@@ -209,7 +209,11 @@ def get_cursor_results(
     limit=None,
     relations=False,
 ):
-    """ """
+    """
+    Return the rows of the query created after cursor_created_at, oldest
+    first, at most limit of them, in a {data, total, limit} dict. total
+    counts the whole query, without the cursor filter.
+    """
     limit = limit or config.NB_RECORDS_PER_PAGE
     total = query.count()
     query = (
@@ -242,6 +246,12 @@ def apply_sort_by(model, query, sort_by):
 
 
 def cast_value(value, field_key):
+    """
+    Return value ready to compare with given column: the bare value for a
+    NullType expression, a bool for a boolean column, a SQL cast to the
+    column type otherwise. Raise
+    WrongParameterException on an invalid boolean or UUID.
+    """
     # A hybrid expression built from functions SQLAlchemy does not know
     # carries NullType: Person.full_name is a concat_ws inside a trim.
     # CAST(... AS NULL) cannot even be compiled, and the CompileError is

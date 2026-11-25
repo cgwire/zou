@@ -11,8 +11,8 @@ from zou.app import config
 
 def saml_client_for(metadata_url):
     """
-    Given the name of an IdP, return a configuation.
-    The configuration is a hash for use by saml2.config.Config
+    Download the IdP metadata at given URL (network call, 30 s timeout)
+    and return a Saml2Client configured with it for this service provider.
     """
     acs_url = (
         f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/api/auth/saml/sso"

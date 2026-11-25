@@ -5,8 +5,8 @@ from urllib.parse import urlsplit
 def strtobool(val):
     """
     Convert a string (val) to a boolean value.
-    If val is already a boolean return val.
-    Else raise ValueError.
+    If val is already a boolean return val, if it is an int return
+    bool(val). Else raise ValueError.
     """
     if isinstance(val, bool):
         return val
@@ -24,7 +24,8 @@ def mask_secret(value):
     """
     Mask a secret (token, webhook URL) so it can be written to a log. Only
     the first and last four characters stay readable, the scheme and host
-    for a URL, followed by the first eight hex digits of its SHA-256: an
+    for a URL, nothing under 16 characters, followed by the first eight
+    hex digits of its SHA-256: an
     admin checks the configured value against it with
     `printf %s "$SECRET" | sha256sum | cut -c1-8`. The number of masking
     characters is fixed so the length does not leak either.

@@ -36,15 +36,19 @@ def validate_request_body(SchemaClass, *, data=None):
     Validate request JSON body against a Pydantic schema.
 
     Args:
-        SchemaClass: A Pydantic BaseModel subclass (e.g. AddToDepartmentSchema).
-        data: Optional dict to validate instead of request.json (e.g. for tests).
+        SchemaClass: A Pydantic BaseModel subclass
+            (e.g. AddToDepartmentSchema).
+        data: Optional dict to validate instead of request.json
+            (e.g. for tests).
 
     Returns:
         An instance of SchemaClass with validated/coerced attributes.
 
     Raises:
-        WrongParameterException: If body is missing or validation fails.
-            The exception's .dict can contain a "errors" list with field/message.
+        WrongParameterException: If validation fails. A missing body is
+            validated as an empty dict.
+            The exception's .dict can contain a "errors" list with
+            field/message.
     """
     if data is not None:
         payload = data

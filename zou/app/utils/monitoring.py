@@ -52,6 +52,10 @@ if config.PROMETHEUS_METRICS_ENABLED:
 
 
 def init_monitoring(app):
+    """
+    Set up Sentry and the Prometheus metrics on given app, each one only
+    when enabled in the configuration.
+    """
     if config.SENTRY_ENABLED:
         sentry_sdk.init(
             dsn=config.SENTRY_DSN,
@@ -125,7 +129,7 @@ def _register_inflight_gauge(app):
             multiprocess_mode="livesum",
         )
     except ValueError:
-        # Already registered (e.g. reloader); fetch existing collector.
+        # Already registered (e.g. reloader): do not add the hooks again.
         return
 
     def _rule():

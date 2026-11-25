@@ -1,10 +1,12 @@
 """
-Translations for email notifications. Strings are keyed by locale (e.g. en_US, fr_FR).
-Emails are sent in the recipient's preferred locale when available.
+Translations for email notifications. Strings are keyed by locale
+(e.g. en_US, fr_FR). Emails are sent in the recipient's preferred locale
+when available.
 
 Supported locales: en_US, fr_FR, es_ES, ja_JP, de_DE, nl_NL, zh_CN, pt_BR.
-To add a language: copy the en_US block, change the key (e.g. de_DE) and translate
-all values. Then add the language code to LANGUAGE_LOCALES if desired.
+To add a language: copy the en_US block, change the key (e.g. de_DE) and
+translate all values. Then add the language code to LANGUAGE_LOCALES so
+that a bare language code or an unsupported region reaches it.
 """
 
 import html
@@ -855,10 +857,12 @@ def _normalize_locale(locale):
 
 def _escape_params(key, params):
     """
-    Escape the values interpolated into an HTML template. Several of them
-    are request data — the X-Forwarded-For header on the password reset,
-    a comment body on the notifications — and str.format does not escape
-    anything, so they used to reach the recipient as markup in a mail the
+    Return params with their string values HTML-escaped, or params as
+    they are for a plain text key (PLAIN_TEXT_KEY_SUFFIXES) or a
+    pre-rendered one (PRE_RENDERED_KEYS). Several values are request
+    data (the X-Forwarded-For header on the password reset, a comment
+    body on the notifications) and str.format does not escape anything:
+    unescaped, they would reach the recipient as markup in a mail the
     studio genuinely sends, SPF and DKIM included.
     """
     if key.endswith(PLAIN_TEXT_KEY_SUFFIXES) or key in PRE_RENDERED_KEYS:
@@ -876,9 +880,13 @@ def get_email_translation(locale, key, **params):
     key names a plain text template (see PLAIN_TEXT_KEY_SUFFIXES).
 
     Fallback order if the locale is missing or not supported:
-    1. User's locale (e.g. fr_FR, ja_JP)
+    1. User's locale, normalized (e.g. fr_FR, ja_JP)
     2. en_US (default English)
     3. config.DEFAULT_LOCALE (usually en_US)
+
+    A template whose placeholders do not match params is returned
+    without interpolation. The key itself is returned when no locale
+    has it.
     """
     normalized = _normalize_locale(locale)
     params = _escape_params(key, params)

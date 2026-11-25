@@ -2,8 +2,8 @@
 Render Fabric.js annotation objects on top of a still image with Pillow.
 
 This is a server-side approximation of the canvas-based renderer used in
-Kitsu's player. Shape rotation, shadows and gradients are not reproduced;
-everything else (including PSBrush pressure-varying stroke width) maps to
+Kitsu's player. Shadows and gradients are not reproduced; position, scale,
+rotation, erasers and PSBrush pressure-varying stroke width map to
 ImageDraw primitives.
 """
 
@@ -48,7 +48,8 @@ def render_annotation_on_image(image_path, annotation):
     """
     Open `image_path`, draw the Fabric.js objects from
     annotation["drawing"]["objects"] on top, then save the composite back
-    to the same path. Returns image_path.
+    to the same path as an RGB PNG, whatever the extension. Leave the file
+    untouched when there is no object. Returns image_path.
     """
     objects = (annotation or {}).get("drawing", {}).get("objects", []) or []
     if not objects:
@@ -249,7 +250,7 @@ def _stroke_color(obj):
 
 def _line_color(obj):
     """
-    Stroke with a black default — for shapes whose body IS the stroke
+    Stroke with a black default, for shapes whose body IS the stroke
     (line, arrow, path, psstroke, polyline). If the JSON has no stroke
     but a fill, use the fill; else default to opaque black.
     """
@@ -285,12 +286,10 @@ def _make_object_transform(obj, pivot_x, pivot_y):
     the un-rotated bbox centre `(left + w/2 · scaleX, top + h/2 · scaleY)`
     is itself rotated around `(left, top)` by `angle`. When a fabric UI
     rotation happens, fabric updates `left`/`top` so the bbox centre
-    stays put visually — which means at render time, the rendering
-    centre is no longer `left + w/2` for rotated shapes. Without this
-    extra rotation the rendered position is off by an amount that
-    looks like the shape's own translation, which is why side-by-side
-    annotations appeared to inherit each other's drag.
-
+    stays put visually: at render time, the rendering centre is no
+    longer `left + w/2` for rotated shapes. Without this extra rotation
+    the rendered position is off by an amount that looks like the
+    shape's own translation.
     """
     angle_rad = math.radians(obj.get("angle", 0) or 0)
     cos_a = math.cos(angle_rad)
@@ -337,15 +336,14 @@ def _centered_transform(obj, fallback_pivot=None):
 
     Pivot resolution:
     1. `pathOffset` from the JSON if present (Path serialises it).
-    2. `fallback_pivot` if the caller provides one — typically the
+    2. `fallback_pivot` if the caller provides one: typically the
     bbox centre of the shape's own anchor points, which is what
     fabric would recompute on deserialisation as `calcDim.left +
     w/2, calcDim.top + h/2`.
     3. Otherwise `(left + w/2, top + h/2)`. That assumes the shape
-    was never translated — fine for rect-like data without a
+    was never translated: fine for rect-like data without a
     pathOffset, broken for moved path/psstroke without an explicit
     offset (use option 2 there).
-
     """
     path_offset = obj.get("pathOffset")
     if path_offset:
@@ -376,9 +374,10 @@ def _bbox_centre(points):
 
 def _with_default_bbox(obj, anchor_points):
     """
-    Return a copy of `obj` with `left`/`top`/`width`/`height` filled
-    in from the anchor points' bbox when missing — fabric would compute
-    those from `calcDim` on deserialisation. Required so that the
+    Return `obj` itself when `left`/`top`/`width`/`height` are all set,
+    else a copy with the missing keys filled in from the anchor points'
+    bbox: fabric would compute those from `calcDim` on deserialisation.
+    A key present with a None value is not filled in. Required so that the
     transform's centre and pivot align when the JSON only stores the
     shape's own points (typical of test data and some external
     integrations).
@@ -411,7 +410,7 @@ def _to_image(point, scale_x, scale_y):
 def _stroke_outline_width(obj, scale_x):
     """
     Outline width to pass to Pillow's `width` kwarg. Returns 0 (no
-    outline) when the shape has no stroke — this is what makes the
+    outline) when the shape has no stroke: this is what makes the
     whiteboard sticker (a fill-only fabric.Rect) render correctly.
     """
     if _stroke_color(obj) is None:
@@ -581,7 +580,7 @@ def _draw_arrow(draw, obj, scale_x, scale_y):
     head_size = (obj.get("arrowHeadSize", 15) or 15) * scale_x
     angle = math.atan2((y2 - y1), (x2 - x1))
 
-    # Shorten the body so it sits fully inside the head triangle —
+    # Shorten the body so it sits fully inside the head triangle,
     # otherwise Pillow's rounded end cap (radius = width/2) pokes past
     # the geometric tip. Matches Kitsu's Arrow._toSVG export.
     if head_size > 0:
@@ -625,12 +624,12 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     # Render the text + optional background onto a transparent
     # sub-image sized to the glyph bbox, then rotate/paste onto the
     # overlay. Going through a sub-image is the only way Pillow can
-    # rotate text — `ImageDraw.text` has no rotation kwarg.
+    # rotate text: `ImageDraw.text` has no rotation kwarg.
     measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     try:
         bbox = measure_draw.textbbox((0, 0), text, font=font)
     except AttributeError:
-        # Pillow < 9.2 — getsize fallback (length-only).
+        # Pillow < 9.2 has no textbbox: textsize gives the size only.
         w, h = measure_draw.textsize(text, font=font)
         bbox = (0, 0, w, h)
     text_w = max(1, bbox[2] - bbox[0])
@@ -639,7 +638,7 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     text_draw = ImageDraw.Draw(text_img)
     if background is not None:
         text_draw.rectangle([0, 0, text_w, text_h], fill=background)
-    # textbbox can return a non-zero top — shift the draw origin so the
+    # textbbox can return a non-zero top: shift the draw origin so the
     # glyph sits flush against the sub-image's top-left.
     text_draw.text((-bbox[0], -bbox[1]), text, fill=color, font=font)
 
@@ -647,9 +646,8 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     if angle:
         text_img = text_img.rotate(-angle, expand=True, resample=Image.BICUBIC)
 
-    # Position: fabric anchors the text at (left, top) and rotates
-    # around the bbox centre. Compute that centre in image coords and
-    # paste so the rotated sub-image is centred on it.
+    # Position: centre of the un-rotated bbox anchored at (left, top),
+    # in image coords. Paste so the rotated sub-image is centred on it.
     obj_w = obj.get("width", 0) or text_w / scale_x
     obj_h = obj.get("height", 0) or text_h / scale_y
     obj_scale_x = obj.get("scaleX", 1) or 1
@@ -685,7 +683,7 @@ def _draw_psstroke(draw, obj, scale_x, scale_y):
     color = _line_color(obj)
     # PSBrush stores its own strokeOffset (analogous to pathOffset) but
     # it's not always serialised. Both the pivot and the bbox metadata
-    # fall back to what we can derive from strokePoints — fabric does
+    # fall back to what we can derive from strokePoints: fabric does
     # the same in `_setPositionDimensions` on deserialisation, and that
     # keeps the pivot fixed when the user drags the stroke so
     # translations actually move the rendering.
@@ -747,7 +745,7 @@ def _draw_path(draw, obj, scale_x, scale_y):
     # Apply fabric's full affine transform (T·R·S·T(-pathOffset)) so the
     # path is positioned/scaled/rotated correctly even when the user
     # transformed it. When pathOffset is absent from the JSON, fall
-    # back to the bbox centre of the path commands themselves — that's
+    # back to the bbox centre of the path commands themselves: that's
     # what fabric computes from `calcDim` and what makes translation
     # `left` actually move the rendering.
     color = _line_color(obj)
@@ -831,7 +829,7 @@ def _parse_path_commands(raw):
 
 def _extract_path_anchor_points(commands):
     """
-    Pick the destination point of each M/L/Q/C command — enough to
+    Pick the destination point of each M/L/Q/C command: enough to
     bracket the path's bbox without flattening every Bezier.
     """
     points = []

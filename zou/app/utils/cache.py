@@ -85,6 +85,12 @@ def _normalize_cache_arguments(args, kwargs):
 
 
 def memoize_function(timeout=120):
+    """
+    Cache the results of the decorated function for timeout seconds, keyed
+    on its arguments with UUIDs taken as strings. With SimpleCache, return
+    a deep copy of the cached value (ORM instances excepted).
+    """
+
     def decorator(func):
         cached_func = cache.memoize(timeout)(func)
 
@@ -147,8 +153,14 @@ def memoize_function_single_flight(timeout=120):
 
 
 def invalidate(*args):
+    """
+    Delete the cached results of given memoized function and arguments.
+    """
     cache.delete_memoized(*args)
 
 
 def clear():
+    """
+    Delete every cached entry.
+    """
     cache.clear()

@@ -175,7 +175,8 @@ def _remove_stale_parts(file_path):
 def download_to_file(file_path, open_file, prefix, instance_id):
     """
     Download a stored file to the local cache. Return the exception that
-    interrupted it, or None.
+    interrupted it, or None. Old .part files left next to `file_path` by
+    killed downloads are removed first.
 
     The bytes land in a private temporary file that is renamed over the
     cache entry once complete. Writing straight into it would truncate
@@ -266,6 +267,14 @@ def get_file_path_and_file(
     extension,
     file_size=None,
 ):
+    """
+    Return the local path of a stored file. On the local backend this is
+    the stored file itself. On a remote backend it is a cache entry,
+    downloaded when absent or invalid, with one retry after a transient
+    failure. Raises ConfirmedFileNotFound when the storage confirms the
+    file is missing (always the case for an invalid local file), and
+    FileNotFound when the download fails otherwise.
+    """
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
         if is_invalid_file(file_path, file_size):
@@ -316,7 +325,7 @@ def get_file_path_and_file(
 
 def is_invalid_file(file_path, file_size=None):
     """
-    Check if file is absent, is empty or does match given size.
+    Check if file is absent, is empty or does not match given size.
     """
     if not os.path.exists(file_path):
         return True

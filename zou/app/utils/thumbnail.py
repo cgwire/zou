@@ -36,6 +36,10 @@ def to_srgb(im, mode="RGB"):
     plain arithmetic formula, which oversaturates pictures meant for print.
     Wide gamut pictures (Adobe RGB, Display P3) suffer from the same problem
     once a browser reads their pixels as sRGB.
+
+    Return the picture in `mode`, or in RGBA when it has an alpha channel.
+    Greyscale pictures deeper than 8 bits come back as L, and other modes
+    than CMYK, RGB and RGBA (L, LA, P...) come back unconverted.
     """
     if im.mode in HIGH_DEPTH_GREY_MODES:
         # A greyscale picture deeper than 8 bits (PNG colour type 0 at
@@ -72,8 +76,11 @@ def to_srgb(im, mode="RGB"):
 
 def save_file(tmp_folder, instance_id, file_to_save):
     """
-    Save file in given folder. The file must only be temporary saved via
-    this function.
+    Save the uploaded picture in given folder, converted to sRGB and
+    written as PNG data under the upload's own extension. The file must
+    only be temporary saved via this function. Raises
+    WrongParameterException when the upload is not a readable picture.
+    The file is removed on any failure.
     """
     extension = "." + file_to_save.filename.split(".")[-1].lower()
     file_name = instance_id + extension.lower()
@@ -121,7 +128,8 @@ def save_file(tmp_folder, instance_id, file_to_save):
 
 def convert_jpg_to_png(file_source_path):
     """
-    Convert .jpg file located at given path into a .png file with same name.
+    Convert .jpg file located at given path into a sRGB .png file with
+    same name, remove the source file and return the new path (a Path).
     """
     file_target_path = Path(file_source_path).with_suffix(".png")
 
@@ -140,7 +148,7 @@ def get_file_name(instance_id):
 
 def get_full_size_from_width(im, width):
     """
-    From given width/g
+    Return (width, height), with the height that keeps the picture ratio.
     """
     im_width, im_height = im.size
     ratio = float(im_height) / float(im_width)
@@ -202,7 +210,10 @@ def get_dimensions(file_path):
 
 def turn_into_thumbnail(file_path, size=None):
     """
-    Turn given picture into a smaller version.
+    Turn given picture into a thumbnail of exactly `size`, in place: a
+    sRGB RGBA PNG, the picture fitted in the box and centred on a
+    transparent background. A height of 0 follows the picture ratio, no
+    size keeps the picture size. Return file_path.
     """
     im = to_srgb(Image.open(file_path), "RGBA")
 
@@ -227,7 +238,8 @@ def turn_into_thumbnail(file_path, size=None):
 
 def resize(file_path, size, crop=False):
     """
-    Resize given picture
+    Resize given picture to `size`, in place, as a sRGB PNG. With `crop`,
+    crop it to the target ratio first instead of stretching it.
     """
     im = to_srgb(Image.open(file_path))
     if crop:
@@ -268,11 +280,12 @@ def prepare_image_for_thumbnail(im, size):
 
 def generate_preview_variants(original_path, instance_id):
     """
-    Generate three thumbnails for given picture path.
+    Generate three thumbnails for given picture path, next to it.
+    Return a list of (picture type, path) tuples.
 
     1. Rectangle thumbnail
     2. Square thumbnail
-    3. Big rectangle thumbnail
+    3. Preview (1200 pixels wide)
     """
     file_name = get_file_name(instance_id)
     variants = [
