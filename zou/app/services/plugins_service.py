@@ -133,7 +133,10 @@ def uninstall_plugin(plugin_id):
 
     _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
 
-    downgrade_plugin_migrations(plugin_path)
+    # The downgrade reads the manifest again: without one, there is nothing
+    # to downgrade.
+    if manifest is not None:
+        downgrade_plugin_migrations(plugin_path)
 
     # Run post_uninstall before the file removal: the module must still exist.
     _run_plugin_hook(plugin_id, plugin_path, "post_uninstall", manifest)

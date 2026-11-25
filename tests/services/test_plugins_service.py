@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import os
 import shutil
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -186,7 +187,51 @@ class PluginsServiceTestCase(ApiDBTestCase):
     def test_uninstall_plugin_not_installed(self):
         with self.assertRaises(ValueError) as context:
             plugins_service.uninstall_plugin("nonexistent_plugin")
-        self.assertIn("Invalid plugin path", str(context.exception))
+        self.assertIn("is not installed", str(context.exception))
+
+    def test_a_plugin_row_without_files_is_uninstalled(self):
+        self.a_plugin_row("lost_plugin")
+
+        self.assertTrue(plugins_service.uninstall_plugin("lost_plugin"))
+
+        self.assertIsNone(
+            Plugin.query.filter_by(plugin_id="lost_plugin").first()
+        )
+
+    def test_hooks_run_while_the_files_exist_and_never_stop_the_lifecycle(
+        self,
+    ):
+        """
+        post_uninstall needs its module on disk, so it runs before the
+        files go. A hook that fails is logged and the install goes on.
+        """
+        plugin_path = self._create_test_plugin("hooked_plugin", "0.1.0")
+        # The template module imports its own models, which do not import
+        # here: hold only the hooks.
+        with open(plugin_path / "__init__.py", "w") as init_file:
+            init_file.write(
+                "from pathlib import Path\n"
+                "from zou.app import config\n"
+                "files_seen_by_post_uninstall = []\n\n\n"
+                "def pre_install(manifest):\n"
+                "    raise RuntimeError('broken hook')\n\n\n"
+                "def post_uninstall(manifest):\n"
+                "    files_seen_by_post_uninstall.append(\n"
+                "        (Path(config.PLUGIN_FOLDER) / 'hooked_plugin'"
+                " / 'manifest.toml').exists()\n"
+                "    )\n"
+            )
+        self.addCleanup(sys.modules.pop, "hooked_plugin", None)
+
+        result = plugins_service.install_plugin(str(plugin_path))
+        self.assertEqual(result["plugin_id"], "hooked_plugin")
+
+        plugins_service.uninstall_plugin("hooked_plugin")
+
+        self.assertEqual(
+            sys.modules["hooked_plugin"].files_seen_by_post_uninstall, [True]
+        )
+        self.assertFalse((self.plugin_folder / "hooked_plugin").exists())
 
     def test_get_plugins(self):
         self.assertEqual(plugins_service.get_plugins(), [])
