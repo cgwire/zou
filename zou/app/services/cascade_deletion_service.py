@@ -457,16 +457,19 @@ def remove_shot(shot_id, force=False):
 def remove_scene(scene_id):
     """
     Remove given scene from database. If the deletion fails because data is
-    still linked to it, it marks the scene as canceled.
+    still linked to it, it marks the scene as canceled and emits
+    scene:update instead of scene:delete.
     """
     scene = shots_service.get_scene_raw(scene_id)
     try:
         scene.delete()
+        event_name = "scene:delete"
     except IntegrityError:
         scene.update({"canceled": True})
+        event_name = "scene:update"
     deleted_scene = scene.serialize(obj_type="Scene")
     events.emit(
-        "scene:delete",
+        event_name,
         {"scene_id": scene_id},
         project_id=str(scene.project_id),
     )
