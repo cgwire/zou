@@ -114,8 +114,8 @@ notification_template_end_title = """
 
 def get_signature(locale=None):
     """
-    Build signature for Zou emails. If locale is provided, the signature
-    is translated (e.g. "Best regards" / "Cordialement").
+    Build the signature for Zou emails. If locale is given, translate the
+    signature (for example "Best regards" / "Cordialement").
     """
     organisation = organisation_service.get_organisation()
     return get_email_translation(
@@ -127,8 +127,8 @@ def get_signature(locale=None):
 
 def generate_html_body(title, message, locale=None):
     """
-    Generate the full HTML body for a notification email.
-    If locale is provided, the signature is translated.
+    Make the full HTML body for a notification email. If locale is given,
+    translate the signature.
     """
     return (
         notification_template_begin

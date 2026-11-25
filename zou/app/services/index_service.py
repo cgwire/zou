@@ -19,38 +19,38 @@ logger = logging.getLogger(__name__)
 
 def get_index(index_name):
     """
-    Retrieve the Meilisearch index of given name from the indexer. It is
-    required to perform any operations.
+    Return the Meilisearch index that has the given name from the indexer.
+    All operations need it.
     """
     return indexing.get_index(index_name)
 
 
 def get_asset_index():
     """
-    Return the meilisearch index holding the assets.
+    Return the Meilisearch index that holds the assets.
     """
     return get_index("assets")
 
 
 def get_person_index():
     """
-    Return the meilisearch index holding the persons.
+    Return the Meilisearch index that holds the persons.
     """
     return get_index("persons")
 
 
 def get_shot_index():
     """
-    Return the meilisearch index holding the shots.
+    Return the Meilisearch index that holds the shots.
     """
     return get_index("shots")
 
 
 def _index_entry(get_entry_index, prepare_entry, entry):
     """
-    Build the document for given entry and push it to its index. An indexer
-    that is absent or unreachable is swallowed: indexation must never break
-    the request that triggered it.
+    Build the document for the given entry and push it to its index. If the
+    indexer is absent or cannot be reached, ignore the error: indexation
+    must never break the request that started it.
     """
     try:
         index = get_entry_index()
@@ -68,12 +68,12 @@ def _index_entry(get_entry_index, prepare_entry, entry):
 
 def _index_entries(get_entry_index, prepare_entry, entry_ids):
     """
-    Build the documents of the entities matching given ids and push them
-    to their index, one call per chunk and without waiting for
-    Meilisearch: a bulk import must not wait on the indexer for every row.
-    Adding a document replaces the one with the same id, so an updated
-    entity needs no removal first. An absent or unreachable indexer is
-    swallowed, as for a single entry.
+    Build the documents of the entities that match the given IDs and push
+    them to their index. Make one call for each chunk and do not wait for
+    Meilisearch: a bulk import must not wait on the indexer for each row. A
+    new document replaces the document with the same ID, thus an updated
+    entity does not need a removal first. If the indexer is absent or cannot
+    be reached, ignore the error, as for a single entry.
     """
     documents = []
     if not entry_ids:
@@ -98,8 +98,8 @@ def _index_entries(get_entry_index, prepare_entry, entry_ids):
 
 def _remove_entry_index(get_entry_index, document_id):
     """
-    Remove the document matching given id from its index, swallowing an
-    absent or unreachable indexer.
+    Remove the document that matches the given ID from its index. If the
+    indexer is absent or cannot be reached, ignore the error.
     """
     try:
         return indexing.remove_document(get_entry_index(), document_id)
@@ -130,9 +130,12 @@ def reset_entry_index(
     filterable_fields=None,
 ):
     """
-    Create the index when needed, clear it and rebuild it for given
-    parameters: name of the index, func to get entries to index, func to
-    build the document of a given entry. Return the indexed entries.
+    Create the index if necessary, clear it and rebuild it for the given
+    parameters:
+    - the name of the index,
+    - the function that returns the entries to index,
+    - the function that builds the document of an entry.
+    Return the indexed entries.
     """
     if searchable_fields is None:
         searchable_fields = []
@@ -200,9 +203,9 @@ def reset_shot_index():
 
 def search_assets(query, project_ids=None, limit=3, offset=0):
     """
-    Perform a search on the index. The query is a simple string. The result is
-    a list of assets with extra data like the project name and the asset type
-    name (3 results maximum by default).
+    Search the index. The query is a simple string. Return a list of assets
+    with more data, for example the project name and the asset type name. By
+    default, return a maximum of 3 results.
     """
     if project_ids is None:
         project_ids = []
@@ -216,7 +219,7 @@ def search_assets(query, project_ids=None, limit=3, offset=0):
 
     asset_ids = [asset_id for asset_id, _ in results]
 
-    # Batch-fetch assets, then collect related IDs
+    # Get the assets in one batch, then collect the related IDs
     assets_raw = Entity.query.filter(Entity.id.in_(asset_ids)).all()
     assets_map = {str(e.id): e.serialize(obj_type="Asset") for e in assets_raw}
 
@@ -229,7 +232,7 @@ def search_assets(query, project_ids=None, limit=3, offset=0):
         if asset["preview_file_id"] is not None:
             preview_ids.add(asset["preview_file_id"])
 
-    # Batch-fetch projects, asset types, preview files
+    # Get the projects, asset types and preview files in one batch
     projects_map = {
         str(p.id): p.serialize()
         for p in Project.query.filter(
@@ -251,7 +254,7 @@ def search_assets(query, project_ids=None, limit=3, offset=0):
             ).all()
         }
 
-    # Assemble results in search order
+    # Assemble the results in the search order
     assets = []
     for asset_id, matched_terms in results:
         asset = assets_map.get(str(asset_id))
@@ -275,9 +278,9 @@ def search_assets(query, project_ids=None, limit=3, offset=0):
 
 def search_shots(query, project_ids=None, limit=3, offset=0):
     """
-    Perform a search on the index. The query is a simple string. The result is
-    a list of shots with extra data like the project name, the sequence
-    name and, for a TV show, the episode (3 results maximum by default).
+    Search the index. The query is a simple string. Return a list of shots
+    with more data: the project name, the sequence name and, for a TV show,
+    the episode. By default, return a maximum of 3 results.
     """
     if project_ids is None:
         project_ids = []
@@ -291,7 +294,7 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
 
     shot_ids = [shot_id for shot_id, _ in results]
 
-    # Batch-fetch shots
+    # Get the shots in one batch
     shots_raw = Entity.query.filter(Entity.id.in_(shot_ids)).all()
     shots_map = {str(e.id): e.serialize(obj_type="Shot") for e in shots_raw}
 
@@ -305,7 +308,7 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
         if shot["preview_file_id"] is not None:
             preview_ids.add(shot["preview_file_id"])
 
-    # Batch-fetch sequences
+    # Get the sequences in one batch
     sequences_map = {}
     if sequence_ids:
         sequences_map = {
@@ -320,7 +323,7 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
         if seq.get("parent_id") is not None:
             episode_ids.add(seq["parent_id"])
 
-    # Batch-fetch episodes
+    # Get the episodes in one batch
     episodes_map = {}
     if episode_ids:
         episodes_map = {
@@ -330,7 +333,7 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
             ).all()
         }
 
-    # Batch-fetch projects and preview files
+    # Get the projects and preview files in one batch
     projects_map = {
         str(p.id): p.serialize()
         for p in Project.query.filter(
@@ -346,7 +349,7 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
             ).all()
         }
 
-    # Assemble results in search order
+    # Assemble the results in the search order
     shots = []
     for shot_id, matched_terms in results:
         shot = shots_map.get(str(shot_id))
@@ -377,9 +380,9 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
 
 def search_persons(query, limit=3, offset=0, minimal=True):
     """
-    Perform a search on the index. The query is a simple string. The result is
-    a list of persons (3 results maximum by default). Unless minimal is
-    unset, persons are presented like the /data/persons list does for a non
+    Search the index. The query is a simple string. Return a list of persons.
+    By default, return a maximum of 3 results. If minimal is set, show the
+    persons as the /data/persons list shows them to a user who is not an
     admin.
     """
     index = get_person_index()
@@ -407,14 +410,14 @@ def search_persons(query, limit=3, offset=0, minimal=True):
 
 def index_asset(asset):
     """
-    Register asset into the index.
+    Register the asset in the index.
     """
     return _index_entry(get_asset_index, prepare_asset, asset)
 
 
 def index_person(person):
     """
-    Register person into the index. Preview accounts are never indexed.
+    Register the person in the index. Never index preview accounts.
     """
     if person.preview_project_id is not None:
         return None
@@ -423,30 +426,30 @@ def index_person(person):
 
 def index_shot(shot):
     """
-    Register shot into the index.
+    Register the shot in the index.
     """
     return _index_entry(get_shot_index, prepare_shot, shot)
 
 
 def index_assets(asset_ids):
     """
-    Register the assets matching given ids into the index in bulk.
+    Register the assets that match the given IDs in the index, in bulk.
     """
     return _index_entries(get_asset_index, prepare_asset, asset_ids)
 
 
 def index_shots(shot_ids):
     """
-    Register the shots matching given ids into the index in bulk.
+    Register the shots that match the given IDs in the index, in bulk.
     """
     return _index_entries(get_shot_index, prepare_shot, shot_ids)
 
 
 def prepare_metadatas(data):
     """
-    Return the entity data worth searching on: the values of its columns,
-    stored as strings since the index has one type per field. The keys of the
-    built-in fields (frame range, trim handles...) are left out.
+    Return the entity data that is useful for search: the values of its
+    columns, stored as strings because the index has one type for each field.
+    Leave out the keys of the built-in fields (frame range, trim handles...).
     """
     return {
         key: str(value)
@@ -457,7 +460,7 @@ def prepare_metadatas(data):
 
 def prepare_asset(asset):
     """
-    Prepare a indexation document from given asset.
+    Prepare an indexation document from the given asset.
     """
     asset_serialized = asset.serialize()
     asset_type = entity_types_service.get_asset_type(
@@ -480,7 +483,7 @@ def prepare_asset(asset):
 
 def prepare_person(person):
     """
-    Prepare a indexation document from given person.
+    Prepare an indexation document from the given person.
     """
     person_serialized = person.serialize()
     data = {
@@ -492,7 +495,7 @@ def prepare_person(person):
 
 def prepare_shot(shot):
     """
-    Prepare a indexation document from given shot.
+    Prepare an indexation document from the given shot.
     """
     shot_serialized = shot.serialize()
 
@@ -501,8 +504,8 @@ def prepare_shot(shot):
     sequence = None
     sequence_id = shot_serialized.get("parent_id") or ""
     if sequence_id != "":
-        # Read straight from the entity table: going through shots_service
-        # would make the index depend on a service that indexes through it.
+        # Read directly from the entity table. shots_service indexes through
+        # this service, thus this service must not depend on it.
         sequence = Entity.get(sequence_id)
         if sequence is None:
             sequence_id = ""
@@ -536,28 +539,29 @@ def prepare_shot(shot):
 
 def remove_asset_index(asset_id):
     """
-    Remove document matching given asset id from asset index.
+    Remove the document that matches the given asset ID from the asset index.
     """
     return _remove_entry_index(get_asset_index, asset_id)
 
 
 def remove_person_index(person_id):
     """
-    Remove document matching given person id from person index.
+    Remove the document that matches the given person ID from the person
+    index.
     """
     return _remove_entry_index(get_person_index, person_id)
 
 
 def remove_shot_index(shot_id):
     """
-    Remove document matching given shot id from shot index.
+    Remove the document that matches the given shot ID from the shot index.
     """
     return _remove_entry_index(get_shot_index, shot_id)
 
 
 def get_all_raw_assets():
     """
-    Get all assets from the database.
+    Return all assets from the database.
     """
     query = Entity.query.filter(entity_types_service.build_asset_type_filter())
     return query.all()
@@ -565,7 +569,7 @@ def get_all_raw_assets():
 
 def get_all_raw_shots():
     """
-    Get all shots from the database.
+    Return all shots from the database.
     """
     query = Entity.query.filter(
         Entity.entity_type_id == entity_types_service.get_shot_type()["id"]
@@ -575,8 +579,8 @@ def get_all_raw_shots():
 
 def get_all_raw_active_persons():
     """
-    Return all active persons without serialization. Guests and preview
-    accounts are excluded.
+    Return all active persons without serialization. Exclude the guests and
+    the preview accounts.
     """
     return Person.query.filter(
         Person.active,

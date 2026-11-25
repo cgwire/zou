@@ -16,10 +16,12 @@ from zou.app.utils import chats, date_helpers, emails
 from zou.app.utils.email_i18n import get_email_translation
 from zou.app.utils.string import mask_secret
 
-# Chat channels a person can be notified on: the suffix used by the person
-# columns, the message keys and the chats sender, then the organisation field
-# holding the credential. The sender is resolved at call time, not stored
-# here, so that patching zou.app.utils.chats still intercepts it.
+# Chat channels on which a person can get notifications. Each item has:
+# - the suffix of the person columns, the message keys and the chats
+#   sender.
+# - the organisation field that holds the credential.
+# The service finds the sender when it calls it, and does not store it
+# here. Because of this, a patch of zou.app.utils.chats still intercepts it.
 CHAT_CHANNELS = [
     ("slack", "chat_token_slack"),
     ("mattermost", "chat_webhook_mattermost"),
@@ -29,8 +31,7 @@ CHAT_CHANNELS = [
 
 def _is_notified(person):
     """
-    Return True when the person expects a notification on at least one
-    channel.
+    Return True if the person wants a notification on one channel or more.
     """
     return (
         person["notifications_enabled"]
@@ -42,15 +43,15 @@ def _is_notified(person):
 
 def _get_locale(person):
     """
-    Return the locale the person must be written to in.
+    Return the locale to use when the service writes to the person.
     """
     return person.get("locale") or organisation_service.get_default_locale()
 
 
 def _build_messages(email_message, slack_message, discord_message, project):
     """
-    Build the per channel message map expected by send_notification. The
-    mattermost payload carries the project name on top of the slack text.
+    Build the message map per channel that send_notification expects. The
+    mattermost payload has the project name in addition to the slack text.
     """
     return {
         "email_message": email_message,
@@ -67,11 +68,15 @@ def send_notification(
     person_id, subject, messages, title="", force_email=False, locale=None
 ):
     """
-    Send a notification to given person: by email when the person enabled
-    email notifications or force_email is set, and on each chat channel
-    (Slack, Mattermost, Discord) the person enabled. Use the job queue if
-    it is activated. If locale is provided, the email Content-Language
-    header is set accordingly.
+    Send a notification to the given person:
+
+    - by email, if the person enabled email notifications or if force_email
+      is set.
+    - on each chat channel (Slack, Mattermost, Discord) that the person
+      enabled.
+
+    If the job queue is active, use it. If locale is given, set the email
+    Content-Language header to it.
     """
     person = persons_service.get_person(person_id)
     email_message = messages["email_message"]
@@ -114,8 +119,9 @@ def send_notification(
             chat_messages[channel],
         )
         if config.ENABLE_JOB_QUEUE:
-            # RQ logs and stores the job description, which defaults to
-            # the call with its arguments: keep the credential out of it.
+            # RQ logs and stores the job description. By default, the
+            # description is the call with its arguments: keep the
+            # credential out of it.
             description = (
                 f"{send_to_chat.__module__}.{send_to_chat.__name__}("
                 f"{mask_secret(args[0])!r}, {args[1]!r}, ...)"
@@ -131,9 +137,9 @@ def send_notification(
 
 def send_comment_notification(person_id, author_id, comment, task):
     """
-    Send a notification email telling that a new comment was posted to person
-    matching given person id. Email content is translated according to the
-    recipient's locale.
+    Send a notification email to the person that has the given person ID.
+    The email says that a new comment was posted. The email content uses
+    the locale of the recipient.
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
@@ -195,9 +201,9 @@ _{comment["text"]}_
 
 def send_mention_notification(person_id, author_id, comment, task):
     """
-    Send a notification email telling that somenone mentioned the
-    person matching given person id. Email content is translated
-    according to the recipient's locale.
+    Send a notification email to the person that has the given person ID.
+    The email says that someone mentioned this person. The email content
+    uses the locale of the recipient.
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
@@ -238,9 +244,9 @@ _{comment["text"]}_
 
 def send_assignation_notification(person_id, author_id, task):
     """
-    Send a notification email telling that somenone assigned to a task the
-    person matching given person id. Email content is translated according
-    to the recipient's locale.
+    Send a notification email to the person that has the given person ID.
+    The email says that someone assigned this person to a task. The email
+    content uses the locale of the recipient.
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
@@ -272,8 +278,8 @@ def send_assignation_notification(person_id, author_id, task):
 
 def get_task_descriptors(person_id, task):
     """
-    Build task information needed to write notification emails: author object,
-    full task name and task URL.
+    Build the task data that the notification emails need: the author
+    object, the full task name and the task URL.
     """
     author = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
@@ -290,10 +296,10 @@ def get_task_descriptors(person_id, task):
     elif task_type["for_entity"] == "Edit":
         entity_type = "edits"
     if project["production_type"] == "tvshow":
-        # An asset of a tv show hangs off no episode of its own. Kitsu reads
-        # "main" as the pseudo episode holding them, which the playlist url
-        # below already builds: without it every mail about such a task
-        # linked to /episodes/None/.
+        # An asset of a tv show has no episode. Kitsu reads "main" as the
+        # pseudo episode that holds these assets. The playlist url below
+        # already uses it. Without it, each mail about such a task had a
+        # link to /episodes/None/.
         episode_segment = f"/episodes/{episode_id or 'main'}"
 
     task_name = f"{project['name']} / {entity_name} / {task_type['name']}"
@@ -306,9 +312,9 @@ def get_task_descriptors(person_id, task):
 
 def send_reply_notification(person_id, author_id, comment, task, reply):
     """
-    Send a notification email telling that a new reply was posted to person
-    matching given person id. Email content is translated according to the
-    recipient's locale.
+    Send a notification email to the person that has the given person ID.
+    The email says that a new reply was posted. The email content uses the
+    locale of the recipient.
     """
     person = persons_service.get_person(person_id)
     locale = _get_locale(person)
@@ -350,15 +356,16 @@ _{reply["text"]}_
 
 def send_playlist_ready_notification(person_id, author_id, playlist):
     """
-    Send a notification email telling that a new playlist is ready to person
-    matching given person id. Email content is translated according to the
-    recipient's locale.
+    Send a notification email to the person that has the given person ID.
+    The email says that a new playlist is ready. The email content uses the
+    locale of the recipient.
     """
     person = persons_service.get_person(person_id)
     author = persons_service.get_person(author_id)
     project = projects_service.get_project(playlist["project_id"])
     locale = _get_locale(person)
-    # A playlist may carry no episode, or one that no longer exists.
+    # A playlist can have no episode, or an episode that does not exist
+    # any more.
     episode = None
     try:
         episode = shots_service.get_episode(playlist["episode_id"])
@@ -438,10 +445,10 @@ def send_share_invitation(
     locale=None,
 ):
     """
-    Send a shared-playlist review invitation by email. Recipients are
-    addressed by raw email rather than going through ``Person`` so guests
-    who do not have a Kitsu account can be invited too. Fire-and-forget:
-    no DB record is kept, no Person is created.
+    Send a shared-playlist review invitation by email. The recipients are
+    raw email addresses, not ``Person`` entries. Because of this, guests
+    without a Kitsu account can also get an invitation. The service keeps
+    no trace of the invitation: no DB record and no new Person.
     """
     email_locale = locale or organisation_service.get_default_locale()
     title = get_email_translation(email_locale, "share_invitation_title")
@@ -482,7 +489,8 @@ def send_share_invitation(
 
 def send_password_changed_by_admin_email(person, person_IP=None):
     """
-    Send an email to the person notifying that an admin changed their password.
+    Send an email to the person to say that an admin changed their
+    password.
     """
     _send_admin_action_email(
         person, "auth_password_changed_by_admin", person_IP=person_IP
@@ -491,7 +499,7 @@ def send_password_changed_by_admin_email(person, person_IP=None):
 
 def send_2fa_disabled_by_admin_email(person, person_IP=None):
     """
-    Send an email to the person notifying that an admin disabled their 2FA.
+    Send an email to the person to say that an admin disabled their 2FA.
     """
     _send_admin_action_email(
         person, "auth_2fa_disabled_by_admin", person_IP=person_IP
@@ -500,8 +508,8 @@ def send_2fa_disabled_by_admin_email(person, person_IP=None):
 
 def _send_admin_action_email(person, translation_prefix, person_IP=None):
     """
-    Tell a person that an admin acted on their account. The three
-    translation keys are built from the prefix (_subject, _title, _body).
+    Tell a person that an admin did an action on their account. The prefix
+    gives the three translation keys (_subject, _title, _body).
     """
     organisation = organisation_service.get_organisation()
     locale = persons_service.get_email_locale(person)

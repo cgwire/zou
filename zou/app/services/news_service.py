@@ -22,10 +22,10 @@ from zou.app.utils import cache, events, fields
 @dataclasses.dataclass
 class NewsFilters:
     """
-    Criteria shared by the news list and the news stats. project_ids is a
-    scoping allowlist, distinct from the project_id the caller asked for:
-    when it is empty the query falls back to the projects the current
-    user belongs to, admins excepted.
+    Criteria that the news list and the news stats share. project_ids is
+    a scoping allowlist. It is different from the project_id that the
+    caller asked for. If project_ids is empty and the current user is not
+    an admin, the query uses the projects of the current user.
     """
 
     project_id: Optional[str] = None
@@ -42,11 +42,12 @@ class NewsFilters:
 
 def _apply_news_filters(query, filters):
     """
-    Apply the filters shared by the news list and the news stats.
+    Apply the filters that the news list and the news stats share.
 
-    project_ids is a scoping allowlist, distinct from the project_id the
-    caller asked for. When it is empty the query falls back to the projects
-    the current user belongs to, admins excepted.
+    project_ids is a scoping allowlist. It is different from the
+    project_id that the caller asked for. If project_ids is empty and the
+    current user is not an admin, the query uses the projects of the
+    current user.
     """
     if filters.project_id is not None:
         query = query.filter(Task.project_id == filters.project_id)
@@ -92,11 +93,12 @@ def _apply_news_filters(query, filters):
 
 def _get_news_total(query, limit):
     """
-    Return the number of news matching given query, and the page count.
+    Return the number of news that match the given query, and the page
+    count.
     """
-    # count() wraps the whole 5-join select in a subquery; counting the
-    # news column over the same joins gives the same total without
-    # materializing the select (order_by must go, aggregates forbid it).
+    # count() puts the full select with its 5 joins in a subquery. A count
+    # of the news column over the same joins gives the same total and does
+    # not materialize the select. Remove order_by: aggregates forbid it.
     total = query.order_by(None).with_entities(func.count(News.id)).scalar()
     nb_pages = int(math.ceil(total / float(limit)))
     return total, nb_pages
@@ -111,7 +113,7 @@ def create_news(
     created_at=None,
 ):
     """
-    Create a new news for given person and comment.
+    Create a news for the given person and comment.
     """
     news = News.create(
         change=change,
@@ -128,8 +130,8 @@ def create_news_for_task_and_comment(
     task, comment, change=False, created_at=None
 ):
     """
-    For given task and comment, create a news matching comment and change
-    that occured on the task, then emit a news:new event.
+    Create a news for the given task and comment. The news records the
+    comment and the change on the task. Then emit a news:new event.
     """
     task = tasks_service.get_task(task["id"])
     news = create_news(
@@ -154,8 +156,8 @@ def create_news_for_task_and_comment(
 
 def delete_news_for_comment(comment_id):
     """
-    Delete all news related to comment. It's mandatory to be able to delete the
-    comment afterwards.
+    Delete all news of the given comment. This is necessary before you
+    can delete the comment.
     """
     news_list = News.get_all_by(comment_id=comment_id)
     if len(news_list) > 0:
@@ -166,9 +168,9 @@ def delete_news_for_comment(comment_id):
 
 def delete_news(news_list, project_id=None):
     """
-    Delete given news rows, drop them from the get_news cache and announce
-    each removal. Without a project, the cache entry cannot be addressed and
-    the event goes out unscoped.
+    Delete the given news rows. Remove them from the get_news cache and
+    announce each removal. If there is no project, the function cannot
+    address the cache entry and sends the event without a project scope.
     """
     for news in news_list:
         news_id = str(news.id)
@@ -180,9 +182,9 @@ def delete_news(news_list, project_id=None):
 
 def clear_news_cache(news_list, project_id):
     """
-    Drop given news from the get_news cache, after a write that changes what
-    the single-news route returns: the feeds reload a news through it on the
-    events that follow such a write.
+    Remove the given news from the get_news cache. Call it after a write
+    that changes the output of the single-news route. On the events after
+    such a write, the feeds load the news again through this route.
     """
     for news in news_list:
         cache.cache.delete_memoized(get_news, str(project_id), str(news.id))
@@ -190,7 +192,7 @@ def clear_news_cache(news_list, project_id):
 
 def clear_comment_news_cache(comment_id, project_id):
     """
-    Drop the news of given comment from the get_news cache.
+    Remove the news of the given comment from the get_news cache.
     """
     clear_news_cache(News.get_all_by(comment_id=comment_id), project_id)
 
@@ -199,15 +201,17 @@ def get_last_news_for_project(
     filters=None, news_id=None, entity_id=None, page=1, limit=50
 ):
     """
-    Return a page of the last news matching given filters (50 news per page
-    by default), as a dict with data, total, nb_pages, limit, offset and
-    page. Add related information to make each news displayable.
+    Return a page of the last news that match the given filters (50 news
+    per page by default). The page is a dict with data, total, nb_pages,
+    limit, offset and page. Add related data to each news so that clients
+    can show it.
     """
     filters = filters or NewsFilters()
     offset = (page - 1) * limit
 
-    # News take the created_at of their comment, serialized to the second,
-    # so many share it: the id keeps their order the same on every page.
+    # A news gets the created_at of its comment, to the nearest second, so
+    # many news have the same value. The id keeps the same order on every
+    # page.
     query = (
         News.query.order_by(News.created_at.desc(), News.id.desc())
         .join(Task, News.task_id == Task.id)
@@ -297,7 +301,7 @@ def get_last_news_for_project(
             )
         )
 
-    # Embed the author so guest authors render directly.
+    # Embed the author so that clients can show guest authors directly.
     author_ids = list(
         {news["author_id"] for news in result if news.get("author_id")}
     )
@@ -305,7 +309,7 @@ def get_last_news_for_project(
     for news in result:
         news["person"] = author_map.get(news["author_id"])
 
-    # The feed plays the preview files of a news it loads on its own too.
+    # The feed also plays the preview files of a news that it loads alone.
     if filters.only_preview or news_id is not None:
         task_ids = [
             news["task_id"] for news in result if news["task_id"] is not None
@@ -341,8 +345,8 @@ def get_last_news_for_project(
 
 def get_news_stats_for_project(filters=None):
     """
-    Return the number of news by task status for given project and filters.
-    Only the news that record a status change are counted.
+    Return the number of news for each task status for the given project
+    and filters. Count only the news that record a status change.
     { "task-status-1": 24, "task-status-2": 58 }
     """
     query = (
@@ -370,7 +374,7 @@ def get_news_stats_for_project(filters=None):
 @cache.memoize_function(120)
 def get_news(project_id, news_id):
     """
-    Return a single news, in the same shape as the news list.
+    Return one news, in the same shape as the news list.
     """
     return get_last_news_for_project(
         NewsFilters(project_id=project_id), news_id=news_id
@@ -379,7 +383,7 @@ def get_news(project_id, news_id):
 
 def get_news_for_entity(entity_id):
     """
-    Get the last 2000 news related to a given entity, in the same page
-    format as get_last_news_for_project.
+    Return the last 2000 news of the given entity, in the same page format
+    as get_last_news_for_project.
     """
     return get_last_news_for_project(entity_id=entity_id, limit=2000)

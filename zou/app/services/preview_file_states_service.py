@@ -1,8 +1,8 @@
 """
 State of the files stored for each preview file: present, confirmed
-missing, or failed to be generated. Instance-local bookkeeping: it
-describes this instance's storage, it is never synced between instances
-nor serialized to the clients.
+missing, or failed generation. This data is local to the instance: it
+describes the storage of this instance. It is not synced between instances
+and it is not serialized to the clients.
 """
 
 import logging
@@ -52,7 +52,7 @@ def file_key(bucket, prefix):
 
 def get_expected_files(extension):
     """
-    The stored files a preview file of given extension is made of.
+    Return the stored files that make a preview file of the given extension.
     """
     if extension == "mp4":
         return list(MOVIE_FILES)
@@ -63,8 +63,8 @@ def get_expected_files(extension):
 
 def get_file_states(preview_file_id):
     """
-    Known states of the stored files of a preview file, keyed by
-    "bucket/prefix". A file never observed has no entry.
+    Return the known states of the stored files of a preview file, keyed by
+    "bucket/prefix". A file that was never observed has no entry.
     """
     return _get_file_states(str(preview_file_id))
 
@@ -85,14 +85,15 @@ def _get_file_states(preview_file_id):
 
 def clear_file_states_cache(preview_file_id):
     """
-    Drop the memoized states of given preview file.
+    Remove the memoized states of the given preview file.
     """
     cache.cache.delete_memoized(_get_file_states, str(preview_file_id))
 
 
 def get_state(states, bucket, prefix):
     """
-    Return the state of given file in given states, or None when unknown.
+    Return the state of the given file in the given states, or None if the
+    state is unknown.
     """
     entry = states.get(file_key(bucket, prefix))
     return entry["state"] if entry is not None else None
@@ -100,8 +101,8 @@ def get_state(states, bucket, prefix):
 
 def is_known_missing(states, bucket, prefix):
     """
-    True when the file was found missing, or failed to be generated, less
-    than PREVIEW_MISSING_FILE_RECHECK_DELAY seconds ago.
+    Return True if the file was found missing, or if its generation failed,
+    less than PREVIEW_MISSING_FILE_RECHECK_DELAY seconds ago.
     """
     entry = states.get(file_key(bucket, prefix))
     if entry is None or entry["state"] == OK:
@@ -113,22 +114,22 @@ def is_known_missing(states, bucket, prefix):
 
 def record_file_states(preview_file_id, states, refresh=False):
     """
-    Record the states of stored files of a preview file, given as
-    {(bucket, prefix): state}. Only the changes are written, unless
-    refresh is set: an unchanged state then gets a new date, which keeps a
-    file confirmed missing again short-circuited for another delay.
+    Record the states of the stored files of a preview file, given as
+    {(bucket, prefix): state}. Write only the changes, unless refresh is
+    set. If refresh is set, an unchanged state gets a new date. Thus a
+    file that is confirmed missing again is not probed for one more delay.
 
-    The skip-unchanged check reads the memoized states (get_file_states,
-    240 s TTL): a write elsewhere that has not reached this process's
-    cache yet can make this check miss a change and skip a needed write,
-    for up to the TTL, bounded by the recheck delay that ages a missing
-    state back into being probed again.
+    The check that skips unchanged states reads the memoized states
+    (get_file_states, 240 s TTL). A write from another process can be not
+    yet in the cache of this process. Then this check can miss a change and
+    skip a necessary write, for a maximum of the TTL. The recheck delay also
+    limits this: after it, a missing state is probed again.
 
-    The upsert itself is atomic (a single `INSERT ... ON CONFLICT`), so
-    concurrent requests do not lose each other's writes. It emits no
-    event and never raises: a lost state costs a storage round trip, not
-    a request. The memoized states are cleared after the write. Return
-    whether anything was written.
+    The upsert is atomic (a single `INSERT ... ON CONFLICT`), thus
+    concurrent requests do not lose their writes. It emits no event and
+    never raises: a lost state costs a storage round trip, not a request.
+    After the write, the memoized states are cleared. Return True if
+    something was written, else False.
     """
     preview_file_id = str(preview_file_id)
     if not refresh:
@@ -188,7 +189,7 @@ def record_file_states(preview_file_id, states, refresh=False):
 
 def record_file_state(preview_file_id, bucket, prefix, state, refresh=False):
     """
-    Record the state of one stored file, see record_file_states.
+    Record the state of one stored file. See record_file_states.
     """
     return record_file_states(
         preview_file_id, {(bucket, prefix): state}, refresh=refresh
@@ -197,11 +198,12 @@ def record_file_state(preview_file_id, bucket, prefix, state, refresh=False):
 
 def probe_file_states(preview_file_id, extension, files=None):
     """
-    Ask the storage whether each expected file of a preview file exists:
-    {(bucket, prefix): "ok" or "missing"}. A file whose check raised is
-    left out: exists_confirmed only answers a confirmed absence, a
-    transient storage failure must never be recorded as one. Costs one
-    round trip per file: for jobs and batches, not for requests.
+    Ask the storage if each expected file of a preview file exists. Return
+    {(bucket, prefix): "ok" or "missing"}. If the check of a file raised an
+    error, leave the file out: exists_confirmed only reports a confirmed
+    absence. Never record a temporary storage failure as an absence. This
+    costs one round trip for each file: use it for jobs and batches, not for
+    requests.
     """
     preview_file_id = str(preview_file_id)
     states = {}
@@ -228,10 +230,10 @@ def probe_preview_files(
     progress=None,
 ):
     """
-    Probe the storage for the files of the ready preview files and record
-    their states, unless dry_run is set. Return how many files are
-    missing, per "bucket/prefix". Sequential: one round trip per file,
-    meant for off-hours.
+    Probe the storage for the files of the ready preview files. Record their
+    states, unless dry_run is set. Return the number of missing files for
+    each "bucket/prefix". The probes run one after the other, one round trip
+    for each file: run this outside of work hours.
     """
     query = PreviewFile.query.filter(PreviewFile.status == "ready")
     if project_id is not None:
@@ -266,8 +268,8 @@ def probe_preview_files(
 
 def fail_missing(states, files):
     """
-    Turn "missing" into "failed" for the given files: a job was supposed
-    to write them.
+    Change "missing" to "failed" for the given files: a job had to write
+    them.
     """
     return {
         key: (FAILED if key in files and state == MISSING else state)

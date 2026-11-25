@@ -52,7 +52,7 @@ CONCEPTS_AND_TASKS_TASK_FIELDS = [
 
 def clear_concept_cache(concept_id):
     """
-    Drop every memoized serialization of given concept.
+    Remove all memoized serializations of the given concept.
     """
     cache.cache.delete_memoized(get_concept, concept_id)
     cache.cache.delete_memoized(get_concept, concept_id, True)
@@ -62,7 +62,7 @@ def clear_concept_cache(concept_id):
 
 def get_concept_raw(concept_id):
     """
-    Return given concept as an active record.
+    Return the given concept as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -75,7 +75,7 @@ def get_concept_raw(concept_id):
 @cache.memoize_function(120)
 def get_concept(concept_id, relations=False):
     """
-    Return given concept as a dictionary.
+    Return the given concept as a dict.
     """
     return get_concept_raw(concept_id).serialize(
         obj_type="Concept", relations=relations
@@ -85,7 +85,8 @@ def get_concept(concept_id, relations=False):
 @cache.memoize_function_single_flight(120)
 def get_full_concept(concept_id):
     """
-    Return given concept as a dictionary with extra data like project.
+    Return the given concept as a dict with more data, for example the
+    project.
     """
     concepts = get_concepts_and_tasks({"id": concept_id}, for_client=False)
     if len(concepts) == 0:
@@ -97,7 +98,7 @@ def get_full_concept(concept_id):
 
 def get_concepts(criterions=None, **paging):
     """
-    Get all concepts for given criterions, with the paging options of
+    Return all concepts for the given criteria, with the paging options of
     query_utils.get_paginated_results.
     """
     if criterions is None:
@@ -131,16 +132,16 @@ def get_concepts(criterions=None, **paging):
         return query_utils.get_paginated_results(
             query, serialize=serialize, **paging
         )
-    except StatementError:  # Occurs when an id is not properly formatted
+    except StatementError:  # Occurs if an id has a wrong format
         raise WrongIdFormatException
 
 
 def get_concepts_and_tasks(criterions=None, for_client=None):
     """
-    Get all concepts for given criterions with related tasks for each
-    concept, as a list of dicts. Flat narrow queries through
-    entities_service.fetch_entity_task_map instead of a row-multiplying
-    join.
+    Return all concepts for the given criteria with the related tasks of each
+    concept, as a list of dicts. Use flat narrow queries through
+    entities_service.fetch_entity_task_map, not a join that multiplies the
+    rows.
     """
     if criterions is None:
         criterions = {}
@@ -169,8 +170,8 @@ def get_concepts_and_tasks(criterions=None, for_client=None):
             query = query.filter(has_assigned_task)
         return query
 
-    # The variants of an uploaded picture are built by a background job:
-    # the status tells a concept whose picture is not stored yet.
+    # A background job builds the variants of an uploaded picture. The status
+    # shows a concept whose picture is not stored yet.
     concept_rows = (
         apply_filters(
             Entity.query.join(
@@ -261,8 +262,8 @@ def get_concepts_and_tasks(criterions=None, for_client=None):
 
 def get_concepts_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all concepts related to given project, with the paging options
-    of entities_service.get_entities_for_project.
+    Return all concepts of the given project, with the paging options of
+    entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
@@ -283,9 +284,9 @@ def create_concept(
     parent_id=None,
 ):
     """
-    Create concept for given project, in given concept folder when one is
-    named. A concept already carrying this name is returned as is. Linked
-    entity IDs that match no entity are skipped.
+    Create a concept for the given project, in the given concept folder if
+    one is given. If a concept with this name exists, return it as is. Skip
+    the linked entity IDs that match no entity.
     """
     if data is None:
         data = {}
@@ -335,7 +336,7 @@ def create_concept(
 
 def get_concept_folder_raw(concept_folder_id):
     """
-    Return given concept folder as an active record.
+    Return the given concept folder as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -347,8 +348,8 @@ def get_concept_folder_raw(concept_folder_id):
 
 def get_project_concept_folder_raw(project_id, concept_folder_id):
     """
-    Return given concept folder as an active record, as long as it belongs
-    to given project.
+    Return the given concept folder as an active record, if it belongs to
+    the given project.
     """
     concept_folder = get_concept_folder_raw(concept_folder_id)
     if str(concept_folder.project_id) != str(project_id):
@@ -358,7 +359,7 @@ def get_project_concept_folder_raw(project_id, concept_folder_id):
 
 def get_concept_folder(concept_folder_id):
     """
-    Return given concept folder as a dictionary.
+    Return the given concept folder as a dict.
     """
     return get_concept_folder_raw(concept_folder_id).serialize(
         obj_type="ConceptFolder"
@@ -367,7 +368,7 @@ def get_concept_folder(concept_folder_id):
 
 def get_concept_folders_for_project(project_id):
     """
-    Retrieve all concept folders of given project, sorted by name.
+    Return all concept folders of the given project, sorted by name.
     """
     return entities_service.get_entities_for_project(
         project_id,
@@ -378,8 +379,8 @@ def get_concept_folders_for_project(project_id):
 
 def find_concept_folder_raw(project_id, name):
     """
-    Return the concept folder of given project carrying given name as an
-    active record, or None.
+    Return the concept folder of the given project that has the given name,
+    as an active record, or None.
     """
     return Entity.get_by(
         entity_type_id=entity_types_service.get_concept_folder_type()["id"],
@@ -390,8 +391,8 @@ def find_concept_folder_raw(project_id, name):
 
 def create_concept_folder(project_id, name, created_by=None):
     """
-    Create a concept folder for given project. A folder already carrying
-    this name is returned as is.
+    Create a concept folder for the given project. If a folder with this
+    name exists, return it as is.
     """
     concept_folder = find_concept_folder_raw(project_id, name)
     if concept_folder is None:
@@ -413,8 +414,8 @@ def create_concept_folder(project_id, name, created_by=None):
 
 def update_concept_folder(concept_folder_id, name):
     """
-    Rename given concept folder. Two folders of a project cannot share a
-    name.
+    Rename the given concept folder. Two folders of a project cannot have the
+    same name.
     """
     concept_folder = get_concept_folder_raw(concept_folder_id)
     namesake = find_concept_folder_raw(concept_folder.project_id, name)
@@ -434,8 +435,8 @@ def update_concept_folder(concept_folder_id, name):
 
 def remove_concept_folder(concept_folder_id):
     """
-    Remove given concept folder from database. Its concepts are kept: they
-    go back to the root of the project.
+    Remove the given concept folder from the database. Keep its concepts:
+    they go back to the root of the project.
     """
     concept_folder = get_concept_folder_raw(concept_folder_id)
     project_id = str(concept_folder.project_id)
@@ -457,9 +458,9 @@ def remove_concept_folder(concept_folder_id):
 
 def move_concepts(project_id, concept_ids, concept_folder_id=None):
     """
-    Move given concepts to given concept folder, or back to the root of the
-    project when no folder is named. Ids that are not concepts of the
-    project are skipped. Returns the ids of the concepts that were moved.
+    Move the given concepts to the given concept folder. If no folder is
+    given, move them back to the root of the project. Skip the IDs that are
+    not concepts of the project. Return the IDs of the moved concepts.
     """
     if concept_folder_id is not None:
         get_project_concept_folder_raw(project_id, concept_folder_id)

@@ -4,7 +4,7 @@ from zou.app.utils import cache, fields
 
 def clear_custom_action_cache():
     """
-    Drop the memoized custom action list.
+    Remove the memoized list of custom actions.
     """
     cache.cache.delete_memoized(get_custom_actions)
 

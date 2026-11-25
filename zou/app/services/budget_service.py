@@ -10,9 +10,9 @@ from zou.app.utils import events, fields
 
 def _clean_exceptions(data):
     """
-    Normalize the exception map of a budget entry: a null map becomes an
-    empty one, and months set to null, to zero or below are dropped rather
-    than stored.
+    Normalize the exception map of a budget entry. If the map is null, use an
+    empty map. Remove the months that have a null, zero or negative value: do
+    not store them.
     """
     if "exceptions" in data:
         if data["exceptions"] is None:
@@ -28,7 +28,7 @@ def _clean_exceptions(data):
 
 def get_budget_raw(budget_id):
     """
-    Return budget corresponding to given budget ID.
+    Return the budget that has the given budget ID.
     """
     return base_service.get_instance(
         Budget, budget_id, BudgetNotFoundException
@@ -37,8 +37,8 @@ def get_budget_raw(budget_id):
 
 def get_budget(budget_id, project_id=None):
     """
-    Return budget corresponding to given budget ID as a dictionary. With a
-    project ID, a budget of another project is not found.
+    Return the budget that has the given budget ID as a dict. If a project ID
+    is given, a budget of another project is not found.
     """
     budget = get_budget_raw(budget_id).serialize(relations=True)
     if project_id is not None and budget["project_id"] != str(project_id):
@@ -48,7 +48,7 @@ def get_budget(budget_id, project_id=None):
 
 def get_budgets(project_id):
     """
-    Return all budgets for given project ID.
+    Return all budgets for the given project ID.
     """
     budgets = Budget.get_all_by(project_id=project_id)
     return fields.present_models(budgets)
@@ -56,7 +56,7 @@ def get_budgets(project_id):
 
 def create_budget(project_id, name, currency=None):
     """
-    Create a new budget for given project ID. Its revision is the last
+    Create a budget for the given project ID. Its revision is the last
     revision of the project budgets plus one.
     """
     last_budget = (
@@ -82,7 +82,7 @@ def create_budget(project_id, name, currency=None):
 
 def update_budget(budget_id, name=None, currency=None):
     """
-    Update budget corresponding to given budget ID.
+    Update the budget that has the given budget ID.
     """
     budget = get_budget_raw(budget_id)
     if name is not None:
@@ -100,7 +100,7 @@ def update_budget(budget_id, name=None, currency=None):
 
 def delete_budget(budget_id):
     """
-    Delete budget corresponding to given budget ID, with all its entries.
+    Delete the budget that has the given budget ID and all its entries.
     """
     budget = get_budget_raw(budget_id)
     BudgetEntry.delete_all_by(budget_id=budget_id)
@@ -115,7 +115,7 @@ def delete_budget(budget_id):
 
 def get_budget_entries(budget_id):
     """
-    Return all budget entries for given budget ID.
+    Return all budget entries for the given budget ID.
     """
     budget_entries = BudgetEntry.get_all_by(budget_id=budget_id)
     return fields.present_models(budget_entries)
@@ -123,7 +123,7 @@ def get_budget_entries(budget_id):
 
 def get_budget_entry_raw(budget_entry_id):
     """
-    Return budget entry corresponding to given budget entry ID.
+    Return the budget entry that has the given budget entry ID.
     """
     return base_service.get_instance(
         BudgetEntry, budget_entry_id, BudgetEntryNotFoundException
@@ -132,8 +132,8 @@ def get_budget_entry_raw(budget_entry_id):
 
 def get_budget_entry(budget_entry_id, budget_id=None):
     """
-    Return budget entry corresponding to given budget entry ID as a
-    dictionary. With a budget ID, an entry of another budget is not found.
+    Return the budget entry that has the given budget entry ID as a dict. If
+    a budget ID is given, an entry of another budget is not found.
     """
     entry = get_budget_entry_raw(budget_entry_id).serialize()
     if budget_id is not None and entry["budget_id"] != str(budget_id):
@@ -152,7 +152,7 @@ def create_budget_entry(
     person_id=None,
 ):
     """
-    Create a new budget entry for given budget ID.
+    Create a budget entry for the given budget ID.
     """
     budget = get_budget_raw(budget_id)
     budget_entry = BudgetEntry.create(
@@ -176,7 +176,7 @@ def create_budget_entry(
 
 def update_budget_entry(budget_entry_id, data):
     """
-    Update budget entry corresponding to given budget entry ID.
+    Update the budget entry that has the given budget entry ID.
     """
     budget_entry = get_budget_entry_raw(budget_entry_id)
     budget = get_budget_raw(str(budget_entry.budget_id))
@@ -192,7 +192,7 @@ def update_budget_entry(budget_entry_id, data):
 
 def delete_budget_entry(budget_entry_id):
     """
-    Delete budget entry corresponding to given budget entry ID.
+    Delete the budget entry that has the given budget entry ID.
     """
     budget_entry = get_budget_entry_raw(budget_entry_id)
     budget = get_budget_raw(str(budget_entry.budget_id))

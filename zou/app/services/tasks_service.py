@@ -1,10 +1,14 @@
 """
-Business logic for tasks: creation, assignation, status changes, previews
-and the reset of derived data. The "todos" and "open tasks" views live in
-todos_service.
+Business logic for tasks:
+- creation
+- assignation
+- status changes
+- previews
+- the reset of derived data.
+The "todos" and "open tasks" views are in todos_service.
 
-get_task() returns a serialized dict and is memoized: every mutation must
-invalidate its entry (clear_task_cache) or clients keep reading stale data.
+get_task() returns a dict and is memoized. Each mutation must invalidate
+its entry (clear_task_cache). Else, clients continue to read old data.
 """
 
 import collections
@@ -70,7 +74,7 @@ from zou.app.utils import (
 
 def clear_task_cache(task_id):
     """
-    Drop every memoized serialization of given task.
+    Remove all the memoized dicts of the given task.
     """
     cache.cache.delete_memoized(_get_task_cached, str(task_id), False)
     cache.cache.delete_memoized(_get_task_cached, str(task_id), True)
@@ -78,7 +82,7 @@ def clear_task_cache(task_id):
 
 def get_department_from_task(task_id):
     """
-    Get department of given task as dictionary
+    Return the department of the given task as a dict.
     """
     task = get_task_raw(task_id)
     return departments_service.get_department_from_task_type(task.task_type_id)
@@ -86,7 +90,7 @@ def get_department_from_task(task_id):
 
 def get_task_raw(task_id):
     """
-    Get task matching given id as an active record.
+    Return the task that has the given ID as an active record.
     """
     return base_service.get_instance(Task, task_id, TaskNotFoundException)
 
@@ -98,18 +102,18 @@ def _get_task_cached(task_id, relations):
 
 def get_task(task_id, relations=False):
     """
-    Get task matching given id as a dictionary.
+    Return the task that has the given ID as a dict.
 
-    The id is normalized to a string before it reaches the cache: a UUID
-    and its string form would otherwise be two entries, and only the string
-    one is ever invalidated by clear_task_cache.
+    Change the ID to a string before it goes to the cache. Else, a UUID and
+    its string form make two entries, and clear_task_cache invalidates only
+    the string entry.
     """
     return _get_task_cached(str(task_id), bool(relations))
 
 
 def get_task_by_shotgun_id(shotgun_id):
     """
-    Get task matching given shotgun id as a dictionary.
+    Return the task that has the given shotgun ID as a dict.
     """
     task = Task.get_by(shotgun_id=shotgun_id)
     if task is None:
@@ -119,7 +123,7 @@ def get_task_by_shotgun_id(shotgun_id):
 
 def get_tasks_for_shot(shot_id, relations=False):
     """
-    Get all tasks for given shot.
+    Return all tasks of the given shot.
     """
     shot = shots_service.get_shot(shot_id)
     return get_task_dicts_for_entity(shot["id"], relations=relations)
@@ -127,7 +131,7 @@ def get_tasks_for_shot(shot_id, relations=False):
 
 def get_tasks_for_scene(scene_id, relations=False):
     """
-    Get all tasks for given scene.
+    Return all tasks of the given scene.
     """
     scene = shots_service.get_scene(scene_id)
     return get_task_dicts_for_entity(scene["id"], relations=relations)
@@ -135,7 +139,7 @@ def get_tasks_for_scene(scene_id, relations=False):
 
 def get_tasks_for_sequence(sequence_id, relations=False):
     """
-    Get all tasks for given sequence.
+    Return all tasks of the given sequence.
     """
     sequence = shots_service.get_sequence(sequence_id)
     return get_task_dicts_for_entity(sequence["id"], relations=relations)
@@ -143,7 +147,7 @@ def get_tasks_for_sequence(sequence_id, relations=False):
 
 def get_tasks_for_asset(asset_id, relations=False):
     """
-    Get all tasks for given asset.
+    Return all tasks of the given asset.
     """
     asset = assets_service.get_asset_raw(asset_id)
     return get_task_dicts_for_entity(asset.id, relations=relations)
@@ -151,7 +155,7 @@ def get_tasks_for_asset(asset_id, relations=False):
 
 def get_tasks_for_episode(episode_id, relations=False):
     """
-    Get all tasks for given episode.
+    Return all tasks of the given episode.
     """
     episode = shots_service.get_episode_raw(episode_id)
     return get_task_dicts_for_entity(episode.id, relations=relations)
@@ -159,7 +163,7 @@ def get_tasks_for_episode(episode_id, relations=False):
 
 def get_tasks_for_edit(edit_id, relations=False):
     """
-    Get all tasks for given edit.
+    Return all tasks of the given edit.
     """
     edit = edits_service.get_edit(edit_id)
     return get_task_dicts_for_entity(edit["id"], relations=relations)
@@ -167,7 +171,7 @@ def get_tasks_for_edit(edit_id, relations=False):
 
 def get_tasks_for_concept(concept_id, relations=False):
     """
-    Get all tasks for given concept.
+    Return all tasks of the given concept.
     """
     concept = concepts_service.get_concept(concept_id)
     return get_task_dicts_for_entity(concept["id"], relations=relations)
@@ -175,7 +179,7 @@ def get_tasks_for_concept(concept_id, relations=False):
 
 def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
-    Get all shot tasks for given sequence.
+    Return all shot tasks of the given sequence.
     """
     query = _get_entity_task_query().filter(
         Entity.parent_id == sequence_id,
@@ -186,7 +190,7 @@ def get_shot_tasks_for_sequence(sequence_id, relations=False):
 
 def get_shot_tasks_for_episode(episode_id, relations=False):
     """
-    Get all shot tasks for given episode.
+    Return all shot tasks of the given episode.
     """
     Sequence = aliased(Entity, name="sequence")
     query = (
@@ -203,12 +207,12 @@ def get_shot_tasks_for_episode(episode_id, relations=False):
 
 def get_edit_tasks_for_episode(episode_id, relations=False):
     """
-    Get all edit tasks for given episode.
+    Return all edit tasks of the given episode.
     """
     query = (
         _get_entity_task_query()
-        # An edit hangs straight off its episode, where a shot goes through
-        # a sequence, so the entity type is what tells them apart here.
+        # An edit is a direct child of its episode, but a shot goes through
+        # a sequence. Thus here, only the entity type separates them.
         .filter(
             Entity.entity_type_id == entity_types_service.get_edit_type()["id"]
         ).filter(Entity.parent_id == episode_id)
@@ -218,7 +222,7 @@ def get_edit_tasks_for_episode(episode_id, relations=False):
 
 def get_asset_tasks_for_episode(episode_id, relations=False):
     """
-    Get all assets tasks for given episode.
+    Return all asset tasks of the given episode.
     """
     query = (
         _get_entity_task_query()
@@ -230,8 +234,8 @@ def get_asset_tasks_for_episode(episode_id, relations=False):
 
 def get_task_dicts_for_entity(entity_id, relations=True):
     """
-    Return all tasks related to given entity. Add extra information like
-    project name, task type name, etc.
+    Return all tasks of the given entity. Add other data, for example the
+    project name and the task type name.
     """
     query = _get_entity_task_query()
     query = query.filter(Task.entity_id == entity_id)
@@ -240,11 +244,11 @@ def get_task_dicts_for_entity(entity_id, relations=True):
 
 def _get_entity_task_query():
     """
-    Base query joining a task to everything the detailed task view needs:
-    project, task type, task status, entity and assignees. No SQL
-    ordering: sorting thousands of wide task rows (JSONB data included)
-    made PostgreSQL materialize the whole join, the caller sorts the
-    serialized dicts instead.
+    Return the base query that joins a task to all the data that the
+    detailed task view needs: project, task type, task status, entity and
+    assignees. Do not sort in SQL. If PostgreSQL sorts thousands of wide
+    task rows (JSONB data included), it materializes the full join. The
+    caller sorts the serialized dicts instead.
     """
     return (
         Task.query.join(Project, Task.project_id == Project.id)
@@ -262,8 +266,9 @@ def _get_entity_task_query():
 
 def _convert_rows_to_detailed_tasks(rows, relations=False):
     """
-    Turn the rows of _get_entity_task_query into the task dicts the API
-    returns, sorted by name, with assignee ids when relations is set.
+    Change the rows of _get_entity_task_query into the task dicts that the
+    API returns, sorted by name. If relations is set, add the assignee
+    IDs.
     """
     task_dicts = [
         {
@@ -292,15 +297,15 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
 
 def attach_assignee_ids(task_dicts):
     """
-    Fetch all assignees for the given tasks in a single query and inject the
-    list of person ids into each dict. Avoids the N+1 that occurs when each
-    Task row triggers a separate lazy load of its assignees relationship.
+    Get all assignees of the given tasks in one query and add the list of
+    person IDs to each dict. This prevents the N+1 problem: one more lazy
+    load of the assignees relationship for each Task row.
     """
     task_ids = [task["id"] for task in task_dicts]
     links = (
         db.session.query(TaskPersonLink.task_id, TaskPersonLink.person_id)
-        # One array parameter: an IN list binds one parameter per task,
-        # which takes seconds on a full episode.
+        # One array parameter: an IN list binds one parameter for each
+        # task, and this takes seconds on a full episode.
         .filter(
             TaskPersonLink.task_id == any_(cast(task_ids, ARRAY(UUID)))
         ).all()
@@ -336,8 +341,8 @@ def resolve_episode_and_build_task_dict(
     task_status_short_name,
 ):
     """
-    Resolve episode info and build the base task dict with common fields.
-    Returns (task_dict, task, task_type_name, task_status_name,
+    Find the episode data and build the base task dict with the common
+    fields. Return (task_dict, task, task_type_name, task_status_name,
     task_type_color, task_status_color, task_status_short_name).
     """
     if entity_preview_file_id is None:
@@ -353,9 +358,9 @@ def resolve_episode_and_build_task_dict(
             except EpisodeNotFoundException:
                 episode_name = "MP"
 
-    # Serialize the Task instance already carried by the row instead of
-    # re-fetching it through get_task (one query per row on cache miss).
-    # Assignees are attached in batch by the callers.
+    # Serialize the Task instance that the row already has. Do not get it
+    # again through get_task (one query for each row on a cache miss).
+    # The callers add the assignees in batch.
     task_dict = task.serialize()
     if entity_type_name == "Sequence" and entity_parent_id is not None:
         episode_id = entity_parent_id
@@ -394,7 +399,7 @@ def resolve_episode_and_build_task_dict(
 
 def add_last_comments_to_tasks(tasks):
     """
-    For each task, add the last comment info.
+    Add the data of the last comment to each task.
     """
     task_ids = [task["id"] for task in tasks]
     task_comment_map = get_last_comment_map(task_ids)
@@ -404,21 +409,21 @@ def add_last_comments_to_tasks(tasks):
 
 def get_task_types_for_shot(shot_id):
     """
-    Return all task types for which there is a task related to given shot.
+    Return all task types that have a task linked to the given shot.
     """
     return get_task_types_for_entity(shot_id)
 
 
 def get_task_types_for_scene(scene_id):
     """
-    Return all task types for which there is a task related to given scene.
+    Return all task types that have a task linked to the given scene.
     """
     return get_task_types_for_entity(scene_id)
 
 
 def get_task_types_for_sequence(sequence_id):
     """
-    Return all task types for which there is a task related to given sequence.
+    Return all task types that have a task linked to the given sequence.
     """
     Sequence = aliased(Entity, name="sequence")
     task_types = (
@@ -434,14 +439,14 @@ def get_task_types_for_sequence(sequence_id):
 
 def get_task_types_for_asset(asset_id):
     """
-    Return all task types for which there is a task related to given asset.
+    Return all task types that have a task linked to the given asset.
     """
     return get_task_types_for_entity(asset_id)
 
 
 def get_task_types_for_episode(episode_id):
     """
-    Return all task types for which there is a task related to given episode.
+    Return all task types that have a task linked to the given episode.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -459,14 +464,14 @@ def get_task_types_for_episode(episode_id):
 
 def get_task_types_for_concept(concept_id):
     """
-    Return all task types for which there is a task related to given concept.
+    Return all task types that have a task linked to the given concept.
     """
     return get_task_types_for_entity(concept_id)
 
 
 def get_task_types_for_entity(entity_id):
     """
-    Return all task types for which there is a task related to given entity.
+    Return all task types that have a task linked to the given entity.
     """
     task_types = (
         TaskType.query.join(Task)
@@ -480,7 +485,7 @@ def get_task_types_for_entity(entity_id):
 
 def get_task_types_for_project(project_id):
     """
-    Return all task types for which there is a task related to given project.
+    Return all task types that have a task in the given project.
     """
     task_types = (
         TaskType.query.join(Task)
@@ -493,14 +498,15 @@ def get_task_types_for_project(project_id):
 
 def get_task_types_for_edit(edit_id):
     """
-    Return all task types for which there is a task related to given edit.
+    Return all task types that have a task linked to the given edit.
     """
     return get_task_types_for_entity(edit_id)
 
 
 def get_next_preview_revision(task_id):
     """
-    Get upcoming revision for preview files of given task.
+    Return the next revision number for the preview files of the given
+    task.
     """
     preview_files = (
         PreviewFile.query.filter_by(task_id=task_id)
@@ -515,7 +521,8 @@ def get_next_preview_revision(task_id):
 
 def get_next_position(task_id, revision):
     """
-    Get upcoming position for preview files of given task and revision.
+    Return the next position for the preview files of the given task and
+    revision.
     """
     preview_files = PreviewFile.query.filter_by(
         task_id=task_id, revision=revision
@@ -525,7 +532,8 @@ def get_next_position(task_id, revision):
 
 def get_comment_by_preview_file_id(preview_file_id):
     """
-    Return comment related to given preview file as a dict, or None.
+    Return the comment linked to the given preview file as a dict, or
+    None.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     comment = Comment.query.filter(
@@ -539,7 +547,7 @@ def get_comment_by_preview_file_id(preview_file_id):
 
 def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
     """
-    For a task type, returns all tasks related to given entity.
+    Return all tasks of the given entity for the given task type.
     """
     tasks = (
         Task.query.filter_by(entity_id=entity_id, task_type_id=task_type_id)
@@ -553,7 +561,7 @@ def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
 
 def get_tasks_for_project_and_task_type(project_id, task_type_id):
     """
-    For a project and a task type returns all tasks.
+    Return all tasks of the given project for the given task type.
     """
     tasks = (
         Task.query.filter_by(project_id=project_id, task_type_id=task_type_id)
@@ -565,8 +573,8 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
 
 def get_last_comment_map(task_ids):
     """
-    Return the last comment of each given task, in one query. Comments
-    written by clients are ignored.
+    Return the last comment of each given task, in one query. Ignore the
+    comments that clients wrote.
     """
     task_comment_map = {}
     comments = (
@@ -596,7 +604,7 @@ def get_last_comment_map(task_ids):
 
 def _build_task_no_commit(task_type, task_status, entity, current_user_id):
     """
-    Insert a new task (without committing) using the zou defaults for
+    Insert a new task, but do not commit it. Use the zou defaults for
     name, durations, dates and assignees.
     """
     return Task.create_no_commit(
@@ -619,8 +627,8 @@ def _build_task_no_commit(task_type, task_status, entity, current_user_id):
 
 def create_tasks(task_type, entities):
     """
-    Create a new task for given task type and for each entity. Entities
-    that already have a task of this type are skipped. Return the created
+    Create a new task of the given task type for each entity. Skip the
+    entities that already have a task of this type. Return the created
     tasks.
     """
     if not entities:
@@ -660,15 +668,17 @@ def create_tasks(task_type, entities):
 
 def create_tasks_for_entity(entity, task_types=None):
     """
-    Create tasks of multiple types for a single entity in one batch.
-    When task_types is empty or None, default to every task type valid
-    for the entity: enabled in the project, in the asset-type workflow
-    (for assets, the project one when set, else the studio one), and whose
-    for_entity matches the entity kind. When a
-    list is provided, each task type is validated against those same
-    constraints. An asset type with no configured workflow accepts every
-    task type. Existing tasks for the same (entity, task_type,
-    name="main") are skipped.
+    Create tasks of many types for one entity in one batch. If task_types
+    is empty or None, use all the task types that are valid for the
+    entity. A valid task type:
+    - is enabled in the project
+    - for an asset, is in the workflow of its asset type (the project
+      workflow if it is set, else the studio workflow)
+    - has a for_entity value that matches the entity kind.
+    If task_types is a list, validate each task type against these same
+    conditions. An asset type with no workflow accepts all task types.
+    Skip the existing tasks for the same (entity, task_type,
+    name="main").
     """
     project_id = entity["project_id"]
     is_asset = entity_types_service.is_asset_dict(entity)
@@ -686,8 +696,8 @@ def create_tasks_for_entity(entity, task_types=None):
             ProjectTaskTypeLink.project_id == project_id
         ).all()
     }
-    # None means unrestricted: not an asset, or no workflow configured
-    # on the asset type ("Includes all asset task types" in Kitsu).
+    # None means no limit: the entity is not an asset, or the asset type
+    # has no workflow ("Includes all asset task types" in Kitsu).
     enabled_in_workflow = None
     if is_asset:
         enabled_in_workflow = (
@@ -775,8 +785,8 @@ def create_tasks_for_entity(entity, task_types=None):
 
 def create_task(task_type, entity, name="main"):
     """
-    Create a new task for given task type and entity. Return None if the
-    task already exists.
+    Create a new task for the given task type and entity. If the task
+    already exists, return None.
     """
     task_status = task_types_service.get_default_task_status(
         for_concept=entity["entity_type_id"]
@@ -806,14 +816,15 @@ def create_task(task_type, entity, name="main"):
         task_dict = _finalize_task_creation(task_type, task_status, task)
         return task_dict
     except IntegrityError:
-        pass  # Tasks already exists, no need to create it.
+        pass  # The task already exists, so do not create it.
     return None
 
 
 def _finalize_task_creation(task_type, task_status, task):
     """
-    Run what follows the insert of a task: build its dict with the task
-    type and task status fields, and emit the task:new event.
+    Do the steps after the insert of a task. Build its dict with the
+    fields of the task type and task status, and emit the task:new
+    event.
     """
     task_dict = task.serialize()
     task_dict["assignees"] = []
@@ -837,8 +848,9 @@ def _finalize_task_creation(task_type, task_status, task):
 
 def update_task(task_id, data):
     """
-    Update task with given data. When the status changes, set end_date and
-    done_date to match the new status (data is modified in place).
+    Update the task with the given data. If the status changes, set
+    end_date and done_date to match the new status. This changes data in
+    place.
     """
     task = get_task_raw(task_id)
 
@@ -849,8 +861,8 @@ def update_task(task_id, data):
             data["task_status_id"]
         )
         now = date_helpers.get_utc_now_datetime()
-        # Rolling a task back from done/feedback must clear the matching
-        # dates, otherwise stats keep counting the task as finished.
+        # If a task goes back from done or feedback, clear the matching
+        # dates. Else, the stats continue to count the task as finished.
         if new_status.is_feedback_request:
             data["end_date"] = now
         elif not new_status.is_done:
@@ -867,7 +879,7 @@ def update_task(task_id, data):
 
 def clear_assignation(task_id, person_id=None):
     """
-    Clear task assignation and emit a *task:unassign* event.
+    Clear the task assignation and emit a *task:unassign* event.
     """
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
@@ -884,9 +896,10 @@ def clear_assignation(task_id, person_id=None):
     try:
         task.update({"assignees": new_assignees})
     except StaleDataError:
-        # A concurrent unassign already removed the link, so the desired state
-        # is already reached. task.update() has rolled back its own failed
-        # transaction, so there is nothing left to delete: treat it as cleared.
+        # A concurrent unassign already removed the link, so the task is
+        # already in the necessary state. task.update() rolled back its own
+        # failed transaction, so there is nothing to delete. Consider the
+        # assignation as cleared.
         pass
 
     clear_task_cache(task_id)
@@ -904,7 +917,7 @@ def clear_assignation(task_id, person_id=None):
 def check_no_preview_assignee(assignees):
     """
     Refuse an assignment that includes a preview account. Assignees can be
-    ids or dicts holding an id, like the task update payload accepts.
+    IDs or dicts with an id, as the task update payload accepts them.
     """
     person_ids = [
         str(assignee["id"] if isinstance(assignee, dict) else assignee)
@@ -925,7 +938,7 @@ def check_no_preview_assignee(assignees):
 
 def assign_task(task_id, person_id, assigner_id=None):
     """
-    Assign given person to given task. Emit a *task:assign* event.
+    Assign the given person to the given task. Emit a *task:assign* event.
     """
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
@@ -951,9 +964,9 @@ def check_revision_is_unique_for_task(
     task_id, revision, exclude_preview_id=None
 ):
     """
-    Check that the revision number is unique for the given task.
-    Raises RevisionAlreadyExistsException if a preview file with the same
-    revision already exists for this task (at position 1).
+    Make sure that the revision number is unique for the given task. If a
+    preview file with the same revision already exists for this task (at
+    position 1), raise RevisionAlreadyExistsException.
     """
     query = PreviewFile.query.filter_by(
         task_id=task_id,
@@ -973,9 +986,9 @@ def check_revision_is_unique_for_task(
 
 def update_preview_file_info(preview_file):
     """
-    For a preview at position 1, set it as the last preview of its task
-    and, if the project automates it, as the main preview of the entity.
-    Return the updated entity, or None.
+    If the preview is at position 1, set it as the last preview of its
+    task. If the project automates it, also set it as the main preview of
+    the entity. Return the updated entity, or None.
     """
     entity = None
     task = get_task_raw(preview_file["task_id"])
@@ -994,9 +1007,10 @@ def update_preview_file_info(preview_file):
 
 def get_project_tasks_fingerprint(project_id):
     """
-    Return a cheap change signal for the tasks of given project: the
-    latest update date and the row count. Any create, update, delete or
-    assignation (assigning saves the task) moves at least one of them.
+    Return a low-cost change signal for the tasks of the given project:
+    the latest update date and the row count. Each create, update, delete
+    or assignation changes at least one of them (an assignation saves the
+    task).
     """
     max_updated_at, task_count = (
         Task.query.with_entities(
@@ -1010,10 +1024,15 @@ def get_project_tasks_fingerprint(project_id):
 
 def get_full_task(task_id, user_id, minimal_persons=False):
     """
-    Return a task with everything the task page displays: entity, project,
-    task type, status, assignees and subscription state. With
-    minimal_persons, the assignees and the assigner come as minimal person
-    dictionaries.
+    Return a task with all the data that the task page shows:
+    - entity
+    - project
+    - task type
+    - status
+    - assignees
+    - subscription state.
+    If minimal_persons is True, the assignees and the assigner are minimal
+    person dicts.
     """
     task = get_task(task_id, relations=True)
     task_type = task_types_service.get_task_type(task["task_type_id"])
@@ -1057,8 +1076,8 @@ def get_full_task(task_id, user_id, minimal_persons=False):
         elif entity_type["name"] in ["Shot", "Scene"]:
             sequence = shots_service.get_sequence(entity["parent_id"])
         else:
-            # Getting here means the entity is an asset, and assets are not
-            # linked to specific sequences or episodes.
+            # If the code gets here, the entity is an asset, and assets are
+            # not linked to specific sequences or episodes.
             return task
 
         task["sequence"] = sequence
@@ -1072,7 +1091,7 @@ def get_full_task(task_id, user_id, minimal_persons=False):
 
 def reset_tasks_data(project_id):
     """
-    Recompute the derived fields of every task of given project.
+    Compute again the derived fields of all tasks of the given project.
     """
     for task in Task.get_all_by(project_id=project_id):
         reset_task_data(str(task.id))
@@ -1080,9 +1099,15 @@ def reset_tasks_data(project_id):
 
 def reset_task_data(task_id):
     """
-    Recompute the fields derived from the task comment history and time
-    spents: status, retake count, duration, start, end, done and last
-    comment dates.
+    Compute again the fields that come from the comment history and the
+    time spents of the task:
+    - status
+    - retake count
+    - duration
+    - start date
+    - end date
+    - done date
+    - last comment date.
     """
     task = base_service.get_instance(Task, task_id, TaskNotFoundException)
     retake_count = 0
@@ -1148,8 +1173,8 @@ def reset_task_data(task_id):
             "task_status_id": task_status_id,
         }
     )
-    # Invalidate after the write, otherwise a concurrent read re-caches
-    # the stale row between the invalidation and the update.
+    # Invalidate after the write. Else, a concurrent read can put the old
+    # row in the cache again between the invalidation and the update.
     clear_task_cache(task_id)
     project_id = str(task.project_id)
     events.emit(
@@ -1161,9 +1186,9 @@ def reset_task_data(task_id):
 @dataclasses.dataclass
 class OpenTasksFilters:
     """
-    Criteria of the open task listings: the listing, its stats and the
-    burndown read the same object so the three queries always agree on
-    which tasks are in the pool.
+    Criteria of the open task listings. The listing, its stats and the
+    burndown read the same object. Thus the three queries always agree on
+    the tasks in the pool.
     """
 
     task_type_id: Optional[str] = None
@@ -1191,9 +1216,9 @@ class OpenTasksFilters:
 
 def update_entity_preview(entity_id, preview_file_id):
     """
-    Update given entity main preview. If entity or preview is not found, it
-    raises an exception. The entity returned carries the status of that
-    preview, as the event does.
+    Update the main preview of the given entity. If the entity or the
+    preview does not exist, raise an exception. The returned entity has the
+    status of that preview, as the event has.
     """
     entity = Entity.get(entity_id)
     if entity is None:
@@ -1207,9 +1232,9 @@ def update_entity_preview(entity_id, preview_file_id):
         entity.update({"preview_file_id": preview_file.id})
     except IntegrityError:
         raise PreviewFileNotFoundException
-    # Read after the commit, so that a job that made the preview ready in
-    # the meantime is seen. The column alone: reading preview_file now
-    # would load its annotations again.
+    # Read after the commit, so that the code sees a job that made the
+    # preview ready in the meantime. Read only the column: a read of
+    # preview_file now loads its annotations again.
     preview_file_status = fields.serialize_value(
         PreviewFile.query.with_entities(PreviewFile.status)
         .filter(PreviewFile.id == preview_file_id)
@@ -1222,8 +1247,8 @@ def update_entity_preview(entity_id, preview_file_id):
 
 def unset_entity_main_preview(entity_id):
     """
-    Leave given entity without a main preview. The event carries a null
-    preview file id, which the clients show as an empty thumbnail.
+    Remove the main preview of the given entity. The event has a null
+    preview file ID, and the clients show it as an empty thumbnail.
     """
     entity = Entity.get(entity_id)
     if entity is None:
@@ -1235,8 +1260,8 @@ def unset_entity_main_preview(entity_id):
 
 def _announce_entity_preview(entity, preview_file_id, preview_file_status):
     """
-    Drop the caches of given entity and tell the clients about its new main
-    preview.
+    Remove the caches of the given entity and notify the clients of its
+    new main preview.
     """
     entity_id = str(entity.id)
     entities_service.clear_entity_cache(entity_id)
@@ -1268,7 +1293,7 @@ def _announce_entity_preview(entity, preview_file_id, preview_file_status):
 
 def get_entity_tasks(entity):
     """
-    Get all tasks for a given entity.
+    Return all tasks of the given entity.
     """
     entity_type = entity_types_service.get_entity_type(
         entity_type_id=entity["entity_type_id"]

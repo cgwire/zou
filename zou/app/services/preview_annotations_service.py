@@ -45,16 +45,16 @@ def update_preview_file_annotations(
     only_own_objects=False,
 ):
     """
-    Update annotations for given preview file, clear its cache, emit
-    preview-file:annotation-update and return the preview file as a dict.
-    Uses a Redis lock to prevent race conditions when multiple processes update
-    annotations on the same preview file concurrently. Raise
-    AnnotationLockTimeoutException when the lock cannot be acquired.
+    Update the annotations of the given preview file and clear its cache.
+    Emit preview-file:annotation-update and return the preview file as a
+    dict. A Redis lock prevents race conditions when many processes update
+    the annotations of the same preview file at the same time. If the lock
+    is not available, raise AnnotationLockTimeoutException.
 
-    With ``only_own_objects`` (guests), the added and updated objects are
-    stamped with ``person_id`` and the updates and deletions are kept to the
-    objects it stamped before: a guest never touches a drawing of the team
-    or of another guest.
+    With ``only_own_objects`` (guests), stamp the added and updated objects
+    with ``person_id``. Keep only the updates and deletions of the objects
+    that have this stamp from before. Thus, a guest never changes a drawing
+    of the team or of a different guest.
     """
     if additions is None:
         additions = []
@@ -100,10 +100,11 @@ def _keep_own_objects(
     previous_annotations, person_id, additions, updates, deletions
 ):
     """
-    Stamp the added and updated objects with ``person_id`` and drop from
-    the updates and deletions every object not stamped with it. Objects are
-    keyed by (time, id) like the updates and deletions address them, so an
-    addition reusing the id of another time's object grants nothing.
+    Stamp the added and updated objects with ``person_id``. Remove from the
+    updates and deletions all the objects that do not have this stamp. The
+    key of an object is (time, id), as in the updates and deletions. Thus,
+    an addition that uses the id of an object at a different time gives no
+    access.
     """
     own = {
         (annotation["time"], drawing_object.get("id"))
@@ -135,9 +136,9 @@ def _keep_own_objects(
 
 def _ensure_object_id(drawing_object):
     """
-    Give a drawing object an id when it carries none, so later updates and
-    deletions can address it. A missing key, an empty string and an
-    explicit null all count as none.
+    If a drawing object has no id, give it one. Thus, later updates and
+    deletions can find it. A missing key, an empty string and an explicit
+    null all count as no id.
     """
     if not drawing_object.get("id"):
         drawing_object["id"] = str(fields.gen_uuid())
@@ -145,8 +146,8 @@ def _ensure_object_id(drawing_object):
 
 def _clean_annotations(annotations):
     """
-    Give every drawing object an id, so later updates and deletions can
-    address it.
+    Give an id to each drawing object. Thus, later updates and deletions can
+    find it.
     """
     for annotation in annotations:
         objects = annotation.get("drawing", {}).get("objects", [])
@@ -157,8 +158,8 @@ def _clean_annotations(annotations):
 
 def _apply_annotation_additions(previous_annotations, new_annotations):
     """
-    Add the annotations of times not annotated yet, and merge the new
-    drawing objects into the times already annotated.
+    Add the annotations of the times that have no annotation yet. Merge the
+    new drawing objects into the times that already have annotations.
     """
     annotations = list(previous_annotations)
     annotation_map = _get_annotation_time_map(annotations)
@@ -185,8 +186,8 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
 
 def _apply_annotation_updates(annotations, updates):
     """
-    Replace the drawing objects an update carries, matched by id, at the
-    times the update names.
+    Replace the drawing objects of an update, matched by id, at the times
+    that the update gives.
     """
     annotation_map = _get_annotation_time_map(annotations)
     for update in updates:
@@ -226,7 +227,7 @@ def _apply_annotation_updates(annotations, updates):
 
 def _apply_annotation_deletions(annotations, deletions):
     """
-    Drop the drawing objects a deletion names, matched by id.
+    Remove the drawing objects that a deletion gives, matched by id.
     """
     annotation_map = _get_annotation_time_map(annotations)
 
@@ -250,8 +251,8 @@ def _apply_annotation_deletions(annotations, deletions):
 
 def _get_new_annotations(previous_objects, new_objects):
     """
-    Return the previous drawing objects plus the ones whose id is not
-    among them: an addition never overwrites an existing object.
+    Return the previous drawing objects and the new objects whose id is not
+    in them. An addition never overwrites an existing object.
     """
     result = list(previous_objects)
     previous_map = {}
@@ -268,7 +269,8 @@ def _get_new_annotations(previous_objects, new_objects):
 
 def _get_annotation_time_map(annotations):
     """
-    Index annotations by their time, the key a revision is annotated on.
+    Index the annotations by their time. A revision uses the time as the
+    key of its annotations.
     """
     annotation_map = {}
     for annotation in annotations:
@@ -278,7 +280,7 @@ def _get_annotation_time_map(annotations):
 
 def _clear_empty_annotations(annotations):
     """
-    Drop the times left without a single drawing object.
+    Remove the times that have no drawing object.
     """
     return [
         annotation
@@ -289,9 +291,9 @@ def _clear_empty_annotations(annotations):
 
 def _round_time_to_frame(time_value, fps):
     """
-    Snap a playback time onto the frame grid the Kitsu player uses:
-    the frame duration is 1 / fps rounded to 4 decimals, and rounding is
-    half-up to mirror the JavaScript Math.round used client-side.
+    Snap a playback time onto the frame grid of the Kitsu player. The frame
+    duration is 1 / fps, rounded to 4 decimals. The rounding is half-up, as
+    the JavaScript Math.round that the client uses.
     """
     precision_factor = 10000
     frame_duration = (
@@ -306,19 +308,19 @@ def _round_time_to_frame(time_value, fps):
 
 def normalize_annotation_times(annotations, fps):
     """
-    Collapse annotation entries that land on the same frame into one and
-    snap every entry time onto the frame grid.
+    Merge the annotation entries of the same frame into one entry. Snap the
+    time of each entry onto the frame grid.
 
-    Older Kitsu versions stored unrounded times (sometimes as strings)
-    while current ones snap them to the frame grid, so the same logical
-    frame can exist several times in a preview file's annotation list.
-    The player only displays the first entry matching a frame, which makes
-    the other entries' drawings invisible, and grid-timed deletions or
-    updates never match the legacy entries.
+    Old Kitsu versions stored times that are not rounded, sometimes as
+    strings. The current versions snap them to the frame grid. Thus, the
+    same logical frame can occur many times in the annotation list of a
+    preview file. The player shows only the first entry of a frame. Thus,
+    the drawings of the other entries are not visible. Also, the deletions
+    and updates on the grid times never match the old entries.
 
-    Objects are deduplicated by id and the input list is not mutated.
-    Returns a (annotations, changed) tuple; entries with unparseable times
-    are kept untouched.
+    Remove the duplicate objects by id. Do not change the input list.
+    Return an (annotations, changed) tuple. Keep the entries whose times
+    cannot be parsed as they are.
     """
     result = []
     by_frame_time = {}
@@ -359,9 +361,9 @@ def normalize_annotation_times(annotations, fps):
 
 def normalize_preview_file_annotation_times(preview_file):
     """
-    Normalize a preview file's annotation times in place (see
-    normalize_annotation_times). Returns True when the stored annotations
-    were modified.
+    Normalize the annotation times of a preview file in place (see
+    normalize_annotation_times). If the stored annotations changed, return
+    True.
     """
     if not preview_file.annotations:
         return False
@@ -386,18 +388,17 @@ def extract_annotation_frame_from_preview_file(
     preview_file, frame_number=None
 ):
     """
-    Extract the requested frame of a movie preview, or the picture itself
-    for a picture preview, and overlay the matching annotation on it.
+    Extract the requested frame of a movie preview, or the picture of a
+    picture preview. Put the related annotation on it.
 
-    For movies, `frame_number` is required and identifies the frame. For
-    pictures, `frame_number` is ignored and the first annotation entry is
-    used.
+    For movies, `frame_number` is necessary and identifies the frame. For
+    pictures, ignore `frame_number` and use the first annotation entry.
 
-    Raises AnnotationNotFoundException when no annotation matches, and
-    WrongParameterException when a movie gets no frame number or the
-    extension is not supported. Returns the path to the composited PNG
-    (caller must delete it), or None when the preview binary is not
-    available.
+    If no annotation matches, raise AnnotationNotFoundException. If a movie
+    has no frame number, or if the extension is not supported, raise
+    WrongParameterException. Return the path to the composited PNG. The
+    caller must delete it. If the preview binary is not available, return
+    None.
     """
     extension = (preview_file.get("extension") or "").lower()
     annotations = preview_file.get("annotations") or []
@@ -419,12 +420,12 @@ def extract_annotation_frame_from_preview_file(
 
 def extract_all_annotation_frames_from_preview_file(preview_file):
     """
-    Build a zip archive containing every annotated frame of a movie
-    preview, or every annotated copy of a picture preview.
+    Build a zip archive with all the annotated frames of a movie preview, or
+    all the annotated copies of a picture preview.
 
-    Raises AnnotationNotFoundException when the preview has no
-    annotations. Returns the path to a temp zip file (caller must delete
-    it), or None when the preview binary is not available.
+    If the preview has no annotations, raise AnnotationNotFoundException.
+    Return the path to a temporary zip file. The caller must delete it. If
+    the preview binary is not available, return None.
     """
     entries = _build_annotated_frame_entries(preview_file)
     if entries is None:
@@ -434,12 +435,12 @@ def extract_all_annotation_frames_from_preview_file(preview_file):
 
 def extract_all_annotation_frames_pdf_from_preview_file(preview_file):
     """
-    Build a multi-page PDF with one page per annotated frame (movie) or
-    per annotated copy of the picture (picture preview).
+    Build a multi-page PDF with one page for each annotated frame (movie)
+    or for each annotated copy of the picture (picture preview).
 
-    Raises AnnotationNotFoundException when the preview has no
-    annotations. Returns the path to a temp pdf file (caller must delete
-    it), or None when the preview binary is not available.
+    If the preview has no annotations, raise AnnotationNotFoundException.
+    Return the path to a temporary pdf file. The caller must delete it. If
+    the preview binary is not available, return None.
     """
     entries = _build_annotated_frame_entries(preview_file)
     if entries is None:
@@ -449,7 +450,7 @@ def extract_all_annotation_frames_pdf_from_preview_file(preview_file):
 
 def _extract_movie_annotation_frame(preview_file, frame_number, annotations):
     """
-    Extract the frame of a movie at given number with its annotations
+    Extract the frame of a movie at the given number, with its annotations
     burnt in.
     """
     project = preview_files_service.get_project_from_preview_file(
@@ -494,8 +495,8 @@ def _extract_picture_annotation_frame(preview_file, annotations):
 
 def _copy_picture_preview_to_temp_png(preview_file):
     """
-    Copy a picture preview to a temporary png, the format the annotation
-    burner works on.
+    Copy a picture preview to a temporary png. The annotation burner uses
+    this format.
     """
     if (preview_file.get("data") or {}).get("imported_only"):
         return None
@@ -509,8 +510,8 @@ def _copy_picture_preview_to_temp_png(preview_file):
             preview_file["extension"],
         )
     except fs.FileNotFound:
-        # Only an absent binary answers None (the routes turn it into a
-        # 404). A storage outage or a bug must surface as what it is.
+        # Return None only for a missing binary (the routes change it into a
+        # 404). Do not hide a storage outage or a bug.
         return None
     fd, temp_path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
@@ -521,8 +522,8 @@ def _copy_picture_preview_to_temp_png(preview_file):
 
 def _find_annotation_at_time(annotations, target_time, tolerance):
     """
-    Return the annotation closest to given time within tolerance, None
-    when the frame carries none.
+    Return the annotation nearest to the given time, within the tolerance.
+    If the frame has no annotation, return None.
     """
     for annotation in annotations:
         raw_time = annotation.get("time")
@@ -539,11 +540,12 @@ def _find_annotation_at_time(annotations, target_time, tolerance):
 
 def _build_annotated_frame_entries(preview_file):
     """
-    Common entry-point for the zip and pdf bundlers: render every
-    annotated frame of the preview to a temp PNG and return the list of
-    (arcname, path) tuples. Returns None when the binary is unavailable;
-    raises AnnotationNotFoundException when there is nothing to render
-    and WrongParameterException for unsupported extensions.
+    Common entry point for the zip and pdf bundlers. Render each annotated
+    frame of the preview to a temporary PNG. Return the list of
+    (arcname, path) tuples.
+    - If the binary is not available, return None.
+    - If there is nothing to render, raise AnnotationNotFoundException.
+    - If the extension is not supported, raise WrongParameterException.
     """
     annotations = preview_file.get("annotations") or []
     if not annotations:
@@ -566,14 +568,14 @@ def _build_annotated_frame_entries(preview_file):
 
 def _build_movie_annotation_entries(preview_file, annotations, base_name):
     """
-    Returns a list of (arcname, temp_png_path) tuples ready to be bundled,
-    or None if the movie binary is unavailable. Cleans up partial work on
-    failure.
+    Return a list of (arcname, temp_png_path) tuples, ready for the bundle.
+    If the movie binary is not available, return None. If a failure
+    occurs, remove the partial files.
 
-    Individual annotations whose frame ffmpeg fails to extract (returns
-    a path to a non-existent file, e.g. when the annotation's time falls
-    past the movie's EOF) are skipped rather than aborting the whole
-    bundle.
+    Sometimes ffmpeg cannot extract the frame of an annotation. Then it
+    returns a path to a file that does not exist, for example when the
+    time of the annotation is after the EOF of the movie. Skip these
+    annotations and continue the bundle.
     """
     project = preview_files_service.get_project_from_preview_file(
         preview_file["id"]
@@ -612,8 +614,8 @@ def _build_movie_annotation_entries(preview_file, annotations, base_name):
 
 def _build_picture_annotation_entries(preview_file, annotations, base_name):
     """
-    Build the annotated frame entries of a picture preview: one copy of the
-    picture per annotation, each with that annotation burnt in.
+    Build the annotated frame entries of a picture preview. Make one copy
+    of the picture for each annotation, with that annotation burnt in.
     """
     entries = []
     try:
@@ -634,7 +636,7 @@ def _build_picture_annotation_entries(preview_file, annotations, base_name):
 
 def _annotated_frame_base_name(preview_file):
     """
-    Build the file name stem the extracted annotated frames are named on.
+    Build the file name stem of the extracted annotated frames.
     """
     full_name = preview_files_service.get_preview_file_name(preview_file["id"])
     return os.path.splitext(full_name)[0]
@@ -642,11 +644,12 @@ def _annotated_frame_base_name(preview_file):
 
 def _claim_extracted_frame(extracted_path):
     """
-    Move the frame ffmpeg wrote at a deterministic
-    `tmp/<movie>_<frame>.png` slot to a fresh mkstemp path. Required
-    because that deterministic slot is shared with other callers (e.g.
-    the single-frame extract route which `os.remove`s it in a finally),
-    and concurrent calls could yank the file from under the bundler.
+    Move the frame that ffmpeg wrote at the fixed
+    `tmp/<movie>_<frame>.png` path to a new mkstemp path. This is
+    necessary because other callers use the same fixed path. For example,
+    the single-frame extract route removes it with `os.remove` in a
+    finally block. Thus, a parallel call can remove the file before the
+    bundler uses it.
     """
     fd, owned_path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
@@ -665,7 +668,7 @@ def _cleanup_entries(entries):
 
 def _bundle_annotated_frames_into_zip(entries):
     """
-    Pack the extracted annotated frames into a zip and return its path.
+    Put the extracted annotated frames into a zip and return its path.
     """
     if not entries:
         raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
@@ -685,9 +688,9 @@ def _bundle_annotated_frames_into_zip(entries):
 
 def _bundle_annotated_frames_into_pdf(entries):
     """
-    Stitch every PNG into a multi-page PDF via Pillow. PDF doesn't
-    support alpha, so each frame is flattened to RGB. 150 DPI keeps page
-    sizes reasonable for HD frames without blowing up the file.
+    Join all the PNG files into a multi-page PDF with Pillow. PDF does not
+    support alpha. Thus, flatten each frame to RGB. At 150 DPI, the pages
+    of HD frames have a good size and the file stays small.
     """
     if not entries:
         raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)

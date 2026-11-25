@@ -34,8 +34,8 @@ from zou.app.utils import (
 )
 
 # Field orders of the compact encoding of the with-tasks view. Clients
-# must map values by reading these names from the response header, never
-# by hardcoding positions.
+# must read these names from the response header to map the values. They
+# must not hardcode the positions.
 SHOTS_AND_TASKS_SHOT_FIELDS = [
     "canceled",
     "data",
@@ -89,8 +89,8 @@ SHOTS_AND_TASKS_TASK_FIELDS = [
 
 def clear_shot_cache(shot_id):
     """
-    Drop every memoized serialization of given shot, the generic entity one
-    included: a shot is a row of the entity table.
+    Remove all the memoized dicts of the given shot, the dict of the
+    generic entity included: a shot is a row of the entity table.
     """
     cache.cache.delete_memoized(get_shot, shot_id)
     cache.cache.delete_memoized(get_shot, shot_id, True)
@@ -100,7 +100,7 @@ def clear_shot_cache(shot_id):
 
 def clear_sequence_cache(sequence_id):
     """
-    Drop every memoized serialization of given sequence.
+    Remove all the memoized dicts of the given sequence.
     """
     cache.cache.delete_memoized(get_sequence, sequence_id)
     cache.cache.delete_memoized(get_full_sequence, sequence_id)
@@ -109,7 +109,7 @@ def clear_sequence_cache(sequence_id):
 
 def clear_episode_cache(episode_id):
     """
-    Drop every memoized serialization of given episode.
+    Remove all the memoized dicts of the given episode.
     """
     cache.cache.delete_memoized(get_episode, episode_id)
     cache.cache.delete_memoized(get_episode_by_name)
@@ -118,8 +118,8 @@ def clear_episode_cache(episode_id):
 
 def get_episodes(criterions=None, **paging):
     """
-    Get all episodes for given criterions, with the paging options of
-    query_utils.get_paginated_results.
+    Return all episodes that match the given criteria. The paging options are
+    the same as in query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -135,14 +135,14 @@ def get_episodes(criterions=None, **paging):
             ),
             **paging,
         )
-    except StatementError:  # Occurs when an id is not properly formatted
+    except StatementError:  # Occurs when an ID has an incorrect format
         raise WrongIdFormatException
 
 
 def get_sequences(criterions=None, **paging):
     """
-    Get all sequences for given criterions, with the paging options of
-    query_utils.get_paginated_results.
+    Return all sequences that match the given criteria. The paging options are
+    the same as in query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -158,14 +158,14 @@ def get_sequences(criterions=None, **paging):
             ),
             **paging,
         )
-    except StatementError:  # Occurs when an id is not properly formatted
+    except StatementError:  # Occurs when an ID has an incorrect format
         raise WrongIdFormatException
 
 
 def get_shots(criterions=None, **paging):
     """
-    Get all shots for given criterions, with the paging options of
-    query_utils.get_paginated_results.
+    Return all shots that match the given criteria. The paging options are
+    the same as in query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -206,21 +206,21 @@ def get_shots(criterions=None, **paging):
         shots = query_utils.get_paginated_results(
             query, serialize=serialize, **paging
         )
-    except StatementError:  # Occurs when an id is not properly formatted
+    except StatementError:  # Occurs when an ID has an incorrect format
         raise WrongIdFormatException
 
     if is_whole_list:
-        # Sort the dicts rather than the SQL rows: ordering thousands of
-        # wide rows (data JSONB included) in PostgreSQL makes it materialize
-        # the whole join before returning anything.
+        # Sort the dicts, not the SQL rows. If PostgreSQL sorts thousands
+        # of wide rows (data JSONB included), it materializes the full join
+        # before it returns a row.
         shots.sort(key=lambda shot: shot["name"].casefold())
     return shots
 
 
 def get_scenes(criterions=None, **paging):
     """
-    Get all scenes for given criterions, with the paging options of
-    query_utils.get_paginated_results.
+    Return all scenes that match the given criteria. The paging options are
+    the same as in query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -259,26 +259,26 @@ def get_scenes(criterions=None, **paging):
         return query_utils.get_paginated_results(
             query, serialize=serialize, **paging
         )
-    except StatementError:  # Occurs when an id is not properly formatted
+    except StatementError:  # Occurs when an ID has an incorrect format
         raise WrongIdFormatException
 
 
 def prepare_shots_and_tasks(criterions=None, compact=False, for_client=None):
     """
-    Run the with-tasks queries and return a generator yielding one shot
-    at a time. With compact=True each item is a list of values aligned on
-    SHOTS_AND_TASKS_SHOT_FIELDS (tasks aligned on
+    Run the with-tasks queries and return a generator that gives one shot
+    at a time. If compact is True, each item is a list of values in the
+    order of SHOTS_AND_TASKS_SHOT_FIELDS (tasks in the order of
     SHOTS_AND_TASKS_TASK_FIELDS) instead of a dict.
 
-    Three flat queries (shots, tasks, assignee links) instead of a single
-    Entity x Task x TaskPersonLink join, and no per-row ORM
-    materialization: the joined form dominated payload and memory on
-    large productions (10k shots for series).
+    Use three flat queries (shots, tasks, assignee links) instead of one
+    Entity x Task x TaskPersonLink join. Do not make an ORM object for each
+    row. On large productions (10k shots for series), the join caused most
+    of the payload size and of the memory use.
 
-    All database and request-dependent work happens before this function
-    returns: the generator is pure formatting, so a streaming response
-    can consume it after the request context is gone, without the whole
-    response ever being held in memory.
+    All the work that uses the database or the request occurs before this
+    function returns. The generator only formats data. Thus a streaming
+    response can use it after the request context ends, and the full
+    response is never in memory.
     """
     from zou.app import db
 
@@ -437,16 +437,16 @@ def prepare_shots_and_tasks(criterions=None, compact=False, for_client=None):
 
 def get_shots_and_tasks(criterions=None, for_client=None):
     """
-    Get all shots for given criterions with related tasks for each shot,
-    as a list of dicts.
+    Return all shots that match the given criteria, with the related tasks
+    of each shot, as a list of dicts.
     """
     return list(prepare_shots_and_tasks(criterions, for_client=for_client))
 
 
 def _get_typed_entity_by_shotgun_id(entity_type, shotgun_id, exception):
     """
-    Return the entity of given type matching given shotgun id as an active
-    record.
+    Return the entity of the given type that has the given shotgun ID as
+    an active record.
     """
     entity = Entity.get_by(
         entity_type_id=entity_type["id"], shotgun_id=shotgun_id
@@ -458,7 +458,7 @@ def _get_typed_entity_by_shotgun_id(entity_type, shotgun_id, exception):
 
 def get_shot_raw(shot_id):
     """
-    Return given shot as an active record.
+    Return the given shot as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -471,7 +471,7 @@ def get_shot_raw(shot_id):
 @cache.memoize_function(120)
 def get_shot(shot_id, relations=False):
     """
-    Return given shot as a dictionary.
+    Return the given shot as a dict.
     """
     return get_shot_raw(shot_id).serialize(
         obj_type="Shot", relations=relations
@@ -481,8 +481,8 @@ def get_shot(shot_id, relations=False):
 @cache.memoize_function_single_flight(120)
 def get_full_shot(shot_id):
     """
-    Return given shot as a dictionary with its tasks and extra data like
-    project and sequence names.
+    Return the given shot as a dict with its tasks and other data, for
+    example the project name and the sequence name.
     """
     if not fields.is_valid_id(shot_id):
         raise ShotNotFoundException
@@ -496,7 +496,7 @@ def get_full_shot(shot_id):
 
 def get_scene_raw(scene_id):
     """
-    Return given scene as an active record.
+    Return the given scene as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -508,15 +508,15 @@ def get_scene_raw(scene_id):
 
 def get_scene(scene_id):
     """
-    Return given scene as a dictionary.
+    Return the given scene as a dict.
     """
     return get_scene_raw(scene_id).serialize(obj_type="Scene")
 
 
 def get_full_scene(scene_id):
     """
-    Return given scene as a dictionary with extra data like project and sequence
-    names.
+    Return the given scene as a dict with other data, for example the
+    project name and the sequence name.
     """
     scene = get_scene(scene_id)
     project = projects_service.get_project(scene["project_id"])
@@ -534,7 +534,7 @@ def get_full_scene(scene_id):
 
 def get_sequence_raw(sequence_id):
     """
-    Return given sequence as an active record.
+    Return the given sequence as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -547,7 +547,7 @@ def get_sequence_raw(sequence_id):
 @cache.memoize_function(120)
 def get_sequence(sequence_id):
     """
-    Return given sequence as a dictionary.
+    Return the given sequence as a dict.
     """
     return get_sequence_raw(sequence_id).serialize(obj_type="Sequence")
 
@@ -555,7 +555,8 @@ def get_sequence(sequence_id):
 @cache.memoize_function_single_flight(120)
 def get_full_sequence(sequence_id):
     """
-    Return given sequence as a dictionary with extra data like project name.
+    Return the given sequence as a dict with other data, for example the
+    project name.
     """
     sequence = get_sequence(sequence_id)
     project = projects_service.get_project(sequence["project_id"])
@@ -571,7 +572,7 @@ def get_full_sequence(sequence_id):
 
 def get_sequence_from_shot(shot):
     """
-    Return parent sequence of given shot.
+    Return the parent sequence of the given shot.
     """
     sequence = None
     if shot.get("parent_id") is not None:
@@ -579,8 +580,8 @@ def get_sequence_from_shot(shot):
             sequence = Entity.get(shot["parent_id"])
         except Exception:
             sequence = None
-    # Entity.get(None) returns None without raising, so the absence has
-    # to be checked, not caught.
+    # Entity.get(None) returns None and does not raise. Thus check the
+    # result for None. Do not catch an exception.
     if sequence is None:
         raise SequenceNotFoundException("Wrong parent_id for given shot.")
     return sequence.serialize(obj_type="Sequence")
@@ -588,7 +589,7 @@ def get_sequence_from_shot(shot):
 
 def get_episode_raw(episode_id):
     """
-    Return given episode as an active record.
+    Return the given episode as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -601,7 +602,7 @@ def get_episode_raw(episode_id):
 @cache.memoize_function(120)
 def get_episode(episode_id):
     """
-    Return given episode as a dictionary.
+    Return the given episode as a dict.
     """
     return get_episode_raw(episode_id).serialize(obj_type="Episode")
 
@@ -609,8 +610,9 @@ def get_episode(episode_id):
 @cache.memoize_function(120)
 def get_episode_by_name(project_id, episode_name):
     """
-    Get episode matching given name project_id. Raises an exception if episode
-    is not found.
+    Return the episode of the given project whose name matches the given
+    name, as a dict. If the episode does not exist, raise
+    EpisodeNotFoundException.
     """
     episode_type_id = entity_types_service.get_episode_type()["id"]
     episode = (
@@ -628,7 +630,8 @@ def get_episode_by_name(project_id, episode_name):
 
 def get_full_episode(episode_id):
     """
-    Return given episode as a dictionary with extra data like project name.
+    Return the given episode as a dict with other data, for example the
+    project name.
     """
     episode = get_episode(episode_id)
     project = projects_service.get_project(episode["project_id"])
@@ -638,7 +641,7 @@ def get_full_episode(episode_id):
 
 def get_episode_from_sequence(sequence):
     """
-    Return parent episode of given sequence.
+    Return the parent episode of the given sequence.
     """
     episode = None
     if sequence.get("parent_id") is not None:
@@ -653,7 +656,8 @@ def get_episode_from_sequence(sequence):
 
 def get_shot_by_shotgun_id(shotgun_id):
     """
-    Retrieves a shot identifed by its shotgun ID (stored during import).
+    Return the shot that has the given shotgun ID (stored during the
+    import).
     """
     return _get_typed_entity_by_shotgun_id(
         entity_types_service.get_shot_type(), shotgun_id, ShotNotFoundException
@@ -662,7 +666,8 @@ def get_shot_by_shotgun_id(shotgun_id):
 
 def get_scene_by_shotgun_id(shotgun_id):
     """
-    Retrieves a scene identifed by its shotgun ID (stored during import).
+    Return the scene that has the given shotgun ID (stored during the
+    import).
     """
     return _get_typed_entity_by_shotgun_id(
         entity_types_service.get_scene_type(),
@@ -673,7 +678,8 @@ def get_scene_by_shotgun_id(shotgun_id):
 
 def get_sequence_by_shotgun_id(shotgun_id):
     """
-    Retrieves a sequence identifed by its shotgun ID (stored during import).
+    Return the sequence that has the given shotgun ID (stored during the
+    import).
     """
     return _get_typed_entity_by_shotgun_id(
         entity_types_service.get_sequence_type(),
@@ -684,7 +690,8 @@ def get_sequence_by_shotgun_id(shotgun_id):
 
 def get_episode_by_shotgun_id(shotgun_id):
     """
-    Retrieves an episode identifed by its shotgun ID (stored during import).
+    Return the episode that has the given shotgun ID (stored during the
+    import).
     """
     return _get_typed_entity_by_shotgun_id(
         entity_types_service.get_episode_type(),
@@ -695,8 +702,8 @@ def get_episode_by_shotgun_id(shotgun_id):
 
 def get_or_create_first_episode(project_id, created_by=None):
     """
-    Get the first episode of the production, by name. If the production
-    has no episode, create one named E01.
+    Return the first episode of the production, by name. If the production
+    has no episode, create one with the name E01.
     """
     episode_type = entity_types_service.get_episode_type()
     episode = (
@@ -714,10 +721,10 @@ def get_or_create_first_episode(project_id, created_by=None):
 
 def get_episodes_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all episodes related to given project, with the paging options
-    of entities_service.get_entities_for_project. With only_assigned, an
-    episode is kept when the current user holds a task on one of its shots
-    or on an asset made for it.
+    Return all episodes of the given project. The paging options are the
+    same as in entities_service.get_entities_for_project. If only_assigned
+    is True, keep an episode only if the current user has a task on one of
+    its shots or on an asset made for it.
     """
     scope = None
     if only_assigned:
@@ -744,9 +751,10 @@ def get_episodes_for_project(project_id, only_assigned=False, **paging):
 
 def get_sequences_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all sequences related to given project, with the paging options
-    of entities_service.get_entities_for_project. With only_assigned, a
-    sequence is kept when the current user holds a task on one of its shots.
+    Return all sequences of the given project. The paging options are the
+    same as in entities_service.get_entities_for_project. If only_assigned
+    is True, keep a sequence only if the current user has a task on one of
+    its shots.
     """
     scope = None
     if only_assigned:
@@ -767,7 +775,7 @@ def get_sequences_for_project(project_id, only_assigned=False, **paging):
 
 def get_sequences_for_episode(episode_id, only_assigned=False):
     """
-    Retrieve all sequences related to given episode.
+    Return all sequences of the given episode.
     """
     if only_assigned:
         Shot = aliased(Entity, name="shot")
@@ -784,8 +792,8 @@ def get_sequences_for_episode(episode_id, only_assigned=False):
 
 def get_shots_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all shots related to given project, with the paging options of
-    entities_service.get_entities_for_project.
+    Return all shots of the given project. The paging options are the same
+    as in entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
@@ -798,7 +806,7 @@ def get_shots_for_project(project_id, only_assigned=False, **paging):
 
 def get_shots_for_episode(episode_id, relations=False):
     """
-    Get all shots for given episode.
+    Return all shots of the given episode.
     """
     Sequence = aliased(Entity, name="sequence")
     shot_type_id = entity_types_service.get_shot_type()["id"]
@@ -812,8 +820,8 @@ def get_shots_for_episode(episode_id, relations=False):
 
 def get_scenes_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all scenes related to given project, with the paging options of
-    entities_service.get_entities_for_project.
+    Return all scenes of the given project. The paging options are the
+    same as in entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
@@ -826,7 +834,7 @@ def get_scenes_for_project(project_id, only_assigned=False, **paging):
 
 def get_scenes_for_sequence(sequence_id):
     """
-    Retrieve all scenes children of given sequence.
+    Return all scenes that are children of the given sequence.
     """
     get_sequence(sequence_id)
     scene_type_id = entity_types_service.get_scene_type()["id"]
@@ -848,9 +856,9 @@ def create_episode(
     created_by=None,
 ):
     """
-    Create episode for given project and emit an episode:new event. An
-    unknown status becomes "running". If an episode with the same name
-    already exists, return it unchanged.
+    Create an episode for the given project and emit an episode:new event.
+    An unknown status becomes "running". If an episode with the same name
+    already exists, return it with no change.
     """
     if data is None:
         data = {}
@@ -880,10 +888,10 @@ def create_sequence(
     project_id, episode_id, name, description="", data=None, created_by=None
 ):
     """
-    Create sequence for given project and episode and emit a sequence:new
-    event. If a sequence with the same name already exists there, return
-    it unchanged. Raise EpisodeNotFoundException if the episode is not in
-    the project.
+    Create a sequence for the given project and episode and emit a
+    sequence:new event. If a sequence with the same name already exists
+    there, return it with no change. If the episode is not in the project,
+    raise EpisodeNotFoundException.
     """
     if data is None:
         data = {}
@@ -910,7 +918,7 @@ def create_sequence(
                 **lookup,
             )
         except IntegrityError:
-            # A concurrent request created the same sequence in between.
+            # A concurrent request created the same sequence in the meantime.
             sequence = Entity.get_by(**lookup)
             if sequence is None:
                 raise
@@ -934,9 +942,10 @@ def create_shot(
     index=True,
 ):
     """
-    Create shot for given project and sequence and emit a shot:new event.
-    If a shot with the same name already exists there, return it unchanged.
-    A bulk import passes index=False and indexes all its shots at the end.
+    Create a shot for the given project and sequence and emit a shot:new
+    event. If a shot with the same name already exists there, return it
+    with no change. A bulk import sets index=False and indexes all its
+    shots at the end.
     """
     if data is None:
         data = {}
@@ -976,9 +985,8 @@ def create_shot(
                 "shot:new",
                 {
                     "shot_id": shot.id,
-                    # A production that has not laid out its sequences yet
-                    # creates shots with no parent at all, and the route
-                    # allows it.
+                    # A production that has no sequences yet creates shots
+                    # with no parent, and the route allows it.
                     "episode_id": (
                         sequence["parent_id"] if sequence is not None else None
                     ),
@@ -991,8 +999,9 @@ def create_shot(
 
 def create_scene(project_id, sequence_id, name, created_by=None):
     """
-    Create scene for given project and sequence and emit a scene:new event.
-    If a scene with the same name already exists there, return it unchanged.
+    Create a scene for the given project and sequence and emit a scene:new
+    event. If a scene with the same name already exists there, return it
+    with no change.
     """
     scene_type = entity_types_service.get_scene_type()
 
@@ -1023,8 +1032,9 @@ def create_scene(project_id, sequence_id, name, created_by=None):
 
 def update_shot(shot_id, data_dict, index=True):
     """
-    Update shot fields matching given id with data from dict given in parameter.
-    A bulk import passes index=False and indexes all its shots at the end.
+    Update the fields of the shot that has the given ID with the data of
+    the given dict. A bulk import sets index=False and indexes all its
+    shots at the end.
     """
     shot = get_shot_raw(shot_id)
     shot.update(data_dict)
@@ -1042,7 +1052,8 @@ def update_shot(shot_id, data_dict, index=True):
 
 def update_sequence(sequence_id, data_dict):
     """
-    Update the fields of given sequence with the values of given dict.
+    Update the fields of the given sequence with the values of the given
+    dict.
     """
     sequence = get_sequence_raw(sequence_id)
     sequence.update(data_dict)
@@ -1057,7 +1068,8 @@ def update_sequence(sequence_id, data_dict):
 
 def update_episode(episode_id, data_dict):
     """
-    Update the fields of given episode with the values of given dict.
+    Update the fields of the given episode with the values of the given
+    dict.
     """
     episode = get_episode_raw(episode_id)
     episode.update(data_dict)
@@ -1072,8 +1084,8 @@ def update_episode(episode_id, data_dict):
 
 def get_shot_versions(shot_id):
     """
-    Return all versions of given shot, most recent first. A version is
-    recorded when the frame range or the name of the shot changes.
+    Return all versions of the given shot, most recent first. Zou records
+    a version when the frame range or the name of the shot changes.
     """
     versions = (
         EntityVersion.query.filter_by(entity_id=shot_id)
@@ -1085,8 +1097,8 @@ def get_shot_versions(shot_id):
 
 def get_last_shot_version_raw(shot_id):
     """
-    Return the most recent version of given shot as a model, or None when
-    the shot was never versioned.
+    Return the most recent version of the given shot as an active record.
+    If the shot has no version, return None.
     """
     return (
         EntityVersion.query.filter_by(entity_id=shot_id)
@@ -1102,8 +1114,8 @@ def set_frames_from_task_type_preview_files(
 ):
     """
     Set the frame count of each shot from the duration of the last preview
-    of given task type. Used to backfill nb_frames from the movies actually
-    delivered.
+    of the given task type. Use it to backfill nb_frames from the movies
+    that the studio delivered.
     """
     from zou.app import db
 

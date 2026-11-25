@@ -58,10 +58,12 @@ from zou.app.utils import events
 
 def remove_playlist_dependents(playlist_dict):
     """
-    Delete what hangs off given playlist: its notifications, its build jobs
-    (with their movie files) and its share links. The one cascade both the
-    service and the CRUD route run, so a dependent added here is gone from
-    both.
+    Delete the dependents of the given playlist:
+    - its notifications
+    - its build jobs, with their movie files
+    - its share links.
+    The service and the CRUD route both use this one cascade. Thus both
+    remove a dependent that you add here.
     """
     playlist_id = playlist_dict["id"]
     notifications = Notification.query.filter_by(playlist_id=playlist_id).all()
@@ -81,8 +83,8 @@ def remove_playlist_dependents(playlist_dict):
 
 def remove_playlist(playlist_id):
     """
-    Remove given playlist from database, with its notifications, build jobs
-    and share links, then emit a playlist:delete event.
+    Remove the given playlist from the database, with its notifications,
+    build jobs and share links. Then emit a playlist:delete event.
     """
     playlist = playlists_service.get_playlist_raw(playlist_id)
     playlist_dict = playlist.serialize()
@@ -98,13 +100,15 @@ def remove_playlist(playlist_id):
 
 def remove_entities(project_id, entity_ids, force=False):
     """
-    Delete a list of a project's entities, dispatching each to the right
-    removal by its type (asset, shot, edit, concept). Without force, entities
-    with tasks are canceled on first deletion, then removed for real when
-    already canceled; concepts are always removed. With force, every entity is
-    removed for real along with its tasks. Absent entities and entities that
-    do not belong to the project or are not one of those types are skipped.
-    Returns the ids of the entities that were removed.
+    Delete a list of entities of a project. Send each entity to the correct
+    removal function for its type: asset, shot, edit or concept.
+    - Without force, cancel the entities with tasks on the first deletion.
+      If they are already canceled, remove them for real. Always remove
+      the concepts.
+    - With force, remove each entity for real with its tasks.
+    Skip the entities that do not exist, that are not in the project or
+    that are not one of these types. Return the IDs of the removed
+    entities.
     """
 
     shot_type_id = entity_types_service.get_shot_type()["id"]
@@ -116,8 +120,9 @@ def remove_entities(project_id, entity_ids, force=False):
         try:
             entity = entities_service.get_entity(entity_id)
         except EntityNotFoundException:
-            # Already gone (e.g. deleted by someone else): the deletion is
-            # idempotent, skip it like remove_tasks ignores unknown ids.
+            # The entity does not exist (for example, another user deleted
+            # it). The deletion is idempotent: skip it, as remove_tasks
+            # ignores unknown IDs.
             continue
         if entity["project_id"] != project_id:
             continue
@@ -143,9 +148,9 @@ def remove_entities(project_id, entity_ids, force=False):
 
 def remove_episode(episode_id, force=False):
     """
-    Remove an episode. With force, remove first all related sequences,
-    shots, assets, tasks and links. Raise ModelWithRelationsDeletionException
-    if data is still linked to the episode.
+    Remove an episode. With force, first remove all related sequences,
+    shots, assets, tasks and links. If data is still linked to the episode,
+    raise ModelWithRelationsDeletionException.
     """
 
     episode = shots_service.get_episode_raw(episode_id)
@@ -181,9 +186,21 @@ def remove_episode(episode_id, force=False):
 
 def remove_project(project_id):
     """
-    Remove a project and everything it owns: previews, tasks, budgets, entity
-    links, playlists, events, output files, entities, metadata, milestones,
-    schedule, search filters, news and its preview account.
+    Remove a project and all the data that it owns:
+    - previews
+    - tasks
+    - budgets
+    - entity links
+    - playlists
+    - events
+    - output files
+    - entities
+    - metadata
+    - milestones
+    - schedule
+    - search filters
+    - news
+    - the preview account of the project.
     """
 
     preview_files = (
@@ -252,22 +269,30 @@ def remove_project(project_id):
 
 def remove_preview_account(project_id):
     """
-    Remove the preview account of given project, if any.
+    Remove the preview account of the given project, if it exists.
     """
     preview_account = Person.get_by(preview_project_id=project_id)
     if preview_account is not None:
         remove_person(str(preview_account.id), force=True)
-        # The cached person would keep authenticating until its TTL.
+        # Else, the cached person can authenticate until its TTL ends.
         persons_service.clear_person_cache()
 
 
 def remove_person(person_id, force=True):
     """
-    Remove a person. With force, everything they own is deleted or detached
-    first: comments, notifications, logs, subscriptions, time spents, team
-    memberships, task assignations and files. Raise PersonInProtectedAccounts
-    for a protected account, and ModelWithRelationsDeletionException if data
-    is still linked to the person.
+    Remove a person. With force, first delete or detach all the data that
+    the person owns:
+    - comments
+    - notifications
+    - logs
+    - subscriptions
+    - time spents
+    - team memberships
+    - task assignations
+    - files.
+    If the account is protected, raise PersonInProtectedAccounts. If data
+    is still linked to the person, raise
+    ModelWithRelationsDeletionException.
     """
     person = Person.get(person_id)
     if person.email in config.PROTECTED_ACCOUNTS:
@@ -275,8 +300,8 @@ def remove_person(person_id, force=True):
             "Can't delete this person it's a protected account."
         )
     if force:
-        # Each removal commits, which expires the loaded comments: reading
-        # the id of one removed in the meantime would raise.
+        # Each removal commits, and this expires the loaded comments. If
+        # another removal deleted a comment, a read of its id raises.
         comment_ids = [
             comment.id for comment in Comment.get_all_by(person_id=person_id)
         ]
@@ -342,8 +367,9 @@ def remove_person(person_id, force=True):
 
 def remove_asset(asset_id, force=False):
     """
-    Remove given asset. With tasks attached and without force, the asset
-    is only marked canceled; force deletes it and everything tied to it.
+    Remove the given asset. If the asset has tasks and force is not set,
+    only mark the asset as canceled. With force, delete the asset and all
+    the data linked to it.
     """
     asset = assets_service.get_asset_raw(asset_id)
     is_tasks_related = Task.query.filter_by(entity_id=asset_id).count() > 0
@@ -360,8 +386,8 @@ def remove_asset(asset_id, force=False):
             asset.serialize(obj_type="Asset")
         )
     else:
-        # Before deleting EntityLinks, collect affected shot IDs so we can
-        # refresh their casting stats after deletion
+        # Before the deletion of the EntityLinks, get the IDs of the
+        # related shots. We refresh their casting stats after the deletion.
         cast_in = breakdown_service.get_cast_in(asset_id)
         affected_shot_ids = {
             entity["shot_id"] for entity in cast_in if "shot_id" in entity
@@ -396,15 +422,16 @@ def remove_asset(asset_id, force=False):
 
 def cancel_asset(asset_id):
     """
-    Set cancel flag on asset to true. Send an event to event queue.
+    Set the cancel flag of the asset to True. Send an event to the event
+    queue.
     """
     asset = assets_service.get_asset_raw(asset_id)
 
     asset.update({"canceled": True})
     asset_dict = asset.serialize(obj_type="Asset")
-    # Same write as the canceling branch of remove_asset, so the same
-    # invalidation: without it the asset reads back as live for the whole
-    # memoization window.
+    # This is the same write as the cancel branch of remove_asset, so it
+    # needs the same invalidation. Without it, the asset stays live in the
+    # cache for all the memoization time.
     assets_service.clear_asset_cache(str(asset_id))
     events.emit(
         "asset:delete",
@@ -416,8 +443,8 @@ def cancel_asset(asset_id):
 
 def remove_shot(shot_id, force=False):
     """
-    Remove given shot from database. If it has tasks linked to it, it marks
-    the shot as canceled. Deletion can be forced.
+    Remove the given shot from the database. If the shot has tasks, mark
+    it as canceled. Use force to delete it.
     """
     shot = shots_service.get_shot_raw(shot_id)
     is_tasks_related = Task.query.filter_by(entity_id=shot_id).count() > 0
@@ -456,9 +483,9 @@ def remove_shot(shot_id, force=False):
 
 def remove_scene(scene_id):
     """
-    Remove given scene from database. If the deletion fails because data is
-    still linked to it, it marks the scene as canceled and emits
-    scene:update instead of scene:delete.
+    Remove the given scene from the database. If the deletion fails
+    because data is still linked to the scene, mark the scene as canceled.
+    Then emit scene:update instead of scene:delete.
     """
     scene = shots_service.get_scene_raw(scene_id)
     try:
@@ -478,14 +505,14 @@ def remove_scene(scene_id):
 
 def remove_sequence(sequence_id, force=False):
     """
-    Remove a sequence. With force, remove first all related shots, scenes,
-    tasks and links. Raise ModelWithRelationsDeletionException if data is
-    still linked to the sequence.
+    Remove a sequence. With force, first remove all related shots, scenes,
+    tasks and links. If data is still linked to the sequence, raise
+    ModelWithRelationsDeletionException.
     """
     sequence = shots_service.get_sequence_raw(sequence_id)
     if force:
-        # Scenes hang from a sequence too, and remove_shot would raise on
-        # one halfway through, after taking part of the sequence away.
+        # Scenes are also children of a sequence. remove_shot raises on a
+        # scene, after it removed a part of the sequence.
         for shot in Entity.get_all_by(
             parent_id=sequence_id,
             entity_type_id=entity_types_service.get_shot_type()["id"],
@@ -518,8 +545,8 @@ def remove_sequence(sequence_id, force=False):
 
 def remove_edit(edit_id, force=False):
     """
-    Remove given edit from database. If it has tasks linked to it, it marks
-    the edit as canceled. Deletion can be forced.
+    Remove the given edit from the database. If the edit has tasks, mark
+    it as canceled. Use force to delete it.
     """
     edit = edits_service.get_edit_raw(edit_id)
     is_tasks_related = Task.query.filter_by(entity_id=edit_id).count() > 0
@@ -556,8 +583,8 @@ def remove_edit(edit_id, force=False):
 
 def remove_concept(concept_id, force=False):
     """
-    Remove given concept from database. If it has tasks linked to it, it marks
-    the concept as canceled. Deletion can be forced.
+    Remove the given concept from the database. If the concept has tasks,
+    mark it as canceled. Use force to delete it.
     """
     concept = concepts_service.get_concept_raw(concept_id)
     is_tasks_related = Task.query.filter_by(entity_id=concept_id).count() > 0

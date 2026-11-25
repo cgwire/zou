@@ -36,7 +36,8 @@ from zou.app.utils import cache, events, fields
 
 def clear_production_schedule_version_cache(production_schedule_version_id):
     """
-    Drop every memoized serialization of given production schedule version.
+    Remove all the memoized dicts of the given production schedule
+    version.
     """
     cache.cache.delete_memoized(
         get_production_schedule_version, production_schedule_version_id
@@ -48,7 +49,8 @@ def clear_production_schedule_version_cache(production_schedule_version_id):
 
 def get_schedule_items(project_id):
     """
-    Get all project schedule items (mainly for sync purpose).
+    Return all schedule items of the given project (mainly for
+    synchronization).
     """
     schedule_items = ScheduleItem.query.filter_by(project_id=project_id).all()
     return fields.serialize_list(schedule_items)
@@ -56,11 +58,12 @@ def get_schedule_items(project_id):
 
 def get_task_types_schedule_items(project_id):
     """
-    Return the schedule items of the task types given project has tasks
-    for. If no schedule item exists for one of them, it creates one. When
-    the project settings list task types, the other ones are left out: a
-    task type removed from the settings keeps its tasks and its schedule
-    item, which comes back if the task type is added again.
+    Return the schedule items of the task types that have tasks in the
+    given project. If one of these task types has no schedule item, create
+    one. If the project settings list task types, leave out the other task
+    types. A task type that you remove from the settings keeps its tasks
+    and its schedule item. The item comes back if you add the task type
+    again.
     """
     project_task_type_ids = {
         str(task_type.id)
@@ -124,8 +127,8 @@ def get_task_types_schedule_items(project_id):
 
 def _entity_schedule_items_query(project_id, task_type_id, entity_type_id):
     """
-    Base query for the schedule items attached to the entities of given type,
-    in given project and for given task type.
+    Return the base query for the schedule items linked to the entities of
+    the given type, in the given project and for the given task type.
     """
     return (
         ScheduleItem.query.join(Entity, ScheduleItem.object_id == Entity.id)
@@ -137,9 +140,9 @@ def _entity_schedule_items_query(project_id, task_type_id, entity_type_id):
 
 def get_asset_types_schedule_items(project_id, task_type_id, episode_id=None):
     """
-    Return all asset type schedule items for given project. If no schedule item
-    exists for a given asset type, it creates one. When an episode is given,
-    results are restricted to the asset types having assets in that episode.
+    Return the schedule items of all asset types of the given project. If
+    an asset type has no schedule item, create one. If an episode is given,
+    return only the asset types that have assets in that episode.
     """
     if episode_id is not None:
         asset_types = assets_service.get_asset_types_for_episode(
@@ -173,9 +176,9 @@ def get_asset_types_schedule_items(project_id, task_type_id, episode_id=None):
 
 def get_episodes_schedule_items(project_id, task_type_id, episode_id=None):
     """
-    Return all episode schedule items for given project. If no schedule item
-    exists for a given episode, it creates one. When an episode is given,
-    results are restricted to that episode.
+    Return the schedule items of all episodes of the given project. If an
+    episode has no schedule item, create one. If an episode is given,
+    return only that episode.
     """
     episode_type = entity_types_service.get_episode_type()
     episodes = shots_service.get_episodes_for_project(project_id)
@@ -203,9 +206,9 @@ def get_episodes_schedule_items(project_id, task_type_id, episode_id=None):
 
 def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
     """
-    Return all sequence schedule items for given project. If no schedule item
-    exists for a given sequence, it creates one. When an episode is given,
-    results are restricted to the sequences of that episode.
+    Return the schedule items of all sequences of the given project. If a
+    sequence has no schedule item, create one. If an episode is given,
+    return only the sequences of that episode.
     """
     sequences = shots_service.get_sequences_for_project(project_id)
     if episode_id is not None:
@@ -235,10 +238,9 @@ def get_sequences_schedule_items(project_id, task_type_id, episode_id=None):
 
 def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
     """
-    Return all edit schedule items for given project. If no schedule item
-    exists for a given edit, it creates one. Canceled edits are ignored.
-    When an episode is given, results are restricted to the edits of that
-    episode.
+    Return the schedule items of all edits of the given project. If an
+    edit has no schedule item, create one. Ignore the canceled edits. If an
+    episode is given, return only the edits of that episode.
     """
     edits = edits_service.get_edits_for_project(project_id)
     edits = [edit for edit in edits if not edit["canceled"]]
@@ -267,9 +269,9 @@ def get_edits_schedule_items(project_id, task_type_id, episode_id=None):
 
 def _is_untouched(schedule_item):
     """
-    Whether nobody moved the schedule item since its creation. The two
-    timestamps are set by separate clock reads on creation, a second apart
-    at most.
+    Return True if nobody moved the schedule item after its creation. On
+    creation, two separate clock reads set the two timestamps. They are one
+    second apart at most.
     """
     return (
         schedule_item.updated_at is None
@@ -282,11 +284,12 @@ def get_entity_schedule_items(
     project_id, task_type_id, to_create, to_create_map, existing_schedule_items
 ):
     """
-    Complete the existing schedule items with one item per entity that has
-    none yet, drop the ones whose entity is gone, and return the whole set
-    sorted by entity name. An item nobody moved yet, new or old, shows at
-    the bar of its task type, so the schedule draws it where the task type
-    is planned; without that bar a new item takes a day from today.
+    Complete the existing schedule items with one item for each entity
+    that has no item yet. Remove the items whose entity is not there
+    anymore. Return all the items, sorted by entity name. An item that
+    nobody moved yet, new or old, gets the dates of the bar of its task
+    type. Thus the schedule shows it where the task type is planned. If
+    there is no such bar, a new item starts today and ends tomorrow.
     """
     schedule_item_map = {
         str(schedule_item.object_id): schedule_item
@@ -347,7 +350,7 @@ def get_entity_schedule_items(
 
 def get_milestones_for_project(project_id):
     """
-    Return all milestones related to given project.
+    Return all milestones of the given project.
     """
     query = Milestone.query.filter_by(project_id=project_id)
     return [milestone.present() for milestone in query.all()]
@@ -355,7 +358,8 @@ def get_milestones_for_project(project_id):
 
 def get_production_schedule_version_raw(production_schedule_version_id):
     """
-    Get production schedule version matching given id.
+    Return the production schedule version that has the given ID as an
+    active record.
     """
     return base_service.get_instance(
         ProductionScheduleVersion,
@@ -369,7 +373,8 @@ def get_production_schedule_version(
     production_schedule_version_id, relations=False
 ):
     """
-    Get production schedule version matching given id and serialize it.
+    Return the production schedule version that has the given ID as a
+    dict.
     """
     return get_production_schedule_version_raw(
         production_schedule_version_id
@@ -380,7 +385,7 @@ def get_production_schedule_version_task_links(
     production_schedule_version_id, task_type_id=None, relations=False
 ):
     """
-    Get all task links for given production schedule version.
+    Return all task links of the given production schedule version.
     """
     query = ProductionScheduleVersionTaskLink.query.filter_by(
         production_schedule_version_id=production_schedule_version_id
@@ -398,9 +403,10 @@ def get_production_schedule_version_task_links(
 
 def detach_production_schedule_version(production_schedule_version_id):
     """
-    Clear the references other rows keep to given production schedule
-    version before it is deleted, memoized copies included: the versions
-    copied from it and the project it was applied to.
+    Clear the references to the given production schedule version in
+    other rows and in their memoized copies. Do this before you delete the
+    version. These rows are the versions copied from it and the project
+    that it was applied to.
     """
     derived_ids = [
         str(row.id)
@@ -432,7 +438,8 @@ def detach_production_schedule_version(production_schedule_version_id):
 
 def update_production_schedule_version(production_schedule_version_id, data):
     """
-    Update production schedule version with given id with data.
+    Update the production schedule version that has the given ID with the
+    given data.
     """
     production_schedule_version = get_production_schedule_version_raw(
         production_schedule_version_id
@@ -450,13 +457,14 @@ def update_production_schedule_version(production_schedule_version_id, data):
 
 def _generate_task_link_id():
     """
-    Per-row UUID expression for the INSERT ... SELECT copies. gen_random_uuid()
-    is a core built-in only from PostgreSQL 13 (the CI matrix still covers
-    PostgreSQL 12), and a Python-side default (fields.gen_uuid) is evaluated
-    once per from_select batch, so every row would share the same primary key.
-    md5(text) has been core since well before any PostgreSQL version we
-    support, and applied to random() || clock_timestamp() it yields a
-    distinct uuid per row.
+    Return a UUID expression for each row of the INSERT ... SELECT copies.
+    gen_random_uuid() is a core built-in only from PostgreSQL 13, and the
+    CI matrix still covers PostgreSQL 12. If we use a Python-side default
+    (fields.gen_uuid), Python evaluates it one time for each from_select
+    batch. Then all rows get the same primary key. md5(text) is a core
+    function in all the PostgreSQL versions that we support. On
+    random() || clock_timestamp(), it gives a different uuid for each
+    row.
     """
     return cast(
         func.md5(
@@ -471,13 +479,17 @@ def _generate_task_link_id():
 
 def _upsert_task_links_from_select(source_select):
     """
-    Upsert the target version task links from a select yielding, in order, the
-    generated id, the target production schedule version id, the task id and
-    the copied start_date, due_date and estimation. The whole copy runs in the
-    database (INSERT ... SELECT), so it scales to productions with tens of
-    thousands of tasks without loading them into Python. Returns the number
-    of task links copied, taken from the statement RETURNING rows (rowcount
-    is unreliable for INSERT ... SELECT).
+    Upsert the task links of the target version from a select. The select
+    gives these columns, in this order:
+    - the generated id
+    - the ID of the target production schedule version
+    - the task ID
+    - the copied start_date, due_date and estimation.
+    The full copy runs in the database (INSERT ... SELECT). Thus it scales
+    to productions with tens of thousands of tasks, and it does not load
+    them into Python. Return the number of copied task links, from the
+    RETURNING rows of the statement. rowcount is not reliable for
+    INSERT ... SELECT.
     """
     tl = ProductionScheduleVersionTaskLink
     insert_stmt = insert(tl).from_select(
@@ -505,11 +517,12 @@ def _upsert_task_links_from_select(source_select):
 
 def _replace_task_link_assignees(refreshed_link_ids, person_source):
     """
-    Refresh the assignees of the task links selected by refreshed_link_ids
-    (a select of task link ids) with the rows from person_source, a select
-    yielding (task_link_id, person_id). The delete is scoped to the refreshed
-    links only, so task links left untouched by the copy keep their assignees.
-    Runs in the database so it stays cheap whatever the number of assignees.
+    Refresh the assignees of the task links that refreshed_link_ids
+    selects (a select of task link IDs). Use the rows from person_source, a
+    select that gives (task_link_id, person_id). The delete applies only to
+    the refreshed links. Thus the task links that the copy did not change
+    keep their assignees. This runs in the database, so the cost stays low
+    for all numbers of assignees.
     """
     pl = ProductionScheduleVersionTaskLinkPersonLink
     db.session.execute(
@@ -529,9 +542,9 @@ def _replace_task_link_assignees(refreshed_link_ids, person_source):
 
 def _build_task_links_summary(task_link_count):
     """
-    Lightweight response for the set-task-links actions: the clients discard
-    the payload, so avoid serializing the (possibly tens of thousands of) task
-    links and just report the number of copied links.
+    Return a small response for the set-task-links actions. The clients
+    ignore the payload. Thus do not serialize the task links (there can be
+    tens of thousands). Give only the number of copied links.
     """
     return {"success": True, "task_link_count": task_link_count}
 
@@ -540,8 +553,9 @@ def set_production_schedule_version_task_links_from_production(
     production_schedule_version_id,
 ):
     """
-    Set task links for given production schedule version from tasks in the
-    production. Return a summary with the number of copied links.
+    Set the task links of the given production schedule version from the
+    tasks of the production. Return a summary with the number of copied
+    links.
     """
     production_schedule_version = get_production_schedule_version(
         production_schedule_version_id
@@ -562,7 +576,7 @@ def set_production_schedule_version_task_links_from_production(
         ).where(Task.project_id == production_schedule_version["project_id"])
     )
 
-    # Every project task is a copy source, so all target links are refreshed.
+    # All project tasks are copy sources, so refresh all target links.
     _replace_task_link_assignees(
         select(tl.id).where(
             tl.production_schedule_version_id == production_schedule_version_id
@@ -583,10 +597,10 @@ def set_production_schedule_version_task_links_from_production_schedule_version(
     production_schedule_version_id, other_production_schedule_version_id
 ):
     """
-    Set task links for given production schedule version from another, and
-    record the source version in production_schedule_from. Return a summary
-    with the number of copied links. Raise WrongParameterException if both
-    versions are the same.
+    Set the task links of the given production schedule version from
+    another version. Record the source version in production_schedule_from.
+    Return a summary with the number of copied links. If the two versions
+    are the same, raise WrongParameterException.
     """
     if production_schedule_version_id == other_production_schedule_version_id:
         raise WrongParameterException(
@@ -614,8 +628,8 @@ def set_production_schedule_version_task_links_from_production_schedule_version(
         )
     )
 
-    # Only the links whose task exists in the source version are refreshed;
-    # target links absent from the source keep their assignees.
+    # Refresh only the links whose task exists in the source version. The
+    # target links that are not in the source keep their assignees.
     source_task_ids = select(other_tl.task_id).where(
         other_tl.production_schedule_version_id
         == other_production_schedule_version_id
@@ -655,9 +669,11 @@ def apply_production_schedule_version_to_production(
     production_schedule_version_id,
 ):
     """
-    Apply production schedule version to production: copy the dates and
-    estimations of its task links to the tasks, lock the version and mark
-    the project as built from it. Emit a task:update event per task.
+    Apply the given production schedule version to the production:
+    - copy the dates and estimations of its task links to the tasks
+    - lock the version
+    - mark the project as built from it.
+    Emit a task:update event for each task.
     """
     stmt = (
         update(Task)
@@ -679,10 +695,11 @@ def apply_production_schedule_version_to_production(
     db.session.commit()
 
     for task_id, project_id in updated_tasks:
-        # The dates and estimation are written by a bulk UPDATE that the ORM
-        # never sees, so the memoized tasks must be dropped by hand. The event
-        # below makes every client refetch at once: without this they would
-        # all cache the pre-schedule dates for the rest of the TTL.
+        # A bulk UPDATE writes the dates and estimation, and the ORM does
+        # not see it. Thus remove the memoized tasks manually. The event
+        # below makes all clients get the tasks again at the same time.
+        # Without this, they all keep the old dates in cache until the TTL
+        # ends.
         tasks_service.clear_task_cache(str(task_id))
         events.emit(
             "task:update",
@@ -706,37 +723,37 @@ def get_persons_tasks_dates(
     project_id=None, project_ids=None, busy_project_ids=None
 ):
     """
-    For schedule usages, for each active person, it returns the first start
-    date of all tasks of assigned to this person and the last due date.
+    For the schedule, return for each active person the first start date
+    of all the tasks assigned to this person, and the last due date.
 
-    Scoping (project_id takes precedence over project_ids):
-    - project_id, when set, scopes the lookup to that single project and
-      nothing else. It is honoured directly -- including closed projects --
-      instead of being intersected with the open-project list, otherwise a
-      closed but legitimately accessible project would yield an empty result.
-      The caller is responsible for checking access to it.
-    - project_ids restricts the lookup to a set of projects. Only None (not an
-      empty list) triggers the studio-wide fallback below. An empty list is
-      honoured as-is and matches no project, which is how a manager with no
-      project gets an empty result -- the guard must stay an `is None` identity
-      test and never become `if not project_ids:`, otherwise such a manager
-      would leak the studio-wide view.
-    - busy_project_ids lists the projects the caller must not see in detail:
-      tasks found there come back as anonymous busy_periods, merged date
-      pairs carrying no production or task information, so a schedule can
-      show that a person is taken without leaking what they work on. A
-      person with only such tasks is listed with null
+    Scoping (project_id has priority over project_ids):
+    - If project_id is set, the lookup uses only that project. The function
+      uses it directly, closed projects included. It does not intersect it
+      with the list of open projects. Else, a closed project that the
+      caller can access gives an empty result. The caller must check the
+      access to it.
+    - project_ids limits the lookup to a set of projects. Only None (not
+      an empty list) starts the studio-wide default below. An empty list
+      matches no project. Thus a manager with no project gets an empty
+      result. Keep the guard as an `is None` identity test. Do not change
+      it to `if not project_ids:`. Else, such a manager sees the
+      studio-wide view.
+    - busy_project_ids lists the projects that the caller must not see in
+      detail. The tasks of these projects come back as anonymous
+      busy_periods. These are merged date pairs with no production or task
+      data. Thus a schedule can show that a person is busy and not show
+      what the person works on. A person with only such tasks has null
       min_date / max_date.
     """
     if project_id is not None:
-        # An explicit, access-checked project scopes the lookup directly. This
-        # short-circuits the open-project fallback so a closed project the
-        # caller may legitimately see is not filtered out to an empty result.
+        # An explicit project with a checked access is the scope of the
+        # lookup. This skips the default to open projects. Thus a closed
+        # project that the caller can see does not give an empty result.
         project_ids = [project_id]
     elif project_ids is None:
-        # Studio-wide fallback. Note this is the project-scoped helper, not
-        # user_service.get_open_project_ids() which is limited to the current
-        # user's projects.
+        # Studio-wide default. This is the project-scoped helper, not
+        # user_service.get_open_project_ids(), which gives only the projects
+        # of the current user.
         project_ids = projects_service.open_project_ids()
     query = (
         Task.query.with_entities(
@@ -789,9 +806,9 @@ def get_persons_tasks_dates(
 
 def _merge_date_intervals(intervals):
     """
-    Merge overlapping (start, end) pairs into the smallest set of disjoint
-    intervals, so anonymous busy periods reveal neither the task count nor
-    how the underlying work is split.
+    Merge the overlapping (start, end) pairs into the smallest set of
+    disjoint intervals. Thus the anonymous busy periods do not show the
+    task count or how the work is divided.
     """
     merged = []
     for start, end in sorted(intervals):

@@ -46,7 +46,7 @@ MOVIE_PREFIXES_KEY = "movie_prefixes"
 
 def clear_preview_file_cache(preview_file_id):
     """
-    Drop the memoized serializations of given preview file.
+    Remove the memoized serializations of the given preview file.
     """
     cache.cache.delete_memoized(get_preview_file, preview_file_id)
     cache.cache.delete_memoized(get_preview_file_for_access, preview_file_id)
@@ -54,35 +54,36 @@ def clear_preview_file_cache(preview_file_id):
 
 def clear_output_file_cache(output_file_id):
     """
-    Drop the memoized serialization of given output file.
+    Remove the memoized serialization of the given output file.
     """
     cache.cache.delete_memoized(get_output_file, output_file_id)
 
 
 def clear_working_file_cache(working_file_id):
     """
-    Drop the memoized serialization of given working file.
+    Remove the memoized serialization of the given working file.
     """
     cache.cache.delete_memoized(get_working_file, working_file_id)
 
 
 def clear_output_type_cache(output_type_id):
     """
-    Drop the memoized serialization of given output type.
+    Remove the memoized serialization of the given output type.
     """
     cache.cache.delete_memoized(get_output_type, output_type_id)
 
 
 def clear_software_cache(software_id):
     """
-    Drop the memoized serialization of given software.
+    Remove the memoized serialization of the given software.
     """
     cache.cache.delete_memoized(get_software, software_id)
 
 
 def clear_preview_background_file_cache(preview_background_file_id):
     """
-    Drop the memoized serializations of given preview background file.
+    Remove the memoized serializations of the given preview background
+    file.
     """
     cache.cache.delete_memoized(
         get_preview_background_file, preview_background_file_id
@@ -99,8 +100,8 @@ def _apply_output_file_filters(
     file_status_id=None,
 ):
     """
-    Apply the optional filters shared by every output file listing. A falsy
-    value leaves the matching filter out.
+    Apply the optional filters that all output file listings use. If a
+    value is falsy, do not apply the related filter.
     """
     if task_type_id:
         query = query.filter(OutputFile.task_type_id == task_type_id)
@@ -117,7 +118,7 @@ def _apply_output_file_filters(
 
 def clear_file_status_cache():
     """
-    Drop the memoized default file status.
+    Remove the memoized default file status.
     """
     cache.cache.delete_memoized(get_default_file_status)
 
@@ -125,7 +126,7 @@ def clear_file_status_cache():
 @cache.memoize_function(240)
 def get_default_file_status():
     """
-    Return default file status to set on a file when it is created.
+    Return the default file status of a new file.
     """
     default_status = FileStatus.get_by(name=config.DEFAULT_FILE_STATUS)
     if default_status is None:
@@ -138,7 +139,7 @@ def get_default_file_status():
 
 def get_working_file_raw(working_file_id):
     """
-    Return given working file as active record.
+    Return the given working file as an active record.
     """
     return get_instance(
         WorkingFile, working_file_id, WorkingFileNotFoundException
@@ -148,14 +149,14 @@ def get_working_file_raw(working_file_id):
 @cache.memoize_function(240)
 def get_working_file(working_file_id):
     """
-    Return given working file as dict.
+    Return the given working file as a dict.
     """
     return get_working_file_raw(working_file_id).serialize(relations=True)
 
 
 def get_output_file_raw(output_file_id):
     """
-    Return given output file as active record.
+    Return the given output file as an active record.
     """
     return get_instance(
         OutputFile, output_file_id, OutputFileNotFoundException
@@ -165,14 +166,14 @@ def get_output_file_raw(output_file_id):
 @cache.memoize_function(240)
 def get_output_file(output_file_id):
     """
-    Return given output file as a dict.
+    Return the given output file as a dict.
     """
     return get_output_file_raw(output_file_id).serialize()
 
 
 def get_software_raw(software_id):
     """
-    Return given software as active record.
+    Return the given software as an active record.
     """
     return get_instance(Software, software_id, SoftwareNotFoundException)
 
@@ -180,14 +181,14 @@ def get_software_raw(software_id):
 @cache.memoize_function(240)
 def get_software(software_id):
     """
-    Return given software as dict.
+    Return the given software as a dict.
     """
     return get_software_raw(software_id).serialize()
 
 
 def get_output_type_raw(output_type_id):
     """
-    Return given output type as active record.
+    Return the given output type as an active record.
     """
     return get_instance(
         OutputType, output_type_id, OutputTypeNotFoundException
@@ -197,15 +198,15 @@ def get_output_type_raw(output_type_id):
 @cache.memoize_function(240)
 def get_output_type(output_type_id):
     """
-    Return given output type as dict.
+    Return the given output type as a dict.
     """
     return get_output_type_raw(output_type_id).serialize()
 
 
 def get_or_create_output_type(name, short_name=""):
     """
-    Return the output type matching given name, creating it when it does
-    not exist yet.
+    Return the output type that has the given name. If it does not exist,
+    create it.
     """
     return get_or_create_instance_by_name(
         OutputType, name=name, short_name=short_name
@@ -214,8 +215,8 @@ def get_or_create_output_type(name, short_name=""):
 
 def get_or_create_software(name, short_name, file_extension):
     """
-    Return the software matching given name, creating it when it does not
-    exist yet.
+    Return the software that has the given name. If it does not exist,
+    create it.
     """
     return get_or_create_instance_by_name(
         Software,
@@ -227,7 +228,8 @@ def get_or_create_software(name, short_name, file_extension):
 
 def get_last_working_files_for_task(task_id):
     """
-    Get last revisions for given task grouped by file name.
+    Return the last revisions of the given task as a dict. The key is the
+    file name.
     """
     query = WorkingFile.query.with_entities(
         WorkingFile.name,
@@ -262,7 +264,7 @@ def get_last_working_files_for_task(task_id):
 
 def get_next_working_revision(task_id, name):
     """
-    Get next working file revision for given task and name.
+    Return the next working file revision for the given task and name.
     """
     working_files = (
         WorkingFile.query.filter_by(task_id=task_id, name=name)
@@ -286,10 +288,10 @@ def create_new_working_revision(
     revision=0,
 ):
     """
-    Create a new working file revision for given task. An author (user) and
-    a software are required. Emit a working-file:new event and return the
-    working file as a dict. Raise EntryAlreadyExistsException when the
-    revision exists.
+    Create a new working file revision for the given task. An author
+    (user) and a software are necessary. Emit a working-file:new event and
+    return the working file as a dict. If the revision exists, raise
+    EntryAlreadyExistsException.
     """
     task = Task.get(task_id)
     if revision == 0:
@@ -334,21 +336,21 @@ def create_new_output_revision(
     file_status_id=None,
 ):
     """
-    Create a new ouput file for given entity. Output type, task type, author
-    and source file are required.
+    Create a new output file for the given entity. The output type, task
+    type, author and source file are necessary.
 
-    The revision is set as next revision available but it can be forced.
-    An extension and a name can be set too.
+    The revision is the next available revision, but you can force it.
+    You can also set an extension and a name.
 
-    An asset instance can be given too. In that case, the output file is
-    linked to the asset instance.
+    You can also give an asset instance. Then the output file is linked to
+    the asset instance.
 
-    The `temporal_entity_id` concerns only asset instance output files. It is
-    here to describe if the output is generated in the context of a shot or in
-    the context of a scene.
+    The `temporal_entity_id` applies only to asset instance output files.
+    It tells if the output is generated in the context of a shot or of a
+    scene.
 
     Emit an output-file:new event and return the output file as a dict.
-    Raise EntryAlreadyExistsException when the revision exists.
+    If the revision exists, raise EntryAlreadyExistsException.
     """
 
     if revision < 1:
@@ -414,8 +416,8 @@ def create_new_output_revision(
 
 def get_working_files_for_task(task_id):
     """
-    Retrieve all working files for a given task ordered by revision from
-    biggest to smallest revision.
+    Return all the working files of the given task, sorted by revision
+    from the largest to the smallest.
     """
     working_files = (
         WorkingFile.query.filter_by(task_id=task_id)
@@ -430,8 +432,8 @@ def get_working_files_for_entity(
     entity_id, task_id=None, name=None, relations=False
 ):
     """
-    Retrieve all working files for a given entity and specified parameters
-    ordered by revision from biggest to smallest revision.
+    Return all the working files of the given entity and parameters,
+    sorted by revision from the largest to the smallest.
     """
     query = WorkingFile.query.filter_by(entity_id=entity_id)
 
@@ -450,7 +452,8 @@ def get_working_files_for_entity(
 
 def get_next_working_file_revision(task_id, name):
     """
-    Get next working file revision available for given task and given name.
+    Return the next available working file revision for the given task and
+    name.
     """
     last_working_files = get_last_working_files_for_task(task_id)
     working_file = last_working_files.get(name, None)
@@ -470,10 +473,9 @@ def get_next_output_file_revision(
     temporal_entity_id=None,
 ):
     """
-    Get next output file revision available for given entity, output type, task
-    type and name.
-    Asset instance can be set, in that case, it looks for next revision
-    available for it instead of entity.
+    Return the next available output file revision for the given entity,
+    output type, task type and name. If an asset instance is given, return
+    the next available revision of the instance, not of the entity.
     """
     try:
         last_output = get_last_output_revision(
@@ -498,9 +500,9 @@ def get_last_output_revision(
     temporal_entity_id=None,
 ):
     """
-    Get output with highest revision created for given entity, output type,
-    task type and name. If an asset instance is given, it will look for last
-    output file for this instance instead of given entity.
+    Return the output file with the highest revision for the given entity,
+    output type, task type and name. If an asset instance is given, return
+    the last output file of the instance, not of the entity.
     """
     query = (
         OutputFile.query.filter_by(
@@ -535,7 +537,7 @@ def get_output_files_for_project(
     file_status_id=None,
 ):
     """
-    Return output files for given project ordered by creation date.
+    Return the output files of the given project, sorted by creation date.
     """
     query = OutputFile.query
 
@@ -569,7 +571,7 @@ def get_output_files_for_entity(
     file_status_id=None,
 ):
     """
-    Return output files for given entity ordered by revision.
+    Return the output files of the given entity, sorted by revision.
     """
     query = OutputFile.query.filter_by(entity_id=entity_id)
 
@@ -604,7 +606,7 @@ def get_output_files_for_instance(
     file_status_id=None,
 ):
     """
-    Return output files for given instance ordered by revision.
+    Return the output files of the given instance, sorted by revision.
     """
     query = OutputFile.query.filter_by(asset_instance_id=asset_instance_id)
 
@@ -638,15 +640,14 @@ def get_last_output_files_for_entity(
     file_status_id=None,
 ):
     """
-    Get last output files for given parameters.
+    Return the last output files for the given parameters.
 
-    We use a subquery to get maximum revision and then filter with given
-    params.
+    A subquery gets the maximum revision. Then the given parameters filter
+    the result.
     """
-    # Query maximum revision for each possible arguments.
-    # Only group and filter by file status if specified. Otherwise this could
-    # lead to different groups of files sharing the same history but with
-    # different status.
+    # Query the maximum revision for each possible argument set.
+    # Group and filter by file status only if it is given. If not, different
+    # groups of files can share the same history with different statuses.
     # This could be very misleading when the user would want to get the last.
     if file_status_id:
         query = OutputFile.query.with_entities(
@@ -690,8 +691,8 @@ def get_last_output_files_for_entity(
     )
     statement = query.subquery()
 
-    # Create a join query to retrieve maximum revision and filter by
-    # specified arguments
+    # Make a join query to get the maximum revision and filter by the
+    # given arguments.
     query = OutputFile.query.join(
         statement,
         and_(
@@ -719,13 +720,12 @@ def get_last_output_files_for_instance(
     file_status_id=None,
 ):
     """
-    Get last output files for given asset instance and temporal entity,
-    grouped by task type, output type, name and representation.
+    Return the last output files of the given asset instance and temporal
+    entity, grouped by task type, output type, name and representation.
     """
-    # Query maximum revision for each possible arguments
-    # Only group and filter by file status if specified. Otherwise this could
-    # lead to different groups of files sharing the same history but with
-    # different status.
+    # Query the maximum revision for each possible argument set.
+    # Group and filter by file status only if it is given. If not, different
+    # groups of files can share the same history with different statuses.
     # This could be very misleading when the user would want to get the last.
     if file_status_id:
         query = OutputFile.query.with_entities(
@@ -775,7 +775,7 @@ def get_last_output_files_for_instance(
     )
     statement = query.subquery()
 
-    # Create a join query to retrieve maximum revision
+    # Make a join query to get the maximum revision.
     query = OutputFile.query.join(
         statement,
         and_(
@@ -795,7 +795,7 @@ def get_last_output_files_for_instance(
 
 def get_preview_file_raw(preview_file_id):
     """
-    Get preview file as active record.
+    Return the preview file as an active record.
     """
     try:
         preview_file = PreviewFile.get(preview_file_id)
@@ -811,7 +811,7 @@ def get_preview_file_raw(preview_file_id):
 @cache.memoize_function(240)
 def get_preview_file(preview_file_id):
     """
-    Get preview file as dict.
+    Return the preview file as a dict.
     """
     preview_file = get_preview_file_raw(preview_file_id)
     return preview_file.serialize()
@@ -820,12 +820,14 @@ def get_preview_file(preview_file_id):
 @cache.memoize_function(240)
 def get_preview_file_for_access(preview_file_id):
     """
-    Lightweight lookup used by picture/movie download endpoints that only
-    need to check permissions, emit a Last-Modified header and know which
-    versions of a movie are stored. Avoids loading the JSONB annotations
-    and data columns, which can weigh several MB on long shots and
-    dominate query time when the response is a static file served from
-    disk.
+    Return a light version of the preview file for the picture and movie
+    download endpoints. These endpoints only:
+    - check permissions
+    - send a Last-Modified header
+    - get the stored versions of a movie.
+    Do not load the JSONB annotations and data columns. On long shots,
+    they can be several MB. If the response is a static file from disk,
+    they take most of the query time.
     """
     try:
         row = (
@@ -850,8 +852,8 @@ def get_preview_file_for_access(preview_file_id):
         "updated_at": fields.serialize_value(row.updated_at),
         "extension": row.extension,
         "status": getattr(row.status, "code", row.status),
-        # None for a preview file that predates the record, a list of
-        # prefixes otherwise.
+        # None for a preview file that is older than the record. If not,
+        # a list of prefixes.
         "movie_prefixes": (
             row.movie_prefixes
             if isinstance(row.movie_prefixes, list)
@@ -862,17 +864,18 @@ def get_preview_file_for_access(preview_file_id):
 
 def get_preview_file_data(preview_file):
     """
-    The data column is a bare JSONB that a PUT can set to anything: only
-    a dict is usable.
+    Return the data column of the preview file if it is a dict. If not,
+    return an empty dict. A PUT can set this bare JSONB column to any
+    value.
     """
     return preview_file.data if isinstance(preview_file.data, dict) else {}
 
 
 def _is_movie_stored(prefix, preview_file_id):
     """
-    Tell whether the movie of given preview file sits under given prefix.
-    The local download cache is looked at first: a warm cache means the
-    movie routes will not hit the object storage at all.
+    Return True if the movie of the given preview file is under the given
+    prefix. Examine the local download cache first. If the cache has the
+    movie, the movie routes do not use the object storage.
     """
     if config.FS_BACKEND != "local":
         file_path = fs.get_cache_file_path(
@@ -892,9 +895,9 @@ def _is_movie_stored(prefix, preview_file_id):
 
 def probe_movie_prefixes(preview_file_id):
     """
-    Ask the storage which versions of the movie exist, for a preview file
-    that predates the record written at storage time. Costs one round
-    trip per prefix.
+    Ask the storage which versions of the movie exist. This applies to a
+    preview file that is older than the record written at storage time.
+    It costs one round trip for each prefix.
     """
     return [
         prefix
@@ -905,10 +908,10 @@ def probe_movie_prefixes(preview_file_id):
 
 def get_movie_prefixes(stored_prefixes, lowdef):
     """
-    Return the storage prefixes to try for a movie, best first: the ones
-    holding it in the order the route prefers, then the others as a
-    tail, since a record can lag behind a movie that was re-encoded or
-    copied over.
+    Return the storage prefixes to try for a movie, best first. First come
+    the prefixes that contain the movie, in the order that the route
+    prefers. Then come the other prefixes, because a record can be older
+    than a movie that was encoded again or copied.
     """
     prefixes = LOWDEF_MOVIE_PREFIXES if lowdef else MOVIE_PREFIXES
     return [prefix for prefix in prefixes if prefix in stored_prefixes] + [
@@ -921,9 +924,9 @@ def record_movie_prefixes_later(
 ):
     """
     Probe the storage for the versions of a movie and write them on the
-    preview file, on the job queue when there is one: the probe costs one
-    round trip per version, which the first byte of a cold movie should
-    not wait for. Without a queue it runs inline.
+    preview file. If there is a job queue, do it on the queue. The probe
+    costs one round trip for each version, and the first byte of a cold
+    movie must not wait for it. If there is no queue, do it inline.
     """
     if config.ENABLE_JOB_QUEUE:
         queue_store.job_queue.enqueue(
@@ -941,11 +944,11 @@ def probe_and_record_movie_prefixes(
     preview_file_id, served_prefix, recorded_prefixes
 ):
     """
-    Probe the storage for the versions of a movie and record them on the
-    preview file when they differ from the recorded ones. A probe that misses
-    the version just served failed itself and is not recorded. Runs from a job
-    as well as from a request: it brings its own app context when there is
-    none.
+    Probe the storage for the versions of a movie. If they are different
+    from the recorded versions, record them on the preview file. If the
+    probe does not find the version that was just served, the probe
+    failed: do not record it. This function runs from a job or from a
+    request. If there is no app context, it makes its own.
     """
     from flask import has_app_context
 
@@ -967,8 +970,8 @@ def probe_and_record_movie_prefixes(
 
 def record_movie_prefixes(preview_file_id, prefixes):
     """
-    Remember on the preview file which versions of its movie are stored,
-    without notifying anyone: nothing the clients see changes.
+    Record on the preview file the stored versions of its movie. Do not
+    send a notification: the clients see no change.
     """
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.update(
@@ -984,7 +987,7 @@ def record_movie_prefixes(preview_file_id, prefixes):
 
 def get_preview_files_for_task(task_id):
     """
-    Get all preview files for given task.
+    Return all the preview files of the given task.
     """
     previews = PreviewFile.query.filter_by(task_id=task_id).order_by(
         PreviewFile.revision.desc()
@@ -1002,8 +1005,8 @@ def create_preview_file_raw(
     position=1,
 ):
     """
-    Insert a preview file row and return the active record. No event, no
-    task update: the callers own those.
+    Insert a preview file row and return the active record. Do not emit
+    an event and do not update the task: the callers do these steps.
     """
     return PreviewFile.create(
         name=name,
@@ -1027,7 +1030,7 @@ def create_preview_file(
     position=1,
 ):
     """
-    Same as create_preview_file_raw, returning the serialized dict.
+    Same as create_preview_file_raw, but return the serialized dict.
     """
     return create_preview_file_raw(
         name, revision, task_id, person_id, source, extension, position
@@ -1036,7 +1039,7 @@ def create_preview_file(
 
 def update_working_file(working_file_id, data):
     """
-    Update given working file and drop its cache.
+    Update the given working file and remove its cache.
     """
     working_file = get_working_file_raw(working_file_id)
     working_file.update(data)
@@ -1046,7 +1049,7 @@ def update_working_file(working_file_id, data):
 
 def update_output_file(output_file_id, data):
     """
-    Update given output file and drop its cache.
+    Update the given output file and remove its cache.
     """
     output_file = get_output_file_raw(output_file_id)
     output_file.update(data)
@@ -1056,7 +1059,7 @@ def update_output_file(output_file_id, data):
 
 def get_output_types_for_entity(entity_id):
     """
-    Get output types from all output files created for given entity.
+    Return the output types of all the output files of the given entity.
     """
     output_types = (
         OutputType.query.join(OutputFile)
@@ -1069,7 +1072,7 @@ def get_output_types_for_entity(entity_id):
 
 def get_output_types_for_instance(asset_instance_id, temporal_entity_id=None):
     """
-    Get output types from all output files created for given instance.
+    Return the output types of all the output files of the given instance.
     """
     output_types = (
         OutputType.query.join(OutputFile)
@@ -1087,7 +1090,7 @@ def get_output_files_for_output_type_and_entity(
     entity_id, output_type_id, representation=None
 ):
     """
-    Get output files created for given entity and output type.
+    Return the output files of the given entity and output type.
     """
     query = (
         OutputFile.query.filter(OutputFile.entity_id == entity_id)
@@ -1107,7 +1110,7 @@ def get_output_files_for_output_type_and_asset_instance(
     asset_instance_id, temporal_entity_id, output_type_id, representation=None
 ):
     """
-    Get output files created for given asset instance and output type.
+    Return the output files of the given asset instance and output type.
     """
     query = OutputFile.query.filter(
         OutputFile.asset_instance_id == asset_instance_id,
@@ -1126,8 +1129,8 @@ def get_preview_files_for_project(
     project_id, page=-1, limit=None, cursor_id=None
 ):
     """
-    Return all preview files for given project, a page of them, or the ones
-    following a cursor (see query_utils.get_paginated_results).
+    Return the preview files of the given project: all of them, one page,
+    or the files after a cursor (see query_utils.get_paginated_results).
     """
     query = (
         PreviewFile.query.join(Task)
@@ -1141,7 +1144,8 @@ def get_preview_files_for_project(
 
 def get_preview_background_file_raw(preview_background_file_id):
     """
-    Get preview background file matching given id as an active record.
+    Return the preview background file that has the given ID as an active
+    record.
     """
     try:
         preview_background = PreviewBackgroundFile.get(
@@ -1159,7 +1163,7 @@ def get_preview_background_file_raw(preview_background_file_id):
 @cache.memoize_function(1200)
 def get_preview_background_file(preview_background_file_id):
     """
-    Get preview background file matching given id as a dictionary.
+    Return the preview background file that has the given ID as a dict.
     """
     return get_preview_background_file_raw(
         preview_background_file_id
@@ -1169,15 +1173,15 @@ def get_preview_background_file(preview_background_file_id):
 @cache.memoize_function(120)
 def get_preview_background_files():
     """
-    Get all preview backgrounds files.
+    Return all the preview background files.
     """
     return fields.serialize_models(PreviewBackgroundFile.get_all())
 
 
 def reset_default_preview_background_files(preview_background_file_id):
     """
-    Set all preview background files as is_default=False except the one
-    matching given id.
+    Set is_default=False on all the preview background files, except the
+    file that has the given ID.
     """
     query = PreviewBackgroundFile.query.filter(
         PreviewBackgroundFile.id != preview_background_file_id,
@@ -1188,17 +1192,16 @@ def reset_default_preview_background_files(preview_background_file_id):
     ]
     query.update({"is_default": False})
     PreviewBackgroundFile.commit()
-    # The rows written here are the ones that just lost the title, and each
-    # is read on its own by the download routes: without this they keep
-    # announcing themselves as the default for the whole memoization
-    # window, which is twenty minutes.
+    # The rows written here are not the default anymore. The download
+    # routes read each row alone. Without this step, these rows stay the
+    # default for the full memoization window of twenty minutes.
     for preview_background_id in unseated:
         clear_preview_background_file_cache(preview_background_id)
 
 
 def update_preview_background_file(preview_background_file_id, data):
     """
-    Update given preview background file and drop its cache.
+    Update the given preview background file and remove its cache.
     """
     preview_background_file = get_preview_background_file_raw(
         preview_background_file_id
@@ -1210,9 +1213,9 @@ def update_preview_background_file(preview_background_file_id, data):
 
 def remove_quietly(remove_from_store, prefix, file_id, force=False):
     """
-    Mark a stored file deleted, ignoring a failure: the database row is
-    already gone, a leftover object in the store must not fail the
-    deletion.
+    Mark a stored file as deleted, and ignore a failure. The database row
+    is already deleted. An object that stays in the store must not make
+    the deletion fail.
     """
     try:
         remove_from_store(prefix, file_id, force=force)

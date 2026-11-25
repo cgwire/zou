@@ -4,8 +4,7 @@ from zou.app.utils import events
 
 def add_shot_to_scene(scene, shot):
     """
-    Link a shot to a scene. Once done, the scene is considered as the source
-    of the shot.
+    Link a shot to a scene. After this, the scene is the source of the shot.
     """
     shot = shots_service.update_shot(shot["id"], {"source_id": scene["id"]})
     events.emit(
@@ -18,7 +17,7 @@ def add_shot_to_scene(scene, shot):
 
 def remove_shot_from_scene(scene, shot):
     """
-    Remove link from a shot to a scene.
+    Remove the link from a shot to a scene.
     """
     shot = shots_service.update_shot(shot["id"], {"source_id": None})
     events.emit(
@@ -31,6 +30,7 @@ def remove_shot_from_scene(scene, shot):
 
 def get_shots_by_scene(scene_id):
     """
-    Get shots linked to a scene (of which the source is the given scene).
+    Return the shots linked to a scene: the shots that have the given scene
+    as their source.
     """
     return shots_service.get_shots({"source_id": scene_id})

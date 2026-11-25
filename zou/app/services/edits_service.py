@@ -51,7 +51,7 @@ EDITS_AND_TASKS_TASK_FIELDS = [
 
 def clear_edit_cache(edit_id):
     """
-    Drop every memoized serialization of given edit.
+    Remove all the memoized dicts of the given edit.
     """
     cache.cache.delete_memoized(get_edit, edit_id)
     cache.cache.delete_memoized(get_edit, edit_id, True)
@@ -61,7 +61,7 @@ def clear_edit_cache(edit_id):
 
 def get_edit_raw(edit_id):
     """
-    Return given edit as an active record.
+    Return the given edit as an active record.
     """
     return base_service.get_typed_instance(
         Entity,
@@ -74,7 +74,7 @@ def get_edit_raw(edit_id):
 @cache.memoize_function(120)
 def get_edit(edit_id, relations=False):
     """
-    Return given edit as a dictionary.
+    Return the given edit as a dict.
     """
     return get_edit_raw(edit_id).serialize(
         obj_type="Edit", relations=relations
@@ -84,8 +84,8 @@ def get_edit(edit_id, relations=False):
 @cache.memoize_function_single_flight(120)
 def get_full_edit(edit_id):
     """
-    Return given edit as a dictionary with its tasks and extra data like
-    project and episode names.
+    Return the given edit as a dict with its tasks and other data, for
+    example the project name and the episode name.
     """
     edits = get_edits_and_tasks({"id": edit_id}, for_client=False)
     if len(edits) == 0:
@@ -95,8 +95,8 @@ def get_full_edit(edit_id):
 
 def get_edits(criterions=None, **paging):
     """
-    Get all edits for given criterions, with the paging options of
-    query_utils.get_paginated_results.
+    Return all edits that match the given criteria. The paging options are
+    the same as in query_utils.get_paginated_results.
     """
     if criterions is None:
         criterions = {}
@@ -127,16 +127,16 @@ def get_edits(criterions=None, **paging):
         return query_utils.get_paginated_results(
             query, serialize=serialize, **paging
         )
-    except StatementError:  # Occurs when an id is not properly formatted
+    except StatementError:  # Occurs when an ID has an incorrect format
         raise WrongIdFormatException
 
 
 def get_edits_and_tasks(criterions=None, for_client=None):
     """
-    Get all edits for given criterions with related tasks for each edit,
-    as a list of dicts. The tasks come from flat queries through
-    entities_service.fetch_entity_task_map, not from a join that repeats
-    each edit row once per task.
+    Return all edits that match the given criteria, as a list of dicts.
+    Each edit has its related tasks. The tasks come from flat queries
+    through entities_service.fetch_entity_task_map. They do not come from
+    a join that repeats each edit row one time for each task.
     """
     if criterions is None:
         criterions = {}
@@ -248,8 +248,8 @@ def get_edits_and_tasks(criterions=None, for_client=None):
 
 def get_edits_for_project(project_id, only_assigned=False, **paging):
     """
-    Retrieve all edits related to given project, with the paging options of
-    entities_service.get_entities_for_project.
+    Return all edits of the given project. The paging options are the same
+    as in entities_service.get_entities_for_project.
     """
     return entities_service.get_entities_for_project(
         project_id,
@@ -262,7 +262,7 @@ def get_edits_for_project(project_id, only_assigned=False, **paging):
 
 def get_edits_for_episode(episode_id, relations=False):
     """
-    Get all edits for given episode.
+    Return all edits of the given episode.
     """
     edit_type_id = entity_types_service.get_edit_type()["id"]
     result = (
@@ -282,16 +282,16 @@ def create_edit(
     created_by=None,
 ):
     """
-    Create edit for given project and episode and emit an edit:new event.
-    If an edit with the same name already exists there, return it
-    unchanged.
+    Create an edit for the given project and episode and emit an edit:new
+    event. If an edit with the same name already exists there, return it
+    with no change.
     """
     if data is None:
         data = {}
     edit_type = entity_types_service.get_edit_type()
 
-    # Anything shorter than a UUID is not an episode id, it is the client
-    # sending an empty value: the edit then belongs to no episode.
+    # A value shorter than a UUID is not an episode ID. It is an empty
+    # value from the client, so the edit belongs to no episode.
     if parent_id is not None and len(parent_id) < 36:
         parent_id = None
 
@@ -324,7 +324,8 @@ def create_edit(
 
 def update_edit(edit_id, data_dict):
     """
-    Update fields of an edit with a given edit_id with data given data_dict.
+    Update the fields of the edit that has the given edit_id with the
+    given data_dict.
     """
     edit = get_edit_raw(edit_id)
     edit.update(data_dict)
@@ -337,8 +338,8 @@ def update_edit(edit_id, data_dict):
 
 def get_edit_versions(edit_id):
     """
-    Return all versions of given edit, most recent first. A version is
-    recorded when the frame range or the name of the edit changes.
+    Return all versions of the given edit, most recent first. Zou records
+    a version when the frame range or the name of the edit changes.
     """
     versions = (
         EntityVersion.query.filter_by(entity_id=edit_id)

@@ -18,8 +18,9 @@ from zou.app.utils import date_helpers, events, fields, query as query_utils
 
 def _emit_notification(notification, recipient_id, project_id):
     """
-    Tell the recipient's client that a notification landed. Not persisted:
-    the notification row is the record, the event is only the live signal.
+    Tell the client of the recipient that a notification arrived. This event is
+    not persisted: the notification row is the record, and the event is only
+    the live signal.
     """
     events.emit(
         "notification:new",
@@ -42,7 +43,7 @@ def create_notification(
     playlist_id=None,
 ):
     """
-    Create a new notification for given person and return it as a dict.
+    Create a new notification for the given person and return it as a dict.
     """
     creation_date = fields.get_default_date_object(created_at)
     notification = Notification.create(
@@ -62,9 +63,11 @@ def create_notification(
 
 def get_notification_recipients(task, replies=None):
     """
-    Get the set of notification recipient ids for given task: assignees,
-    people subscribed to the task or to its sequence, and the authors of
-    given replies.
+    Return the set of the ids of the notification recipients for the given
+    task:
+    - the assignees,
+    - the people subscribed to the task or to its sequence,
+    - the authors of the given replies.
     """
     if replies is None:
         replies = []
@@ -82,8 +85,9 @@ def get_notification_recipients(task, replies=None):
 
 def _with_task_access(person_ids, task):
     """
-    Keep the people who can reach given task: whatever made them a
-    recipient, nobody is told of a comment on a task the API refuses them.
+    Keep only the people who can access the given task. Whatever made them a
+    recipient, nobody gets a notification about a comment on a task that the
+    API refuses to them.
     """
     kept = []
     for person_id in person_ids:
@@ -97,11 +101,11 @@ def _with_task_access(person_ids, task):
 
 def create_notifications_for_task_and_comment(task, comment, change=False):
     """
-    For given task and comment, create a notification for every assignee
-    and subscriber of the task, and a mention notification for every person
-    mentioned in the comment. Only people who can access the task are
-    notified. Send the emails, emit notification:new for each notification
-    and return the ids of the non-mention recipients.
+    For the given task and comment, create a notification for each assignee and
+    subscriber of the task. Create a mention notification for each person
+    mentioned in the comment. Only the people who can access the task get a
+    notification. Send the emails, emit notification:new for each notification
+    and return the ids of the recipients that are not mentions.
     """
     recipient_ids = get_notification_recipients(task)
     if comment["person_id"] in recipient_ids:
@@ -154,11 +158,11 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
 
 def get_mentioned_people(project_id, comment):
     """
-    Return all people mentioned in the comment: the one listed via their name
-    and the one listed via their department.
+    Return all people mentioned in the comment: the people mentioned with their
+    name, and the people mentioned with their department.
     """
-    # Copy the list: appending in place would corrupt the comment dict,
-    # which may come from the cache or be reused by the caller.
+    # Copy the list: an append in place changes the comment dict. This dict can
+    # come from the cache, or the caller can use it again.
     mentions = list(comment["mentions"])
     for department_id in comment["department_mentions"]:
         persons = projects_service.get_department_team(
@@ -171,12 +175,15 @@ def get_mentioned_people(project_id, comment):
 
 def create_notifications_for_task_and_reply(task, comment, reply):
     """
-    For given task, comment and reply, create a notification for every
-    assignee and subscriber of the task, the author of the comment and the
-    authors of its replies, and a mention notification for every person
-    mentioned in the reply. Only people who can access the task are
-    notified. Send the emails, emit notification:new for each notification
-    and return the ids of the non-mention recipients.
+    For the given task, comment and reply, create a notification for:
+    - each assignee and subscriber of the task,
+    - the author of the comment,
+    - the authors of its replies.
+
+    Create a mention notification for each person mentioned in the reply. Only
+    the people who can access the task get a notification. Send the emails,
+    emit notification:new for each notification and return the ids of the
+    recipients that are not mentions.
     """
     recipient_ids = get_notification_recipients(task, comment["replies"])
     if reply["person_id"] in recipient_ids:
@@ -233,28 +240,35 @@ def create_notifications_for_task_and_reply(task, comment, reply):
 
 def reset_notifications_for_mentions(comment, editor_id, previous_mentions):
     """
-    Align the mention notifications of given comment with an edit of its
-    text. previous_mentions holds the mentions of the text before the edit,
-    read in the production as it is now, like those of the new text. The
-    people no longer mentioned lose their notification. The ones the text
-    did not name before get one, unless they made the edit. The others keep
-    theirs as it is, read status included, or still have none: the author,
-    an editor who named themselves, someone named before they joined the
-    production, or a row the cleanup of old data removed. Return the created
+    Align the mention notifications of the given comment with an edit of its
+    text. previous_mentions contains the mentions of the text before the edit.
+    They are read in the production as it is now, as the mentions of the new
+    text are.
+
+    - The people who are not mentioned anymore lose their notification.
+    - The people that the text did not name before get one, if they did not
+      make the edit.
+    - The other people keep their notification as it is, with its read status,
+      or still have none.
+
+    The people with no notification can be the author, an editor who named
+    themselves, or a person named before they joined the production. They can
+    also have a row that the removal of old data deleted. Return the created
     notifications.
     """
     task = tasks_service.get_task(comment["object_id"])
-    # The author of the comment, even when someone else adds the mention: the
-    # listing hides the text of a client's comment from artists by this role.
+    # Use the author of the comment, also when another person adds the mention.
+    # The listing uses the role of this author to hide the text of a client
+    # comment from artists.
     author_id = comment["person_id"]
     mentions = set(get_mentioned_people(task["project_id"], comment))
     named_before = set(
         get_mentioned_people(task["project_id"], previous_mentions)
     )
-    # Only the mentions: they are the ones aligned here. The notifications
-    # raised by the replies of that comment belong to the replies, which
-    # clean up after themselves in delete_reply, and nothing here would
-    # bring them back.
+    # Delete only the mention notifications: this function aligns only them.
+    # The notifications that the replies of that comment created belong to the
+    # replies. delete_reply removes them, and nothing here can create them
+    # again.
     Notification.delete_all_by(
         Notification.person_id.not_in(list(mentions)),
         type="mention",
@@ -290,9 +304,9 @@ def reset_notifications_for_mentions(comment, editor_id, previous_mentions):
 
 def create_assignation_notification(task_id, person_id, author_id=None):
     """
-    Create a notification following a task assignation, send the email and
-    emit notification:new. Return None when the author assigned the task to
-    themselves.
+    Create a notification after a task assignment, send the email and emit
+    notification:new. If the author assigned the task to themselves, return
+    None.
     """
     task = tasks_service.get_task_raw(task_id)
     if author_id is None:
@@ -313,8 +327,8 @@ def create_assignation_notification(task_id, person_id, author_id=None):
 
 def get_recent_notifications(notification_type=None):
     """
-    Return up to 100 notifications, in no given order. This function is used
-    mainly for testing purpose.
+    Return a maximum of 100 notifications, in no specified order. This function
+    is mainly for tests.
     """
     query = Notification.query
     if notification_type is not None:
@@ -326,8 +340,8 @@ def get_notifications_for_project(
     project_id, page=0, limit=None, cursor_id=None
 ):
     """
-    Return all notifications for given project, a page of them, or the ones
-    following a cursor (see query_utils.get_paginated_results).
+    Return all notifications of the given project, a page of them, or the
+    notifications after a cursor (see query_utils.get_paginated_results).
     """
     query = (
         Notification.query.join(Task)
@@ -343,10 +357,10 @@ def notify_clients_playlist_ready(
     playlist, studio_id=None, department_id=None
 ):
     """
-    Notify clients that given playlist is ready: create a notification,
-    send an email and emit notification:new for every client of the
-    project. Bots and preview accounts are skipped. A studio or a
-    department, when given, narrows the recipients.
+    Tell the clients that the given playlist is ready. For each client of the
+    project, create a notification, send an email and emit notification:new.
+    Skip the bots and the preview accounts. If a studio or a department is
+    given, it limits the recipients.
     """
     author = persons_service.get_current_user()
     project_id = playlist["project_id"]

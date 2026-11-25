@@ -22,7 +22,8 @@ from zou.app.utils import cache, events, fields
 
 def _check_department_exists(department_id):
     """
-    Raise if no department matches given id, and return it.
+    Return the department that has the given ID as an active record. If it
+    does not exist, raise DepartmentNotFoundException.
     """
     department = Department.get(department_id)
     if not department:
@@ -32,7 +33,8 @@ def _check_department_exists(department_id):
 
 def _check_software_exists(software_id):
     """
-    Raise if no software matches given id, and return it.
+    Return the software that has the given ID as an active record. If it
+    does not exist, raise SoftwareNotFoundException.
     """
     software = Software.get(software_id)
     if not software:
@@ -42,7 +44,8 @@ def _check_software_exists(software_id):
 
 def _check_hardware_item_exists(hardware_item_id):
     """
-    Raise if no hardware item matches given id, and return it.
+    Return the hardware item that has the given ID as an active record. If
+    it does not exist, raise HardwareItemNotFoundException.
     """
     hardware_item = HardwareItem.get(hardware_item_id)
     if not hardware_item:
@@ -52,8 +55,8 @@ def _check_hardware_item_exists(hardware_item_id):
 
 def _group_by_department(model, link_model):
     """
-    Return the serialized rows of given model grouped by the department they
-    are linked to, as a dictionary keyed by department id.
+    Return the serialized rows of the given model, grouped by their linked
+    department. The result is a dict: the key is the department ID.
     """
     rows = (
         model.query.join(link_model)
@@ -70,25 +73,23 @@ def _group_by_department(model, link_model):
 
 def get_all_software_for_departments():
     """
-    Get all software items for all departments organized by department
-    in a dictionary where the key is the department id and the value is a
-    list of linked software items.
+    Return the software items of all departments as a dict. The key is the
+    department ID and the value is the list of linked software items.
     """
     return _group_by_department(Software, SoftwareDepartmentLink)
 
 
 def get_all_hardware_items_for_departments():
     """
-    Get all hardware items for all departments organized by department
-    in a dictionary where the key is the department id and the value is a
-    list of linked hardware items.
+    Return the hardware items of all departments as a dict. The key is the
+    department ID and the value is the list of linked hardware items.
     """
     return _group_by_department(HardwareItem, HardwareItemDepartmentLink)
 
 
 def get_software_for_department(department_id):
     """
-    Get all software items for a given department.
+    Return all the software items of the given department.
     """
     _check_department_exists(department_id)
     return fields.serialize_models(
@@ -100,7 +101,7 @@ def get_software_for_department(department_id):
 
 def get_persons_for_department(department_id, minimal=False):
     """
-    Get all persons belonging to a given department.
+    Return all the persons of the given department.
     """
     _check_department_exists(department_id)
     persons = (
@@ -124,7 +125,7 @@ def get_persons_for_department(department_id, minimal=False):
 
 def get_hardware_items_for_department(department_id):
     """
-    Get all hardware items for a given department.
+    Return all the hardware items of the given department.
     """
     _check_department_exists(department_id)
     return fields.serialize_models(
@@ -149,7 +150,7 @@ def add_software_to_department(department_id, software_id):
 def remove_software_from_department(department_id, software_id):
     """
     Remove a software item from a department. Return the removed link as a
-    dict, or None when the software was not linked.
+    dict. If the software was not linked, return None.
     """
     _check_department_exists(department_id)
     _check_software_exists(software_id)
@@ -177,7 +178,7 @@ def add_hardware_item_to_department(department_id, hardware_item_id):
 def remove_hardware_item_from_department(department_id, hardware_item_id):
     """
     Remove a hardware item from a department. Return the removed link as a
-    dict, or None when the hardware item was not linked.
+    dict. If the hardware item was not linked, return None.
     """
     _check_department_exists(department_id)
     _check_hardware_item_exists(hardware_item_id)
@@ -192,7 +193,8 @@ def remove_hardware_item_from_department(department_id, hardware_item_id):
 
 def clear_department_cache(department_id):
     """
-    Drop the memoized serializations of given department, and the list.
+    Remove the memoized serializations of the given department and of the
+    department list.
     """
     cache.cache.delete_memoized(get_department, department_id)
     cache.cache.delete_memoized(get_departments)
@@ -209,7 +211,7 @@ def get_departments():
 @cache.memoize_function(120)
 def get_department(department_id):
     """
-    Get department matching given id as a dictionary.
+    Return the department that has the given ID as a dict.
     """
     return base_service.get_instance(
         Department, department_id, DepartmentNotFoundException
@@ -218,7 +220,7 @@ def get_department(department_id):
 
 def get_department_from_task_type(task_type_id):
     """
-    Get department of given task type as dictionary
+    Return the department of the given task type as a dict.
     """
     task_type = task_types_service.get_task_type_raw(task_type_id)
     return get_department(task_type.department_id)
@@ -226,9 +228,8 @@ def get_department_from_task_type(task_type_id):
 
 def get_or_create_department(name, color="#000000"):
     """
-    Create a new department it doesn't exist. If it exists, it returns the
-    department from database. Return the department as a dict. A creation
-    emits a department:new event.
+    Return the department that has the given name as a dict. If it does not
+    exist, create it and emit a department:new event.
     """
     department = Department.get_by(name=name)
     if department is None:

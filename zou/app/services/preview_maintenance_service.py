@@ -37,15 +37,15 @@ logger = logging.getLogger(__name__)
 REMOTE_TILE_VERSION = 1
 # Seconds before a missing tile sheet is built again for the same movie.
 TILE_RETRY_DELAY = 3600
-# Held by the local tile build in progress: one ffmpeg decode at a time
-# next to the API.
+# The local tile build holds this lock while it runs. Thus only one
+# ffmpeg decode runs at a time near the API.
 LOCAL_TILE_BUILD_LOCK_KEY = "tile-build:local"
 
 
 def _get_preview_files_to_reset(extension):
     """
-    Return the usable preview files of open projects with given extension:
-    the ones whose metadata can be read back from storage.
+    Return the usable preview files of open projects with the given
+    extension. Their metadata can be read again from the storage.
     """
     return (
         PreviewFile.query.join(Task)
@@ -59,8 +59,8 @@ def _get_preview_files_to_reset(extension):
 
 def reset_movie_files_metadata():
     """
-    Recompute the width, height, file size and duration of the mp4
-    previews of open projects, from the stored movies, and save them.
+    Calculate again the width, height, file size and duration of the mp4
+    previews of open projects from the stored movies. Save the values.
     """
     for preview_file in _get_preview_files_to_reset("mp4"):
         try:
@@ -94,8 +94,8 @@ def reset_movie_files_metadata():
 
 def reset_picture_files_metadata():
     """
-    Recompute the width, height and file size of the png previews of open
-    projects, from the stored pictures, and save them.
+    Calculate again the width, height and file size of the png previews
+    of open projects from the stored pictures. Save the values.
     """
     for preview_file in _get_preview_files_to_reset("png"):
         try:
@@ -135,8 +135,9 @@ def _build_preview_extra_query(
     extensions=("mp4", "png"),
 ):
     """
-    The ready previews of the open projects the preview extra commands
-    work on, narrowed by project, entity, episodes and entity kind.
+    Return a query of the ready previews of the open projects that the
+    preview extra commands use. Filter it on project, entity, episodes and
+    entity kind.
     """
     if episodes is None:
         episodes = []
@@ -202,17 +203,18 @@ def queue_missing_tiles(
     progress=None,
 ):
     """
-    Queue the tile build of the movies that have none, one job per movie:
-    on Nomad when a tile job is configured, on this host otherwise. The
-    command itself decodes nothing and does not wait for the builds.
+    Queue the tile build of the movies that have no tile, with one job for
+    each movie. If a tile job is configured, the job runs on Nomad. If
+    not, it runs on this host. The command does not decode and does not
+    wait for the builds.
 
-    The movies whose tile is recorded as stored are left out of the
-    query. The recorded state answers for the other movies it knows; the
-    rest cost one storage round trip, whose answer is recorded on the
-    way. A movie attempted within the hour is skipped unless force is
-    set. The limit caps the jobs queued, newest movies first. Return the
-    counts per outcome. Raise JobQueueDisabledException when the job queue
-    is off.
+    The query does not include the movies with a recorded stored tile. For
+    the other known movies, the recorded state gives the answer. Each
+    remaining movie costs one storage round trip, and the answer is
+    recorded. If a movie had an attempt in the last hour, skip it, unless
+    force is set. The limit is the maximum number of queued jobs, newest
+    movies first. Return the counts for each outcome. If the job queue is
+    off, raise JobQueueDisabledException.
     """
     if not config.ENABLE_JOB_QUEUE:
         raise JobQueueDisabledException(
@@ -255,7 +257,7 @@ def queue_missing_tiles(
 
 def _queue_missing_tile(preview_file, summary, force):
     """
-    Queue the tile build of one movie, counting the outcome.
+    Queue the tile build of one movie, and count the outcome.
     """
     try:
         preview_file_id = str(preview_file.id)
@@ -279,10 +281,9 @@ def _queue_missing_tile(preview_file, summary, force):
 
 def _has_stored_tile(preview_file_id):
     """
-    Whether the tile of a movie is stored, from the recorded state when
-    there is one, from the storage otherwise. None when the storage
-    could not answer: a transient failure records nothing and queues
-    nothing.
+    Return True if the tile of a movie is stored. Use the recorded state
+    if there is one. If not, ask the storage. If the storage did not
+    answer, return None: a transient failure does not record or queue.
     """
     states = preview_file_states_service.get_file_states(preview_file_id)
     state = preview_file_states_service.get_state(states, "pictures", "tiles")
@@ -313,10 +314,12 @@ def generate_preview_extra(
     progress=None,
 ):
     """
-    Go through the mp4 and png previews of open projects that are not
-    broken, missing or processing. For each, build the tiles (with_tiles),
-    recompute the size information (with_metadata) and build the
-    thumbnails (with_thumbnails). Return the number of previews found.
+    Process the mp4 and png previews of open projects that are not
+    broken, missing or processing. For each preview, do these steps:
+    - build the tiles (with_tiles)
+    - calculate the size data again (with_metadata)
+    - build the thumbnails (with_thumbnails).
+    Return the number of previews found.
     """
     progress = progress or NullProgress()
     logger.info("Generating preview extras...")
@@ -414,12 +417,13 @@ def generate_preview_extra(
 
 def generate_tile_later(preview_file_id):
     """
-    Build the missing tile sheet of a movie on the job queue. Without a
-    queue nothing happens: the web process runs no ffmpeg of its own. An
-    attempt younger than an hour, running or failed, is not repeated: a
-    Redis key remembers it, shared by every process and kept across a
-    reboot, so a movie ffmpeg cannot tile does not cost a job per hover on
-    the progress bar. Return True when a job is queued.
+    Build the missing tile sheet of a movie on the job queue. If there is
+    no queue, do nothing: the web process does not run ffmpeg. Do not
+    repeat an attempt that started less than an hour ago, if it runs or
+    if it failed. A Redis key records the attempt. All processes share
+    this key, and it stays after a reboot. Thus a movie that ffmpeg
+    cannot tile does not cost a job for each hover on the progress bar.
+    Return True if a job is queued.
     """
     if not config.ENABLE_JOB_QUEUE:
         return False
@@ -444,8 +448,8 @@ def generate_tile_later(preview_file_id):
 
 def is_remote_tile_enabled():
     """
-    Tile sheets are built on a remote worker when the job queue is set to
-    remote and a Nomad tile job is configured.
+    Return True if a remote worker builds the tile sheets. This occurs if
+    the job queue is set to remote and a Nomad tile job is configured.
     """
     return (
         config.ENABLE_JOB_QUEUE_REMOTE
@@ -455,9 +459,9 @@ def is_remote_tile_enabled():
 
 def generate_missing_tile(preview_file_id):
     """
-    Build and store the tile sheet of a ready movie that has none: on
-    Nomad when a tile job is configured, locally otherwise. Runs under its
-    own app context: it is a job.
+    Build and store the tile sheet of a ready movie that has no tile. If
+    a tile job is configured, use Nomad. If not, build it locally. This
+    function is a job, thus it runs in its own app context.
     """
     from zou.app import app
 
@@ -476,10 +480,10 @@ def generate_missing_tile(preview_file_id):
 
 def _run_remote_tile_job(app, preview_file):
     """
-    Hand the tile build over to the Nomad runner and wait for it. The
-    runner tries the recorded prefixes first, then the others. The tile is
-    recorded in the stored file registry before the job, and its storage
-    state after it.
+    Give the tile build to the Nomad runner and wait for it. The runner
+    tries the recorded prefixes first, then the others. Record the tile
+    in the stored file registry before the job. Record its storage state
+    after the job.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
         files_service.MOVIE_PREFIXES_KEY
@@ -489,10 +493,9 @@ def _run_remote_tile_job(app, preview_file):
         "preview_file_id": str(preview_file.id),
         "movie_prefixes": recorded_prefixes or [],
     }
-    # A Nomad dispatch error or a timeout is transient: the tile state
-    # must stay as it was, not be recorded failed. Only a job that
-    # actually completed without producing the tile counts as failed,
-    # below.
+    # A Nomad dispatch error or a timeout is transient: do not change the
+    # tile state and do not record a failure. Only a job that completed
+    # without the tile counts as failed, below.
     stored_files_service.record_remote_writes(
         [(*preview_file_states_service.TILE, str(preview_file.id))]
     )
@@ -513,13 +516,13 @@ def _run_remote_tile_job(app, preview_file):
 
 def _generate_missing_tile_locally(preview_file):
     """
-    Build the tile sheet on this host, one movie at a time. While another
-    build runs, give up and forget the attempt: the next 404 queues it
-    again instead of piling decodes up on the API cores.
+    Build the tile sheet on this host, one movie at a time. If another
+    build runs, stop and forget the attempt. The next 404 queues it again.
+    Thus the decodes do not accumulate on the API cores.
     """
     store = _tile_store()
-    # A plain SET NX, not redis-py's Lock: its release runs a Lua script,
-    # which the fakeredis the tests run on does not support.
+    # Use a plain SET NX, not the Lock of redis-py. Its release runs a Lua
+    # script, and the fakeredis of the tests does not support Lua scripts.
     token = fields.gen_uuid().hex
     if not store.set(
         LOCAL_TILE_BUILD_LOCK_KEY,
@@ -538,8 +541,8 @@ def _generate_missing_tile_locally(preview_file):
         )
         return True
     finally:
-        # Only release a lock still ours: an expired one may have been
-        # taken by another build since.
+        # Release the lock only if it is still ours. After it expired,
+        # another build can have it.
         if store.get(LOCAL_TILE_BUILD_LOCK_KEY) == token:
             store.delete(LOCAL_TILE_BUILD_LOCK_KEY)
 
@@ -556,8 +559,8 @@ def _reset_preview_file_metadata(
     preview_file, preview_file_path, total, index
 ):
     """
-    Recompute the width, height, duration and file size of one preview
-    from the file on disk.
+    Calculate again the width, height, duration and file size of one
+    preview from the file on disk.
     """
     try:
         if preview_file.extension == "mp4":

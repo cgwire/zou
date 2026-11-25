@@ -36,10 +36,9 @@ logger = logging.getLogger(__name__)
 
 def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
     """
-    Copy the files of given previews into tmp_dir (TMP_DIR when None). With
-    full, copy every preview file of the same revision. The caller owns
-    tmp_dir and removes it once done. Return a list of (copy path, file
-    name) tuples.
+    Copy the files of the given previews into tmp_dir (TMP_DIR if None). With
+    full, copy all preview files of the same revision. The caller owns tmp_dir
+    and removes it at the end. Return a list of (copy path, file name) tuples.
     """
     if tmp_dir is None:
         tmp_dir = config.TMP_DIR
@@ -67,16 +66,16 @@ def retrieve_playlist_tmp_files(preview_files, full=False, tmp_dir=None):
 
 def retrieve_playlist_tmp_file(preview_file, tmp_dir=None, index=0):
     """
-    Copy one preview of a playlist to tmp_dir (TMP_DIR when None), so
-    ffmpeg can concatenate it locally. The copy is prefixed by its index so
-    that two previews carrying the same display name keep their own file.
-    Return the copy path and the file name.
+    Copy one preview of a playlist to tmp_dir (TMP_DIR if None), so that ffmpeg
+    can concatenate it locally. The name of the copy starts with its index.
+    Thus two previews with the same display name keep their own file. Return
+    the copy path and the file name.
     """
     if tmp_dir is None:
         tmp_dir = config.TMP_DIR
-    # Same cache entry as the preview routes, written the same way: a
-    # download interrupted halfway must not leave a truncated file that
-    # the next build would concatenate as is.
+    # Use the same cache entry as the preview routes, and write it in the same
+    # way. If a download stops halfway, it must not leave a truncated file. The
+    # next build concatenates such a file as is.
     if preview_file["extension"] == "mp4":
         file_path = _retrieve_playlist_movie(preview_file)
     elif preview_file["extension"] == "png":
@@ -105,9 +104,9 @@ def retrieve_playlist_tmp_file(preview_file, tmp_dir=None, index=0):
 
 def _retrieve_playlist_movie(preview_file):
     """
-    Local path of the movie of given preview, whichever version the
-    normalization settings left in the store. Only a confirmed absence
-    moves on to the next version: a transient failure must not build the
+    Return the local path of the movie of the given preview, for the version
+    that the normalization settings left in the store. Go to the next version
+    only if the absence is confirmed. A transient failure must not build the
     playlist from the low def movie.
     """
     last_error = None
@@ -130,7 +129,7 @@ def _retrieve_playlist_movie(preview_file):
 
 def build_playlist_zip_file(playlist):
     """
-    Build a zip for all files for a given playlist into the temporary folder.
+    Build a zip of all files of the given playlist in the temporary folder.
     """
     previews = playlists_service.playlist_previews(playlist["shots"])
     tmp_dir = tempfile.mkdtemp(prefix="playlist-zip-", dir=config.TMP_DIR)
@@ -144,8 +143,8 @@ def build_playlist_zip_file(playlist):
         with ZipFile(zip_file_path, "w") as zip:
             for file_path, file_name in tmp_file_paths:
                 if file_name in file_names:
-                    # Two entries of the same name: the extraction would
-                    # keep one. The copy name carries its index.
+                    # Two entries with the same name: the extraction keeps only
+                    # one. Thus the name of the copy contains its index.
                     file_name = os.path.basename(file_path)
                 file_names.add(file_name)
                 zip.write(file_path, file_name)
@@ -156,9 +155,9 @@ def build_playlist_zip_file(playlist):
 
 def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     """
-    Build the movie of given playlist from the movie previews of given
-    shots, locally or through a remote job, and store it. End the build job
-    and return it as a dict. Raise an exception when the build fails.
+    Build the movie of the given playlist from the movie previews of the given
+    shots, locally or with a remote job, and store it. End the build job and
+    return it as a dict. If the build fails, raise an exception.
     """
     success = False
     message = None
@@ -178,9 +177,9 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
 
             if previews:
                 if not remote:
-                    # Only a local build reads the previews here: the
-                    # remote runner fetches them itself, falling back on
-                    # the other versions and on a placeholder.
+                    # Only a local build reads the previews here. The remote
+                    # runner gets them itself. If necessary, it uses the other
+                    # versions or a placeholder.
                     tmp_file_paths = retrieve_playlist_tmp_files(
                         previews, tmp_dir=tmp_dir
                     )
@@ -196,8 +195,8 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                             movie.concat_demuxer,
                         )
 
-                    # The concat filter re-encodes: the fallback of the
-                    # demuxer, and the only mode of a full build.
+                    # The concat filter encodes again. It is the fallback of
+                    # the demuxer, and the only mode of a full build.
                     if not success:
                         success, _ = _run_concatenation(
                             playlist,
@@ -227,7 +226,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                         success = False
 
         except remote_job.NomadJobHandedOver:
-            # The worker stops: the build goes on in the next one.
+            # The worker stops. The build continues in the next worker.
             handed_over = True
             raise
         except Exception as exc:
@@ -240,7 +239,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
             if not handed_over:
                 job = end_build_job(playlist, job, success, message)
 
-    # rq logs this exception and flags the job as failed.
+    # rq logs this exception and sets the job as failed.
     if not success:
         raise Exception(f"Failure while building playlist {playlist['id']!r}")
 
@@ -251,9 +250,9 @@ def _run_concatenation(
     playlist, job, tmp_file_paths, movie_file_path, params, mode
 ):
     """
-    Concatenate the downloaded previews into the playlist movie, then
-    store it. Return whether it succeeded, along with the concatenation
-    message, if any.
+    Concatenate the downloaded previews into the playlist movie, then store it.
+    Return whether it succeeded, and the concatenation message, if there is
+    one.
     """
     success = False
     message = None
@@ -287,9 +286,9 @@ def _run_remote_job_build_playlist(
     app, job, previews, params, movie_file_path, full
 ):
     """
-    Hand the concatenation over to a remote Nomad job instead of running it
-    in process. Then download the stored movie to the local cache and
-    return its path.
+    Give the concatenation to a remote Nomad job, and do not run it in the
+    process. Then download the stored movie to the local cache and return its
+    path.
     """
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
@@ -312,9 +311,10 @@ def _run_remote_job_build_playlist(
     )
     remote_job.run_job(app, config, nomad_job, params)
 
-    # Warm the cache the download route reads, right away. Written aside
-    # then renamed: an interrupted download must not leave a truncated
-    # movie there, which the route would serve as is.
+    # Fill the cache that the download route reads, immediately. Write the file
+    # to a different location, then rename it. If a download stops, it must not
+    # leave a truncated movie in the cache. The route serves such a movie as
+    # is.
     exception = fs.download_to_file(
         movie_file_path, file_store.open_movie, "playlists", job["id"]
     )
@@ -326,8 +326,8 @@ def _run_remote_job_build_playlist(
 
 def start_build_job(playlist):
     """
-    Register in database that a new build is running. Emits an event to notify
-    clients that a new job is running.
+    Record in the database that a new build is running. Emit an event to tell
+    the clients that a new job is running.
     """
     job = BuildJob.create(
         status="running", job_type="movie", playlist_id=playlist["id"]
@@ -346,13 +346,13 @@ def start_build_job(playlist):
 
 def end_build_job(playlist, job, success, message=None):
     """
-    Register in database that a build is finished. Emits an event to notify
-    clients that the build is done. The optional message explains a
-    degraded or failed build.
+    Record in the database that a build is finished. Emit an event to tell the
+    clients that the build is done. The optional message explains a degraded or
+    failed build.
 
-    The job may have been deleted while the build was running: its files
-    were removed before the build stored the movie, so they are removed
-    again here, and an empty dict is returned.
+    The job can be deleted while the build runs. In that case, its files were
+    removed before the build stored the movie. Thus remove them again here, and
+    return an empty dict.
     """
     if success:
         status = "succeeded"
@@ -384,13 +384,13 @@ def end_build_job(playlist, job, success, message=None):
 
 def build_playlist_job(playlist, job, shots, params, email, full, remote):
     """
-    Build playlist file (concatenate all movie previews) and email the
-    download link to given address on success. This function is aimed at
-    being run as a job in a job queue.
+    Build the playlist file (concatenate all movie previews). If the build
+    succeeds, send the download link by email to the given address. Run this
+    function as a job in a job queue.
     """
-    # The job dict handed to the queue still says "running": the status
-    # to test is the one end_build_job returns, empty when the job was
-    # deleted during the build.
+    # The job dict given to the queue still says "running". Test the status
+    # that end_build_job returns. This status is empty if the job was deleted
+    # during the build.
     job = build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
     if job.get("status") == "succeeded":
@@ -420,8 +420,8 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
 
 def get_playlist_download_context_name(project, playlist):
     """
-    Build the context name (slug) for playlist download filenames.
-    For tvshow projects, appends episode name (or "main pack" / "all assets").
+    Build the context name (slug) for the file names of playlist downloads. For
+    tvshow projects, add the episode name (or "main pack" / "all assets").
     """
     context_name = slugify(project["name"], separator="_")
     if project.get("production_type") == "tvshow":
@@ -443,7 +443,7 @@ def get_playlist_download_context_name(project, playlist):
 
 def get_playlist_movie_file_path(build_job):
     """
-    Build file path for the movie file matching given build job.
+    Build the file path of the movie file of the given build job.
     """
     movie_file_name = f"cache-playlists-{build_job['id']}.mp4"
     return os.path.join(config.TMP_DIR, movie_file_name)
@@ -451,9 +451,9 @@ def get_playlist_movie_file_path(build_job):
 
 def get_playlist_zip_file_path(playlist):
     """
-    Build a file path for an archive of given playlist. Unique per call:
-    concurrent downloads of a playlist each remove their own archive once
-    sent.
+    Build a file path for an archive of the given playlist. Each call gives a
+    unique path: concurrent downloads of a playlist each remove their own
+    archive after they send it.
     """
     zip_file_name = f"{playlist['id']}-{fields.gen_uuid()}.zip"
     return os.path.join(config.TMP_DIR, zip_file_name)
@@ -461,7 +461,7 @@ def get_playlist_zip_file_path(playlist):
 
 def get_build_job_raw(build_job_id):
     """
-    Return given build job as active record.
+    Return the given build job as an active record.
     """
     return base_service.get_instance(
         BuildJob, build_job_id, BuildJobNotFoundException
@@ -470,7 +470,7 @@ def get_build_job_raw(build_job_id):
 
 def get_build_job(build_job_id):
     """
-    Return given build job as a dict.
+    Return the given build job as a dict.
     """
     return get_build_job_raw(build_job_id).serialize()
 
@@ -495,8 +495,8 @@ def remove_build_job_files(job_dict):
 
 def remove_build_job_impl(playlist, job_dict):
     """
-    Remove one build job (files + DB record + event). Caller passes the
-    serialized job dict. Return the path of the cache file.
+    Remove one build job: its files and its database record. Emit an event. The
+    caller gives the serialized job dict. Return the path of the cache file.
     """
     build_job_id = job_dict["id"]
     movie_file_path = remove_build_job_files(job_dict)
@@ -513,9 +513,9 @@ def remove_build_job_impl(playlist, job_dict):
 
 def remove_build_job(playlist, build_job_id):
     """
-    Remove build job from database and remove its movie from the cache and
-    the storage. Return the path of the cache file, or None when the job
-    does not exist.
+    Remove the build job from the database, and remove its movie from the cache
+    and the storage. Return the path of the cache file. If the job does not
+    exist, return None.
     """
     job = BuildJob.get(build_job_id)
     if job is None:
@@ -525,7 +525,7 @@ def remove_build_job(playlist, build_job_id):
 
 def get_build_jobs_for_project(project_id):
     """
-    Return all build_jobs for given project.
+    Return all build_jobs of the given project.
     """
     build_jobs = BuildJob.query.join(Playlist).filter(
         Playlist.project_id == project_id

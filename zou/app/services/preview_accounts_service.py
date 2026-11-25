@@ -20,15 +20,15 @@ PREVIEW_OPEN_DURATION = datetime.timedelta(hours=1)
 
 def is_available():
     """
-    Preview accounts rely on local password login, other strategies cannot
-    authenticate them.
+    Return True if preview accounts are available. They use the local password
+    login: other strategies cannot authenticate them.
     """
     return current_app.config["AUTH_STRATEGY"] == "auth_local_classic"
 
 
 def get_preview_account_raw(project_id):
     """
-    Return the preview account of given project, or None.
+    Return the preview account of the given project, or None.
     """
     return Person.get_by(preview_project_id=project_id)
 
@@ -48,7 +48,7 @@ def _serialize(person):
 
 def get_preview_account(project_id):
     """
-    Return the preview account of given project as a dict, or None.
+    Return the preview account of the given project as a dict, or None.
     """
     person = get_preview_account_raw(project_id)
     return None if person is None else _serialize(person)
@@ -56,10 +56,10 @@ def get_preview_account(project_id):
 
 def create_or_reset_preview_account(project_id):
     """
-    Create the preview account of given project, or replace its password.
-    The access window is closed in both cases, which kills every session,
-    and the pending password reset links of the account stop working.
-    Return the account as a dict and its clear password.
+    Create the preview account of the given project, or replace its password.
+    In the two cases, the access window closes, and this stops all sessions.
+    The pending password reset links of the account also stop working. Return
+    the account as a dict and its clear password.
     """
     if not is_available():
         raise PreviewAccountsUnavailableException(
@@ -70,7 +70,7 @@ def create_or_reset_preview_account(project_id):
     hashed = auth.encrypt_password(password)
     person = get_preview_account_raw(project_id)
     if person is None:
-        # Not create_person: it would index the account and emit person:new
+        # Do not use create_person: it indexes the account and emits person:new
         # before preview_project_id is set.
         person = Person.create(
             email=f"preview-{secrets.token_hex(6)}@preview.kitsu.invalid",
@@ -82,7 +82,7 @@ def create_or_reset_preview_account(project_id):
         )
         projects_service.add_team_member(project.id, person.id)
     else:
-        # First, so that without Redis the reset changes nothing.
+        # Do this first, so that the reset changes nothing without Redis.
         persons_service.revoke_reset_tokens(person.email)
         person.update(
             {
@@ -97,8 +97,8 @@ def create_or_reset_preview_account(project_id):
 
 def set_preview_account_open(project_id, is_open):
     """
-    Open or close the access window. Opening an open account only extends it.
-    Return the account as a dict.
+    Open or close the access window. If the window of the account is already
+    open, make it longer. Return the account as a dict.
     """
     person = get_preview_account_raw(project_id)
     if person is None:
@@ -123,7 +123,7 @@ def set_preview_account_open(project_id, is_open):
 
 def delete_preview_account(project_id):
     """
-    Remove the preview account of given project, if any.
+    Remove the preview account of the given project, if it exists.
     """
     cascade_deletion_service.remove_preview_account(project_id)
 
@@ -134,8 +134,9 @@ def _to_epoch(value):
 
 def is_preview_session_valid(person, issued_at):
     """
-    A preview session lives only while the window is open and only if the
-    token was issued after the window opened.
+    Return True if a preview session is valid. A preview session is valid only
+    while the window is open, and only if the token was issued after the window
+    opened.
     """
     if person.preview_open_until is None:
         return False

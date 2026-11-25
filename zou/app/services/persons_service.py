@@ -50,7 +50,7 @@ _SHORT_PERSON_COLUMNS = (
 
 def clear_person_cache():
     """
-    Drop the memoized person lists and serializations.
+    Remove the memoized person lists and serializations from the cache.
     """
     cache.cache.delete_memoized(_get_person_raw_for_cache)
     cache.cache.delete_memoized(get_person)
@@ -65,13 +65,13 @@ def clear_person_cache():
 @cache.memoize_function(120)
 def get_persons(minimal=False, include_guests=False):
     """
-    Return all persons stored in database as safe dicts, or as minimal dicts
-    when minimal is set. Preview accounts are always excluded.
+    Return all the persons of the database as safe dicts. If minimal is
+    set, return minimal dicts. Never include the preview accounts.
 
-    Guests (created by the shared playlist flow) are excluded by
-    default: they are not part of the studio team and would otherwise
-    leak into the user context payload, the people page, and various
-    person dropdowns. Pass ``include_guests=True`` to opt in.
+    By default, do not include the guests (created by the shared playlist
+    flow). They are not part of the studio team. Else, they show in the
+    user context payload, the people page and many person dropdowns. To
+    include them, give ``include_guests=True``.
     """
     persons = []
     query = Person.query.options(selectinload(Person.departments))
@@ -89,8 +89,8 @@ def get_persons(minimal=False, include_guests=False):
 @cache.memoize_function(120)
 def get_active_persons():
     """
-    Return all persons with flag active set to True. Guests and preview
-    accounts are excluded.
+    Return all the persons whose active flag is True. Do not include the
+    guests and the preview accounts.
     """
     persons = (
         Person.query.filter(
@@ -108,17 +108,17 @@ def get_active_persons():
 @cache.memoize_function(60)
 def _get_person_raw_for_cache(person_id):
     """
-    Internal function to get person and prepare it for caching.
-    Expunges the object from session so it can be safely cached.
-    This function is cached - it returns a detached Person object.
+    Internal function that gets a person and prepares it for the cache.
+    Expunge the object from the session, so that the cache can keep it
+    safely. This function is cached: it returns a detached Person object.
 
-    Departments are eagerly loaded here so the cached instance carries them
-    in its state. Once expunged and later merged with load=False, the
-    instance is effectively detached from DB attribute refresh, so any
-    relationship that still needs a lazy load would crash with
-    DetachedInstanceError on access. ``clear_person_cache()`` is called on
-    every department change (add_to_department / remove_from_department),
-    so staleness is bounded by the memoize TTL.
+    Load the departments eagerly here, so that the cached instance keeps
+    them in its state. After the expunge and a later merge with
+    load=False, the database does not refresh the attributes of the
+    instance. Thus, access to a relationship that needs a lazy load causes
+    DetachedInstanceError. Each department change (add_to_department /
+    remove_from_department) calls ``clear_person_cache()``. Thus, the data
+    is never older than the memoize TTL.
     """
     if person_id is None:
         raise PersonNotFoundException()
@@ -135,20 +135,22 @@ def _get_person_raw_for_cache(person_id):
     if person is None:
         raise PersonNotFoundException()
 
-    # Expunge from session so it can be cached without session conflicts
-    # This is cheap - just removes from identity map, no DB query
+    # Expunge from the session, so that the cache causes no session conflict.
+    # This is fast: it only removes the object from the identity map, with no
+    # database query.
     db.session.expunge(person)
     return person
 
 
 def get_person_raw_cached(person_id):
     """
-    Return given person as an active record, cached and merged into current session.
-    This avoids session conflicts by caching expunged objects and merging on retrieval.
+    Return the given person as an active record, from the cache and merged
+    into the current session. The cache keeps expunged objects and merges
+    them when it gives them. This prevents session conflicts.
 
-    Uses load=False to avoid database query on merge - we trust the cached data.
-    The departments come from the cached object, eagerly loaded before it
-    was cached.
+    The merge uses load=False to prevent a database query: the cached data
+    is correct. The departments come from the cached object, which loaded
+    them eagerly before the cache kept it.
     """
     cached_person = _get_person_raw_for_cache(person_id)
     merged_person = db.session.merge(cached_person, load=False)
@@ -157,7 +159,7 @@ def get_person_raw_cached(person_id):
 
 def get_person_raw(person_id):
     """
-    Return given person as an active record.
+    Return the given person as an active record.
     """
     if person_id is None:
         raise PersonNotFoundException()
@@ -175,7 +177,7 @@ def get_person_raw(person_id):
 @cache.memoize_function(120)
 def get_person(person_id, unsafe=False, relations=True, minimal=False):
     """
-    Return given person as a dictionary.
+    Return the given person as a dict.
     """
     person = get_person_raw(person_id)
     if unsafe:
@@ -188,9 +190,9 @@ def get_person(person_id, unsafe=False, relations=True, minimal=False):
 
 def get_persons_by_ids(person_ids, minimal=False):
     """
-    Return persons matching given ids as a list of safe dictionaries, or of
-    minimal ones. One query for the persons, plus one for the departments of
-    the minimal ones, instead of one per person.
+    Return the persons that have the given IDs, as a list of safe dicts or
+    of minimal dicts. Use one query for the persons and one for the
+    departments of the minimal dicts, not one query per person.
     """
     if not person_ids:
         return []
@@ -205,9 +207,9 @@ def get_persons_by_ids(person_ids, minimal=False):
 
 def build_short_person(person):
     """
-    Return minimal author data to embed a comment or news author, including
-    guests. Accepts a full person row or a row limited to the short
-    columns, hence the inlined full name.
+    Return the minimal author data of a comment or news author, guests
+    included. Accept a full person row or a row with only the short
+    columns. Thus, the full name is built here.
     """
     if person.first_name and person.last_name:
         full_name = f"{person.first_name} {person.last_name}"
@@ -226,8 +228,8 @@ def build_short_person(person):
 @cache.memoize_function(240)
 def get_short_person(person_id):
     """
-    Return the minimal author dict for the person matching given id. Loads
-    only the columns it embeds instead of the full person row.
+    Return the minimal author dict of the person that has the given ID. Load
+    only the necessary columns, not the full person row.
     """
     try:
         row = (
@@ -244,7 +246,7 @@ def get_short_person(person_id):
 
 def get_short_persons_map(person_ids):
     """
-    Return a {id: minimal author dict} map for given ids in a single query.
+    Return a {id: minimal author dict} map for the given IDs, with one query.
     """
     if not person_ids:
         return {}
@@ -256,14 +258,16 @@ def get_short_persons_map(person_ids):
 
 def get_persons_raw():
     """
-    Every person as an active record, bots and inactive accounts included.
+    Return all the persons as active records, bots and inactive accounts
+    included.
     """
     return Person.query.all()
 
 
 def count_active_users():
     """
-    Number of active human accounts, the figure the user limit applies to.
+    Return the number of active human accounts. The user limit applies to
+    this number.
     """
     return Person.query.filter(
         Person.active,
@@ -275,26 +279,29 @@ def count_active_users():
 
 def get_studio_raw_by_name(name):
     """
-    Return the studio of given name as an active record, or None.
+    Return the studio that has the given name as an active record, or None.
     """
     return Studio.get_by(name=name)
 
 
 def get_department_raw_by_name(name):
     """
-    Return the department of given name as an active record, or None.
+    Return the department that has the given name as an active record, or
+    None.
     """
     return Department.get_by(name=name)
 
 
 def import_person(email, data, department_ids=None, update=False):
     """
-    Create the person of given email from the columns of an import file,
-    or update it when update is set and it exists. Departments are set
-    when given. Return the safe serialization of the person. Raise
-    IsUserLimitReachedException when the row would add an active user
-    once the user limit is reached, and WrongParameterException for a
-    change that the person update route refuses.
+    Create the person that has the given email, from the columns of an
+    import file. If update is set and the person exists, update it. If
+    departments are given, set them. Return the safe serialization of the
+    person.
+    - If the user limit is reached and the row adds an active user, raise
+      IsUserLimitReachedException.
+    - If the person update route refuses the change, raise
+      WrongParameterException.
     """
     person = Person.get_by(email=email, is_bot=False)
     created = person is None
@@ -332,10 +339,10 @@ def import_person(email, data, department_ids=None, update=False):
 
 def get_person_by_email_raw(email):
     """
-    Return person that matches given email as an active record.
+    Return the person that has the given email as an active record.
     """
     # The database refuses a NUL character in a query, and no stored
-    # address holds one.
+    # address has one.
     if email is not None and "\x00" in email:
         raise PersonNotFoundException()
     person = Person.get_by(email=email, is_bot=False)
@@ -348,7 +355,7 @@ def get_person_by_email_raw(email):
 @cache.memoize_function(120)
 def get_person_by_email(email, unsafe=False, relations=False):
     """
-    Return person that matches given email as a dictionary.
+    Return the person that has the given email as a dict.
     """
     person = get_person_by_email_raw(email)
     if unsafe:
@@ -359,8 +366,8 @@ def get_person_by_email(email, unsafe=False, relations=False):
 
 def get_person_by_sso_identity(protocol, issuer, subject):
     """
-    Return the person bound to given identity as a dictionary. The protocol
-    names the pair of columns the identity is stored in ("oidc", "saml").
+    Return the person linked to the given identity as a dict. The protocol
+    ("oidc", "saml") gives the pair of columns that store the identity.
     """
     person = Person.get_by(
         **{
@@ -376,10 +383,11 @@ def get_person_by_sso_identity(protocol, issuer, subject):
 
 def link_sso_identity(person_id, protocol, issuer, subject):
     """
-    Bind given identity to given person. A person already bound to another
-    subject of the same issuer keeps it: the email that led here is not a
-    proof of who is signing in. Another issuer means the provider was
-    replaced, so the binding follows it.
+    Link the given identity to the given person. If the person is already
+    linked to a different subject of the same issuer, keep that link. The
+    email is not a proof of the identity of the user who signs in. A
+    different issuer means that the provider changed. Thus, the link
+    changes to the new issuer.
     """
     person = Person.get(person_id)
     if (
@@ -397,12 +405,12 @@ def link_sso_identity(person_id, protocol, issuer, subject):
 @cache.memoize_function(120)
 def get_person_by_desktop_login(desktop_login):
     """
-    Return person that matches given desktop login as a dictionary. It is useful
-    to authenticate user from their desktop session login.
+    Return the person that has the given desktop login as a dict. Use it to
+    authenticate a user from their desktop session login.
     """
-    # An empty desktop login is what create_person gives anybody who has
-    # none, and the column is not unique, so matching on it handed out the
-    # first such account, usually the admin created at install time.
+    # create_person gives an empty desktop login to all the persons who
+    # have none, and the column is not unique. Thus, a match on an empty
+    # value gave the first such account, usually the admin of the install.
     if not desktop_login:
         raise PersonNotFoundException()
     try:
@@ -417,8 +425,8 @@ def get_person_by_desktop_login(desktop_login):
 
 def get_current_user(unsafe=False, relations=False):
     """
-    Return person from its auth token (the one that does the request) as a
-    dictionary.
+    Return the person of the auth token (the person who sends the request)
+    as a dict.
     """
     data = current_user.serialize_safe(relations=relations)
     if unsafe:
@@ -432,28 +440,28 @@ def get_current_user(unsafe=False, relations=False):
 
 def get_current_user_fido_devices():
     """
-    Return FIDO device names for the current user.
+    Return the FIDO device names of the current user.
     """
     return current_user.fido_devices()
 
 
 def build_assignee_filter():
     """
-    Query filter for tasks assigned to the current user. Lives here, at the
-    bottom of the service layers, so the entity services can scope a
-    listing without reaching up into user_service.
+    Return the query filter for the tasks assigned to the current user. It
+    is here, at the bottom of the service layers. Thus, the entity services
+    can limit a list without an import of user_service.
     """
     return Task.assignees.contains(get_current_user_raw())
 
 
 def get_current_user_raw():
     """
-    Return person from its auth token (the one that does the request) as an
-    active record.
+    Return the person of the auth token (the person who sends the request)
+    as an active record.
     """
     # current_user comes from get_person_raw_cached() in the auth callback,
-    # merged with load=False: reading the departments makes sure they are
-    # loaded before the caller uses them.
+    # merged with load=False. Read the departments to make sure that they
+    # are loaded before the caller uses them.
     _ = (
         list(current_user.departments)
         if hasattr(current_user, "departments")
@@ -464,7 +472,7 @@ def get_current_user_raw():
 
 def get_person_by_ldap_uid(ldap_uid):
     """
-    Return person that matches given ldap_uid as a dictionary.
+    Return the person that has the given ldap_uid as a dict.
     """
     if ldap_uid is None:
         raise PersonNotFoundException()
@@ -481,11 +489,11 @@ def get_person_by_ldap_uid(ldap_uid):
 @cache.memoize_function(120)
 def get_person_by_email_desktop_login(email_or_desktop_login):
     """
-    Return person that matches given email or desktop login as a dictionary.
+    Return the person that has the given email or desktop login as a dict.
     """
-    # Neither column is unique nor NOT NULL, so a falsy identifier must
-    # never reach a query: it would resolve to whichever account happens to
-    # have a blank one. Public routes pass a raw query parameter here.
+    # The two columns are not unique and accept NULL. Never put a falsy
+    # identifier in a query: it can match any account with a blank value.
+    # Public routes give a raw query parameter here.
     if not email_or_desktop_login:
         raise PersonNotFoundException()
     try:
@@ -496,7 +504,8 @@ def get_person_by_email_desktop_login(email_or_desktop_login):
 
 def get_persons_map():
     """
-    Return a dict of which keys are person_id and values are person.
+    Return a dict whose keys are person_id values and whose values are
+    persons.
     """
     persons = Person.query.all()
     return {str(person.id): person.serialize_safe() for person in persons}
@@ -521,13 +530,13 @@ def create_person(
     serialize=True,
 ):
     """
-    Create a new person entry in the database. No operation are performed on
-    password, so encrypted password is expected. Index the person, emit
+    Create a person entry in the database. This function does not change
+    the password. Thus, give an encrypted password. Index the person, emit
     person:new and clear the person cache.
 
-    Return the serialized person, with an access token for a bot, or the
-    active record when serialize is False. Raise WrongParameterException
-    when the expiration date is in the past or not valid.
+    Return the serialized person, with an access token for a bot. If
+    serialize is False, return the active record. If the expiration date is
+    in the past or not valid, raise WrongParameterException.
     """
     if departments is None:
         departments = []
@@ -536,9 +545,9 @@ def create_person(
 
     if expiration_date is not None:
         try:
-            # Parsed inside the guard: this is where the date arrives as
-            # the string a caller typed, and the clause below exists for
-            # exactly the ValueError an unreadable one raises.
+            # Parse the date in the guard. Here the date is the string that a
+            # caller typed. The clause below catches the ValueError that an
+            # unreadable date raises.
             if isinstance(expiration_date, str):
                 expiration_date = date_helpers.get_date_from_string(
                     expiration_date
@@ -593,11 +602,12 @@ def create_person(
 
 def update_password(email, password):
     """
-    Update password field for user matching given email. The pending reset
-    links of that person stop working.
+    Update the password field of the user that has the given email. The
+    pending reset links of that person stop working.
     """
     person = get_person_by_email_raw(email)
-    # First, so that without Redis the password stays as it was.
+    # Do this first. Thus, if Redis is not available, the password does
+    # not change.
     revoke_reset_tokens(person.email)
     person.update({"password": password})
     clear_person_cache()
@@ -607,14 +617,15 @@ def update_password(email, password):
 
 def update_person(person_id, data, bypass_protected_accounts=False):
     """
-    Update person entry with data given in parameter. Reindex the person,
-    emit person:update and clear the person cache. A bot whose expiration
-    date is in data gets a new access token, returned with the person.
+    Update the given person with the given data. Index the person again,
+    emit person:update and clear the person cache. If the person is a bot
+    and data has an expiration date, make a new access token. Return it
+    with the person.
 
-    Raise PersonInProtectedAccounts when data deactivates a protected
-    account or changes its role, email or bot flag, unless
-    bypass_protected_accounts is set. Raise WrongParameterException when
-    the expiration date is in the past or not valid.
+    If data deactivates a protected account, or changes its role, email or
+    bot flag, raise PersonInProtectedAccounts. If bypass_protected_accounts
+    is set, do not do this check. If the expiration date is in the past or
+    not valid, raise WrongParameterException.
     """
     person = Person.get(person_id)
     if (
@@ -663,8 +674,8 @@ def update_person(person_id, data, bypass_protected_accounts=False):
 
     person.update(data)
 
-    # Bots only, as on the person update route: for a person this would be
-    # a token issued without their password, outliving every session.
+    # Only for bots, as on the person update route. For a person, this
+    # token has no password check and stays valid after all the sessions.
     regenerate_token = person.is_bot and "expiration_date" in data
     if regenerate_token:
         access_token = create_access_token_for_raw_person(person)
@@ -684,7 +695,7 @@ def update_person(person_id, data, bypass_protected_accounts=False):
 
 def get_desktop_login_logs(person_id):
     """
-    Get all logs for user desktop logins.
+    Return all the desktop login logs of the given user.
     """
     logs = (
         DesktopLoginLog.query.filter(DesktopLoginLog.person_id == person_id)
@@ -696,8 +707,8 @@ def get_desktop_login_logs(person_id):
 
 def create_desktop_login_logs(person_id, date):
     """
-    Add a new log entry for desktop logins and update the last presence of
-    the person.
+    Add a desktop login log entry and update the last presence of the
+    person.
     """
     log = DesktopLoginLog.create(person_id=person_id, date=date).serialize()
     update_person_last_presence(person_id)
@@ -706,15 +717,19 @@ def create_desktop_login_logs(person_id, date):
 
 def update_person_last_presence(person_id):
     """
-    Update person presence field with the most recent time spent or
-    desktop login log for this person. Return True when the field changed.
+    Update the presence field of the person with the most recent time spent
+    or desktop login log of this person. If the field changed, return True.
 
-    It runs for every new time spent and desktop login, so it writes the
-    field alone, and only when the day changes: no updated_at change
-    (Kitsu puts it in the avatar URL), no reindex, no person cache clear
-    for the whole instance, and no person:update that makes every connected
-    client reload the person. Kitsu never reads the field, and the memoized
-    persons catch up when they expire.
+    This function runs for each new time spent and desktop login. Thus, it
+    writes only this field, and only when the day changes. It does not do
+    these operations:
+    - change updated_at (Kitsu puts it in the avatar URL)
+    - index the person again
+    - clear the person cache for the full instance
+    - emit person:update, which makes all the connected clients load the
+      person again.
+    Kitsu never reads the field. The memoized persons get the new value
+    when they expire.
     """
     log = (
         DesktopLoginLog.query.filter(DesktopLoginLog.person_id == person_id)
@@ -728,8 +743,8 @@ def update_person_last_presence(person_id):
     )
     dates = []
     if log is not None:
-        # A login is stored to the second, a time spent and the field being
-        # written are days: the two are not comparable until it is trimmed.
+        # A login has a precision of one second. A time spent and this field
+        # are days. Thus, cut the login to the day before the comparison.
         dates.append(log.date.date())
     if time_spent is not None:
         dates.append(time_spent.date)
@@ -738,8 +753,7 @@ def update_person_last_presence(person_id):
         Person.id == person_id,
         Person.last_presence.is_distinct_from(date),
     ).update(
-        # Set to itself, updated_at keeps its value instead of taking the
-        # onupdate default.
+        # Set updated_at to its own value. Else, it gets the onupdate default.
         {"last_presence": date, "updated_at": Person.updated_at},
         synchronize_session=False,
     )
@@ -749,8 +763,8 @@ def update_person_last_presence(person_id):
 
 def get_presence_logs(year, month):
     """
-    Return arrays of presence for a given month, adapted for a CSV rendering.
-    Rows are users and columns represent the days of given month.
+    Return the presence arrays of the given month, for a CSV rendering.
+    The rows are the users and the columns are the days of the month.
     """
     persons = get_active_persons()
     headers = [str(year)]
@@ -759,9 +773,9 @@ def get_presence_logs(year, month):
     _, limit = monthrange(year, month)
     headers += [str(i) for i in range(1, limit + 1)]
     start_date = datetime.datetime(year, month, 1, 0, 0, 0)
-    # The sheet holds the days of one month and each login is written at
-    # its day number, so a login of any later month would be stamped on
-    # the column carrying the same number.
+    # The sheet has the days of one month, and each login goes in the
+    # column of its day number. Thus, a login of a later month would go
+    # in the column that has the same number.
     end_date = start_date + relativedelta.relativedelta(months=1)
 
     csv_content.append(headers)
@@ -787,15 +801,15 @@ def get_presence_logs(year, month):
 
 def is_admin(person):
     """
-    Return True when given person dict has the admin role.
+    If the given person dict has the admin role, return True.
     """
     return person["role"] == "admin"
 
 
 def build_password_reset_url(email, token, token_type=None):
     """
-    Build the URL a user can follow to choose a new password. It matches the
-    link embedded in the password recovery and invitation emails.
+    Build the URL that a user opens to choose a new password. It is the
+    same link as in the password recovery and invitation emails.
     """
     params = {"email": email, "token": token}
     if token_type is not None:
@@ -809,11 +823,11 @@ def build_password_reset_url(email, token, token_type=None):
 
 def check_password_change_allowed(person_id):
     """
-    Ensure the current user is allowed to set the password of the given
-    person. The current user can always act on his own account, but cannot
-    set the password of a protected account nor the one of another admin who
-    already has a password. Returns the person on success, raises
-    PersonInProtectedAccounts otherwise.
+    Make sure that the current user can set the password of the given
+    person. The current user can always change their own account. They
+    cannot set the password of a protected account, or of a different admin
+    who already has a password. If the check passes, return the person.
+    Else, raise PersonInProtectedAccounts.
     """
     current_user = get_current_user()
     person = get_person(person_id)
@@ -833,10 +847,11 @@ def check_password_change_allowed(person_id):
 
 def create_reset_token(email, ttl):
     """
-    Store a new password reset token for given email, as the person record
-    holds it, valid for ttl seconds, and return it. The tokens of earlier
-    emails stay valid, up to RESET_TOKENS_PER_ADDRESS tokens per address:
-    the ones that expire first make room for the new one.
+    Store a new password reset token for the given email, as the person
+    record has it, and return it. The token is valid for ttl seconds. The
+    tokens of earlier emails stay valid, up to RESET_TOKENS_PER_ADDRESS
+    tokens per address. If there are too many, remove the tokens that
+    expire first.
     """
     token = generate_reset_token()
     auth_tokens_store.add_to_token_set(
@@ -847,9 +862,9 @@ def create_reset_token(email, ttl):
 
 def is_reset_token_valid(email, token):
     """
-    Tell if given token is a valid password reset token of the person with
-    given email. The tokens are stored for the address of the person, so the
-    case of given email does not matter.
+    Return True if the given token is a valid password reset token of the
+    person with the given email. The tokens are stored for the address of
+    the person. Thus, the case of the given email is not important.
     """
     try:
         person = get_person_by_email_raw(email)
@@ -861,9 +876,9 @@ def is_reset_token_valid(email, token):
 
 def use_reset_token(email, token):
     """
-    Remove given password reset token of the person with given email.
-    Return True if the token was valid: of two requests with the same link,
-    only one gets True.
+    Remove the given password reset token of the person with the given
+    email. If the token was valid, return True. If two requests use the
+    same link, only one gets True.
     """
     try:
         person = get_person_by_email_raw(email)
@@ -880,8 +895,8 @@ def use_reset_token(email, token):
 
 
 def _is_former_reset_token(email, token):
-    # Former versions stored one token per address, under the address of
-    # the link they sent.
+    # Old versions stored one token per address, under the address of
+    # the link that they sent.
     stored_token = auth_tokens_store.get(f"reset-token-{email}")
     return stored_token is not None and hmac.compare_digest(
         stored_token.encode(), token.encode()
@@ -890,8 +905,8 @@ def _is_former_reset_token(email, token):
 
 def revoke_reset_tokens(email):
     """
-    Remove the password reset tokens of given email, as the person record
-    holds it.
+    Remove the password reset tokens of the given email, as the person
+    record has it.
     """
     auth_tokens_store.delete(f"reset-tokens-{email}")
     auth_tokens_store.delete(f"reset-token-{email}")
@@ -899,11 +914,11 @@ def revoke_reset_tokens(email):
 
 def get_or_create_password_reset_link(person_id):
     """
-    Return the password reset link for the given person. The reset token
-    that expires last (for instance from an invitation or a previous call)
-    is reused if it has an hour left or more, instead of storing one more
-    token. Otherwise a new token, valid for 2 hours, is generated and stored.
-    It is the same link as the one embedded in the password recovery email.
+    Return the password reset link of the given person. If the reset token
+    that expires last (for example from an invitation or a previous call)
+    has one hour or more left, use it again. Else, make and store a new
+    token, valid for 2 hours. It is the same link as in the password
+    recovery email.
     """
     person = get_person(person_id)
     tokens = auth_tokens_store.get_token_set(f"reset-tokens-{person['email']}")
@@ -915,9 +930,9 @@ def get_or_create_password_reset_link(person_id):
 
 def get_email_locale(person):
     """
-    Return the locale given person must be written to in. A Babel Locale
-    object, which the dict carries when it comes straight from the ORM, is
-    turned back into its string form.
+    Return the locale to use when you write to the given person. When the
+    dict comes directly from the ORM, it has a Babel Locale object. Change
+    this object into its string form.
     """
     locale = person.get("locale") or config.DEFAULT_LOCALE
     if hasattr(locale, "language"):
@@ -927,8 +942,8 @@ def get_email_locale(person):
 
 def invite_person(person_id):
     """
-    Send an invitation email to given person (a mail telling him/her how to
-    connect on Kitsu). The email holds a password reset link with a new token
+    Send an invitation email to the given person. The email tells the person
+    how to connect to Kitsu. It has a password reset link with a new token,
     valid for 7 days.
     """
     person = get_person(person_id)
@@ -961,8 +976,8 @@ def invite_person(person_id):
 
 def is_user_limit_reached():
     """
-    Returns true if the number of active users is equal and superior to the
-    user limit set in the configuration. Guests are excluded.
+    If the number of active users is equal to or more than the user limit of
+    the configuration, return True. Do not count the guests.
     """
     nb_active_users = Person.query.filter(
         Person.active,
@@ -975,7 +990,8 @@ def is_user_limit_reached():
 
 def add_to_department(department_id, person_id):
     """
-    Add to department. Clear the person cache and emit person:update.
+    Add the person to the department. Clear the person cache and emit
+    person:update.
     """
     person = get_person_raw(person_id)
     department = Department.get(department_id)
@@ -988,7 +1004,8 @@ def add_to_department(department_id, person_id):
 
 def remove_from_department(department_id, person_id):
     """
-    Remove from department. Clear the person cache and emit person:update.
+    Remove the person from the department. Clear the person cache and emit
+    person:update.
     """
     person = get_person_raw(person_id)
     person.departments = [
@@ -1004,14 +1021,15 @@ def remove_from_department(department_id, person_id):
 
 def clear_avatar(person_id):
     """
-    Set person `has_avatar` field to False and delete related file.
+    Set the `has_avatar` field of the person to False and delete the related
+    file.
     """
     person = get_person_raw(person_id)
     person.update({"has_avatar": False})
     clear_person_cache()
-    # Setting an avatar goes through update_person and is announced; so is
-    # dropping one, otherwise the other connected clients keep asking for
-    # a picture that no longer exists.
+    # update_person sets an avatar and emits an event. Also emit an event
+    # when you remove an avatar. Else, the other connected clients continue
+    # to ask for a picture that does not exist.
     events.emit("person:update", {"person_id": str(person_id)})
     try:
         file_store.remove_picture("thumbnails", person_id)
@@ -1025,15 +1043,15 @@ def clear_avatar(person_id):
 
 def is_jti_revoked(jti):
     """
-    Return True if the given token id is revoked.
+    If the given token id is revoked, return True.
     """
     return Person.query.filter_by(jti=jti).first() is None
 
 
 def create_access_token_for_raw_person(person):
     """
-    Create an access token for the given raw person. Its id is saved on the
-    person, which revokes the token issued before.
+    Create an access token for the given raw person. Save its id on the
+    person. This revokes the previous token.
     """
     expires_delta = False
     if person.expiration_date is not None:
@@ -1058,8 +1076,9 @@ def create_access_token_for_raw_person(person):
 
 def build_team_exists_filter(project_id):
     """
-    Query filter to keep only rows whose project the user is part of the
-    team of. Expressed as an EXISTS so it never multiplies result rows.
+    Return the query filter that keeps only the rows of the projects whose
+    team includes the user. It uses EXISTS, so it never multiplies the
+    result rows.
     """
     current_user = get_current_user()
     return (
@@ -1073,8 +1092,8 @@ def build_team_exists_filter(project_id):
 
 def get_timezone():
     """
-    Return the timezone of the current user, the instance default when
-    they set none.
+    Return the timezone of the current user. If the user set no timezone,
+    return the default timezone of the instance.
     """
     try:
         timezone = get_current_user()["timezone"]
@@ -1085,7 +1104,7 @@ def get_timezone():
 
 def generate_reset_token():
     """
-    Generate and return a reset token.
+    Make and return a reset token.
     """
     return "".join(
         random.SystemRandom().choice(string.ascii_uppercase + string.digits)

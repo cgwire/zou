@@ -7,7 +7,8 @@ from zou.app.utils import cache, events
 @cache.memoize_function(120)
 def get_organisation(sensitive=False):
     """
-    Return organisation set up on this instance. It creates it if none exists.
+    Return the organisation of this instance. If no organisation exists,
+    create it.
     """
     organisation = Organisation.query.first()
     if organisation is None:
@@ -19,7 +20,7 @@ def get_organisation(sensitive=False):
 
 def clear_organisation_cache():
     """
-    Drop the memoized organisation.
+    Remove the memoized organisation from the cache.
     """
     cache.cache.delete_memoized(get_organisation)
     cache.cache.delete_memoized(get_organisation, True)
@@ -27,7 +28,7 @@ def clear_organisation_cache():
 
 def update_organisation(organisation_id, data):
     """
-    Update organisation entry with data given in parameter, emit
+    Update the given organisation with the given data. Emit
     organisation:update and clear the organisation cache.
     """
     organisation = base_service.get_instance(
@@ -41,8 +42,8 @@ def update_organisation(organisation_id, data):
 
 def get_user_limit():
     """
-    Returns the current user limit, reading from Redis first (shared
-    across workers) and falling back to the config file value.
+    Return the current user limit. Read it from Redis first, because all the
+    workers share Redis. If Redis has no value, use the config file value.
     """
     from zou.app.stores.config_store import get_user_limit
 
@@ -51,8 +52,8 @@ def get_user_limit():
 
 def get_default_timezone():
     """
-    Returns the default timezone, reading from Redis first (shared
-    across workers) and falling back to the config file value.
+    Return the default timezone. Read it from Redis first, because all the
+    workers share Redis. If Redis has no value, use the config file value.
     """
     from zou.app.stores.config_store import get_default_timezone
 
@@ -61,8 +62,8 @@ def get_default_timezone():
 
 def get_default_locale():
     """
-    Returns the default locale, reading from Redis first (shared
-    across workers) and falling back to the config file value.
+    Return the default locale. Read it from Redis first, because all the
+    workers share Redis. If Redis has no value, use the config file value.
     """
     from zou.app.stores.config_store import get_default_locale
 

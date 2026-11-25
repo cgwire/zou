@@ -28,25 +28,28 @@ from zou.app.utils import events, fields, query as query_utils
 
 logger = logging.getLogger(__name__)
 
-# Page size for playlist list endpoints
+# Page size for the playlist list endpoints.
 PLAYLISTS_PAGE_SIZE = 20
 
-# Whitelist of accepted Playlist.for_entity values. The column itself is a
-# permissive String(10) for historical reasons; this set is what consumers
-# (gazu Literal, kitsu UI branches, docs) actually handle. Validate at the
-# CRUD boundary so a stray value cannot land in storage.
+# Allowlist of the accepted Playlist.for_entity values. For historical
+# reasons, the column is a permissive String(10). The consumers (gazu
+# Literal, kitsu UI branches, docs) only use the values of this set.
+# Validate at the CRUD boundary, so that no other value goes into storage.
 VALID_FOR_ENTITY_VALUES = ("shot", "asset", "sequence", "edit", "episode")
 
-# First entry's preview_file_id for list rows (PostgreSQL jsonb path), avoids
-# loading the full `shots` column when paired with defer(Playlist.shots).
+# The preview_file_id of the first entry for the list rows (PostgreSQL
+# jsonb path). With defer(Playlist.shots), it prevents the load of the
+# full `shots` column.
 _FIRST_SHOT_PREVIEW_FILE_ID_SQL = Playlist.shots[0][
     "preview_file_id"
 ].astext.label("first_preview_file_id")
 
-# Sentinel: build_playlist_dict() should read shots on the model (tests / legacy).
+# Sentinel: build_playlist_dict() must read the shots on the model
+# (tests / legacy).
 _FIRST_PREVIEW_FILE_ID_FROM_QUERY_UNSET = object()
 
-# Scalar attributes for playlist list dict (avoids serializing heavy shots JSON)
+# Scalar attributes for the playlist list dict. They prevent the
+# serialization of the shots JSON, which is heavy.
 _PLAYLIST_LIST_ATTRS = (
     "id",
     "name",
@@ -64,7 +67,8 @@ _PLAYLIST_LIST_ATTRS = (
 
 def _apply_playlist_pagination(query, page, sort_by, model=Playlist):
     """
-    Apply sort, normalize page, and apply limit/offset to the query.
+    Apply the sort to the query, normalize the page, and apply the limit
+    and the offset to the query.
     """
     query = query_utils.apply_sort_by(model, query, sort_by)
     if page < 1:
@@ -81,8 +85,8 @@ def all_playlists_for_project(
     task_type_id=None,
 ):
     """
-    Return one page of the playlists created for given project, as the
-    light dicts of build_playlist_dict.
+    Return one page of the playlists of the given project, as the light
+    dicts of build_playlist_dict.
     """
     result = []
     query = Playlist.query.filter(Playlist.project_id == project_id)
@@ -115,12 +119,12 @@ def all_playlists_for_episode(
     for_entity=None,
 ):
     """
-    Return one page of the playlists created for given episode, as the
-    light dicts of build_playlist_dict. The "main" pseudo-episode lists the
-    playlists without episode that are not for all episodes. The "all"
-    pseudo-episode lists the production-wide playlists of every entity type
-    unless `for_entity` narrows them (Kitsu splits them into All assets /
-    All shots).
+    Return one page of the playlists of the given episode, as the light
+    dicts of build_playlist_dict. The "main" pseudo-episode lists the
+    playlists without an episode that are not for all episodes. The "all"
+    pseudo-episode lists the playlists of the full production, for all the
+    entity types. If `for_entity` is given, it limits them to one type
+    (Kitsu shows them as All assets and All shots).
     """
     result = []
     query = Playlist.query
@@ -172,10 +176,10 @@ def build_playlist_dict(
     playlist, first_preview_file_id=_FIRST_PREVIEW_FILE_ID_FROM_QUERY_UNSET
 ):
     """
-    Build a dictionary of a simplified version of the playlist. It just takes
-    the information needed for displaying the list of playlists.
-    Does not mutate the playlist model. Uses scalar attributes only to avoid
-    serializing the potentially large shots JSON column.
+    Build a dict with a simple version of the playlist. It has only the
+    data that the list of playlists shows. The function does not change the
+    playlist model. It uses only scalar attributes, so it does not
+    serialize the shots JSON column, which can be large.
     """
     out = {"type": "Playlist"}
     for attr in _PLAYLIST_LIST_ATTRS:
@@ -197,7 +201,7 @@ def build_playlist_dict(
 
 def get_first_shot_preview_file_id(playlist):
     """
-    Return the first shot's preview_file_id if any, else None.
+    Return the preview_file_id of the first shot, or None.
     """
     if not playlist.shots or not isinstance(playlist.shots, list):
         return None
@@ -209,15 +213,17 @@ def get_playlist_with_preview_file_revisions(
     playlist_id, with_annotations=True
 ):
     """
-    Return given playlist. Shot list is augmented with all previews available
-    for a given shot.
+    Return the given playlist. The shot list has, for each shot, all the
+    available previews.
 
-    When with_annotations is False, annotation blobs are omitted from the
-    response: they are the heaviest part of a playlist and the web client
-    loads them on demand. Callers that have no lazy-loading (e.g. the shared
-    guest player) keep the default and receive annotations inline.
+    If with_annotations is False, the response does not include the
+    annotation blobs. They are the heaviest part of a playlist, and the web
+    client loads them when it needs them. Callers that cannot load them
+    later (for example the shared guest player) keep the default. They get
+    the annotations in the response.
     """
-    # Eager load build_jobs to avoid N+1 when building build_jobs list
+    # Load build_jobs eagerly to prevent N+1 queries when the function
+    # builds the build_jobs list.
     playlist = (
         Playlist.query.options(joinedload(Playlist.build_jobs))
         .filter(Playlist.id == playlist_id)
@@ -271,8 +277,9 @@ def get_playlist_with_preview_file_revisions(
 
 def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
     """
-    Add the build jobs of the playlist to a playlist dict, newest first, so
-    the client knows whether a movie is available or still building.
+    Add the build jobs of the playlist to a playlist dict, newest first.
+    Because of this, the client knows if a movie is available or if its
+    build is not complete.
     """
     playlist_dict["build_jobs"] = []
     for build_job in reversed(playlist.build_jobs):
@@ -282,13 +289,14 @@ def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
 
 def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     """
-    Retrieve all preview files related to entities listed in given playlist.
-    Add to each entity a dict with task type ids as keys and preview lists
-    as values (an empty list when the entity has no preview). Return the
-    playlist dict and a map of the preview files by id.
+    Get all the preview files of the entities of the given playlist. Add to
+    each entity a dict with task type IDs as keys and preview lists as
+    values. If the entity has no preview, the list is empty. Return the
+    playlist dict and a map of the preview files by ID.
 
-    Annotation blobs are included only when with_annotations is True; the web
-    client opts out and loads them on demand to keep the payload light.
+    The annotation blobs are included only if with_annotations is True. The
+    web client does not include them, to keep the payload small. It loads
+    them when it needs them.
     """
     entity_ids = []
     for entity in playlist_dict["shots"]:
@@ -303,11 +311,11 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
     previews = {}
     preview_file_map = {}
 
-    # Select scalar columns instead of full PreviewFile ORM objects: a playlist
-    # can hold thousands of revisions, and hydrating that many ORM instances
-    # was the bulk of the query time. We also skip the heavy JSONB blobs `data`
-    # (never used) and `annotations` (only when the caller asked for them). This
-    # mirrors get_entity_previews_by_task_type().
+    # Select scalar columns, not full PreviewFile ORM objects. A playlist can
+    # have thousands of revisions, and the creation of so many ORM instances
+    # took most of the query time. Also skip the heavy JSONB blobs `data`
+    # (never used) and `annotations` (only if the caller asks for them). This
+    # is the same as in get_entity_previews_by_task_type().
     preview_columns = [
         PreviewFile.id,
         PreviewFile.revision,
@@ -360,7 +368,7 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
             "status": fields.serialize_value(row.status),
             "created_at": fields.serialize_value(row.created_at),
             "task_id": str(row.task_id),
-        }  # Do not add too much field to avoid building too big responses
+        }  # Do not add more fields: the responses must stay small
         if with_annotations:
             light_preview_file["annotations"] = row.annotations
         previews[entity_id][task_type_id].append(light_preview_file)
@@ -379,18 +387,19 @@ def set_preview_files_for_entities(playlist_dict, with_annotations=True):
         else:
             entity["preview_files"] = []
 
-    # playlist_dict is already JSON-safe here: top-level fields and shots came
-    # through playlist.serialize(), build_jobs through BuildJob.present(), and
-    # every preview file dict is built with serialized values. A second
-    # serialize_value() pass over the whole (large) structure would just walk
-    # and copy it again for nothing.
+    # playlist_dict is already JSON-safe here:
+    # - the top-level fields and shots came through playlist.serialize().
+    # - build_jobs came through BuildJob.present().
+    # - the function builds each preview file dict with serialized values.
+    # A second serialize_value() pass on the full (large) structure only
+    # walks and copies it again, for no result.
     return (playlist_dict, preview_file_map)
 
 
 def get_entity_previews_by_task_type(entity_id):
     """
-    Get all preview files available for given entity, as a dict with task
-    type ids as keys and preview lists grouped by revision as values.
+    Return all the preview files of the given entity, as a dict. The keys
+    are task type IDs. The values are preview lists grouped by revision.
     """
     previews = {}
     query = (
@@ -491,14 +500,14 @@ def get_entity_previews_by_task_type(entity_id):
                     ),
                 }
                 for preview_file in preview_files
-            ]  # Do not add too much field to avoid building too big responses
+            ]  # Do not add more fields: the responses must stay small
     return previews
 
 
 def mix_preview_file_revisions(preview_files):
     """
-    The goal here is to group preview files with same revision in a single
-    preview file, which encapsulates other preview_files.
+    Group the preview files that have the same revision in one preview
+    file. This preview file contains the other preview files.
     """
     revision_map = {}
     result = []
@@ -516,7 +525,7 @@ def mix_preview_file_revisions(preview_files):
 
 def get_playlist_raw(playlist_id):
     """
-    Return given playlist as active record.
+    Return the given playlist as an active record.
     """
     return base_service.get_instance(
         Playlist, playlist_id, PlaylistNotFoundException
@@ -525,18 +534,19 @@ def get_playlist_raw(playlist_id):
 
 def get_playlist(playlist_id):
     """
-    Return given playlist as a dict.
+    Return the given playlist as a dict.
     """
     return get_playlist_raw(playlist_id).serialize()
 
 
 def get_project_playlist(project_id, playlist_id):
     """
-    Return the id, the project and the client flag of given playlist,
-    provided it belongs to given project: what a read check needs, without
-    the shots, which the caller loads afterwards. The id comes from the
-    client next to a project it may access: a playlist of another project
-    is not found, nor an id that is not one.
+    Return the id, the project and the client flag of the given playlist,
+    if it belongs to the given project. A read check needs only these
+    values. The caller loads the shots after this call. The client gives
+    the ID together with a project that it can access. If the playlist is
+    in another project, or if the ID is not valid, the playlist is not
+    found.
     """
     try:
         playlist = (
@@ -559,10 +569,11 @@ def get_project_playlist(project_id, playlist_id):
 
 def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
     """
-    Append one entity to the playlist shots list. Same rules as
-    add_entities_to_playlist, which this runs: a playlist entry is the
-    couple (entity, preview), so the same entity can be added again under
-    another preview, and a call naming no preview gets the latest one.
+    Append one entity to the list of playlist shots. The rules are the same
+    as in add_entities_to_playlist, which this function calls. A playlist
+    entry is the couple (entity, preview). Because of this, you can add the
+    same entity again with a different preview. If a call gives no
+    preview, the entry gets the latest preview.
     """
     return add_entities_to_playlist(
         playlist_id,
@@ -572,10 +583,10 @@ def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
 
 def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
     """
-    Return a map of entity id to the id of its latest preview file, picking
-    the highest revision (created_at breaks ties within a revision). When
-    task_type_id is set, only preview files uploaded for that task type are
-    considered.
+    Return a map of entity ID to the ID of its latest preview file. The
+    latest preview file has the highest revision. If two have the same
+    revision, created_at decides. If task_type_id is set, use only the
+    preview files uploaded for this task type.
     """
     if not entity_ids:
         return {}
@@ -601,15 +612,16 @@ def get_latest_preview_file_ids_for_entities(entity_ids, task_type_id=None):
 
 def add_entities_to_playlist(playlist_id, entities):
     """
-    Atomically append several (entity, preview) couples to the playlist shots
-    list in a single database write. A playlist entry is the couple
-    (entity_id, preview_file_id): the same entity may appear several times
-    with different previews, so only exact duplicate couples are skipped.
-    When a couple has no preview_file_id, the latest preview for the entity
-    is resolved (highest revision, restricted to the playlist task type when
-    one is set). Emit a playlist:add_entity event for each added couple.
-    Raise PlaylistLockTimeoutException when the playlist lock is not
-    acquired.
+    Append many (entity, preview) couples to the list of playlist shots, in
+    one atomic database write. A playlist entry is the couple (entity_id,
+    preview_file_id). The same entity can occur many times with different
+    previews, so the function skips only exact duplicate couples.
+
+    If a couple has no preview_file_id, use the latest preview of the
+    entity. This is the highest revision. If the playlist has a task type,
+    use only the previews of this task type. Emit a playlist:add_entity
+    event for each added couple. If the function cannot get the playlist
+    lock, raise PlaylistLockTimeoutException.
     """
     couples = [
         (
@@ -683,8 +695,8 @@ def add_entities_to_playlist(playlist_id, entities):
 
 def playlist_previews(shots, only_movies=False):
     """
-    Retrieve all preview id and extension for the given shots.
-    Uses a single batch query instead of N queries (avoids N+1).
+    Return the preview ID and extension for all the given shots. Use one
+    batch query, not N queries (this prevents N+1 queries).
     """
     preview_file_ids = []
     for entity in shots:
@@ -706,7 +718,7 @@ def playlist_previews(shots, only_movies=False):
         for pf_id, ext in preview_rows
     }
 
-    # Preserve order of shots and apply only_movies filter
+    # Keep the order of the shots and apply the only_movies filter.
     result = []
     for entity in shots:
         if not isinstance(entity, dict):
@@ -725,8 +737,8 @@ def playlist_previews(shots, only_movies=False):
 
 def get_playlists_for_project(project_id, page=0):
     """
-    Return the playlists of given project with their relations, paginated
-    as query_utils.get_paginated_results does.
+    Return the playlists of the given project with their relations. The
+    pagination is the same as in query_utils.get_paginated_results.
     """
     query = Playlist.query.filter(Playlist.project_id == project_id)
     return query_utils.get_paginated_results(query, page, relations=True)
@@ -734,9 +746,9 @@ def get_playlists_for_project(project_id, page=0):
 
 def generate_temp_playlist(task_ids, sort=True):
     """
-    Generate the data structure of a playlist for a given task list. It doesn't
-    persist anything. The goal is to build a temporary playlist used to see
-    a quick preview of several shots.
+    Make the data structure of a playlist for the given list of tasks. It
+    does not save anything. It makes a temporary playlist that shows a
+    quick preview of many shots.
     """
     if len(task_ids) == 0:
         return []
@@ -754,10 +766,10 @@ def generate_temp_playlist(task_ids, sort=True):
         entities.append(entity)
     if not sort:
         return entities
-    # Every entry carries the whole key set (empty when not applicable), so
-    # a single composite key sorts shots by sequence, edits by episode and
-    # assets by type. Probing one key at a time picked episode_name for
-    # shots and lost the sequence order.
+    # Each entry has the full key set (empty if it does not apply).
+    # Because of this, one composite key sorts shots by sequence, edits by
+    # episode and assets by type. A check of one key at a time selected
+    # episode_name for shots, and the sequence order was lost.
     return sorted(
         entities,
         key=itemgetter(
@@ -768,9 +780,9 @@ def generate_temp_playlist(task_ids, sort=True):
 
 def get_playlist_task_id_for_entity(entity_id):
     """
-    Return the task a playlist entry is built from for given entity: the most
-    recently reviewed one among the tasks holding a preview. None when no task
-    of the entity has one.
+    Return the task that makes the playlist entry for the given entity:
+    the task with the most recent review among the tasks that have a
+    preview. If no task of the entity has a preview, return None.
     """
     task = (
         Task.query.filter(Task.entity_id == entity_id)
@@ -783,8 +795,8 @@ def get_playlist_task_id_for_entity(entity_id):
 
 def generate_playlisted_entity_from_task(task_id, task_type_links):
     """
-    Generate the data structure of a playlisted shot for a given task. It
-    doesn't persist anything.
+    Make the data structure of a playlist shot for the given task. It does
+    not save anything.
     """
     task = tasks_service.get_task(task_id)
     entity = entities_service.get_entity(task["entity_id"])
@@ -837,10 +849,11 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
 
 def _build_playlisted_entity(entity, task_id, parent_name="", **extra):
     """
-    Build a playlist entry carrying the whole key set, whatever the kind of
-    entity: a consumer reads episode_id or sequence_name on any entry
-    without having to know which builder produced it. Keys that do not
-    apply stay empty, which the clients already treat as absent.
+    Build a playlist entry with the full key set, for all kinds of entity.
+    Because of this, a consumer can read episode_id or sequence_name on all
+    entries. It does not have to know which builder made the entry. The
+    keys that do not apply stay empty, and the clients read them as
+    absent.
     """
     entry = {
         "id": entity["id"],
@@ -860,7 +873,8 @@ def _build_playlisted_entity(entity, task_id, parent_name="", **extra):
 
 def get_base_episode_for_playlist(entity, task_id):
     """
-    Build the playlist entry of an episode: it has no parent to show.
+    Build the playlist entry of an episode. An episode has no parent to
+    show.
     """
     episode = shots_service.get_episode(entity["id"])
     return _build_playlisted_entity(episode, task_id)
@@ -868,7 +882,7 @@ def get_base_episode_for_playlist(entity, task_id):
 
 def get_base_sequence_for_playlist(entity, task_id):
     """
-    Build the playlist entry of a sequence, showing its episode as parent.
+    Build the playlist entry of a sequence, with its episode as the parent.
     """
     sequence = shots_service.get_sequence(entity["id"])
     episode = None
@@ -893,7 +907,7 @@ def get_base_sequence_for_playlist(entity, task_id):
 
 def get_base_shot_for_playlist(entity, task_id):
     """
-    Build the playlist entry of a shot, showing its sequence as parent.
+    Build the playlist entry of a shot, with its sequence as the parent.
     """
     shot = shots_service.get_shot(entity["id"])
     sequence = shots_service.get_sequence(shot["parent_id"])
@@ -908,7 +922,7 @@ def get_base_shot_for_playlist(entity, task_id):
 
 def get_base_edit_for_playlist(entity, task_id):
     """
-    Build the playlist entry of an edit, showing its episode as parent.
+    Build the playlist entry of an edit, with its episode as the parent.
     """
     edit = edits_service.get_edit(entity["id"])
     episode = None
@@ -931,7 +945,7 @@ def get_base_edit_for_playlist(entity, task_id):
 
 def get_base_asset_for_playlist(entity, task_id):
     """
-    Build the playlist entry of an asset, showing its type as parent.
+    Build the playlist entry of an asset, with its type as the parent.
     """
     asset = assets_service.get_asset(entity["id"])
     asset_type = entity_types_service.get_asset_type(asset["entity_type_id"])

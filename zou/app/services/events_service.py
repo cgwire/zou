@@ -7,17 +7,17 @@ from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.utils import cache, events, fields
 
-# Event names are made of lowercase words, digits and dashes on both sides of
-# the colon separator. Anything else is rejected before it can reach a LIKE
-# pattern: "%" and "_" would otherwise be interpreted as wildcards. Matched
-# with fullmatch, so no anchor is needed and a trailing newline is rejected.
+# Event names contain lowercase words, digits and dashes on the two sides of
+# the colon separator. Refuse all other characters before they go into a LIKE
+# pattern. If not, "%" and "_" are wildcards. The match uses fullmatch, so no
+# anchor is necessary and a trailing newline is refused.
 ALLOWED_NAME_PART = re.compile(r"[a-z0-9-]+")
 
 
 def check_name_parts(values, parameter_name):
     """
-    Raise a WrongParameterException if one of the given event name parts is
-    not a plain lowercase word usable in a LIKE pattern.
+    If one of the given event name parts is not a plain lowercase word that a
+    LIKE pattern can use, raise WrongParameterException.
     """
     for value in values:
         if not ALLOWED_NAME_PART.fullmatch(value or ""):
@@ -29,8 +29,8 @@ def check_name_parts(values, parameter_name):
 
 def check_person_ids(person_ids):
     """
-    Raise a WrongParameterException if one entry of a person_ids filter is
-    not a valid id.
+    If one entry of a person_ids filter is not a valid id, raise
+    WrongParameterException.
     """
     for person_id in person_ids or []:
         if not fields.is_valid_id(person_id):
@@ -54,16 +54,16 @@ def get_last_events(
     person_ids=None,
 ):
     """
-    Return paginated events using cursor-based pagination.
-    If cursor_event_id is set, it returns events older than this event.
+    Return the events, paginated with a cursor. If cursor_event_id is set,
+    return the events older than this event.
 
-    project_ids is a scoping allowlist, distinct from the project_id the
-    caller asked for: it restricts the result to the projects the caller is
-    allowed to see. Events without a project are never returned when it is
-    set, since an IN clause does not match NULL.
+    project_ids is a scoping allowlist. It is not the project_id that the
+    caller asked for. It limits the result to the projects that the caller can
+    see. If it is set, the events without a project never come back, because an
+    IN clause does not match NULL.
 
-    Raise WrongParameterException when a filter value is invalid or when
-    the cursor event does not exist.
+    If a filter value is not valid, or if the cursor event does not exist,
+    raise WrongParameterException.
     """
     query = ApiEvent.query.order_by(ApiEvent.created_at.desc())
 
@@ -102,8 +102,8 @@ def get_last_events(
     if name is not None:
         query = query.filter(ApiEvent.name == name)
 
-    # Event names are "<object>:<action>", so an object filter is a prefix
-    # match and an action filter is a suffix match.
+    # Event names are "<object>:<action>". Thus an object filter is a prefix
+    # match, and an action filter is a suffix match.
     if name_prefixes:
         check_name_parts(name_prefixes, "name_prefixes")
         query = query.filter(
@@ -153,13 +153,13 @@ def get_last_events(
 @cache.memoize_function(3600)
 def get_event_names():
     """
-    Return the sorted list of the event names present in the log. It is used
-    to build the object and action filters, so it must stay caller
-    independent: no scoping is applied here.
+    Return the sorted list of the event names in the log. The object and action
+    filters use this list, so it must not change with the caller. Thus this
+    function applies no scoping.
 
-    The DISTINCT is served by the index on api_event.name, but it still walks
-    the whole index: the result is memoized and only invalidated when an
-    unseen name is stored.
+    The index on api_event.name serves the DISTINCT, but the query still reads
+    the full index. Thus the result is memoized. It becomes invalid only when a
+    new name is stored.
     """
     names = ApiEvent.query.with_entities(distinct(ApiEvent.name)).all()
     return sorted(name for (name,) in names)
@@ -167,10 +167,10 @@ def get_event_names():
 
 def invalidate_event_names_cache(name):
     """
-    Drop the memoized name list when an unseen event name is stored. The list
-    feeds the log filters, so a brand new event type must show up without
-    waiting for the TTL. Reading the cached list first keeps the common case
-    to a single cache hit.
+    When a new event name is stored, remove the memoized list of names. The log
+    filters use the list, so a new event type must show immediately, not after
+    the TTL. The function reads the cached list first. Thus the usual case
+    needs only one cache hit.
     """
     if name not in get_event_names():
         cache.cache.delete_memoized(get_event_names)
@@ -178,14 +178,14 @@ def invalidate_event_names_cache(name):
     return False
 
 
-# Registered here rather than imported from the write path: the events util
-# sits below the services and must not reach up into them.
+# Register the hook here, and do not import it from the write path. The events
+# util is below the services, and must not use them.
 events.add_save_hook(invalidate_event_names_cache)
 
 
 def create_login_log(person_id, ip_address, origin):
     """
-    Create a new entry to register that someone logged in.
+    Create a new entry to record that a person logged in.
     """
     login_log = LoginLog.create(
         person_id=person_id, ip_address=ip_address, origin=origin
@@ -201,10 +201,9 @@ def get_last_login_logs(
     person_ids=None,
 ):
     """
-    Return paginated login logs using cursor-based pagination.
-    If cursor_login_log_id is set, it returns login logs older than this log.
-    Raise WrongParameterException when a person id is invalid or when the
-    cursor log does not exist.
+    Return the login logs, paginated with a cursor. If cursor_login_log_id is
+    set, return the login logs older than this log. If a person id is not
+    valid, or if the cursor log does not exist, raise WrongParameterException.
     """
     query = LoginLog.query.order_by(LoginLog.created_at.desc())
 

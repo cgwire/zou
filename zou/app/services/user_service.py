@@ -41,15 +41,15 @@ from zou.app.utils import cache, events, fields, permissions
 
 def clear_open_projects_cache():
     """
-    Drop the memoized open project list.
+    Remove the memoized open project list from the cache.
     """
     cache.cache.delete_memoized(get_open_projects)
 
 
 def build_team_filter():
     """
-    Query filter for task to retrieve only models from project for which the
-    user is part of the team.
+    Return the query filter that keeps only the models of the projects whose
+    team includes the user.
     """
     current_user = persons_service.get_current_user_raw()
     return Project.team.contains(current_user)
@@ -57,8 +57,8 @@ def build_team_filter():
 
 def build_related_projects_filter():
     """
-    Query filter for project to retrieve open projects of which the user
-    is part of the team.
+    Return the query filter that keeps the open projects whose team
+    includes the user.
     """
     projects = related_projects()
     project_ids = [project["id"] for project in projects]
@@ -70,8 +70,8 @@ def build_related_projects_filter():
 
 def get_client_team_person_ids():
     """
-    Return the ids of the people in the teams of the open projects the
-    current user, a client, is part of: the only people they meet.
+    Return the ids of the people in the teams of the open projects of the
+    current user, who is a client. A client meets only these people.
     """
     return {
         str(person.id)
@@ -82,7 +82,8 @@ def get_client_team_person_ids():
 
 def get_persons_for_client():
     """
-    Return the people a client meets, as present_client dicts, by name.
+    Return the people that a client meets, as present_client dicts, sorted
+    by name.
     """
     persons = {
         str(person.id): person.present_client()
@@ -94,8 +95,8 @@ def get_persons_for_client():
 
 def related_projects():
     """
-    Return all projects related to current user: open projects of which the user
-    is part of the team as dicts.
+    Return the projects of the current user as dicts. These are the open
+    projects whose team includes the user.
     """
     projects = related_projects_raw()
     return Project.serialize_list(projects)
@@ -103,9 +104,9 @@ def related_projects():
 
 def related_projects_raw(with_team=False):
     """
-    Return all projects related to current user: open projects of which the user
-    is part of the team as models. With with_team, their teams are loaded in
-    one query, not one per project when they are read.
+    Return the projects of the current user as models. These are the open
+    projects whose team includes the user. With with_team, load their teams
+    with one query, not one query per project.
     """
     current_user = persons_service.get_current_user()
     query = (
@@ -124,7 +125,8 @@ def related_projects_raw(with_team=False):
 
 def get_tasks_for_entity(entity_id):
     """
-    Get all tasks assigned to current user and related to given entity.
+    Return all the tasks of the given entity that are assigned to the
+    current user.
     """
     query = (
         Task.query.join(Project)
@@ -139,8 +141,8 @@ def get_tasks_for_entity(entity_id):
 
 def get_task_types_for_entity(entity_id):
     """
-    Get all task types of tasks assigned to current user and related to given
-    entity.
+    Return all the task types of the tasks of the given entity that are
+    assigned to the current user.
     """
     query = (
         TaskType.query.join(Task)
@@ -156,8 +158,8 @@ def get_task_types_for_entity(entity_id):
 
 def get_assets_for_asset_type(project_id, asset_type_id):
     """
-    Get all assets for given asset type anp project and for which user has
-    a task related.
+    Return all the assets of the given asset type and project for which the
+    user has a task.
     """
     query = (
         Entity.query.join(EntityType)
@@ -175,8 +177,8 @@ def get_assets_for_asset_type(project_id, asset_type_id):
 
 def get_asset_types_for_project(project_id):
     """
-    Get all asset types for which there is an asset for which current user has a
-    task assigned. Assets are listed in given project.
+    Return all the asset types that have an asset with a task assigned to
+    the current user. The assets are in the given project.
     """
     query = (
         EntityType.query.join(Entity, Entity.entity_type_id == EntityType.id)
@@ -194,8 +196,8 @@ def get_asset_types_for_project(project_id):
 
 def get_sequences_for_project(project_id):
     """
-    Return all sequences for given project and for which current user has
-    a task assigned to a shot.
+    Return all the sequences of the given project in which the current user
+    has a task assigned to a shot.
     """
     shot_type = entity_types_service.get_shot_type()
     sequence_type = entity_types_service.get_sequence_type()
@@ -219,8 +221,8 @@ def get_sequences_for_project(project_id):
 
 def get_project_episodes(project_id):
     """
-    Return all episodes for given project and for which current user has
-    a task assigned to a shot.
+    Return all the episodes of the given project in which the current user
+    has a task assigned to a shot.
     """
     shot_type = entity_types_service.get_shot_type()
     sequence_type = entity_types_service.get_sequence_type()
@@ -247,7 +249,8 @@ def get_project_episodes(project_id):
 
 def get_shots_for_sequence(sequence_id):
     """
-    Get all shots for given sequence and for which the user has a task assigned.
+    Return all the shots of the given sequence for which the user has an
+    assigned task.
     """
     shot_type = entity_types_service.get_shot_type()
     query = (
@@ -266,8 +269,8 @@ def get_shots_for_sequence(sequence_id):
 
 def get_scenes_for_sequence(sequence_id):
     """
-    Get all layout scenes for given sequence and for which the user has a task
-    assigned.
+    Return all the layout scenes of the given sequence for which the user
+    has an assigned task.
     """
     scene_type = entity_types_service.get_scene_type()
     query = (
@@ -286,9 +289,9 @@ def get_scenes_for_sequence(sequence_id):
 
 def get_open_projects(name=None):
     """
-    Get all open projects for which current user is part of the team, the
-    metadata descriptors of each narrowed on the role held on it. An admin
-    gets every open project.
+    Return all the open projects whose team includes the current user. The
+    metadata descriptors of each project are limited by the role of the user
+    on it. An admin gets all the open projects.
     """
     query = Project.query.join(
         ProjectStatus, Project.project_status_id == ProjectStatus.id
@@ -309,8 +312,9 @@ def get_open_projects(name=None):
 
 def serialize_projects(query):
     """
-    Serialize the projects of given query with their extra data, the
-    metadata descriptors of each narrowed on the role held on it.
+    Serialize the projects of the given query with their extra data. The
+    metadata descriptors of each project are limited by the role of the user
+    on it.
     """
     projects = projects_service.with_project_relations(query).all()
     return projects_service.serialize_projects_with_extra_data(
@@ -321,11 +325,11 @@ def serialize_projects(query):
 
 def get_descriptor_visibilities(project_ids):
     """
-    Return the (project_ids, for_client, vendor_departments) triples
-    narrowing the metadata descriptors of given projects for the current
-    user, grouped on the role held on each. A listing resolves no project,
-    so a role check would read the global role for every project listed:
-    the role set on each team link is read instead. An admin keeps the
+    Return the (project_ids, for_client, vendor_departments) triples that
+    limit the metadata descriptors of the given projects for the current
+    user. Group them by the role of the user on each project. A list finds
+    no project role. Thus, a role check reads the global role for all the
+    projects. Read the role of each team link instead. An admin keeps the
     global role, as in the project access check.
     """
     current_user = persons_service.get_current_user()
@@ -337,8 +341,8 @@ def get_descriptor_visibilities(project_ids):
     for project_id in project_ids:
         role = project_roles.get(str(project_id))
         if role in (None, "admin"):
-            # An admin slot is invalid data, which the role checks read as
-            # the global role too.
+            # An admin role on a team link is invalid data. The role checks
+            # also read it as the global role.
             role = current_user["role"]
         project_ids_by_role[role].append(project_id)
     descriptor_visibilities = []
@@ -354,30 +358,29 @@ def get_descriptor_visibilities(project_ids):
 
 def get_open_project_ids():
     """
-    Get all open project ids for which current user is part of the team, or
-    every open project id for an admin.
+    Return all the open project ids whose team includes the current user.
+    For an admin, return all the open project ids.
     """
     return [project["id"] for project in get_open_projects()]
 
 
 def get_projects(name=None):
     """
-    Get all projects for which current user is part of the team.
+    Return all the projects whose team includes the current user.
     """
     return serialize_projects(get_projects_query(name))
 
 
 def get_project_ids():
     """
-    Get the ids of all projects for which current user is part of the team.
+    Return the ids of all the projects whose team includes the current user.
     """
     return [str(project.id) for project in get_projects_query()]
 
 
 def get_projects_query(name=None):
     """
-    Return the query of the projects for which current user is part of the
-    team.
+    Return the query of the projects whose team includes the current user.
     """
     current_user = persons_service.get_current_user()
     query = (
@@ -396,8 +399,8 @@ def get_projects_query(name=None):
 
 def get_project_by_name(project_name):
     """
-    Get the project of given name among those the current user belongs to,
-    case insensitive. Raises an exception if none matches.
+    Return the project of the current user that has the given name. The
+    comparison ignores the case. If no project matches, raise an exception.
     """
     projects = get_projects(name=project_name)
     if not projects:
@@ -407,7 +410,7 @@ def get_project_by_name(project_name):
 
 def get_notification(notification_id):
     """
-    Return notification matching given ID as a dictionnary.
+    Return the notification that has the given ID as a dict.
     """
     notifications = get_last_notifications(notification_id)
 
@@ -419,9 +422,9 @@ def get_notification(notification_id):
 
 def update_notification(notification_id, read):
     """
-    Update read status of given notification and emit notification:read
-    or notification:unread. Raise NotificationNotFoundException when the
-    notification does not belong to the current user.
+    Update the read status of the given notification. Emit
+    notification:read or notification:unread. If the notification does not
+    belong to the current user, raise NotificationNotFoundException.
     """
     current_user = persons_service.get_current_user()
     notification = Notification.get_by(
@@ -470,11 +473,11 @@ def get_last_notifications(
     watching=None,
 ):
     """
-    Return last 100 user notifications.
+    Return the last 100 notifications of the user.
     """
-    # These reach the query as raw values, so the driver is the one that
-    # rejects them: a malformed id raises a StatementError while binding,
-    # a malformed date a DataError on execution. Both surfaced as a 500.
+    # These values go to the query as raw values. Thus, the driver refuses
+    # them: a malformed id raises a StatementError at bind time, and a
+    # malformed date raises a DataError at execution. Both gave a 500.
     for id_field, value in (
         ("notification_id", notification_id),
         ("task_type_id", task_type_id),
@@ -530,8 +533,8 @@ def get_last_notifications(
     )
 
     try:
-        # The query is lazy: a date the driver refuses raises here, not
-        # while the filters are being stacked above.
+        # The query is lazy. If the driver refuses a date, the error occurs
+        # here, not when the filters above are added.
         notifications = query.limit(100).all()
     except DataError:
         raise WrongParameterException("Wrong date format for after or before.")
@@ -550,10 +553,13 @@ def get_last_notifications(
 
 def _load_notification_context(notifications):
     """
-    Load in a fixed number of queries what the notification rows point at:
-    the comments with their previews and mentions, the playlists with their
-    project, the full names of the entities. Reading them per row cost up
-    to five queries per notification on a listing the clients poll.
+    Load the targets of the notification rows with a fixed number of
+    queries:
+    - the comments with their previews and mentions
+    - the playlists with their project
+    - the full names of the entities.
+    A read per row used up to five queries for each notification. The
+    clients poll this list.
     """
     comment_ids = set()
     playlist_ids = set()
@@ -611,7 +617,7 @@ def _filter_notifications(
     watching,
 ):
     """
-    Narrow the notification listing to the criteria the caller gave.
+    Limit the notification list to the criteria that the caller gave.
     """
     if notification_id is not None:
         query = query.filter(Notification.id == notification_id)
@@ -652,11 +658,11 @@ def _serialize_notification(
     row, is_current_user_artist, project_roles, context
 ):
     """
-    Build the notification dict of one row of the listing query, with the
-    entity or playlist it points at and the text of the comment or reply
-    that raised it, read from the context _load_notification_context
-    built. A client comment is blanked for an artist, both roles read on
-    the project of the notification when it has one.
+    Build the notification dict of one row of the list query. Add the
+    entity or playlist of the notification, and the text of the comment or
+    reply that caused it. Read them from the context that
+    _load_notification_context built. For an artist, make a client comment
+    blank. If the notification has a project, read the two roles on it.
     """
     (
         notification,
@@ -733,8 +739,8 @@ def _serialize_notification(
     if role == "client" and is_current_user_artist:
         comment_text = ""
         reply_text = ""
-    # The author of the notification is the author of the reply, or of the
-    # comment when there is no reply.
+    # The author of the notification is the author of the reply. If there
+    # is no reply, it is the author of the comment.
     if (
         comment is not None
         and project_id is not None
@@ -770,8 +776,9 @@ def _serialize_notification(
             "project_name": project_name,
             "comment_text": comment_text,
             "reply_text": reply_text,
-            # Exact: the clients send it back as "before" for the next page,
-            # and cut to the second it would skip the rest of that second.
+            # Keep the exact value. The clients send it again as "before" for
+            # the next page. If you cut it to the second, the next page skips
+            # the rest of that second.
             "created_at": fields.serialize_value(
                 notification.created_at, milliseconds=True
             ),
@@ -791,9 +798,9 @@ def _serialize_notification(
 
 def mark_notifications_as_read():
     """
-    Mark all unread notifications for current_user as read and emit
-    notification:all-read. It is useful to mark a list of notifications as
-    read after an user retrieved them.
+    Mark all the unread notifications of current_user as read and emit
+    notification:all-read. Use it to mark a list of notifications as read
+    after a user got them.
     """
     from sqlalchemy import update
 
@@ -815,8 +822,8 @@ def mark_notifications_as_read():
 
 def has_task_subscription(task_id):
     """
-    Returns true if a subscription entry exists for current user and given
-    task.
+    If a subscription entry exists for the current user and the given task,
+    return True.
     """
     current_user = persons_service.get_current_user()
     return subscriptions_service.has_task_subscription(
@@ -826,7 +833,7 @@ def has_task_subscription(task_id):
 
 def subscribe_to_task(task_id):
     """
-    Create a subscription entry for current user and given task
+    Create a subscription entry for the current user and the given task.
     """
     current_user = persons_service.get_current_user()
     return subscriptions_service.subscribe_to_task(current_user["id"], task_id)
@@ -834,7 +841,7 @@ def subscribe_to_task(task_id):
 
 def unsubscribe_from_task(task_id):
     """
-    Remove subscription entry for current user and given task
+    Remove the subscription entry of the current user and the given task.
     """
     current_user = persons_service.get_current_user()
     return subscriptions_service.unsubscribe_from_task(
@@ -844,8 +851,8 @@ def unsubscribe_from_task(task_id):
 
 def has_sequence_subscription(sequence_id, task_type_id):
     """
-    Returns true if a subscription entry exists for current user and given
-    sequence.
+    If a subscription entry exists for the current user and the given
+    sequence, return True.
     """
     current_user = persons_service.get_current_user()
     return subscriptions_service.has_sequence_subscription(
@@ -855,7 +862,7 @@ def has_sequence_subscription(sequence_id, task_type_id):
 
 def subscribe_to_sequence(sequence_id, task_type_id):
     """
-    Create a subscription entry for current user and given sequence
+    Create a subscription entry for the current user and the given sequence.
     """
     current_user = persons_service.get_current_user()
     return subscriptions_service.subscribe_to_sequence(
@@ -865,7 +872,8 @@ def subscribe_to_sequence(sequence_id, task_type_id):
 
 def unsubscribe_from_sequence(sequence_id, task_type_id):
     """
-    Remove subscription entry for current user and given sequence
+    Remove the subscription entry of the current user and the given
+    sequence.
     """
     current_user = persons_service.get_current_user()
     return subscriptions_service.unsubscribe_from_sequence(
@@ -875,9 +883,9 @@ def unsubscribe_from_sequence(sequence_id, task_type_id):
 
 def get_project_roles():
     """
-    Return a dict mapping project ids to the explicit role the current user
-    holds on them. Projects where the user inherits their global role are
-    absent from the dict.
+    Return a dict that maps project ids to the explicit role of the current
+    user on them. The dict does not include the projects where the user has
+    their global role.
     """
     current_user = persons_service.get_current_user()
     return {
@@ -891,11 +899,11 @@ def get_project_roles():
 
 def get_team_project_roles():
     """
-    Return a dict mapping the id of every project of the current user's
-    teams to the role they hold there: the role set on their team link,
-    or their global role where the link sets none. A listing resolves no
-    project, so a role check would read the global role for every row
-    listed: the role held on the project of each row is read instead. An
+    Return a dict that maps the id of each project of the teams of the
+    current user to the role of the user there. This is the role of their
+    team link. If the link has no role, it is their global role. A list
+    finds no project role. Thus, a role check reads the global role for
+    all the rows. Read the role on the project of each row instead. An
     admin keeps the global role, as in the project access check, and gets
     an empty dict.
     """
@@ -908,8 +916,8 @@ def get_team_project_roles():
     ):
         role = getattr(link.role, "code", link.role)
         if role in (None, "admin"):
-            # An admin slot is invalid data, which the role checks read as
-            # the global role too.
+            # An admin role on a team link is invalid data. The role checks
+            # also read it as the global role.
             role = current_user["role"]
         project_roles[str(link.project_id)] = role
     return project_roles
@@ -917,9 +925,9 @@ def get_team_project_roles():
 
 def get_project_ids_with_roles(*roles):
     """
-    Return the ids of the projects of the current user's teams where the
-    role they hold, read per project as get_team_project_roles does, is one
-    of given roles.
+    Return the ids of the projects of the teams of the current user where
+    the role of the user is one of the given roles. Read the role for each
+    project, as get_team_project_roles does.
     """
     return [
         project_id
@@ -930,12 +938,14 @@ def get_project_ids_with_roles(*roles):
 
 def build_supervision_scope_filter(roles, department_ids):
     """
-    Return the task filter the manager and supervisor roles of given team
-    roles grant on other people's work: every task of a managed project,
-    the tasks of given departments on a supervised one. The department
-    restriction is read per project, so a supervisor of one project reads
-    every department of the projects they manage. A supervisor without
-    department reads every department of the projects they supervise.
+    Return the task filter that the manager and supervisor roles of the
+    given team roles give on the work of other people:
+    - all the tasks of a managed project
+    - the tasks of the given departments on a supervised project.
+    The department limit applies for each project. Thus, a supervisor of
+    one project reads all the departments of the projects that they
+    manage. A supervisor without a department reads all the departments of
+    the projects that they supervise.
     """
     supervised = Task.project_id.in_(
         [pid for pid, role in roles.items() if role == "supervisor"]
@@ -954,9 +964,15 @@ def build_supervision_scope_filter(roles, department_ids):
 
 def get_context():
     """
-    Build everything the client needs on login in one payload: projects,
-    task types, statuses, departments, persons, custom actions and the
-    user's own filters. Scoped to the current user throughout.
+    Build all the data that the client needs at login in one payload:
+    - projects
+    - task types
+    - statuses
+    - departments
+    - persons
+    - custom actions
+    - the filters of the user.
+    All the data is for the current user.
     """
     if permissions.has_client_permissions():
         persons = get_persons_for_client()
