@@ -52,9 +52,9 @@ class EntityEventMixin(object):
         instance_id = entity_dict["id"]
         type_name = entity_types_service.get_base_entity_type_name(entity_dict)
         if event_name in ["update", "delete"]:
-            if type_name == "shot":
+            if type_name == "Shot":
                 shots_service.clear_shot_cache(instance_id)
-            if type_name == "asset":
+            if type_name == "Asset":
                 assets_service.clear_asset_cache(instance_id)
         # ConceptFolder gives concept-folder:update and concept_folder_id,
         # the names the concept folder routes emit.
