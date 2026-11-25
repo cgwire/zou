@@ -1,4 +1,5 @@
 import base64
+import html
 import logging
 import os
 import shutil
@@ -404,8 +405,11 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
                 f"/api/data/playlists/{playlist['id']}/jobs/{job['id']}"
                 "/build/mp4"
             )
-            html = f"""<p>Hello {person.first_name},</p>
-<p>Your playlist {playlist["name"]} build is available:
+            # The names are user input, put into an HTML mail.
+            first_name = html.escape(person.first_name or "")
+            playlist_name = html.escape(playlist["name"])
+            body = f"""<p>Hello {first_name},</p>
+<p>Your playlist {playlist_name} build is available:
 </p>
 <p class="cta">
 <a href="{playlist_url}">Download Playlist Build (.mp4)</a>
@@ -414,7 +418,7 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
 
             subject = f"{organisation['name']} - Kitsu: playlist download"
             title = "Playlist Download"
-            email_html_body = templates_service.generate_html_body(title, html)
+            email_html_body = templates_service.generate_html_body(title, body)
             emails.send_email(subject, email_html_body, email)
 
 
