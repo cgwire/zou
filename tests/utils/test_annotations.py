@@ -1081,3 +1081,12 @@ class AnnotationsRendererTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ParsePathStringTestCase(unittest.TestCase):
+    def test_exponents_and_leading_dots_are_one_number_each(self):
+        commands = annotations_renderer._parse_path_string(
+            "M 1e-5 .5 L 2.5E2 -.25"
+        )
+
+        self.assertEqual(commands, [["M", 1e-5, 0.5], ["L", 250.0, -0.25]])

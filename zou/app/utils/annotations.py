@@ -835,7 +835,10 @@ def _parse_path_string(text):
             commands.append([op])
             continue
         numbers = [
-            float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", match.group(2))
+            float(n)
+            for n in re.findall(
+                r"-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?", match.group(2)
+            )
         ]
         commands.append([op, *numbers])
     return commands
