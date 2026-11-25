@@ -13,7 +13,6 @@ import tempfile
 
 import click
 import orjson as json
-from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
 from sqlalchemy.sql.expression import not_
 from tabulate import tabulate
 
@@ -40,6 +39,7 @@ from zou.app.services import (
     departments_service,
     entity_types_service,
     index_service,
+    ldap_service,
     organisation_service,
     persons_service,
     preview_annotations_service,
@@ -286,177 +286,6 @@ def init_data(domain="3d"):
         print("Task status initialized.")
 
 
-def _ldap_settings():
-    """
-    The directory connection settings, from the configuration and the
-    environment.
-    """
-    return {
-        "LDAP_HOST": app.config["LDAP_HOST"],
-        "LDAP_PORT": app.config["LDAP_PORT"],
-        "LDAP_PASSWORD": os.getenv("LDAP_PASSWORD", "password"),
-        "LDAP_BASE_DN": app.config["LDAP_BASE_DN"],
-        "LDAP_DOMAIN": app.config["LDAP_DOMAIN"],
-        "LDAP_USER": os.getenv("LDAP_USER", ""),
-        "LDAP_GROUP": app.config["LDAP_GROUP"],
-        "LDAP_SSL": app.config["LDAP_SSL"],
-        "EMAIL_DOMAIN": os.getenv("EMAIL_DOMAIN", "studio.local"),
-        "LDAP_EXCLUDED_ACCOUNTS": os.getenv("LDAP_EXCLUDED_ACCOUNTS", ""),
-        "LDAP_IS_AD": app.config["LDAP_IS_AD"],
-        "LDAP_IS_AD_SIMPLE": app.config["LDAP_IS_AD_SIMPLE"],
-    }
-
-
-def _ldap_clean_value(value):
-    cleaned_value = str(value)
-    if cleaned_value == "[]":
-        cleaned_value = ""
-    return cleaned_value
-
-
-def _ldap_search_users(settings, conn, excluded_accounts):
-    """
-    Read the user entries of the directory (or of the configured group) and
-    return them as dicts the person sync understands.
-    """
-    is_ad = settings["LDAP_IS_AD"] or settings["LDAP_IS_AD_SIMPLE"]
-    attributes = ["givenName", "sn", "mail", "cn"]
-    if is_ad:
-        if settings["LDAP_IS_AD_SIMPLE"]:
-            attributes += ["cn"]
-        else:
-            attributes += ["sAMAccountName"]
-        attributes += [
-            "thumbnailPhoto",
-            "userAccountControl",
-            "objectGUID",
-        ]
-    else:
-        attributes += [
-            "uid",
-            "jpegPhoto",
-            "uniqueIdentifier",
-            "organizationalStatus",
-        ]
-    query = "(objectClass=person)"
-    if is_ad:
-        query = "(&(objectClass=person)(!(objectClass=computer)))"
-    group_members = None
-    if len(settings["LDAP_GROUP"]) > 0:
-        if is_ad:
-            query = (
-                f"(&(objectClass=person)(memberOf={settings['LDAP_GROUP']}))"
-            )
-        else:
-            conn.search(
-                settings["LDAP_BASE_DN"],
-                f"(&(objectClass=groupofUniqueNames)(cn={settings['LDAP_GROUP']}))",
-                attributes=["uniqueMember"],
-            )
-            group_members = conn.entries[0].uniqueMember.values
-    conn.search(settings["LDAP_BASE_DN"], query, attributes=attributes)
-    ldap_users = []
-    for entry in conn.entries:
-        if settings["LDAP_IS_AD_SIMPLE"]:
-            desktop_login = entry.cn
-        elif settings["LDAP_IS_AD"]:
-            desktop_login = entry.sAMAccountName
-        else:
-            desktop_login = entry.uid
-        desktop_login = _ldap_clean_value(desktop_login)
-
-        if desktop_login not in excluded_accounts and (
-            group_members is None or entry.entry_dn in group_members
-        ):
-            if is_ad:
-                ldap_uid = _ldap_clean_value(entry.objectGUID)
-            elif entry.uniqueIdentifier:
-                ldap_uid = _ldap_clean_value(entry.uniqueIdentifier)
-            else:
-                ldap_uid = None
-            thumbnails = (
-                entry.thumbnailPhoto if is_ad else entry.jpegPhoto
-            ).raw_values
-            if len(thumbnails) > 0 and len(thumbnails[0]) > 0:
-                thumbnail = thumbnails[0]
-            else:
-                thumbnail = None
-
-            emails = entry.mail.values
-            if len(emails) == 0:
-                emails = [f"{desktop_login}@{settings['EMAIL_DOMAIN']}"]
-            else:
-
-                def sort_mails(email):
-                    if email == desktop_login:
-                        return -2
-                    elif settings["EMAIL_DOMAIN"] in email:
-                        return -1
-                    else:
-                        return 0
-
-                emails = sorted(emails, key=sort_mails)
-
-            if is_ad:
-                active = bool(entry.userAccountControl.value & 2) is False
-            elif entry.organizationalStatus:
-                active = entry.organizationalStatus.value.lower() == "active"
-            else:
-                active = False
-
-            ldap_users.append(
-                {
-                    "first_name": _ldap_clean_value(
-                        entry.givenName or entry.cn
-                    ),
-                    "last_name": _ldap_clean_value(entry.sn),
-                    "email": emails[0].lower(),
-                    "emails": emails,
-                    "desktop_login": desktop_login,
-                    "thumbnail": thumbnail,
-                    "active": active,
-                    "ldap_uid": ldap_uid,
-                }
-            )
-    return ldap_users
-
-
-def _ldap_fetch_users(settings):
-    """
-    Bind to the directory with the configured account and list its users.
-    """
-    excluded_accounts = settings["LDAP_EXCLUDED_ACCOUNTS"].split(",")
-    ldap_server = f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
-    SSL = settings["LDAP_SSL"]
-    if settings["LDAP_IS_AD_SIMPLE"]:
-        user = settings["LDAP_USER"]
-        authentication = SIMPLE
-    elif settings["LDAP_IS_AD"]:
-        user = f"{settings['LDAP_DOMAIN']}\\{settings['LDAP_USER']}"
-        authentication = NTLM
-    elif "=" in settings["LDAP_USER"]:
-        # settings["LDAP_USER"] is already a full bind DN, use it as is. OpenLDAP
-        # admin accounts often live outside the users base DN
-        # (e.g. cn=admin,dc=studio,dc=local).
-        user = settings["LDAP_USER"]
-        authentication = SIMPLE
-    else:
-        user = f"uid={settings['LDAP_USER']},{settings['LDAP_BASE_DN']}"
-        authentication = SIMPLE
-
-    server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
-    conn = Connection(
-        server,
-        user=user,
-        password=settings["LDAP_PASSWORD"],
-        authentication=authentication,
-        raise_exceptions=True,
-        auto_bind=True,
-    )
-
-    return _ldap_search_users(settings, conn, excluded_accounts)
-
-
 def _ldap_update_persons(users):
     """
     Align the persons with the directory users: disable the ones that are
@@ -592,8 +421,9 @@ def sync_with_ldap_server():
     """
     Connect to a LDAP server, then creates all related accounts.
     """
-    settings = _ldap_settings()
-    _ldap_update_persons(_ldap_fetch_users(settings))
+    settings = ldap_service.get_settings()
+    conn = ldap_service.open_service_connection(settings)
+    _ldap_update_persons(ldap_service.search_users(conn, settings))
 
 
 def import_data_from_another_instance(
