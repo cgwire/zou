@@ -156,8 +156,17 @@ def check_auth(
             no_password_auth_strategy(person, password, app)
         elif strategy == "auth_remote_ldap":
             if search_bind and is_search_bind_candidate(person):
-                person = search_bind_auth_strategy(
+                entry, user, ldap_person = find_search_bind_user(
                     person, email, password, app
+                )
+                if person is None and ldap_person is not None:
+                    # Found through another identifier (an UPN, a new
+                    # email): the lockout and the failed login counter
+                    # apply to it before the password is tried.
+                    person = ldap_person
+                    login_failed_attemps = check_login_failed_attempts(person)
+                person = search_bind_auth_strategy(
+                    person, entry, user, password, app
                 )
             else:
                 ldap_auth_strategy(person, password, app)
@@ -321,16 +330,17 @@ def is_search_bind_candidate(person):
     )
 
 
-def search_bind_auth_strategy(person, identifier, password, app):
+def find_search_bind_user(person, identifier, password, app):
     """
-    Find the user anywhere under the base DN with the service account, then
-    check the password by binding with the found entry. Create or update the
-    matching person and return it, read with the unsafe serialization as the
-    person lookup of check_auth does.
+    Find the user anywhere under the base DN with the service account and
+    resolve the matching person, before any password is tried. Return the
+    entry, the user dict built from it and the person (None for a user new
+    to Zou).
 
-    A person whose entry is gone from the directory (or out of the group) or
-    who is excluded gets deactivated. An LDAP error never deactivates
-    anybody: it is raised as is.
+    A person whose entry is gone from the directory (or out of the group)
+    gets deactivated: it was looked for by its LDAP uid, its desktop login
+    and the typed identifier, and none matched. An LDAP error never
+    deactivates anybody: it is raised as is.
     """
     settings = ldap_service.get_settings()
     if not settings["LDAP_USER"]:
@@ -348,12 +358,16 @@ def search_bind_auth_strategy(person, identifier, password, app):
         )
         raise
     try:
-        entry = ldap_service.find_user_entry(
-            conn,
-            settings,
-            identifier,
-            person["ldap_uid"] if person is not None else None,
-        )
+        if person is None:
+            entry = ldap_service.find_user_entry(conn, settings, identifier)
+        else:
+            entry = ldap_service.find_user_entry(
+                conn,
+                settings,
+                identifier,
+                ldap_uid=person["ldap_uid"],
+                desktop_login=person["desktop_login"],
+            )
     except LdapAmbiguousUserException as exception:
         app.logger.error(f"LDAP login refused: {exception}")
         _spend_password_check_time(password)
@@ -367,19 +381,32 @@ def search_bind_auth_strategy(person, identifier, password, app):
         _spend_password_check_time(password)
         raise WrongUserException()
 
-    ldap_service.check_user_password(settings, entry, password)
-
     user = ldap_service.entry_to_user(entry, settings)
-    if ldap_service.is_excluded(settings, user["desktop_login"]):
-        if person is not None:
-            ldap_service.deactivate_person(person)
-        raise WrongUserException()
-
     if person is None:
         try:
             person = ldap_service.find_ldap_person(user)
         except LdapAccountConflictException:
+            # Answered like an unknown user, before the password is
+            # tried: the conflict shows in the logs only.
+            _spend_password_check_time(password)
             raise WrongUserException()
+    return entry, user, person
+
+
+def search_bind_auth_strategy(person, entry, user, password, app):
+    """
+    Check the password by binding with the found entry, then create or
+    update the person of the user and return it, read with the unsafe
+    serialization as the person lookup of check_auth does. An excluded
+    account is refused and its person deactivated.
+    """
+    settings = ldap_service.get_settings()
+    ldap_service.check_user_password(settings, entry, password)
+
+    if ldap_service.is_excluded(settings, user["desktop_login"]):
+        if person is not None:
+            ldap_service.deactivate_person(person)
+        raise WrongUserException()
 
     person_id = ldap_service.provision_person(user, person)
     return persons_service.get_person_raw(person_id).serialize()

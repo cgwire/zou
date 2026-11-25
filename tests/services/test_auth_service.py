@@ -10,7 +10,7 @@ from ldap3.core.exceptions import (
 
 from tests.services.cases import AuthTestCase
 from tests.services.ldap_fixtures import BASE_DN, LdapDirectoryMixin, ad_user
-from zou.app import app, db
+from zou.app import app, config, db
 from zou.app.exceptions import (
     InactiveUserException,
     LdapGroupNotFoundException,
@@ -339,7 +339,9 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         local = persons_service.create_person(
             "jdoe@studio.local", b"x", "Local", "Account"
         )
-        self.assertRaises(WrongUserException, self.login, "jdoe")
+        with self.assertLogs(app.logger, "ERROR") as logs:
+            self.assertRaises(WrongUserException, self.login, "jdoe")
+        self.assertIn(local["id"], "".join(logs.output))
         person = Person.get(local["id"])
         self.assertFalse(person.is_generated_from_ldap)
         self.assertIsNone(person.ldap_uid)
@@ -368,6 +370,62 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
     def test_no_service_account(self):
         self.use_directory([self.jdoe()], LDAP_USER="")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
+    def lock(self, person_id):
+        auth_service.update_login_failed_attempts(
+            person_id,
+            auth_service.MAX_LOGIN_FAILED_ATTEMPS,
+            date_helpers.get_utc_now_datetime(),
+        )
+
+    def test_locked_person_cannot_log_in_by_upn(self):
+        self.use_directory([self.jdoe(userPrincipalName="jdoe@corp.local")])
+        person = self.ldap_person()
+        self.lock(person["id"])
+        self.assertRaises(
+            TooManyLoginFailedAttempts, self.login, "jdoe@corp.local"
+        )
+
+    def test_wrong_password_by_upn_counted_on_the_person(self):
+        self.use_directory([self.jdoe(userPrincipalName="jdoe@corp.local")])
+        person = self.ldap_person()
+        self.assertRaises(
+            WrongPasswordException, self.login, "jdoe@corp.local", "wrong"
+        )
+        self.assertEqual(Person.get(person["id"]).login_failed_attemps, 1)
+
+    def test_failed_count_reset_after_a_login_by_upn(self):
+        self.use_directory([self.jdoe(userPrincipalName="jdoe@corp.local")])
+        person = self.ldap_person()
+        auth_service.update_login_failed_attempts(person["id"], 2)
+        self.assertEqual(self.login("jdoe@corp.local")["id"], person["id"])
+        self.assertEqual(Person.get(person["id"]).login_failed_attemps, 0)
+
+    def test_generated_email_without_mail_attribute_is_not_deactivated(self):
+        dn, attributes = self.jdoe()
+        del attributes["mail"]
+        self.use_directory([(dn, attributes)])
+        person = self.ldap_person(ldap_uid="{stale-uid}")
+        logged = self.login("jdoe@studio.local")
+        self.assertEqual(logged["id"], person["id"])
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_protected_ldap_account_left_intact(self):
+        self.use_directory([self.jdoe(givenName="Directory")])
+        person = self.ldap_person()
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["jdoe@studio.local"]
+        ), mock.patch.object(
+            ldap_service, "open_service_connection"
+        ) as open_service_connection, mock.patch(
+            "ldap3.Connection"
+        ):
+            self.assertEqual(self.login("jdoe")["id"], person["id"])
+        open_service_connection.assert_not_called()
+        stored = Person.get(person["id"])
+        self.assertEqual(stored.first_name, "Given")
+        self.assertIsNone(stored.ldap_uid)
+        self.assertTrue(stored.active)
 
     def test_flag_off_keeps_legacy_path(self):
         app.config["LDAP_SEARCH_BIND"] = False

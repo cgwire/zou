@@ -352,24 +352,30 @@ def search_entries(conn, settings, identity_filter):
     return entries
 
 
-def find_user_entry(conn, settings, identifier, ldap_uid=None):
+def find_user_entry(
+    conn, settings, identifier, ldap_uid=None, desktop_login=None
+):
     """
     Find the directory entry of a user anywhere under the base DN, by its
-    directory unique id first and by its login or email otherwise. Return
-    None when there is no such user.
+    directory unique id first, then by the desktop login of the known
+    person, then by the typed login or email. Return None when none of
+    them matches.
     """
     check_group_exists(conn, settings)
-    entries = []
+    identity_filters = []
     if ldap_uid:
-        entries = search_entries(
-            conn,
-            settings,
-            build_identity_filter(settings, identifier, ldap_uid),
+        identity_filters.append(
+            build_identity_filter(settings, identifier, ldap_uid)
         )
-    if len(entries) == 0:
-        entries = search_entries(
-            conn, settings, build_identity_filter(settings, identifier)
-        )
+    if desktop_login:
+        login = escape_filter_chars(desktop_login)
+        identity_filters.append(f"({get_login_attribute(settings)}={login})")
+    identity_filters.append(build_identity_filter(settings, identifier))
+    entries = []
+    for identity_filter in identity_filters:
+        entries = search_entries(conn, settings, identity_filter)
+        if len(entries) > 0:
+            break
     if len(entries) == 0:
         return None
     if len(entries) > 1:
@@ -423,7 +429,7 @@ def find_ldap_person(user):
         not person["is_generated_from_ldap"]
         or person["email"] in config.PROTECTED_ACCOUNTS
     ):
-        current_app.logger.warning(
+        current_app.logger.error(
             f"LDAP login refused for {user['desktop_login']}: "
             f"person {person['id']} is not managed by LDAP."
         )
