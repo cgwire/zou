@@ -8,7 +8,11 @@ from ldap3.utils.conv import escape_filter_chars
 from ldap3.utils.dn import to_dn
 
 from zou.app import app
-from zou.app.exceptions import LdapGroupNotFoundException
+from zou.app.exceptions import (
+    LdapAmbiguousUserException,
+    LdapGroupNotFoundException,
+    WrongPasswordException,
+)
 
 # Patched to ldap3.MOCK_SYNC in tests.
 CLIENT_STRATEGY = ldap3.SYNC
@@ -274,3 +278,115 @@ def search_users(conn, settings):
             continue
         users.append(entry_to_user(entry, settings))
     return users
+
+
+def check_group_exists(conn, settings):
+    """
+    Raise when the configured group is not in the directory. Nothing to check
+    when no group is configured.
+    """
+    if len(settings["LDAP_GROUP"]) == 0:
+        return
+    if is_ad(settings):
+        try:
+            conn.search(
+                settings["LDAP_GROUP"],
+                "(objectClass=group)",
+                search_scope=ldap3.BASE,
+            )
+        except ldap3.core.exceptions.LDAPNoSuchObjectResult:
+            raise LdapGroupNotFoundException(
+                f"LDAP group not found: {settings['LDAP_GROUP']}"
+            )
+        if len(conn.entries) == 0:
+            raise LdapGroupNotFoundException(
+                f"LDAP group not found: {settings['LDAP_GROUP']}"
+            )
+    else:
+        get_group_member_dns(conn, settings)
+
+
+def build_identity_filter(settings, identifier, ldap_uid=None):
+    """
+    Filter matching the entry of the given identifier (login or email), or of
+    the given directory unique id.
+    """
+    escaped = escape_filter_chars(identifier)
+    if ldap_uid is not None:
+        escaped_uid = escape_filter_chars(ldap_uid)
+        if is_ad(settings):
+            return f"(objectGUID={escaped_uid})"
+        return f"(uniqueIdentifier={escaped_uid})"
+    if "@" in identifier:
+        if is_ad(settings):
+            return f"(|(mail={escaped})(userPrincipalName={escaped}))"
+        return f"(mail={escaped})"
+    return f"({get_login_attribute(settings)}={escaped})"
+
+
+def search_entries(conn, settings, identity_filter):
+    """
+    Entries matching the identity filter anywhere under the base DN (and in
+    the configured group on OpenLDAP).
+    """
+    conn.search(
+        settings["LDAP_BASE_DN"],
+        build_person_filter(settings, identity_filter),
+        attributes=get_user_attributes(settings),
+    )
+    entries = list(conn.entries)
+    if not is_ad(settings):
+        group_members = get_group_member_dns(conn, settings)
+        if group_members is not None:
+            entries = [
+                entry
+                for entry in entries
+                if normalize_dn(entry.entry_dn) in group_members
+            ]
+    return entries
+
+
+def find_user_entry(conn, settings, identifier, ldap_uid=None):
+    """
+    Find the directory entry of a user anywhere under the base DN, by its
+    directory unique id first and by its login or email otherwise. Return
+    None when there is no such user.
+    """
+    check_group_exists(conn, settings)
+    entries = []
+    if ldap_uid:
+        entries = search_entries(
+            conn,
+            settings,
+            build_identity_filter(settings, identifier, ldap_uid),
+        )
+    if len(entries) == 0:
+        entries = search_entries(
+            conn, settings, build_identity_filter(settings, identifier)
+        )
+    if len(entries) == 0:
+        return None
+    if len(entries) > 1:
+        raise LdapAmbiguousUserException(
+            f"Several LDAP entries match: {identifier}"
+        )
+    return entries[0]
+
+
+def check_user_password(settings, entry, password):
+    """
+    Check the password of a directory entry by binding with it.
+    """
+    if not password:
+        raise WrongPasswordException()
+    if is_ad(settings) and not settings["LDAP_IS_AD_SIMPLE"]:
+        user = f"{settings['LDAP_DOMAIN']}\\{entry.sAMAccountName}"
+        authentication = ldap3.NTLM
+    else:
+        user = entry.entry_dn
+        authentication = ldap3.SIMPLE
+    try:
+        conn = connect(settings, user, password, authentication)
+    except ldap3.core.exceptions.LDAPInvalidCredentialsResult:
+        raise WrongPasswordException()
+    conn.unbind()
