@@ -175,22 +175,28 @@ def get_tasks_for_concept(concept_id, relations=False):
 
 def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
-    Get all tasks of the entities under given sequence (shots and scenes).
+    Get all shot tasks for given sequence.
     """
-    query = _get_entity_task_query()
-    query = query.filter(Entity.parent_id == sequence_id)
+    query = _get_entity_task_query().filter(
+        Entity.parent_id == sequence_id,
+        Entity.entity_type_id == entity_types_service.get_shot_type()["id"],
+    )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
 
 def get_shot_tasks_for_episode(episode_id, relations=False):
     """
-    Get all tasks of the entities under the sequences of given episode
-    (shots and scenes).
+    Get all shot tasks for given episode.
     """
-    query = _get_entity_task_query()
     Sequence = aliased(Entity, name="sequence")
-    query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
-        Sequence.parent_id == episode_id
+    query = (
+        _get_entity_task_query()
+        .join(Sequence, Entity.parent_id == Sequence.id)
+        .filter(
+            Sequence.parent_id == episode_id,
+            Entity.entity_type_id
+            == entity_types_service.get_shot_type()["id"],
+        )
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 

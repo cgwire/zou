@@ -37,10 +37,19 @@ class ShotRoutesTestCase(ApiDBTestCase):
         # Nothing has been published on this shot yet.
         self.assertEqual(self.get(f"/data/shots/{self.shot.id}/versions"), [])
 
+    def a_scene_task(self):
+        """
+        A scene hangs from the sequence too: its tasks are not shot tasks.
+        """
+        self.generate_fixture_scene()
+        self.generate_fixture_task(name="Scene", entity_id=self.scene.id)
+
     def test_get_episode_shot_tasks(self):
+        self.a_scene_task()
         result = self.get(f"/data/episodes/{self.episode.id}/shot-tasks")
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            [task["id"] for task in result], [str(self.shot_task.id)]
+        )
 
     def test_get_episode_asset_tasks(self):
         """
@@ -58,9 +67,11 @@ class ShotRoutesTestCase(ApiDBTestCase):
         )
 
     def test_get_sequence_shot_tasks(self):
+        self.a_scene_task()
         result = self.get(f"/data/sequences/{self.sequence.id}/shot-tasks")
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            [task["id"] for task in result], [str(self.shot_task.id)]
+        )
 
     def a_shot_closed_on(self, date, nb_frames=100):
         """
