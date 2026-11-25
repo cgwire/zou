@@ -8,7 +8,7 @@ from flask import current_app
 from ldap3.utils.conv import escape_filter_chars
 from ldap3.utils.dn import to_dn
 
-from zou.app import app, config
+from zou.app import config
 from zou.app.exceptions import (
     InactiveUserException,
     IsUserLimitReachedException,
@@ -43,7 +43,7 @@ def get_settings():
         "LDAP_IS_AD_SIMPLE",
         "LDAP_SEARCH_BIND",
     ]
-    return {key: app.config[key] for key in keys}
+    return {key: current_app.config[key] for key in keys}
 
 
 def is_ad(settings):

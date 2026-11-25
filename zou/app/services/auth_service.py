@@ -20,6 +20,7 @@ from flask_jwt_extended import (
     create_refresh_token,
     get_jti,
 )
+from ldap3.core.exceptions import LDAPSocketOpenError
 from sqlalchemy import func
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -30,6 +31,8 @@ from zou.app.exceptions import (
     FIDONoPreregistrationException,
     FIDOServerException,
     InactiveUserException,
+    LdapAccountConflictException,
+    LdapAmbiguousUserException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     PersonNotFoundException,
@@ -44,6 +47,7 @@ from zou.app.exceptions import (
 )
 from zou.app.models.person import SENSITIVE_FIELDS, Person
 from zou.app.services import (
+    ldap_service,
     organisation_service,
     persons_service,
     preview_accounts_service,
@@ -128,26 +132,40 @@ def check_auth(
     """
     if not email:
         raise WrongUserException()
+    strategy = app.config["AUTH_STRATEGY"]
+    search_bind = (
+        strategy == "auth_remote_ldap" and app.config["LDAP_SEARCH_BIND"]
+    )
     try:
         person = persons_service.get_person_by_email_desktop_login(email)
     except PersonNotFoundException:
-        _spend_password_check_time(password)
-        raise WrongUserException()
+        if not search_bind:
+            _spend_password_check_time(password)
+            raise WrongUserException()
+        # The directory may know this user: the search below decides.
+        person = None
 
-    login_failed_attemps = check_login_failed_attempts(person)
+    login_failed_attemps = 0
+    if person is not None:
+        login_failed_attemps = check_login_failed_attempts(person)
 
-    strategy = app.config["AUTH_STRATEGY"]
     try:
         if strategy == "auth_local_classic":
             local_auth_strategy(person, password, app)
         elif strategy == "auth_local_no_password":
             no_password_auth_strategy(person, password, app)
         elif strategy == "auth_remote_ldap":
-            ldap_auth_strategy(person, password, app)
+            if search_bind and is_search_bind_candidate(person):
+                person = search_bind_auth_strategy(
+                    person, email, password, app
+                )
+            else:
+                ldap_auth_strategy(person, password, app)
         else:
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
-        add_login_failed_attempt(person["id"])
+        if person is not None:
+            add_login_failed_attempt(person["id"])
         raise WrongPasswordException()
 
     # After the password, and before the second factor: a deactivated
@@ -289,6 +307,82 @@ def ldap_auth_strategy(person, password, app):
         return local_auth_strategy(person, password, app)
     else:
         raise UserCantConnectDueToNoFallback()
+
+
+def is_search_bind_candidate(person):
+    """
+    Whether the login of this person goes through the directory search:
+    an unknown person or one generated from LDAP. Local and protected
+    accounts keep the legacy LDAP strategy and are never touched by it.
+    """
+    return person is None or (
+        person["is_generated_from_ldap"]
+        and person["email"] not in config.PROTECTED_ACCOUNTS
+    )
+
+
+def search_bind_auth_strategy(person, identifier, password, app):
+    """
+    Find the user anywhere under the base DN with the service account, then
+    check the password by binding with the found entry. Create or update the
+    matching person and return it, read with the unsafe serialization as the
+    person lookup of check_auth does.
+
+    A person whose entry is gone from the directory (or out of the group) or
+    who is excluded gets deactivated. An LDAP error never deactivates
+    anybody: it is raised as is.
+    """
+    settings = ldap_service.get_settings()
+    if not settings["LDAP_USER"]:
+        app.logger.error(
+            "LDAP_SEARCH_BIND is enabled but LDAP_USER is not set."
+        )
+        raise NoAuthStrategyConfigured()
+
+    try:
+        conn = ldap_service.open_service_connection(settings)
+    except LDAPSocketOpenError:
+        app.logger.error(
+            "Cannot connect to LDAP/Active directory server "
+            f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
+        )
+        raise
+    try:
+        entry = ldap_service.find_user_entry(
+            conn,
+            settings,
+            identifier,
+            person["ldap_uid"] if person is not None else None,
+        )
+    except LdapAmbiguousUserException as exception:
+        app.logger.error(f"LDAP login refused: {exception}")
+        _spend_password_check_time(password)
+        raise WrongUserException()
+    finally:
+        conn.unbind()
+
+    if entry is None:
+        if person is not None:
+            ldap_service.deactivate_person(person)
+        _spend_password_check_time(password)
+        raise WrongUserException()
+
+    ldap_service.check_user_password(settings, entry, password)
+
+    user = ldap_service.entry_to_user(entry, settings)
+    if ldap_service.is_excluded(settings, user["desktop_login"]):
+        if person is not None:
+            ldap_service.deactivate_person(person)
+        raise WrongUserException()
+
+    if person is None:
+        try:
+            person = ldap_service.find_ldap_person(user)
+        except LdapAccountConflictException:
+            raise WrongUserException()
+
+    person_id = ldap_service.provision_person(user, person)
+    return persons_service.get_person_raw(person_id).serialize()
 
 
 def update_login_failed_attempts(

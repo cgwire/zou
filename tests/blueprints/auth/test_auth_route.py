@@ -8,6 +8,10 @@ import pytest
 from ldap3.core.exceptions import LDAPPasswordIsMandatoryError
 
 from tests.base import ApiDBTestCase
+from zou.app.exceptions import (
+    IsUserLimitReachedException,
+    LdapGroupNotFoundException,
+)
 from zou.app.models.person import Person
 from zou.app.services import auth_service, persons_service
 from zou.app.stores import auth_tokens_store
@@ -174,6 +178,25 @@ class AuthTestCase(ApiDBTestCase):
         self.assertFalse(result["login"])
         self.assertEqual(result["message"], "Wrong email or password.")
         self.assertIsNotAuthenticated(result, 422)
+
+    def test_login_ldap_group_missing_answers_409(self):
+        with mock.patch.object(
+            auth_service,
+            "check_auth",
+            side_effect=LdapGroupNotFoundException("missing"),
+        ):
+            result = self.post("auth/login", self.credentials, 409)
+        self.assertFalse(result["login"])
+
+    def test_login_user_limit_answers_400(self):
+        with mock.patch.object(
+            auth_service,
+            "check_auth",
+            side_effect=IsUserLimitReachedException(),
+        ):
+            result = self.post("auth/login", self.credentials, 400)
+        self.assertFalse(result["login"])
+        self.assertEqual(result["message"], "User limit reached.")
 
     def test_ldap_login_with_an_empty_password(self):
         """

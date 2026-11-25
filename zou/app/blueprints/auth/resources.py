@@ -38,6 +38,8 @@ from zou.app.exceptions import (
     FIDONotEnabledException,
     FIDOServerException,
     InactiveUserException,
+    IsUserLimitReachedException,
+    LdapGroupNotFoundException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
@@ -306,6 +308,14 @@ class LoginResource(MethodView, ArgsMixin):
                 f"User {email} can't login due to no fallback from LDAP."
             )
             return {"login": False}, 400
+        except LdapGroupNotFoundException as exception:
+            current_app.logger.error(f"LDAP login impossible: {exception}")
+            return {"login": False}, 409
+        except IsUserLimitReachedException:
+            current_app.logger.info(
+                f"User {email} can't be created: user limit reached."
+            )
+            return {"login": False, "message": "User limit reached."}, 400
         except TimeoutError:
             current_app.logger.info("Timeout occurs while logging in.")
             return {"login": False}, 400
