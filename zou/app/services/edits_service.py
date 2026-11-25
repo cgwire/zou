@@ -337,9 +337,8 @@ def update_edit(edit_id, data_dict):
 
 def get_edit_versions(edit_id):
     """
-    Return all versions of given edit, most recent first. Versions are
-    recorded only for shots (frame range or name changes), so an edit
-    usually has none.
+    Return all versions of given edit, most recent first. A version is
+    recorded when the frame range or the name of the edit changes.
     """
     versions = (
         EntityVersion.query.filter_by(entity_id=edit_id)

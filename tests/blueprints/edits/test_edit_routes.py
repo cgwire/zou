@@ -24,8 +24,14 @@ class EditRoutesTestCase(BaseEditTestCase):
         )
 
     def test_get_edit_versions(self):
-        # Nothing has been published on this edit yet.
-        self.assertEqual(self.get(f"/data/edits/{self.edit_id}/versions"), [])
+        path = f"/data/edits/{self.edit_id}/versions"
+        self.assertEqual(self.get(path), [])
+
+        self.put(f"data/entities/{self.edit_id}", {"name": "Edit v2"})
+
+        versions = self.get(path)
+        self.assertEqual(len(versions), 1)
+        self.assertEqual(versions[0]["name"], "Edit")
 
     def test_get_edits_with_tasks(self):
         result = self.get("/data/edits/with-tasks")

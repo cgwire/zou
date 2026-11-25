@@ -303,6 +303,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 shots_service.clear_sequence_cache(entity_dict["id"])
             elif entity_types_service.is_edit(entity_dict):
                 edits_service.clear_edit_cache(entity_dict["id"])
+                self.save_version_if_needed(entity_dict, previous_version)
             elif entity_types_service.is_episode(entity_dict):
                 shots_service.clear_episode_cache(entity_dict["id"])
             elif entity_types_service.is_concept(entity_dict):
@@ -333,8 +334,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def save_version_if_needed(self, shot, previous_shot):
         """
-        Record a version of given shot when its frame range or its name
-        changed. A client may send one update per field or per keystroke
+        Record a version of given shot or edit when its frame range or its
+        name changed. A client may send one update per field or per keystroke
         (frame in then frame out, a number typed slowly), so such a burst
         by one person is folded into a single version holding the final
         values: see get_recent_version.
