@@ -273,10 +273,14 @@ def get_group_member_dns(conn, settings):
 def search_users(conn, settings):
     """
     Read the user entries of the directory (or of the configured group) and
-    return them as dicts the person sync understands.
+    return them as dicts the person sync understands. Raise when the
+    configured group is missing: an empty result would make the sync
+    deactivate every LDAP person.
     """
     group_members = None
-    if not is_ad(settings):
+    if is_ad(settings):
+        check_group_exists(conn, settings)
+    else:
         group_members = get_group_member_dns(conn, settings)
     conn.search(
         settings["LDAP_BASE_DN"],

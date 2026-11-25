@@ -41,6 +41,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
         settings = self.directory(
             [
+                (group, {"objectClass": "group"}),
                 (
                     f"cn=alice,cn=Users,{BASE_DN}",
                     ad_user("alice", memberOf=group),
@@ -151,6 +152,35 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         person = Person.get_by(desktop_login="jdoe")
         self.assertIsNotNone(person)
         self.assertTrue(person.is_generated_from_ldap)
+
+    def test_search_users_ad_group_missing(self):
+        settings = self.directory(
+            [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],
+            LDAP_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with self.assertRaises(LdapGroupNotFoundException):
+            ldap_service.search_users(conn, settings)
+
+    def test_sync_with_ldap_server_group_missing_keeps_persons(self):
+        settings = self.directory(
+            [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],
+            LDAP_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}",
+        )
+        person = persons_service.create_person(
+            "jdoe@studio.local",
+            b"",
+            "John",
+            "Doe",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+        )
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            with self.assertRaises(LdapGroupNotFoundException):
+                commands_service.sync_with_ldap_server()
+        self.assertTrue(Person.get(person["id"]).active)
 
     def test_find_user_entry_by_login_in_sub_ou(self):
         dn = f"cn=jdoe,ou=Paris,ou=Staff,{BASE_DN}"
