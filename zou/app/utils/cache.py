@@ -152,13 +152,6 @@ def memoize_function_single_flight(timeout=120):
     return decorator
 
 
-def invalidate(*args):
-    """
-    Delete the cached results of given memoized function and arguments.
-    """
-    cache.delete_memoized(*args)
-
-
 def clear():
     """
     Delete every cached entry.

@@ -186,19 +186,6 @@ def require_admin(function):
     return decorated_function
 
 
-def require_manager(function):
-    """
-    Decorate a function to run check_manager_permissions() before it.
-    """
-
-    @wraps(function)
-    def decorated_function(*args, **kwargs):
-        check_manager_permissions()
-        return function(*args, **kwargs)
-
-    return decorated_function
-
-
 def require_person(function):
     """
     Decorate a function to run check_person_permissions() before it.

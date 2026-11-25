@@ -261,20 +261,6 @@ def _fill_color(obj):
     return _parse_color(obj.get("fill"), default=None)
 
 
-def _origin(obj, scale_x, scale_y):
-    left = (obj.get("left", 0) or 0) * scale_x
-    top = (obj.get("top", 0) or 0) * scale_y
-    return left, top
-
-
-def _size(obj, scale_x, scale_y):
-    width = (obj.get("width", 0) or 0) * (obj.get("scaleX", 1) or 1) * scale_x
-    height = (
-        (obj.get("height", 0) or 0) * (obj.get("scaleY", 1) or 1) * scale_y
-    )
-    return width, height
-
-
 def _make_object_transform(obj, pivot_x, pivot_y):
     """
     Build the affine transform fabric applies to a shape's local
@@ -626,12 +612,7 @@ def _draw_text(overlay, obj, scale_x, scale_y):
     # overlay. Going through a sub-image is the only way Pillow can
     # rotate text: `ImageDraw.text` has no rotation kwarg.
     measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    try:
-        bbox = measure_draw.textbbox((0, 0), text, font=font)
-    except AttributeError:
-        # Pillow < 9.2 has no textbbox: textsize gives the size only.
-        w, h = measure_draw.textsize(text, font=font)
-        bbox = (0, 0, w, h)
+    bbox = measure_draw.textbbox((0, 0), text, font=font)
     text_w = max(1, bbox[2] - bbox[0])
     text_h = max(1, bbox[3] - bbox[1])
     text_img = Image.new("RGBA", (text_w, text_h), (0, 0, 0, 0))

@@ -20,8 +20,6 @@ from alembic import command
 from alembic.config import Config
 from flask import Blueprint, abort, current_app, send_from_directory
 from flask.views import MethodView
-from sqlalchemy import MetaData
-from sqlalchemy.util import FacadeDict
 
 from zou.app import db
 from zou.app.utils.api import configure_api_from_blueprint
@@ -149,12 +147,12 @@ class PluginManifest(MutableMapping):
             self.data[attr] = value
 
 
-def load_plugin(app, plugin_path, init_plugin=True):
+def load_plugin(app, plugin_path):
     """
     Read the manifest at `plugin_path`, import the plugin module by its
     id (the plugin folder must be in sys.path) and register its routes,
     static frontend routes included, as a blueprint under
-    /plugins/<id>. Return the plugin module. `init_plugin` is not used.
+    /plugins/<id>. Return the plugin module.
     """
     plugin_path = Path(plugin_path)
     manifest = PluginManifest.from_plugin_path(plugin_path)
@@ -509,37 +507,9 @@ def add_static_routes(manifest, routes):
             self.plugin_id = manifest.id
             super().__init__()
 
-    class PluginIndexStaticResource(StaticResource):
-
-        def __init__(self):
-            self.plugin_id = manifest.id
-            super().__init__()
-
     if (
         manifest["frontend_project_enabled"]
         or manifest["frontend_studio_enabled"]
     ):
-        routes.append(("/frontend", PluginIndexStaticResource))
+        routes.append(("/frontend", PluginStaticResource))
         routes.append(("/frontend/<path:filename>", PluginStaticResource))
-
-
-def create_plugin_metadata(plugin_id):
-    """
-    Create a metadata that contains all existing tables EXCEPT the
-    plugin's own tables. This way the plugin model classes can define
-    their tables fresh, and Alembic won't try to create/drop Zou's
-    core tables.
-    """
-    from zou.app import app
-
-    plugin_metadata = MetaData()
-    with app.app_context():
-        plugin_metadata.reflect(bind=db.engine)
-
-        non_plugin_tables = {
-            table: plugin_metadata.tables[table]
-            for table in plugin_metadata.tables.keys()
-            if not table.startswith(f"plugin_{plugin_id}_")
-        }
-        plugin_metadata.tables = FacadeDict(non_plugin_tables)
-    return plugin_metadata

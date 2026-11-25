@@ -179,7 +179,7 @@ def make_im_bigger_if_needed(im, size):
     return im
 
 
-def fit_to_target_size(im, size, crop=False):
+def fit_to_target_size(im, size):
     """
     Make sure that the image is contained in the size given in parameter
     (shorten width and/or height proporitionnally to expected ratio).

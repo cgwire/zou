@@ -75,7 +75,7 @@ def apply_criterions_to_db_query(model, db_query, criterions):
                 and value[0] == "["
             )
 
-            if key == "name" and field_key is not None:
+            if key == "name":
                 name_filter.append(value)
 
             elif is_many_to_many_field:
