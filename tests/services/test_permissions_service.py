@@ -956,6 +956,32 @@ class DepartmentAccessTestCase(PermissionsTestCase):
                     self.task_dict, {"task_status_id": UNKNOWN}
                 )
 
+    def test_a_supervisor_manages_the_columns_of_their_departments(self):
+        supervisor = self.a_supervisor(department=self.own_department)
+        project_id = str(self.project.id)
+
+        with self.as_role("supervisor"):
+            self.assertTrue(
+                permissions_service.check_all_departments_access(
+                    project_id, [self.own_department]
+                )
+            )
+            with self.denied():
+                permissions_service.check_all_departments_access(
+                    project_id, [self.own_department, self.other_department]
+                )
+
+        # A second department does not force its way into every column.
+        persons_service.add_to_department(
+            self.other_department, supervisor["id"]
+        )
+        with self.as_role("supervisor"):
+            self.assertTrue(
+                permissions_service.check_all_departments_access(
+                    project_id, [self.own_department]
+                )
+            )
+
     def test_a_supervisor_with_departments_sends_no_metadata(self):
         self.a_supervisor(department=self.own_department)
         entity = entities_service.get_entity(str(self.asset.id))

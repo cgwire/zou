@@ -990,8 +990,8 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
 def check_all_departments_access(project_id, departments=None):
     """
     Return true if current user is admin or is manager and is in team or is
-    supervisor and is in team, with departments given and every department
-    of the supervisor in them (or no department at all). Raise
+    supervisor and is in team, with departments given and every given
+    department one of the supervisor (or the supervisor has no department). Raise
     PermissionDenied otherwise. Resolve the project role as a side effect (see
     check_belong_to_project).
     """
@@ -1012,7 +1012,7 @@ def check_all_departments_access(project_id, departments=None):
         is_allowed = departments and (
             user_departments == []
             or all(
-                department in departments for department in user_departments
+                department in user_departments for department in departments
             )
         )
     if not is_allowed:
