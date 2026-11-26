@@ -196,7 +196,6 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     def set_mentions(self, person_ids):
         from zou.app.models.person import Person
 
-        self.mentions = []
         self.set_many_to_one("mentions", Person, person_ids)
 
     def set_department_mentions(self, department_ids):

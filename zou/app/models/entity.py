@@ -235,11 +235,11 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         return (previous_entity, is_update)
 
     @classmethod
-    def sanitize_import_data(self, data):
+    def sanitize_import_data(cls, data):
         from zou.app.models.entity_type import EntityType
         from zou.app.models.preview_file import PreviewFile
 
-        entity_ids = []
+        entity_ids = None
         model_type = data.get("type", "Shot")
 
         if "entities_out" in data:
