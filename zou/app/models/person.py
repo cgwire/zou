@@ -112,8 +112,8 @@ def normalize_country(value):
         list).
 
     Single source of truth shared by the API guard (raises 400 on invalid),
-    the CSV import (fails the row on invalid) and the model validator
-    (silently discards invalid).
+    the CSV import (fails the row on invalid), the SSO sign-in (drops
+    invalid) and the model validator (silently discards invalid).
     """
     if value is None:
         return True, None
@@ -344,8 +344,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     @full_name.expression
     def full_name(cls):
-        # The previous form branched on bool(Column), which is always
-        # true, and produced NULL as soon as one name part was NULL.
         # concat_ws skips NULLs; nullif maps empty strings to NULL so the
         # result matches the Python property for every combination.
         return func.trim(
@@ -373,9 +371,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     def present_minimal(self, relations=False, milliseconds=False):
         """
-        Build the minimal person dict directly: serializing all columns to
-        keep a dozen fields was a hot path (embedded author of every
-        comment and reply).
+        Build the minimal person dict directly, not through serialize():
+        it is a hot path (embedded author of every comment and reply).
+        Departments are listed only when relations is True.
         """
         departments = []
         if relations:

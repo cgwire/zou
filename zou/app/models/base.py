@@ -146,7 +146,8 @@ class BaseMixin(object):
     @classmethod
     def get_or_create(cls, **kw):
         """
-        Shorthand to retrieve data by using filters.
+        Return the first entry matching the filters, or create and commit
+        one with them.
         """
         instance = cls.get_by(**kw)
         if instance is None:
@@ -159,8 +160,8 @@ class BaseMixin(object):
 
     def save(self):
         """
-        Shorthand to create an entry via the database session based on current
-        instance fields.
+        Set updated_at, add this instance to the session and commit. Roll
+        back on failure.
         """
         try:
             self.updated_at = date_helpers.get_utc_now_datetime()
@@ -172,8 +173,8 @@ class BaseMixin(object):
 
     def update(self, data):
         """
-        Shorthand to update an entry via the database session based on current
-        instance fields.
+        Update the instance with the given data and commit. Roll back on
+        failure.
         """
         try:
             self.update_no_commit(data)
@@ -184,8 +185,8 @@ class BaseMixin(object):
 
     def update_no_commit(self, data):
         """
-        Shorthand to update an entry via the database session based on current
-        instance fields. It doesn't generate a commit.
+        Set the given data on the instance and set updated_at. Keys that
+        are not model attributes are ignored. It doesn't generate a commit.
         """
         self.updated_at = date_helpers.get_utc_now_datetime()
         resolved = self._resolve_relations(data)
@@ -219,7 +220,8 @@ class BaseMixin(object):
     @classmethod
     def delete_all_by(cls, *criterions, **kw):
         """
-        Shorthand to delete data by using filters.
+        Shorthand to delete data by using filters, then commit. Return the
+        number of deleted rows.
         """
         result = cls.query.filter(*criterions).filter_by(**kw).delete()
         db.session.commit()
@@ -288,6 +290,7 @@ class BaseMixin(object):
         Point this instance at the given ids through a link table, adding
         the rows that are missing. Existing links are left untouched and
         none are removed, so this adds to the set, it does not replace it.
+        Commit at the end.
         """
         for id in ids:
             link = LinkTable.query.filter_by(
@@ -305,9 +308,10 @@ class BaseMixin(object):
     @classmethod
     def create_from_import(cls, data):
         """
-        Create a new instance of the model based on data that comes from the Zou
-        API. Returns ``(instance, is_update)`` where ``is_update`` is True when
-        an existing row was updated and False when a new row was created.
+        Create or update an instance of the model based on data that comes
+        from the Zou API. Returns ``(instance, is_update)`` where
+        ``is_update`` is True when an existing row was updated and False
+        when a new row was created.
         """
         if "type" in data:
             del data["type"]
@@ -340,7 +344,8 @@ class BaseMixin(object):
     @classmethod
     def delete_from_import(cls, instance_id):
         """
-        Delete an entry and its related base on the entry id.
+        Delete the entry with the given id, if it exists, and commit.
+        Return the id.
         """
         instance = cls.get(instance_id)
         if instance is not None:

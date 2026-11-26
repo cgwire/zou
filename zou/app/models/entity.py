@@ -96,7 +96,8 @@ class EntityConceptLink(db.Model, BaseMixin, SerializerMixin):
 
 class Entity(db.Model, BaseMixin, SerializerMixin):
     """
-    Base model to represent assets, shots, sequences, episodes and scenes.
+    Base model to represent assets, shots, sequences, episodes, scenes,
+    edits and concepts.
     They have different meaning but they share the same behaviour toward
     tasks and files.
     """
@@ -143,7 +144,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         db.ForeignKey("entity.id"),
         index=True,
         nullable=True,
-    )  # if the entity is generated from another one (like shots from scene).
+    )  # main episode of an asset, or the source scene of a shot.
 
     preview_file_id = db.Column(
         UUIDType(binary=False),

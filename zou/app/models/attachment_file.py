@@ -8,7 +8,8 @@ from zou.app.utils import fields
 
 class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a file which is attached to a comment.
+    Describes a file which is attached to a comment, a comment reply or a
+    chat message.
     """
 
     name = db.Column(db.String(250))
