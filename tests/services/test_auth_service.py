@@ -428,17 +428,31 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.assertIsNone(person.ldap_uid)
         self.assertEqual(person.first_name, "Local")
 
-    def test_excluded_account_deactivated(self):
+    def test_excluded_account_deactivated_without_a_bind(self):
         self.use_directory([self.jdoe()], LDAP_EXCLUDED_ACCOUNTS="jdoe")
         person = self.ldap_person()
-        self.assertRaises(WrongUserException, self.login, "jdoe")
+        with mock.patch.object(
+            ldap_service, "check_user_password"
+        ) as check_user_password:
+            self.assertRaises(WrongUserException, self.login, "jdoe")
+        check_user_password.assert_not_called()
         self.assertFalse(Person.get(person["id"]).active)
 
-    def test_disabled_in_directory(self):
+    def test_disabled_in_directory_deactivated_without_a_bind(self):
+        """
+        Active Directory refuses the bind of a disabled account, so the
+        state comes from the entry, before the password.
+        """
         self.use_directory([self.jdoe(userAccountControl=514)])
         person = self.ldap_person()
-        self.assertRaises(InactiveUserException, self.login, "jdoe")
-        self.assertFalse(Person.get(person["id"]).active)
+        with mock.patch.object(
+            ldap_service, "check_user_password"
+        ) as check_user_password:
+            self.assertRaises(WrongUserException, self.login, "jdoe", "wrong")
+        check_user_password.assert_not_called()
+        stored = Person.get(person["id"])
+        self.assertFalse(stored.active)
+        self.assertEqual(stored.login_failed_attemps or 0, 0)
 
     def test_local_person_keeps_the_legacy_path(self):
         self.use_settings(LDAP_FALLBACK=True)
