@@ -59,6 +59,7 @@ class CommandsTestCase(ApiDBTestCase):
                 "Scene",
                 "Sequence",
                 "Shot",
+                "Untracked",
             ],
         )
 

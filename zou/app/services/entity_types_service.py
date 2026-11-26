@@ -80,8 +80,8 @@ def is_episode(entity):
 def get_base_entity_type_name(entity_dict):
     """
     Return the entity type name of the given entity, as the API uses it:
-    Shot, Sequence, Episode, Edit, Scene, Concept or ConceptFolder. For
-    all other entities, return Asset.
+    Shot, Sequence, Episode, Edit, Scene, Concept, ConceptFolder or
+    Untracked. For all other entities, return Asset.
     """
     type_name = "Asset"
     if is_shot(entity_dict):
@@ -98,6 +98,8 @@ def get_base_entity_type_name(entity_dict):
         type_name = "Concept"
     elif is_concept_folder(entity_dict):
         type_name = "ConceptFolder"
+    elif is_untracked(entity_dict):
+        type_name = "Untracked"
 
     return type_name
 
@@ -127,7 +129,8 @@ def get_temporal_type_ids():
     """
     Return the IDs of the entity types that are not asset types. These are
     the types that have a position in time (shot, sequence, episode, edit,
-    scene, concept) and the folders that contain the concepts.
+    scene, concept), the folders that contain the concepts and the untracked
+    schedule items.
     """
     shot_type = get_shot_type()
     scene_type = get_scene_type()
@@ -136,6 +139,7 @@ def get_temporal_type_ids():
     edit_type = get_edit_type()
     concept_type = get_concept_type()
     concept_folder_type = get_concept_folder_type()
+    untracked_type = get_untracked_type()
 
     return [
         shot_type["id"],
@@ -145,6 +149,7 @@ def get_temporal_type_ids():
         scene_type["id"],
         concept_type["id"],
         concept_folder_type["id"],
+        untracked_type["id"],
     ]
 
 
@@ -342,6 +347,24 @@ def is_concept_folder(entity):
     """
     concept_folder_type = get_concept_folder_type()
     return str(entity["entity_type_id"]) == concept_folder_type["id"]
+
+
+@cache.memoize_function(1200)
+def get_untracked_type():
+    """
+    Return the Untracked entity type: work planned in the schedule (sound
+    design, a rough department plan...) that is not an asset, a shot or an
+    edit, and is kept out of their lists.
+    """
+    return get_temporal_entity_type_by_name("Untracked")
+
+
+def is_untracked(entity):
+    """
+    Return True if the entity type of the given entity dict is 'Untracked'.
+    """
+    untracked_type = get_untracked_type()
+    return str(entity["entity_type_id"]) == untracked_type["id"]
 
 
 def clear_entity_type_cache(entity_type_id):

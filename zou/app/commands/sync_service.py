@@ -387,6 +387,7 @@ def push_project_data(
         "Sequence",
         "Asset",
         "Shot",
+        "Untracked",
         "ConceptFolder",
         "Concept",
     ):
