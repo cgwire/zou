@@ -36,6 +36,10 @@ class EmailI18nTestCase(unittest.TestCase):
             self.assertEqual(result, "New Comment")
 
     def test_get_email_translation_short_code_mapping(self):
+        self.assertEqual(
+            get_email_translation("fr", "comment_title"),
+            "Nouveau commentaire",
+        )
         for code, locale in LANGUAGE_LOCALES.items():
             self.assertEqual(
                 get_email_translation(code, "comment_title"),
