@@ -237,6 +237,20 @@ class CreateFromImportTestCase(ApiDBTestCase):
             [str(self.person.id)],
         )
 
+    def test_preview_file_ignores_the_dropped_is_movie_key(self):
+        preview_file_id = "7a1c3e5f-2b4d-4e6f-8a0c-1d3f5b7d9e2a"
+        PreviewFile.create_from_import(
+            {
+                "id": preview_file_id,
+                "name": "movie",
+                "revision": 1,
+                "extension": "mp4",
+                "task_id": str(self.task.id),
+                "is_movie": True,
+            }
+        )
+        self.assertIsNotNone(PreviewFile.get(preview_file_id))
+
     def test_task(self):
         task_dict = {
             "assignees": [str(self.person.id)],
