@@ -439,6 +439,44 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         )
         self.assertEqual(descriptor["departments"], [department_id])
 
+    def test_a_partial_update_keeps_the_other_fields(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "list",
+            ["a", "b"],
+            True,
+            [department_id],
+        )
+        descriptor = self.put(self.descriptors_path(descriptor), {"name": "X"})
+        self.assertEqual(descriptor["departments"], [department_id])
+        self.assertEqual(descriptor["choices"], ["a", "b"])
+        self.assertTrue(descriptor["for_client"])
+
+    def test_a_supervisor_cannot_make_a_column_global(self):
+        self.generate_fixture_department()
+        department_id = str(self.department.id)
+        supervisor = self.generate_fixture_user_supervisor()
+        projects_service.add_team_member(self.project_id, supervisor["id"])
+        persons_service.add_to_department(department_id, supervisor["id"])
+        descriptor = metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id,
+            "Asset",
+            "Rig",
+            "string",
+            [],
+            False,
+            [department_id],
+        )
+        self.log_in_supervisor()
+        path = self.descriptors_path(descriptor)
+        self.put(path, {"departments": []}, 403)
+        descriptor = self.put(path, {"name": "Rig 2"})
+        self.assertEqual(descriptor["departments"], [department_id])
+
     def test_delete_metadata_descriptor(self):
         descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False

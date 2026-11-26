@@ -677,8 +677,15 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
             )
         )
         permissions_service.check_all_departments_access(
-            project_id, descriptor["departments"] + body.departments
+            project_id, descriptor["departments"]
         )
+        args = body.model_dump(exclude_unset=True)
+        # An empty list makes the column visible to all departments: the
+        # check refuses it to a supervisor.
+        if "departments" in args:
+            permissions_service.check_all_departments_access(
+                project_id, body.departments
+            )
 
         if body.name is not None and len(body.name) == 0:
             raise WrongParameterException("Name cannot be empty.")
@@ -687,7 +694,6 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         if body.data_type not in types:
             raise WrongParameterException("Invalid data_type")
 
-        args = body.model_dump()
         return metadata_descriptors_service.update_metadata_descriptor(
             metadata_descriptor_id, args
         )
