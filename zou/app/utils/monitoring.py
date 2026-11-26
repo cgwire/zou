@@ -29,6 +29,7 @@ SENTRY_SCRUBBED_KEYS = [
     "chat_webhook_mattermost",
     "description",
     "kwargs",
+    "ldap_password",
     "webhook",
 ]
 
