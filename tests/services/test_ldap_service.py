@@ -182,6 +182,23 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
                 commands_service.sync_with_ldap_server()
         self.assertTrue(Person.get(person["id"]).active)
 
+    def test_sync_with_ldap_server_no_user_keeps_persons(self):
+        settings = self.directory([])
+        person = persons_service.create_person(
+            "jdoe@studio.local",
+            b"",
+            "John",
+            "Doe",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+        )
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            with self.assertRaises(SystemExit):
+                commands_service.sync_with_ldap_server()
+        self.assertTrue(Person.get(person["id"]).active)
+
     def test_find_user_entry_by_login_in_sub_ou(self):
         dn = f"cn=jdoe,ou=Paris,ou=Staff,{BASE_DN}"
         settings = self.directory(

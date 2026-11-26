@@ -423,7 +423,16 @@ def sync_with_ldap_server():
     """
     settings = ldap_service.get_settings()
     conn = ldap_service.open_service_connection(settings)
-    _ldap_update_persons(ldap_service.search_users(conn, settings))
+    users = ldap_service.search_users(conn, settings)
+    if len(users) == 0:
+        # An empty list deactivates every LDAP person. A wrong base DN or
+        # group filter is more likely than an empty directory.
+        print(
+            "No user found in the directory: check LDAP_BASE_DN and "
+            "LDAP_GROUP. No account was changed."
+        )
+        sys.exit(1)
+    _ldap_update_persons(users)
 
 
 def import_data_from_another_instance(
