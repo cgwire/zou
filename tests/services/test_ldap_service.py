@@ -182,6 +182,23 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
                 commands_service.sync_with_ldap_server()
         self.assertTrue(Person.get(person["id"]).active)
 
+    def test_sync_with_ldap_server_no_user_keeps_persons(self):
+        settings = self.directory([])
+        person = persons_service.create_person(
+            "jdoe@studio.local",
+            b"",
+            "John",
+            "Doe",
+            desktop_login="jdoe",
+            is_generated_from_ldap=True,
+        )
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            with self.assertRaises(SystemExit):
+                commands_service.sync_with_ldap_server()
+        self.assertTrue(Person.get(person["id"]).active)
+
     def test_find_user_entry_by_login_in_sub_ou(self):
         dn = f"cn=jdoe,ou=Paris,ou=Staff,{BASE_DN}"
         settings = self.directory(
@@ -290,6 +307,15 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         entry = ldap_service.find_user_entry(conn, settings, "alice")
         self.assertEqual(entry.entry_dn, f"uid=alice,ou=People,{BASE_DN}")
         self.assertIsNone(ldap_service.find_user_entry(conn, settings, "bob"))
+        with mock.patch.object(
+            ldap_service,
+            "get_group_member_dns",
+            wraps=ldap_service.get_group_member_dns,
+        ) as get_group_member_dns:
+            ldap_service.find_user_entry(
+                conn, settings, "nobody", ldap_uid="x", desktop_login="y"
+            )
+        get_group_member_dns.assert_called_once()
 
     def test_is_excluded(self):
         settings = {"LDAP_EXCLUDED_ACCOUNTS": ""}

@@ -348,10 +348,10 @@ def build_identity_filter(settings, identifier, ldap_uid=None):
     return f"({get_login_attribute(settings)}={escaped})"
 
 
-def search_entries(conn, settings, identity_filter):
+def search_entries(conn, settings, identity_filter, group_members=None):
     """
-    Entries matching the identity filter anywhere under the base DN (and in
-    the configured group on OpenLDAP).
+    Entries matching the identity filter anywhere under the base DN. When
+    group members are given (normalized DNs), keep only their entries.
     """
     conn.search(
         settings["LDAP_BASE_DN"],
@@ -359,14 +359,12 @@ def search_entries(conn, settings, identity_filter):
         attributes=get_user_attributes(settings),
     )
     entries = list(conn.entries)
-    if not is_ad(settings):
-        group_members = get_group_member_dns(conn, settings)
-        if group_members is not None:
-            entries = [
-                entry
-                for entry in entries
-                if normalize_dn(entry.entry_dn) in group_members
-            ]
+    if group_members is not None:
+        entries = [
+            entry
+            for entry in entries
+            if normalize_dn(entry.entry_dn) in group_members
+        ]
     return entries
 
 
@@ -379,7 +377,11 @@ def find_user_entry(
     person, then by the typed login or email. Return None when none of
     them matches.
     """
-    check_group_exists(conn, settings)
+    group_members = None
+    if is_ad(settings):
+        check_group_exists(conn, settings)
+    else:
+        group_members = get_group_member_dns(conn, settings)
     identity_filters = []
     if ldap_uid:
         identity_filters.append(
@@ -391,7 +393,9 @@ def find_user_entry(
     identity_filters.append(build_identity_filter(settings, identifier))
     entries = []
     for identity_filter in identity_filters:
-        entries = search_entries(conn, settings, identity_filter)
+        entries = search_entries(
+            conn, settings, identity_filter, group_members
+        )
         if len(entries) > 0:
             break
     if len(entries) == 0:
