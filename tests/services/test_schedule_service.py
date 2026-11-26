@@ -555,6 +555,15 @@ class ProductionScheduleVersionTestCase(ScheduleTestCase):
             result.setdefault(str(task_id), set()).add(str(person_id))
         return result
 
+    def test_get_production_schedule_version_raw(self):
+        psv = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        result = schedule_service.get_production_schedule_version_raw(
+            str(psv.id)
+        )
+        self.assertEqual(result.id, psv.id)
+
     def test_get_production_schedule_version_raw_not_found(self):
         with self.assertRaises(ProductionScheduleVersionNotFoundException):
             schedule_service.get_production_schedule_version_raw("wrong-id")
