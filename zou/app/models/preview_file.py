@@ -69,7 +69,6 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
 
     shotgun_id = db.Column(db.Integer, unique=True)
 
-    is_movie = db.Column(db.Boolean, default=False)  # deprecated
     url = db.Column(db.String(600))  # deprecated
     uploaded_movie_url = db.Column(db.String(600))  # deprecated
     uploaded_movie_name = db.Column(db.String(150))  # deprecated
@@ -81,6 +80,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     def create_from_import(cls, data):
         data.pop("type", None)
         data.pop("comments", None)
+        # Older Zou instances still send the dropped is_movie column.
+        data.pop("is_movie", None)
         previous_data = cls.get(data["id"])
         if "status" not in data or data["status"] is None:
             data["status"] = "ready"
