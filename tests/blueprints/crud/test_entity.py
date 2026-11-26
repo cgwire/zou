@@ -2,11 +2,15 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app.models.entity import Entity, EntityConceptLink
-from zou.app.exceptions import AssetNotFoundException
+from zou.app.exceptions import (
+    AssetNotFoundException,
+    SequenceNotFoundException,
+)
 from zou.app.services import (
     assets_service,
     concepts_service,
     projects_service,
+    shots_service,
     subscriptions_service,
     tasks_service,
 )
@@ -147,6 +151,16 @@ class EntityTestCase(ApiDBTestCase):
             AssetNotFoundException,
             assets_service.get_asset,
             self.asset_1_id,
+        )
+
+    def test_a_deleted_sequence_is_dropped_from_the_cache(self):
+        sequence_id = str(self.generate_fixture_sequence().id)
+        shots_service.get_sequence(sequence_id)
+        self.delete(f"data/entities/{sequence_id}")
+        self.assertRaises(
+            SequenceNotFoundException,
+            shots_service.get_sequence,
+            sequence_id,
         )
 
     def test_a_creator_out_of_the_team_deletes_no_entity(self):
