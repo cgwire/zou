@@ -114,27 +114,28 @@ def uninstall_plugin(plugin_id):
     - Downgrade the migrations.
     - Call the post_uninstall hook.
     - Remove the files and the folder, and delete the database entry.
-    If the plugin has no files and no database entry, raise ValueError.
+    If the plugin has no files and no database entry, or if its files have
+    no readable manifest, raise ValueError.
     """
     logger.info(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
 
-    # A plugin in a broken state (missing or invalid manifest) must stay
-    # uninstallable. Thus, call the hooks without a manifest.
+    # A plugin without files (only a database entry) stays uninstallable.
+    # If the files exist, the downgrade needs the manifest to find the
+    # version table of the plugin: without it, the plugin tables would stay
+    # and a new install would fail.
     manifest = None
-    try:
-        manifest = PluginManifest.from_plugin_path(plugin_path)
-    except Exception:
-        logger.warning(
-            f"Plugin {plugin_id} has no readable manifest, uninstalling "
-            "without its hooks.",
-            exc_info=1,
-        )
+    if plugin_path.exists():
+        try:
+            manifest = PluginManifest.from_plugin_path(plugin_path)
+        except Exception as e:
+            raise ValueError(
+                f"Plugin '{plugin_id}' has no readable manifest, its "
+                f"migrations cannot be downgraded: {e}"
+            ) from e
 
     _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
 
-    # The downgrade reads the manifest again: without one, there is nothing
-    # to downgrade.
     if manifest is not None:
         downgrade_plugin_migrations(plugin_path)
 

@@ -198,6 +198,20 @@ class PluginsServiceTestCase(ApiDBTestCase):
             Plugin.query.filter_by(plugin_id="lost_plugin").first()
         )
 
+    def test_a_plugin_with_an_unreadable_manifest_stays_installed(self):
+        self.a_plugin_row("broken_plugin")
+        plugin_path = self.plugin_folder / "broken_plugin"
+        plugin_path.mkdir(parents=True)
+        (plugin_path / "manifest.toml").write_text("not = [valid")
+
+        with self.assertRaises(ValueError):
+            plugins_service.uninstall_plugin("broken_plugin")
+
+        self.assertTrue(plugin_path.exists())
+        self.assertIsNotNone(
+            Plugin.query.filter_by(plugin_id="broken_plugin").first()
+        )
+
     def test_hooks_run_while_the_files_exist_and_never_stop_the_lifecycle(
         self,
     ):
