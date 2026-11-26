@@ -25,8 +25,8 @@ from zou.app.services import (
 from zou.app.utils import cache, events, fields, query as query_utils
 
 # Field orders of the compact encoding of the with-tasks views. Clients
-# must map values by reading these names from the response header, never
-# by hardcoding positions.
+# must read these names from the response header to map the values.
+# They must never use hardcoded positions.
 ASSETS_AND_TASKS_ASSET_FIELDS = [
     "id",
     "name",
@@ -69,11 +69,11 @@ ASSETS_AND_TASKS_TASK_FIELDS = [
 
 def clear_asset_cache(asset_id):
     """
-    Drop every memoized serialization of given asset.
+    Drop all the memoized serializations of the given asset.
 
-    An asset is a row of the entity table, so the generic entity
-    serialization goes with it: entity names and the breakdown read the
-    asset through it.
+    An asset is a row of the entity table. Because of this, the generic
+    entity serialization also goes: the entity names and the breakdown read
+    the asset through it.
     """
     cache.cache.delete_memoized(get_asset, asset_id)
     cache.cache.delete_memoized(get_asset, asset_id, True)
@@ -89,10 +89,15 @@ def get_assets(
     cursor_id=None,
 ):
     """
-    Get the assets matching given criterions: all of them, a page of them,
-    or the ones following a cursor (see query_utils.get_paginated_results).
-    Set only_user_projects on routes taking their criterions from a client:
-    criterions carrying no project restrict nothing.
+    Return the assets that match the given criterions. The result is one of
+    these:
+
+    - all the assets.
+    - a page of assets.
+    - the assets after a cursor (see query_utils.get_paginated_results).
+
+    Set only_user_projects on the routes that get their criterions from a
+    client. Criterions without a project do not restrict the result.
     """
     if criterions is None:
         criterions = {}
@@ -107,7 +112,7 @@ def get_assets(
         del criterions["episode_id"]
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     if episode_id is not None:
-        # The assets of the episode, and the ones cast in it.
+        # The assets of the episode, and the assets cast in it.
         cast_in_episode = (
             db.session.query(EntityLink.entity_out_id)
             .filter(EntityLink.entity_out_id == Entity.id)
@@ -144,10 +149,11 @@ def _apply_asset_and_tasks_criterions(
     query, criterions, assigned_to, only_user_projects=False
 ):
     """
-    Apply the with-tasks asset filters (asset types only, id, project,
-    episode casting, assigned to current user) on a query that has Entity
-    in its FROM clause. Episode casting and assignation are expressed as
-    EXISTS subqueries so no filter ever multiplies the result rows.
+    Apply the with-tasks asset filters on a query that has Entity in its
+    FROM clause. The filters are: asset types only, id, project, episode
+    casting and assignment to the current user. The episode casting and
+    assignment filters are EXISTS subqueries. Because of this, no filter
+    multiplies the result rows.
     """
     query = query.filter(entity_types_service.build_asset_type_filter())
 
@@ -197,22 +203,22 @@ def prepare_assets_and_tasks(
     for_client=None,
 ):
     """
-    Run the with-tasks queries and return a generator yielding one asset
-    at a time, in display order. With compact=True each item is a list of
-    values aligned on ASSETS_AND_TASKS_ASSET_FIELDS (tasks aligned on
-    ASSETS_AND_TASKS_TASK_FIELDS) instead of a dict, which halves the
-    payload of task-heavy views.
+    Run the with-tasks queries. Return a generator that gives one asset at a
+    time, in display order. If compact=True, each item is a list of values
+    in the order of ASSETS_AND_TASKS_ASSET_FIELDS, not a dict. The tasks
+    follow the order of ASSETS_AND_TASKS_TASK_FIELDS. This decreases the
+    payload of the views with many tasks by half.
 
-    Three flat queries (assets, tasks, assignee links) instead of a
-    single Entity x Task x TaskPersonLink join: the joined form returned
-    one row per (asset, task, assignee) with every asset column repeated
-    on each row, which dominated the payload, the sort and the Python
-    dedup on large productions.
+    The function uses three flat queries (assets, tasks, assignee links),
+    not one Entity x Task x TaskPersonLink join. The join returned one row
+    per (asset, task, assignee), with all the asset columns on each row. On
+    large productions, this made most of the payload, the sort time and the
+    Python dedup time.
 
-    All database and request-dependent work happens before this function
-    returns: the generator is pure formatting, so a streaming response
-    can consume it after the request context is gone, without the whole
-    response ever being held in memory.
+    All the work on the database and on the request occurs before this
+    function returns. The generator only formats data. Because of this, a
+    streaming response can use it after the request context is closed. The full
+    response is never in memory at one time.
     """
     if criterions is None:
         criterions = {}
@@ -368,8 +374,8 @@ def get_assets_and_tasks(
     for_client=None,
 ):
     """
-    Get all assets for given criterions with related tasks for each
-    asset, as a list of dicts.
+    Return all the assets for the given criterions, with the related tasks
+    of each asset, as a list of dicts.
     """
     return list(
         prepare_assets_and_tasks(
@@ -383,7 +389,7 @@ def get_assets_and_tasks(
 
 def get_asset_types_for_project(project_id):
     """
-    Retrieve all asset types related to asset of a given project.
+    Return all the asset types of the assets of the given project.
     """
     return entity_types_service.serialize_asset_types(
         {x["entity_type_id"] for x in get_assets({"project_id": project_id})}
@@ -392,8 +398,9 @@ def get_asset_types_for_project(project_id):
 
 def get_asset_types_for_episode(project_id, episode_id):
     """
-    Retrieve all asset types related to assets natively belonging to a given
-    episode (shared/casted assets excluded, to match the schedule scope).
+    Return all the asset types of the assets that natively belong to the
+    given episode. Shared and cast assets are excluded, to match the
+    schedule scope.
     """
     return entity_types_service.serialize_asset_types(
         {
@@ -410,7 +417,7 @@ def get_asset_types_for_episode(project_id, episode_id):
 
 def get_asset_types_for_shot(shot_id):
     """
-    Retrieve all asset types related to asset casted in a given shot.
+    Return all the asset types of the assets cast in the given shot.
     """
     shot = Entity.get(shot_id)
     return entity_types_service.serialize_asset_types(
@@ -420,7 +427,7 @@ def get_asset_types_for_shot(shot_id):
 
 def get_asset_raw(entity_id):
     """
-    Return a given asset as an active record.
+    Return the given asset as an active record.
     """
     try:
         entity = Entity.get(entity_id)
@@ -436,7 +443,7 @@ def get_asset_raw(entity_id):
 @cache.memoize_function(120)
 def get_asset(entity_id, relations=False):
     """
-    Return a given asset as a dict.
+    Return the given asset as a dict.
     """
     return get_asset_raw(entity_id).serialize(
         obj_type="Asset", relations=relations
@@ -445,7 +452,7 @@ def get_asset(entity_id, relations=False):
 
 def get_asset_by_shotgun_id(shotgun_id):
     """
-    Return asset matching given shotgun ID as a dict.
+    Return the asset that matches the given shotgun ID, as a dict.
     """
     assets = get_assets({"shotgun_id": shotgun_id})
     if len(assets) == 0:
@@ -455,7 +462,8 @@ def get_asset_by_shotgun_id(shotgun_id):
 
 def get_raw_asset_by_shotgun_id(shotgun_id):
     """
-    Return asset matching given shotgun ID as an active record.
+    Return the asset that matches the given shotgun ID, as an active
+    record.
     """
     asset = get_asset_by_shotgun_id(shotgun_id)
     return get_asset_raw(asset["id"])
@@ -464,8 +472,8 @@ def get_raw_asset_by_shotgun_id(shotgun_id):
 @cache.memoize_function_single_flight(120)
 def get_full_asset(asset_id):
     """
-    Return asset matching given id with additional information (project name,
-    asset type name and tasks).
+    Return the asset that has the given ID, with more data: the project
+    name, the asset type name and the tasks.
     """
     assets = get_assets_and_tasks(
         {"id": asset_id}, with_episode_ids=True, for_client=False
@@ -488,7 +496,8 @@ def get_full_asset(asset_id):
 
 def create_asset_types(asset_type_names):
     """
-    For each name, create a new asset type.
+    For each name, return the asset type. If the asset type does not exist,
+    create it.
     """
     asset_types = []
     for asset_type_name in asset_type_names:
@@ -513,8 +522,9 @@ def create_asset(
     index=True,
 ):
     """
-    Create a new asset from given parameters. A bulk import passes
-    index=False and indexes all its assets at the end.
+    Create a new asset from the given parameters, index it and emit an
+    asset:new event. If source_id is shorter than a UUID, ignore it. A bulk
+    import passes index=False and indexes all its assets at the end.
     """
     project = projects_service.get_project_raw(project_id)
     asset_type = entity_types_service.get_asset_type_raw(asset_type_id)
@@ -545,7 +555,7 @@ def create_asset(
 
 def update_asset(asset_id, data, index=True):
     """
-    Update given asset, drop its cache and notify the clients. A bulk
+    Update the given asset, drop its cache and notify the clients. A bulk
     import passes index=False and indexes all its assets at the end.
     """
     asset = get_asset_raw(asset_id)
@@ -572,7 +582,9 @@ def set_shared_assets(
     with_events=False,
 ):
     """
-    Set all assets of a project to is_shared=True or False.
+    Set is_shared on the assets that match the given project, asset type
+    and asset IDs, and drop their cache. If with_events is set, emit an
+    asset:update event for each asset.
     """
 
     query = Entity.query.filter(entity_types_service.build_asset_type_filter())
@@ -608,14 +620,16 @@ def set_shared_assets(
 
 def get_shared_assets_used_in_project(project_id, episode_id=None, **paging):
     """
-    Get all shared assets used in a project, with the paging options of
-    query_utils.get_paginated_results.
+    Return the shared assets of other projects that are cast in the shots
+    of the given project. If an episode is given, use only the shots of this
+    episode. Canceled assets are excluded. The paging options are the ones
+    of query_utils.get_paginated_results.
     """
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
 
-    # An EXISTS clause rather than joins: an asset cast in several shots
-    # comes once, so a limit counts assets.
+    # Use an EXISTS clause, not joins: an asset cast in many shots
+    # occurs one time, so a limit counts assets.
     casting = (
         db.session.query(EntityLink.id)
         .join(Shot, EntityLink.entity_in_id == Shot.id)

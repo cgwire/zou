@@ -52,10 +52,11 @@ logger = logging.getLogger(__name__)
 
 
 REMOTE_NORMALIZE_VERSION = 2
-# Seconds before each new attempt of a preview processing job whose
+# Seconds before each new attempt of a preview processing job if its
 # upload to the object storage failed on authentication (Keystone down).
-# Meanwhile the uploaded file waits in PENDING_UPLOADS_FOLDER, which the
-# TMP_DIR cleaning skips, and the preview file stays "processing".
+# During this time, the uploaded file waits in PENDING_UPLOADS_FOLDER,
+# which the TMP_DIR cleanup skips, and the preview file stays
+# "processing".
 STORAGE_RETRY_INTERVALS = (60, 300, 900, 3600)
 STORAGE_RETRIES_META_KEY = "storage_retries"
 PENDING_UPLOADS_FOLDER = "pending-uploads"
@@ -63,10 +64,10 @@ PENDING_UPLOADS_FOLDER = "pending-uploads"
 
 def get_preview_file_dimensions(project, entity=None):
     """
-    Return dimensions set at entity level or project level or default
-    dimensions if the dimensions are not set.
-    Entity resolution has priority over project resolution.
-    The default size is based on 1080 height
+    Return the dimensions set at entity level or project level, or the
+    default dimensions if no dimensions are set. The entity resolution has
+    priority over the project resolution. The default size is based on a
+    height of 1080.
     """
     resolution = project["resolution"]
     entity_data = {}
@@ -89,8 +90,8 @@ def get_preview_file_dimensions(project, entity=None):
             width = None
             height = int(height)
     except (ValueError, TypeError):
-        # Defensive fallback: a malformed resolution string should not
-        # crash the normalization worker, just use the default 1080.
+        # Defensive fallback: a malformed resolution string must not
+        # crash the normalization worker. Use the default 1080.
         from zou.app import app as current_app
 
         current_app.logger.warning(
@@ -104,8 +105,8 @@ def get_preview_file_dimensions(project, entity=None):
 
 def get_preview_file_fps(project, entity=None):
     """
-    Return fps set at project level or default fps if the dimensions are not
-    set.
+    Return the fps set at entity level, else at project level, else 25, as a
+    string with three decimals.
     """
     fps = "25.00"
     if project.get("fps", None) is not None:
@@ -121,7 +122,7 @@ def get_preview_file_fps(project, entity=None):
 
 def get_project_from_preview_file(preview_file_id):
     """
-    Get project dict of related preview file.
+    Return the project dict of the related preview file.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
 
@@ -132,8 +133,8 @@ def get_project_from_preview_file(preview_file_id):
 
 def get_task_type_link_from_preview_file(preview_file_id):
     """
-    Get the project task type link dict of related preview file, or None
-    when the task type is not linked to the project.
+    Return the project task type link dict of the related preview file, or
+    None if the task type is not linked to the project.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     task = Task.get(preview_file.task_id)
@@ -145,7 +146,7 @@ def get_task_type_link_from_preview_file(preview_file_id):
 
 def get_entity_from_preview_file(preview_file_id):
     """
-    Get entity dict of related preview file.
+    Return the entity dict of the related preview file.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     task = Task.get(preview_file.task_id)
@@ -155,11 +156,12 @@ def get_entity_from_preview_file(preview_file_id):
 
 def update_preview_file(preview_file_id, data, silent=False):
     """
-    Update given preview file and notify the clients, unless silent.
+    Update the given preview file and notify the clients, unless silent is
+    set.
     """
-    # Job workers may hit a transient database error right after the
-    # request that created the row committed; that is what the retries
-    # are for. A row that is not there will not appear in six seconds.
+    # Job workers can get a temporary database error immediately after the
+    # request that created the row committed. The retries are for this
+    # case. A row that does not exist will not appear in six seconds.
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
     except OperationalError:
@@ -177,7 +179,8 @@ TRIM_KEYS = ("handle_in", "handle_out")
 
 def get_preview_file_trim(data):
     """
-    The in/out handles stored in the data of a preview file, None when unset.
+    Return the in/out handles stored in the data of a preview file. A handle
+    that is not set is None.
     """
     data = data if isinstance(data, dict) else {}
     return {key: data.get(key) for key in TRIM_KEYS}
@@ -185,12 +188,12 @@ def get_preview_file_trim(data):
 
 def update_preview_file_trim(preview_file_id, trim):
     """
-    Set the in/out handles of given preview file, a None value clears the
-    handle. The extra previews of a revision carry their own trim there: the
-    trim of the main preview stays on the shot, like before.
+    Set the in/out handles of the given preview file. A None value clears the
+    handle. The extra previews of a revision keep their own trim in the data:
+    the trim of the main preview stays on the shot.
 
-    The other keys of the data are kept, like the other writers of this
-    column do (the stored movie prefixes).
+    Keep the other keys of the data, as the other writers of this column do
+    (the stored movie prefixes).
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     data = files_service.get_preview_file_data(preview_file)
@@ -206,12 +209,13 @@ def update_preview_file_trim(preview_file_id, trim):
 
 def update_preview_file_raw(preview_file, data, silent=False):
     """
-    Same as update_preview_file, on an active record already loaded.
+    Do the same as update_preview_file, on an active record that is already
+    loaded.
     """
-    # Read the id while the instance is still live: on StaleDataError,
-    # base.update() rolls the session back, which expires every attribute.
-    # Reading preview_file.id afterwards reloads the (now deleted) row and
-    # raises ObjectDeletedError, masking the real error.
+    # Read the id while the instance is still live. On StaleDataError,
+    # base.update() rolls the session back, which expires all attributes.
+    # A read of preview_file.id after that loads the (now deleted) row
+    # again and raises ObjectDeletedError, which hides the real error.
     preview_file_id = str(preview_file.id)
     try:
         preview_file.update(data)
@@ -233,10 +237,11 @@ def update_preview_file_raw(preview_file, data, silent=False):
             news_service.clear_comment_news_cache(comment.id, task.project_id)
     if not silent:
         event_data = {"preview_file_id": preview_file_id}
-        # The clients wait for the status to ask again for the pictures a
-        # job builds in the background. A metadata refresh of a ready
-        # preview leaves it out: the maintenance commands refresh them all,
-        # and every client would fetch every picture again.
+        # The clients wait for the status before they ask again for the
+        # pictures that a job builds in the background. A metadata refresh
+        # of a ready preview leaves out the status: the maintenance commands
+        # refresh all previews, and each client would get each picture
+        # again.
         if "status" in data or preview_file.status == "processing":
             event_data["status"] = preview_file.status
         events.emit(
@@ -249,22 +254,23 @@ def update_preview_file_raw(preview_file, data, silent=False):
 
 def set_preview_file_as_broken(preview_file_id):
     """
-    Mark given preview file as broken.
+    Mark the given preview file as broken.
     """
     return update_preview_file(preview_file_id, {"status": "broken"})
 
 
 def set_preview_file_as_missing(preview_file_id):
     """
-    Mark a preview file as missing: its source binary is gone from
-    storage and renormalization is no longer possible.
+    Mark a preview file as missing: its source binary is not in the storage
+    anymore and the normalization cannot run again.
     """
     return update_preview_file(preview_file_id, {"status": "missing"})
 
 
 def remove_temp_files(*paths):
     """
-    Remove movie processing temp files, ignoring the ones already gone.
+    Remove the temporary files of the movie processing. Ignore the files
+    that are already removed.
     """
     for path in paths:
         if path is not None:
@@ -276,8 +282,9 @@ def remove_temp_files(*paths):
 
 def get_pending_upload_path(upload_path):
     """
-    Where an upload waits for the object storage to come back, under
-    TMP_DIR so that moving it there is a rename.
+    Return the path where an upload waits until the object storage is
+    available again. The path is under TMP_DIR, thus a move to it is a
+    rename.
     """
     return os.path.join(
         config.TMP_DIR, PENDING_UPLOADS_FOLDER, os.path.basename(upload_path)
@@ -286,8 +293,9 @@ def get_pending_upload_path(upload_path):
 
 def _resolve_upload_path(upload_path):
     """
-    A job queued again after a storage failure keeps its arguments: find
-    the upload in the pending folder when it was moved there.
+    Return the path of the upload. A job that is queued again after a
+    storage failure keeps its arguments. If the upload was moved to the
+    pending folder, find it there.
     """
     if upload_path is None or os.path.exists(upload_path):
         return upload_path
@@ -299,10 +307,11 @@ def _resolve_upload_path(upload_path):
 
 def is_scheduler_running(job):
     """
-    Tell whether a worker started with --with-scheduler serves the queue
-    of the job: a job queued again with a delay lands in the scheduled
-    registry, which only the scheduler moves back to the queue. It holds
-    a lock in Redis while running, which expires shortly after it stops.
+    Return True if a worker started with --with-scheduler serves the queue
+    of the job. A job queued again with a delay goes into the scheduled
+    registry, and only the scheduler moves it back to the queue. The
+    scheduler holds a lock in Redis while it runs. The lock expires shortly
+    after the scheduler stops.
     """
     try:
         queue = Queue(job.origin, connection=job.connection)
@@ -313,11 +322,14 @@ def is_scheduler_running(job):
 
 def _requeue_on_storage_failure(exc, upload_path):
     """
-    Keep the upload aside and return the Retry that queues the running
-    job again, when it failed on the object storage authentication and
-    attempts remain. Return None otherwise: no job (inline processing),
-    another error, attempts exhausted or no scheduler to queue the job
-    again after the delay, the caller fails as usual.
+    If the job failed on the object storage authentication and attempts
+    remain, keep the upload aside. Then return the Retry that queues the
+    running job again. Else, return None and the caller fails as usual.
+    Return None in these cases:
+    - there is no job (inline processing),
+    - the error is another error,
+    - no attempts remain,
+    - no scheduler can queue the job again after the delay.
     """
     job = get_current_job()
     if job is None or not fs.is_auth_failure(exc):
@@ -338,11 +350,11 @@ def _requeue_on_storage_failure(exc, upload_path):
         os.makedirs(os.path.dirname(pending_path), exist_ok=True)
         os.replace(upload_path, pending_path)
     job.meta[STORAGE_RETRIES_META_KEY] = attempt + 1
-    # The next attempt starts over: a Nomad job dispatched by this one
-    # must not be resumed as if the source were stored.
+    # The next attempt starts from the beginning: do not resume a Nomad
+    # job that this job dispatched as if the source were stored.
     job.meta.pop(remote_job.NOMAD_JOB_ID_META_KEY, None)
     job.save_meta()
-    # Retry.max counts every retry of the job, handovers included.
+    # Retry.max counts all retries of the job, with the handovers.
     return Retry(
         max=(job.number_of_retries or 0) + 1,
         interval=STORAGE_RETRY_INTERVALS[attempt],
@@ -354,9 +366,9 @@ def mark_broken_on_job_failure(
 ):
     """
     RQ failure callback for the movie normalization and picture variant
-    jobs: mark the preview file as broken and drop its temporary file.
-    Without it, a job killed by timeout or a dead worker leaves the
-    preview file stuck on "processing" forever.
+    jobs: mark the preview file as broken and remove its temporary file.
+    Without it, a job stopped by a timeout or a dead worker leaves the
+    preview file on "processing" forever.
     """
     from zou.app import app as current_app
 
@@ -389,11 +401,11 @@ def dispatch_movie_processing(
     no_job=False,
 ):
     """
-    Run prepare_and_store_movie on the job queue when one is enabled, in
-    the calling thread otherwise. A raw store is cheap enough to stay
-    synchronous, but the remote worker blocks until Nomad is done and is
-    what builds the thumbnails even without normalization: it never runs
-    in a request thread.
+    Run prepare_and_store_movie on the job queue if one is enabled. Else,
+    run it in the calling thread. A raw store is fast enough to stay
+    synchronous. But the remote worker blocks until Nomad is done, and it
+    builds the thumbnails even without normalization: it never runs in a
+    request thread.
     """
     needs_job = normalize or is_remote_normalization_enabled()
     if needs_job and config.ENABLE_JOB_QUEUE and not no_job:
@@ -424,12 +436,15 @@ def prepare_and_store_movie(
     add_source_to_file_store=True,
 ):
     """
-    Turn an uploaded movie into a ready preview file: keep the source when
-    asked, encode the preview versions (here or on the remote worker),
-    build the thumbnails and the tile, then record the metadata and which
-    versions are stored. Any failure marks the preview file as broken
-    (the job timeout goes through, so that rq records the failure), and
-    the temporary files are removed whatever happens.
+    Change an uploaded movie into a ready preview file:
+    - keep the source if asked,
+    - encode the preview versions (here or on the remote worker),
+    - build the thumbnails and the tile,
+    - record the metadata and the stored versions.
+    If a step fails, mark the preview file as broken. The job timeout is
+    raised again, thus rq records the failure. Always remove the temporary
+    files. In a job, if the object storage authentication fails and attempts
+    remain, return a Retry.
     """
     from zou.app import app as current_app
 
@@ -450,14 +465,14 @@ def prepare_and_store_movie(
             )
             return {"id": preview_file_id, "status": "broken"}
         except remote_job.NomadJobHandedOver:
-            # The worker stops: the next one resumes the job and reads the
+            # The worker stops: the next worker resumes the job and reads the
             # upload again.
             temp_files.remove(uploaded_movie_path)
             raise
         except BaseTimeoutException:
-            # rq raises its timeout inside the job: swallowed, the job
-            # would count as successful and mark_broken_on_job_failure
-            # would never run.
+            # rq raises its timeout inside the job. If this code catches
+            # it, the job counts as successful and
+            # mark_broken_on_job_failure never runs.
             raise
         except Exception as exc:
             retry = _requeue_on_storage_failure(exc, uploaded_movie_path)
@@ -486,12 +501,12 @@ def dispatch_picture_processing(
     preview_file_id, original_picture_path, no_job=False
 ):
     """
-    Build the picture variants on the job queue when one is enabled, in
-    the calling thread otherwise. Return whether the work was queued, so
-    the caller knows whether the preview file is still processing.
+    Build the picture variants on the job queue if one is enabled. Else,
+    build them in the calling thread. Return True if the work was queued,
+    thus the caller knows if the preview file is still processing.
 
-    Like the movie pipeline, the job receives a local path: the workers
-    run on the API host, or share TMP_DIR with it.
+    As in the movie pipeline, the job receives a local path: the workers run
+    on the API host, or share TMP_DIR with it.
     """
     if config.ENABLE_JOB_QUEUE and not no_job:
         queue_store.job_queue.enqueue(
@@ -508,8 +523,9 @@ def dispatch_picture_processing(
 def prepare_and_store_picture(preview_file_id, original_picture_path):
     """
     Build the variants of an uploaded picture, store them and mark the
-    preview file ready. Runs from a job as well as from a request: it
-    brings its own app context when there is none.
+    preview file as ready. This runs from a job and from a request: it
+    creates its own app context if there is none. If it fails, mark the
+    preview file as broken and raise the error again.
     """
     from flask import has_app_context
 
@@ -520,7 +536,7 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
     def run():
         keep_original = False
         try:
-            # Kept on failure: a job queued again uploads it once more.
+            # Keep it if a failure occurs: a job queued again uploads it again.
             save_variants(
                 preview_file_id, original_picture_path, remove_original=False
             )
@@ -529,15 +545,15 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
             )
             tasks_service.update_preview_file_info(preview_file)
         except PreviewFileNotFoundException:
-            # Deleted while the job waited in the queue: nothing to build.
+            # The preview file was deleted while the job waited: build nothing.
             app.logger.warning(
                 f"Preview file {preview_file_id} was deleted before its "
                 f"variants could be built"
             )
         except BaseTimeoutException:
-            # rq raises its timeout inside the job: swallowed, the job
-            # would count as successful and mark_broken_on_job_failure
-            # would never run.
+            # rq raises its timeout inside the job. If this code catches
+            # it, the job counts as successful and
+            # mark_broken_on_job_failure never runs.
             raise
         except Exception as exc:
             retry = _requeue_on_storage_failure(exc, original_picture_path)
@@ -548,12 +564,12 @@ def prepare_and_store_picture(preview_file_id, original_picture_path):
                 )
                 keep_original = True
                 return retry
-            # Covers the inline path (no job queue, or ?no_job=true): the
-            # queued path relies on on_failure=mark_broken_on_job_failure,
-            # but that callback never runs for a call made directly from
-            # the request thread. Marking broken here first, then
-            # re-raising, keeps both paths consistent and leaves rq's
-            # failure handling (which is idempotent) intact.
+            # This covers the inline path (no job queue, or ?no_job=true).
+            # The queued path uses on_failure=mark_broken_on_job_failure,
+            # but that callback never runs for a call from the request
+            # thread. Mark the file as broken here first, then raise
+            # again: this keeps both paths consistent and does not change
+            # the failure handling of rq (which is idempotent).
             app.logger.error(
                 f"Picture processing failed for preview file {preview_file_id}",
                 exc_info=1,
@@ -581,18 +597,18 @@ def _process_movie(
     temp_files,
 ):
     """
-    The movie pipeline itself, one step after the other. Every temporary
-    file it produces goes into temp_files, removed by the caller.
+    Run the movie pipeline, one step after the other. Each temporary file
+    that it makes goes into temp_files, and the caller removes them.
     """
-    # A job resumed after a handover stored the source already.
+    # A job that resumes after a handover already stored the source.
     if add_source_to_file_store and not remote_job.is_resumed():
         file_store.add_movie("source", preview_file_id, uploaded_movie_path)
     _record_original_metadata(preview_file_id, uploaded_movie_path)
     fps, width, height, bitrates = _get_encoding_parameters(preview_file_id)
 
-    # SKIP_NORMALIZATION_FULL turns every upload into a raw store, as if
-    # the client had asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF
-    # only drops the 28M encoding: the low def version is still built and
+    # SKIP_NORMALIZATION_FULL changes each upload into a raw store, as if
+    # the client asked for normalize=false. SKIP_NORMALIZATION_HIGHDEF only
+    # removes the 28M encoding: the low def version is still built and
     # becomes the only encoded movie.
     is_remote = is_remote_normalization_enabled()
     encode = normalize and not config.SKIP_NORMALIZATION_FULL
@@ -622,9 +638,9 @@ def _process_movie(
             temp_files,
         )
     else:
-        # The upload is the preview. It only goes under `previews` when it
-        # was not already stored as the source: the movie routes fall back
-        # from one to the other, so a second copy buys nothing.
+        # The upload is the preview. It goes under `previews` only if it
+        # was not already stored as the source: the movie routes use one
+        # if the other is missing, thus a second copy is not useful.
         if not add_source_to_file_store:
             file_store.add_movie(
                 "previews", preview_file_id, uploaded_movie_path
@@ -669,9 +685,9 @@ def _process_movie(
 
 def _record_original_metadata(preview_file_id, uploaded_movie_path):
     """
-    Keep the size and duration of the upload before it is encoded. A
-    nice-to-have: a failure here must not block the pipeline, and the
-    update is silent so the clients only hear about the final "ready" one.
+    Keep the size and duration of the upload before the encoding. This is
+    optional: a failure here must not stop the pipeline. The update is
+    silent, thus the clients only get the final "ready" update.
     """
     from zou.app import app as current_app
 
@@ -710,11 +726,12 @@ def _record_original_metadata(preview_file_id, uploaded_movie_path):
 
 def _get_encoding_parameters(preview_file_id):
     """
-    The fps, the resolution and the (highdef, lowdef) bitrates the previews
-    are encoded at, from the project, the entity or the task type link
-    overriding them. The job can start before the upload's transaction is
-    visible to it: one retry covers that. Still missing after it, the preview
-    file was deleted while the job waited.
+    Return the fps, the resolution and the (highdef, lowdef) bitrates for
+    the preview encoding. They come from the project, the entity or the task
+    type link that overrides them. The job can start before the transaction
+    of the upload is visible to it: one retry covers that. If the preview
+    file is still missing after the retry, it was deleted while the job
+    waited.
     """
     for attempt in range(2):
         try:
@@ -745,9 +762,9 @@ def _encode_locally(
     temp_files,
 ):
     """
-    Encode the preview versions with ffmpeg and store them. Return the
-    movie the metadata and the thumbnails are read from: the high def
-    one, or the low def one when the high def is skipped.
+    Encode the preview versions with ffmpeg and store them. Return the movie
+    that the metadata and the thumbnails are read from: the high def movie,
+    or the low def movie if the high def is skipped.
     """
     highdef_bitrate, lowdef_bitrate = bitrates
     high_def_path, low_def_path, err = movie.normalize_movie(
@@ -782,11 +799,11 @@ def _encode_on_remote_worker(
     temp_files,
 ):
     """
-    Hand the movie over to the remote worker, which reads the source from
-    the storage, encodes it and builds the thumbnails and the tile. It
-    runs even when nothing has to be encoded. Return the movie the
-    metadata is read from: the encoded version fetched back from the
-    storage, or the upload itself when nothing was encoded.
+    Give the movie to the remote worker. The worker reads the source from
+    the storage, encodes it and builds the thumbnails and the tile. It runs
+    even if nothing must be encoded. Return the movie that the metadata is
+    read from: the encoded version fetched from the storage, or the upload
+    itself if nothing was encoded.
     """
     from zou.app import app as current_app
 
@@ -806,11 +823,12 @@ def _encode_on_remote_worker(
     if not encode:
         return uploaded_movie_path
     prefix = "lowdef" if skip_high_def else "previews"
-    # The fetch lands on the movie routes' cache path. A copy of a
-    # previous encoding may already sit there (the movie was played on
-    # this host, then renormalized) and would be read instead of the
-    # fresh one: evict it first. The copy does not stay either: the
-    # worker may not be a web host, and nothing evicts that cache.
+    # The fetch writes to the cache path of the movie routes. A copy of an
+    # earlier encoding can already be there (the movie was played on this
+    # host, then normalized again). That copy would be read instead of the
+    # new one: remove it first. The new copy does not stay either: the
+    # worker can be a host that is not a web host, and nothing removes the
+    # files of that cache.
     fs.rm_file(fs.get_cache_file_path(config, prefix, preview_file_id, "mp4"))
     movie_path = fs.get_file_path_and_file(
         config,
@@ -827,10 +845,10 @@ def _encode_on_remote_worker(
 
 def _record_remote_normalize_writes(preview_file_id, encode, skip_high_def):
     """
-    Register the files the remote worker may store, before it runs: the
-    objects a failed job leaves behind are known too. The tile is in:
-    its build may fail without failing the job, a row without its object
-    is harmless.
+    Register the files that the remote worker can store, before it runs.
+    Thus the objects that a failed job leaves are also known. The tile is
+    included: its build can fail without a job failure, and a row without
+    its object causes no problem.
     """
     written = [
         ("pictures", prefix, preview_file_id)
@@ -845,7 +863,7 @@ def _record_remote_normalize_writes(preview_file_id, encode, skip_high_def):
 
 def _read_movie_metadata(movie_path):
     """
-    The fields recorded on the preview file once it is ready.
+    Return the fields recorded on the preview file when it is ready.
     """
     width, height = movie.get_movie_size(movie_path)
     return {
@@ -858,8 +876,8 @@ def _read_movie_metadata(movie_path):
 
 def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
     """
-    Build the picture variants and the tile mosaic from the movie and
-    store them. A missing tile is logged, not fatal.
+    Build the picture variants and the tile mosaic from the movie and store
+    them. If the tile is missing, log it: it is not fatal.
     """
     from zou.app import app as current_app
 
@@ -878,9 +896,9 @@ def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
             "tiles",
             preview_file_states_service.OK,
         )
-        # The tile is stored: a failure removing the local temp copy is
-        # not a generation failure and must not undo the "ok" just
-        # recorded above.
+        # The tile is stored. A failure to remove the local temporary
+        # copy is not a generation failure and must not undo the
+        # "ok" that was recorded above.
         try:
             os.remove(tile_path)
         except OSError:
@@ -900,13 +918,13 @@ def _get_stored_movie_prefixes(
     preview_file_id, is_remote, encode, skip_high_def, add_source_to_file_store
 ):
     """
-    Which storage prefixes hold the movie, recorded on the preview file so
-    that the movie routes do not have to rediscover it by probing the
-    storage. Locally it follows from the flags: the encoded versions, or
-    the upload itself under `previews` when it was stored raw and not
-    already kept as the source. A remote job is asked nothing: a runner
-    that predates skip_high_def still uploads both encoded versions, so
-    the storage is probed once instead.
+    Return the storage prefixes that hold the movie. They are recorded on
+    the preview file, thus the movie routes do not have to probe the storage
+    again to find them. Locally, the flags give them: the encoded versions,
+    or the upload itself under `previews` if it was stored raw and not
+    already kept as the source. A remote job does not give this data: a
+    runner older than skip_high_def still uploads both encoded versions,
+    thus the storage is probed once instead.
     """
     if is_remote:
         prefixes = files_service.probe_movie_prefixes(preview_file_id)
@@ -925,11 +943,11 @@ def _record_movie_states(
     preview_file_id, stored_movie_prefixes, remote_handles_thumbnails
 ):
     """
-    Record the movie versions stored and, when a remote job built them,
-    which pictures it actually wrote: a picture it should have written
-    and did not is failed. A local build records its pictures as it
-    stores them. A version not produced is not recorded missing: another
-    writer may still bring it, only a read confirms an absence.
+    Record the stored movie versions. If a remote job built them, also
+    record the pictures that it wrote: a picture that it had to write and
+    did not write is failed. A local build records its pictures when it
+    stores them. A version that was not produced is not recorded as missing:
+    another writer can still bring it, and only a read confirms an absence.
     """
     states = {
         ("movies", prefix): preview_file_states_service.OK
@@ -952,8 +970,8 @@ def _record_movie_states(
 
 def is_remote_normalization_enabled():
     """
-    Movie processing runs on a remote worker when the job queue is set to
-    remote and a Nomad job name is configured.
+    Return True if the movie processing runs on a remote worker. This occurs
+    if the job queue is set to remote and a Nomad job name is configured.
     """
     return (
         config.ENABLE_JOB_QUEUE_REMOTE
@@ -972,9 +990,9 @@ def _run_remote_normalize_movie(
     skip_normalization=False,
 ):
     """
-    Hand the movie processing over to a remote worker and wait for it. The
-    worker also builds the thumbnails and the tile, so it is dispatched even
-    when no encoding is wanted.
+    Give the movie processing to a remote worker and wait for it. The worker
+    also builds the thumbnails and the tile, thus it is dispatched even if
+    no encoding is necessary.
     """
     params = {
         "version": str(REMOTE_NORMALIZE_VERSION),
@@ -982,8 +1000,8 @@ def _run_remote_normalize_movie(
         "width": width,
         "height": height,
         "fps": fps,
-        # Optional fields: a runner that predates them keeps building both
-        # encoded versions as before, at its own default bitrates.
+        # Optional fields: a runner older than these fields still builds both
+        # encoded versions, at its own default bitrates.
         "skip_high_def": skip_high_def,
         "skip_normalization": skip_normalization,
         "preset": config.MOVIE_ENCODING_PRESET,
@@ -1003,9 +1021,10 @@ def save_variants(
     remove_original=True,
 ):
     """
-    Build variants of a picture file and save them in the main storage.
-    The generated variants are removed afterwards, the original too
-    unless remove_original is False: the caller then owns it.
+    Build the variants of a picture file and save them in the main storage.
+    Record each stored variant as ok. Then remove the generated variants.
+    Also remove the original, unless remove_original is False: then the
+    caller owns it.
     """
     variants = thumbnail_utils.generate_preview_variants(
         original_picture_path, preview_file_id
@@ -1024,7 +1043,7 @@ def save_variants(
             },
         )
     finally:
-        # A failed upload must not leak the remaining variant files.
+        # If an upload fails, the remaining variant files must not stay.
         remove_temp_files(
             *[
                 path
@@ -1038,7 +1057,8 @@ def save_variants(
 
 def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
     """
-    Clear a variant from the cache to force to redownload from object storage.
+    Remove a variant from the cache, thus the next read downloads it again
+    from the object storage.
     """
     if config.FS_BACKEND != "local":
         fs.rm_file(
@@ -1049,8 +1069,10 @@ def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
 
 def update_preview_file_position(preview_file_id, position):
     """
-    Change positions for preview files of given task and revision.
-    Given position is the new position for given preview file.
+    Change the positions of the preview files of the given task and
+    revision. The given position is the new position of the given preview
+    file. A position out of range changes nothing. Return the preview files
+    of the revision.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     task_id = preview_file.task_id
@@ -1066,15 +1088,15 @@ def update_preview_file_position(preview_file_id, position):
         for i, preview in enumerate(tmp_list):
             preview.update({"position": i + 1})
             files_service.clear_preview_file_cache(str(preview.id))
-        # The list was read in the order the positions used to be in, so it
-        # has to follow the move to answer the revision in its new order.
+        # The list was read in the old order of the positions, thus it must
+        # follow the move to return the revision in its new order.
         preview_files = tmp_list
     return PreviewFile.serialize_list(preview_files)
 
 
 def get_preview_files_for_revision(task_id, revision):
     """
-    Get all preview files for given task and revision.
+    Return all preview files for the given task and revision.
     """
     preview_files = PreviewFile.query.filter_by(
         task_id=task_id, revision=revision
@@ -1084,8 +1106,8 @@ def get_preview_files_for_revision(task_id, revision):
 
 def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     """
-    Return preview files for all productions with status equals to broken,
-    missing or processing using cursor-based pagination.
+    Return the preview files of all open productions whose status is broken,
+    missing or processing. Use cursor-based pagination.
     """
     query = (
         PreviewFile.query.join(Task)
@@ -1126,7 +1148,7 @@ def get_running_preview_files(cursor_preview_file_id=None, limit=None):
 
 def get_preview_files_for_entity(entity_id):
     """
-    Return all preview files related to given entity.
+    Return all preview files related to the given entity.
     """
     query = (
         PreviewFile.query.join(Task)
@@ -1141,11 +1163,11 @@ def get_preview_files_for_entity(entity_id):
 
 def unpin_foreign_preview_files(shots):
     """
-    Unset the preview file of the playlist entries it does not belong to,
-    unknown ones included: the entry would play another entity's preview.
-    Entries are dicts holding an entity_id (or id) and a preview_file_id,
-    other values are left as they are. A kept preview id is written in
-    lowercase, the form the playlist reads match.
+    Unset the preview file of the playlist entries that it does not belong
+    to, unknown entries included: else the entry would play the preview of
+    another entity. Entries are dicts that hold an entity_id (or id) and a
+    preview_file_id. Other values stay as they are. Write a kept preview ID
+    in lowercase, the form that the playlist reads match.
     """
     entries = [shot for shot in shots if isinstance(shot, dict)]
     preview_file_ids = {
@@ -1177,7 +1199,8 @@ def unpin_foreign_preview_files(shots):
 
 def get_last_preview_file_for_task(task_id):
     """
-    Get last preview published for given task.
+    Return the first preview file of the last revision of the given task, or
+    None.
     """
     preview = (
         PreviewFile.query.filter(PreviewFile.task_id == task_id)
@@ -1195,16 +1218,16 @@ def get_last_preview_file_for_task(task_id):
 
 def extract_frame_from_preview_file(preview_file, frame_number):
     """
-    Extract one frame of a movie preview as a picture.
+    Extract one frame of a movie preview as a picture and return its path.
+    Return None for an imported preview without binary. If the preview is
+    not a movie or no stored version is found, raise
+    PreviewFileNotFoundException.
     """
     if (preview_file.get("data") or {}).get("imported_only"):
-        # Imported via sync-push: only metadata is here, the binary lives
-        # elsewhere and will arrive via the file sync. Skip silently.
+        # Imported through sync-push: only the metadata is here. The binary
+        # is in another location and comes with the file sync. Skip silently.
         return None
-    try:
-        project = get_project_from_preview_file(preview_file["id"])
-    except PreviewFileNotFoundException:
-        raise PreviewFileNotFoundException
+    project = get_project_from_preview_file(preview_file["id"])
 
     if preview_file["extension"] == "mp4":
         preview_file_path = locate_stored_movie(preview_file)
@@ -1223,8 +1246,8 @@ def extract_frame_from_preview_file(preview_file, frame_number):
 
 def dispatch_frame_extraction(preview_file, frame_number, no_job=False):
     """
-    Rebuild the variants of a movie preview from one of its frames, on
-    the job queue when one is enabled. Return whether it was queued.
+    Rebuild the variants of a movie preview from one of its frames, on the
+    job queue if one is enabled. Return True if it was queued.
     """
     if config.ENABLE_JOB_QUEUE and not no_job:
         queue_store.job_queue.enqueue(
@@ -1239,9 +1262,9 @@ def dispatch_frame_extraction(preview_file, frame_number, no_job=False):
 
 def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     """
-    Replace the preview thumbnail with given frame, so a movie can show
-    the frame the reviewer picked. A failure leaves the previous
-    thumbnail in place: nothing is broken, only unchanged.
+    Replace the preview thumbnail with the given frame, thus a movie can show
+    the frame that the reviewer selected. If it fails, the previous thumbnail
+    stays: nothing is broken, only unchanged.
     """
     from flask import has_app_context
 
@@ -1274,11 +1297,12 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
 
 def extract_tile_from_preview_file(preview_file):
     """
-    Build the tile sheet of a movie preview, the strip of thumbnails the
-    player scrubs on.
+    Build the tile sheet of a movie preview and return its path. The tile
+    sheet is the strip of thumbnails that the player scrubs on. Return None
+    for an imported preview without binary.
     """
     if (preview_file.get("data") or {}).get("imported_only"):
-        # Imported via sync-push: metadata only. Skip silently.
+        # Imported through sync-push: metadata only. Skip silently.
         return None
     if preview_file["extension"] == "mp4":
         # A tile is 100 pixels high: the low def movie is enough.
@@ -1291,9 +1315,9 @@ def extract_tile_from_preview_file(preview_file):
 
 def retrieve_stored_movie(preview_file):
     """
-    Local path of the smallest stored version of a movie, low def first,
-    or None when the storage holds none of them. A tile is 100 pixels
-    high: the high def movie only costs a longer decode.
+    Return the local path of the smallest stored version of a movie, low def
+    first, or None if no version could be fetched. A tile is 100 pixels
+    high: the high def movie only makes the decode longer.
     """
     recorded_prefixes = files_service.get_preview_file_data(preview_file).get(
         files_service.MOVIE_PREFIXES_KEY
@@ -1311,11 +1335,11 @@ def retrieve_stored_movie(preview_file):
 
 def get_stored_movie_prefixes(preview_file, lowdef=False):
     """
-    Storage prefixes to try for the movie of given preview file dict, best
-    first. The normalization settings decide which versions exist
-    (SKIP_NORMALIZATION_HIGHDEF keeps lowdef only, SKIP_NORMALIZATION_FULL
-    with PREVIEW_SAVE_SOURCE_FILE keeps the source only), so no reader may
-    assume the "previews" one.
+    Return the storage prefixes to try for the movie of the given preview
+    file dict, best first. The normalization settings decide which versions
+    exist (SKIP_NORMALIZATION_HIGHDEF keeps lowdef only,
+    SKIP_NORMALIZATION_FULL with PREVIEW_SAVE_SOURCE_FILE keeps the source
+    only). Thus no reader can assume the "previews" prefix.
     """
     data = preview_file.get("data") or {}
     recorded = data.get(files_service.MOVIE_PREFIXES_KEY) or []
@@ -1324,12 +1348,12 @@ def get_stored_movie_prefixes(preview_file, lowdef=False):
 
 def locate_stored_movie(preview_file, lowdef=False):
     """
-    Local path of a stored version of the movie of given preview file dict,
-    fetched from the store when needed. Raises PreviewFileNotFoundException
-    when the store holds none of the versions. Only an absence the store
-    confirmed moves on to the next version: a transient failure is raised
-    as is, a caller recording the size of the movie would otherwise store
-    the one of the low def version.
+    Return the local path of a stored version of the movie of the given
+    preview file dict. Fetch it from the store if necessary. If the store
+    holds none of the versions, raise PreviewFileNotFoundException. Only an
+    absence that the store confirmed moves on to the next version. A
+    temporary failure is raised as is: else a caller that records the size
+    of the movie would store the size of the low def version.
     """
     preview_file_id = str(preview_file["id"])
     for prefix in get_stored_movie_prefixes(preview_file, lowdef):
@@ -1351,8 +1375,8 @@ def locate_stored_movie(preview_file, lowdef=False):
 
 def retrieve_preview_file(config, file_store, prefix, preview_file):
     """
-    Fetch a preview binary from the store to a local path, whichever
-    backend holds it.
+    Fetch a preview binary from the store to a local path, for all storage
+    backends.
     """
     try:
         preview_file_path = fs.get_file_path_and_file(
@@ -1379,7 +1403,8 @@ def retrieve_preview_file(config, file_store, prefix, preview_file):
 
 def generate_thumbnails(preview_file, preview_file_path, total, index):
     """
-    Regenerate the thumbnail variants of one preview and store them.
+    Generate the thumbnail variants of one preview again and store them. If
+    it fails, log the failure and do not raise it.
     """
     try:
         original_picture_path = preview_file_path
@@ -1401,7 +1426,9 @@ def generate_tiles(
     file_store, preview_file, preview_file_path, total, index, force=False
 ):
     """
-    Regenerate the tile sheet of one movie preview and store it.
+    Generate the tile sheet of one movie preview again and store it, unless
+    a tile is already stored and force is False. If it fails, record and log
+    the failure, and do not raise it.
     """
     try:
         if preview_file.extension == "mp4" and (
@@ -1416,9 +1443,9 @@ def generate_tiles(
                 "tiles",
                 preview_file_states_service.OK,
             )
-            # The tile is stored: a failure removing the local temp copy
-            # is not a generation failure and must not undo the "ok"
-            # just recorded above.
+            # The tile is stored. A failure to remove the local temporary
+            # copy is not a generation failure and must not undo the
+            # "ok" that was recorded above.
             try:
                 os.remove(tile_path)
             except OSError:
@@ -1450,15 +1477,15 @@ def copy_preview_file_on_storage(
     preview_file_to_update_id,
 ):
     """
-    Copy one stored preview to another prefix, skipping the copy when the
-    target already holds it. Return True when a file was actually copied.
+    Copy one stored preview to another prefix. If the target already holds
+    it, skip the copy. Return True if a file was copied.
     """
     if config.FS_BACKEND == "local":
         file_path = get_path_func(prefix, original_preview_file_id)
         other_file_path = get_path_func(prefix, preview_file_to_update_id)
         if os.path.exists(file_path):
             # Recorded before the copy, as file_store._copy does: a target
-            # key marked deleted must be revived before it is written.
+            # key marked as deleted must be revived before the write.
             stored_files_service.record_write(
                 bucket_name, prefix, preview_file_to_update_id
             )
@@ -1475,9 +1502,11 @@ def copy_preview_file_on_storage(
 
 def get_preview_file_name(preview_file_id):
     """
-    Build unique and human readable file name for preview downloads. The
-    convention followed is:
-    [project_name]_[entity_name]_[task_type_name]_v[revivision].[extension].
+    Build a unique and human readable file name for preview downloads. The
+    name follows this convention:
+    [project_name]_[entity_name]_[task_type_name]_v[revision].[extension].
+    If the organisation uses original file names, use the original name. If
+    the position is above 1, add a -[position] suffix.
     """
     organisation = organisation_service.get_organisation()
     preview_file = files_service.get_preview_file(preview_file_id)

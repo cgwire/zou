@@ -3,6 +3,7 @@ import urllib.parse
 from unittest import mock
 
 from tests.base import ApiDBTestCase
+from zou.app import config
 from zou.app.models.day_off import DayOff
 from zou.app.models.person import Person
 from zou.app.services import (
@@ -453,6 +454,24 @@ class PersonRoutesTestCase(ApiDBTestCase):
             "change-password",
             {"password": "newpassword123", "password_2": "newpassword123"},
         )
+
+    def test_a_protected_account_keeps_its_password(self):
+        self.addCleanup(
+            setattr, config, "PROTECTED_ACCOUNTS", config.PROTECTED_ACCOUNTS
+        )
+        config.PROTECTED_ACCOUNTS = [self.person.email]
+        password_before = Person.get(self.person_id).password
+
+        result = self.post(
+            f"/actions/persons/{self.person_id}/change-password",
+            {"password": "newpassword123", "password_2": "newpassword123"},
+            400,
+        )
+
+        self.assertEqual(
+            result.get("message"), "This user is in protected accounts."
+        )
+        self.assertEqual(Person.get(self.person_id).password, password_before)
 
     def test_get_reset_password_link(self):
         email = self.person.email

@@ -37,11 +37,11 @@ from zou.app.services import (
 from zou.app.services.base_service import get_instance
 from zou.app.utils import cache, events, fields
 
-# Lower bound of a project movie bitrate in Mbit/s. The upper bound is the
-# instance high definition bitrate, MOVIE_HIGHDEF_BITRATE.
+# Lower limit of a project movie bitrate in Mbit/s. The upper limit is the
+# high definition bitrate of the instance, MOVIE_HIGHDEF_BITRATE.
 MIN_MOVIE_BITRATE = 1
 
-# The collections a project dict serializes.
+# The collections that a project dict serializes.
 PROJECT_RELATIONS = [
     Project.team,
     Project.asset_types,
@@ -54,8 +54,8 @@ PROJECT_RELATIONS = [
 
 def with_project_relations(query):
     """
-    Load the collections of the listed projects in one query each, not one
-    per project at serialization.
+    Load the collections of the listed projects with one query for each
+    collection, not one query for each project at serialization.
     """
     return query.options(
         *[selectinload(relation) for relation in PROJECT_RELATIONS]
@@ -64,10 +64,11 @@ def with_project_relations(query):
 
 def clear_project_cache(project_id):
     """
-    Drop every memoized serialization of given project, and the project lists.
+    Drop all the memoized serializations of the given project, and the
+    project lists.
     """
-    # Both arguments are given: an omitted default is a cache key of its
-    # own, so deleting on the id alone would leave the common entry behind.
+    # Give both arguments. An omitted default is a different cache key.
+    # A delete with only the ID keeps the usual entry in the cache.
     project_id = str(project_id)
     cache.cache.delete_memoized(_get_project_cached, project_id, False)
     cache.cache.delete_memoized(_get_project_cached, project_id, True)
@@ -80,7 +81,7 @@ def clear_project_cache(project_id):
 @cache.memoize_function(120)
 def open_projects(name=None):
     """
-    Return all open projects. Allow to filter projects by name.
+    Return all the open projects. A filter on the project name is possible.
     """
     query = (
         Project.query.join(
@@ -99,7 +100,7 @@ def open_projects(name=None):
 
 def open_project_ids():
     """
-    Return all open project ids. Allow to filter projects by name.
+    Return the IDs of all the open projects.
     """
     return [project["id"] for project in open_projects()]
 
@@ -108,10 +109,14 @@ def get_projects_with_extra_data(
     query, for_client=False, vendor_departments=None
 ):
     """
-    Helpers function to attach:
-    * First episode name to current project when it's a TV Show.
-    * Add metadata descriptors for this project.
-    * Add task types and task statuses for this project.
+    Run the given project query and return the projects as dicts with
+    their extra data:
+
+    - the project status name.
+    - the metadata descriptors.
+    - the task type and task status links.
+    - the asset type workflows.
+    - for a TV show, the ID of the first episode.
     """
     projects_list = with_project_relations(query).all()
     project_ids = [project.id for project in projects_list]
@@ -124,9 +129,9 @@ def get_project_with_extra_data(
     project, for_client=False, vendor_departments=None
 ):
     """
-    Serialize one project row the way the open projects listing does, extra
-    data included: a project read by its id, the only way to reach a closed
-    one, is then no lesser than a listed one.
+    Serialize one project row as the open projects list does, with the
+    extra data. This is the only way to read a closed project, so a project
+    read by its ID has the same data as a listed project.
     """
     return serialize_projects_with_extra_data(
         [project], [([project.id], for_client, vendor_departments)]
@@ -135,11 +140,12 @@ def get_project_with_extra_data(
 
 def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
     """
-    Serialize given project rows with their extra data, fetched in one query
-    per kind for the whole list. The metadata descriptors are narrowed on a
-    role that can be set per project: descriptor_visibilities lists the
-    (project_ids, for_client, vendor_departments) triples covering the
-    rows, and their descriptors are fetched in one query per triple.
+    Serialize the given project rows with their extra data. Get the extra
+    data with one query for each kind, for the full list. A role can be set
+    for each project, and the metadata descriptors depend on this role.
+    descriptor_visibilities lists the (project_ids, for_client,
+    vendor_departments) triples for the rows. Get their descriptors with
+    one query for each triple.
     """
     if not projects_list:
         return []
@@ -185,7 +191,7 @@ def serialize_projects_with_extra_data(projects_list, descriptor_visibilities):
 
 def _fetch_task_type_links_by_project(project_ids):
     """
-    Return the task type links of given projects grouped by project.
+    Return the task type links of the given projects, grouped by project.
     """
     task_type_links = ProjectTaskTypeLink.query.filter(
         ProjectTaskTypeLink.project_id.in_(project_ids)
@@ -203,7 +209,7 @@ def _fetch_task_type_links_by_project(project_ids):
 
 def _fetch_task_status_links_by_project(project_ids):
     """
-    Return the task status links of given projects grouped by project.
+    Return the task status links of the given projects, grouped by project.
     """
     task_status_links = ProjectTaskStatusLink.query.filter(
         ProjectTaskStatusLink.project_id.in_(project_ids)
@@ -220,8 +226,8 @@ def _fetch_task_status_links_by_project(project_ids):
 
 def _fetch_asset_type_workflows_by_project(project_ids):
     """
-    Return the asset type workflows specific to given projects, grouped by
-    project then by asset type.
+    Return the asset type workflows specific to the given projects, grouped
+    by project and then by asset type.
     """
     links = ProjectAssetTypeTaskTypeLink.query.filter(
         ProjectAssetTypeTaskTypeLink.project_id.in_(project_ids)
@@ -236,8 +242,8 @@ def _fetch_asset_type_workflows_by_project(project_ids):
 
 def _fetch_first_episodes_by_project(project_ids):
     """
-    Return the first episode of each given project, the one the clients
-    land on when they open a TV show.
+    Return the first episode of each given project. The clients open this
+    episode first when they open a TV show.
     """
     if not project_ids:
         return {}
@@ -309,8 +315,9 @@ def _build_project_dict_with_extra_data(
     first_episodes_by_project,
 ):
     """
-    Assemble one project dict from the project row and the maps prefetched
-    for the whole page, so no query is issued per project.
+    Make one project dict from the project row and from the maps that the
+    caller got before for the full page. Because of this, no query occurs for
+    each project.
     """
     project_dict = project.serialize(relations=True)
     project_dict["project_status_name"] = status_names.get(
@@ -345,7 +352,8 @@ def _build_project_dict_with_extra_data(
 
 def get_projects():
     """
-    Return all projects, extra data included, as a project read by its id.
+    Return all the projects with the extra data, as for a project read by
+    its ID.
     """
     return get_projects_with_extra_data(
         Project.query.join(
@@ -357,14 +365,14 @@ def get_projects():
 @cache.memoize_function(480)
 def get_project_statuses():
     """
-    Return every project status.
+    Return all the project statuses.
     """
     return fields.serialize_models(ProjectStatus.get_all())
 
 
 def get_or_create_open_status():
     """
-    Return open status. If it does not exist, it creates it.
+    Return the open status. If it does not exist, create it.
     """
     return get_or_create_project_status("Open")
 
@@ -372,7 +380,7 @@ def get_or_create_open_status():
 @cache.memoize_function(480)
 def get_open_status():
     """
-    Return open status. If it does not exist, it creates it.
+    Return the open status. If it does not exist, create it.
     """
     return get_or_create_project_status("Open")
 
@@ -380,7 +388,7 @@ def get_open_status():
 @cache.memoize_function(120)
 def get_closed_status():
     """
-    Return closed status. If it does not exist, it creates it.
+    Return the closed status. If it does not exist, create it.
     """
     return get_or_create_project_status("Closed")
 
@@ -396,7 +404,7 @@ def clear_project_status_cache():
 
 def get_or_create_project_status(name):
     """
-    Return given status. If it does not exist, it creates it.
+    Return the given status. If it does not exist, create it.
     """
     project_status = ProjectStatus.get_by(name=name)
     if project_status is None:
@@ -408,7 +416,7 @@ def get_or_create_project_status(name):
 
 def save_project_status(project_statuses):
     """
-    Save in database all project status given in parameter.
+    Save in the database all the project statuses given as parameter.
     """
     result = []
     filtered_satuses = (x for x in project_statuses if x is not None)
@@ -421,8 +429,8 @@ def save_project_status(project_statuses):
 
 def get_project_raw(project_id):
     """
-    Get project matching given id, as active record. Raises an exception if
-    project is not found.
+    Return the project that has the given ID, as an active record. If the
+    project is not found, raise an exception.
     """
     try:
         project = Project.get(project_id)
@@ -442,12 +450,12 @@ def _get_project_cached(project_id, relations=False):
 
 def get_project(project_id, relations=False):
     """
-    Get project matching given id, as a dict. Raises an exception if project is
-    not found.
+    Return the project that has the given ID, as a dict. If the project is
+    not found, raise an exception.
 
-    The id is normalised before it reaches the memoization, which keys on the
-    argument: a UUID and its string form would otherwise be two entries, and
-    clear_project_cache would only ever drop one of them.
+    Normalize the ID before the memoization, because the memoization keys
+    on the argument. If not, a UUID and its string are two entries, and
+    clear_project_cache drops only one of them.
     """
     return _get_project_cached(str(project_id), relations)
 
@@ -455,8 +463,8 @@ def get_project(project_id, relations=False):
 @cache.memoize_function(120)
 def get_project_by_name(project_name):
     """
-    Get project matching given name. Raises an exception if project is not
-    found.
+    Return the project that has the given name. If the project is not
+    found, raise an exception.
     """
     project = Project.query.filter(Project.name.ilike(project_name)).first()
 
@@ -468,7 +476,8 @@ def get_project_by_name(project_name):
 
 def update_project(project_id, data):
     """
-    Update project matching given id with data from *data* dict.
+    Update the project that has the given ID with the data of the *data*
+    dict. Drop its cache and emit a project:update event.
     """
     project = get_project_raw(project_id)
     project.update(data)
@@ -479,9 +488,10 @@ def update_project(project_id, data):
 
 def _check_project_role(role):
     """
-    Refuse a role a project link cannot carry. admin is global by design,
-    and anything else is a typo: the column is an enum, so writing it
-    raises a KeyError deep in the driver rather than answering the caller.
+    Refuse a role that a project link cannot have. The admin role is
+    global by design. All other values are typos: the column is an enum,
+    so a write of such a value raises a KeyError deep in the driver, and
+    the caller gets no clear answer.
     """
     if role is None:
         return
@@ -495,9 +505,10 @@ def _check_project_role(role):
 
 def add_team_member(project_id, person_id, role=None):
     """
-    Add a person listed in database to the project team, with an optional
-    project-specific role. The role is validated before the membership is
-    created so an invalid role leaves no partial state behind.
+    Add a person of the database to the project team, with an optional
+    project-specific role. The function validates the role before it
+    creates the membership. Because of this, an invalid role does not leave a
+    partial state.
     """
     _check_project_role(role)
     person = Person.get(person_id)
@@ -518,15 +529,15 @@ def add_team_member(project_id, person_id, role=None):
 
 def remove_team_member(project_id, person_id):
     """
-    Remove a person listed in database from the the project team.
+    Remove a person of the database from the project team.
     """
     return _remove_from_list_attr(project_id, Person, person_id, "team")
 
 
 def update_team_member_role(project_id, person_id, role):
     """
-    Set the role of given person on given project. A None role restores
-    inheritance of the person's global role.
+    Set the role of the given person on the given project. If the role is
+    None, the person inherits their global role again.
     """
     _check_project_role(role)
     person = Person.get(person_id)
@@ -559,9 +570,9 @@ def update_team_member_role(project_id, person_id, role):
 
 def get_team_raw(project_id):
     """
-    Return the team members of given project as active records, with
-    their departments eager-loaded: serializing them person by person
-    lazy-loads one departments query per member otherwise.
+    Return the team members of the given project as active records, with
+    their departments loaded eagerly. If not, the serialization of each
+    member loads its departments with one more query.
     """
     project = get_project_raw(project_id)
     return (
@@ -575,13 +586,14 @@ def get_team_raw(project_id):
 @cache.memoize_function(240)
 def get_team_person_ids(project_id):
     """
-    Return the ids of the persons in the team of given project. Raises an
-    exception if project is not found. Memoized: every project access check
-    reads it. Always call it with the project id as a string, the cache is
-    keyed on it.
+    Return the IDs of the persons in the team of the given project. If the
+    project is not found, raise an exception. The result is memoized,
+    because each project access check reads it. Always give the project ID
+    as a string, because the cache keys on it.
 
-    The ids come from the link table alone: loading the project row brings
-    the whole person row of each member along, which no access check needs.
+    The IDs come only from the link table. A load of the project row also
+    loads the full person row of each member, and no access check needs
+    these rows.
     """
     try:
         person_ids = [
@@ -593,7 +605,7 @@ def get_team_person_ids(project_id):
     except StatementError:
         raise ProjectNotFoundException()
     if not person_ids:
-        # A project that does not exist has no team either.
+        # A project that does not exist also has no team.
         get_project_raw(project_id)
     return person_ids
 
@@ -601,10 +613,11 @@ def get_team_person_ids(project_id):
 @cache.memoize_function(120)
 def get_team_roles(project_id):
     """
-    Return a dict mapping person ids to their explicit role on given
-    project. Persons inheriting their global role are absent from the dict.
-    Memoized: every project access check of a non-admin reads it. Always
-    call it with the project id as a string, the cache is keyed on it.
+    Return a dict that maps person IDs to their explicit role on the given
+    project. The dict does not contain the persons that inherit their
+    global role. The result is memoized, because each project access check
+    of a non-admin reads it. Always give the project ID as a string,
+    because the cache keys on it.
     """
     return {
         str(link.person_id): getattr(link.role, "code", link.role)
@@ -616,7 +629,7 @@ def get_team_roles(project_id):
 
 def add_asset_type_setting(project_id, asset_type_id):
     """
-    Add an asset type listed in database to the the project asset types.
+    Add an asset type of the database to the asset types of the project.
     """
     return _add_to_list_attr(
         project_id, EntityType, asset_type_id, "asset_types"
@@ -625,8 +638,8 @@ def add_asset_type_setting(project_id, asset_type_id):
 
 def remove_asset_type_setting(project_id, asset_type_id):
     """
-    Remove an asset type listed in database from the the project asset types,
-    with its project workflow.
+    Remove an asset type of the database from the asset types of the
+    project, with its project workflow.
     """
     _check_setting_id(asset_type_id)
     ProjectAssetTypeTaskTypeLink.query.filter_by(
@@ -639,9 +652,9 @@ def remove_asset_type_setting(project_id, asset_type_id):
 
 def get_asset_type_workflow(project_id, asset_type_id):
     """
-    Return the ids of the task types of an asset type workflow: the one of
-    the project when set, else the studio one. An empty list means that all
-    the asset task types are accepted.
+    Return the IDs of the task types of an asset type workflow. This is the
+    workflow of the project if it is set, or else the studio workflow. An
+    empty list means that all the asset task types are accepted.
     """
     links = ProjectAssetTypeTaskTypeLink.query.filter_by(
         project_id=project_id, asset_type_id=asset_type_id
@@ -673,8 +686,9 @@ def filter_assets_in_workflow(project_id, task_type_id, assets):
 
 def set_asset_type_workflow(project_id, asset_type_id, task_type_ids):
     """
-    Replace the workflow of an asset type for given project. An empty list
-    removes it, so the asset type follows the studio workflow again.
+    Replace the workflow of an asset type for the given project. An empty
+    list removes it, and then the asset type uses the studio workflow
+    again.
     """
     project = get_project_raw(project_id)
     if asset_type_id not in {str(at.id) for at in project.asset_types}:
@@ -715,9 +729,9 @@ def add_task_type_setting(
     is_client_visible=None,
 ):
     """
-    Add a task type listed in database to the the project task types. An
-    existing link keeps its priority and gets the bitrates and the client
-    visibility when given.
+    Add a task type of the database to the task types of the project. An
+    existing link keeps its priority. If the bitrates and the client
+    visibility are given, the link gets them.
     """
     project_id = str(project_id)
     task_type_id = str(task_type_id)
@@ -752,9 +766,9 @@ def add_task_type_setting(
 
 def remove_task_type_setting(project_id, task_type_id):
     """
-    Remove a task type listed in database from the the project task types and
-    from the project workflows. A workflow left empty is gone: its asset type
-    follows the studio workflow again.
+    Remove a task type of the database from the task types of the project
+    and from the project workflows. If a workflow becomes empty, remove it:
+    its asset type then uses the studio workflow again.
     """
     _check_setting_id(task_type_id)
     ProjectAssetTypeTaskTypeLink.query.filter_by(
@@ -767,7 +781,7 @@ def remove_task_type_setting(project_id, task_type_id):
 
 def add_task_status_setting(project_id, task_status_id):
     """
-    Add a task status listed in database to the the project task statuses.
+    Add a task status of the database to the task statuses of the project.
     """
     return _add_to_list_attr(
         project_id, TaskStatus, task_status_id, "task_statuses"
@@ -776,7 +790,8 @@ def add_task_status_setting(project_id, task_status_id):
 
 def remove_task_status_setting(project_id, task_status_id):
     """
-    Remove a task status listed in database from the the project task statuses.
+    Remove a task status of the database from the task statuses of the
+    project.
     """
     return _remove_from_list_attr(
         project_id, TaskStatus, task_status_id, "task_statuses"
@@ -791,10 +806,10 @@ def update_project_settings(
     replace_task_types=False,
 ):
     """
-    Add several task types (with their priority), task statuses and asset
-    types to the project settings in a single operation. Unknown ids are
-    skipped. When replace_task_types is set, the given task type list is the
-    full wanted set: existing links absent from it are removed.
+    Add many task types (with their priority), task statuses and asset
+    types to the project settings in one operation. Skip the unknown IDs.
+    If replace_task_types is set, the given task type list is the full
+    set: remove the existing links that are not in this list.
     """
     project = get_project_raw(project_id)
     project_id = str(project.id)
@@ -810,7 +825,7 @@ def update_project_settings(
     for task_type_id, entry in wanted_task_types.items():
         link = existing_links.get(task_type_id)
         priority = entry.get("priority")
-        # Omitted visibility leaves an existing link unchanged.
+        # If the visibility is not given, an existing link does not change.
         visibility = (
             {}
             if entry.get("is_client_visible") is None
@@ -866,7 +881,8 @@ def update_project_settings(
 
 def add_status_automation_setting(project_id, status_automation_id):
     """
-    Add a status automation listed in database to the project status automations.
+    Add a status automation of the database to the status automations of
+    the project.
     """
     return _add_to_list_attr(
         project_id,
@@ -878,8 +894,8 @@ def add_status_automation_setting(project_id, status_automation_id):
 
 def remove_status_automation_setting(project_id, status_automation_id):
     """
-    Remove a status automation listed in database from the project status
-    automations.
+    Remove a status automation of the database from the status automations
+    of the project.
     """
     return _remove_from_list_attr(
         project_id,
@@ -893,7 +909,8 @@ def add_preview_background_file_setting(
     project_id, preview_background_file_id
 ):
     """
-    Add a preview background file listed in database to the project backgrounds.
+    Add a preview background file of the database to the backgrounds of the
+    project.
     """
     return _add_to_list_attr(
         project_id,
@@ -907,7 +924,8 @@ def remove_preview_background_file_setting(
     project_id, preview_background_file_id
 ):
     """
-    Remove a preview background file listed in database from the project backgrounds.
+    Remove a preview background file of the database from the backgrounds
+    of the project.
     """
     return _remove_from_list_attr(
         project_id,
@@ -919,7 +937,8 @@ def remove_preview_background_file_setting(
 
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     """
-    Append a row to one of the project settings lists, no-op when already there.
+    Append a row to one of the project settings lists. If the row is
+    already in the list, do nothing.
     """
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
@@ -934,9 +953,9 @@ def _add_to_list_attr(project_id, model_class, model_id, list_attr):
             return _save_project(project)
         except IntegrityError:
             # A concurrent request already added the same link. The check
-            # above is not atomic, so treat the duplicate as a no-op and
-            # return the up-to-date project. The failed transaction has
-            # already been rolled back by Model.save().
+            # above is not atomic. Because of this, ignore the duplicate and
+            # return the current project. Model.save() already did a rollback
+            # of the failed transaction.
             return get_project_raw(project_id).serialize()
     else:
         return project.serialize()
@@ -949,7 +968,8 @@ def _check_setting_id(model_id):
 
 def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
     """
-    Remove a row from one of the project settings lists, no-op when absent.
+    Remove a row from one of the project settings lists. If the row is not
+    in the list, do nothing.
     """
     _check_setting_id(model_id)
     project = get_project_raw(project_id)
@@ -963,7 +983,7 @@ def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
 
 def _save_project(project):
     """
-    Persist the project, drop its cache and notify the clients.
+    Save the project, drop its cache and notify the clients.
     """
     project.save()
     clear_project_cache(str(project.id))
@@ -973,14 +993,15 @@ def _save_project(project):
 
 def is_tv_show(project):
     """
-    Return True when given project is a TV show, so episodes apply.
+    Return True if the given project is a TV show. Episodes apply only to
+    TV shows.
     """
     return project["production_type"] == "tvshow"
 
 
 def is_open(project):
     """
-    Return True when given project is still open.
+    Return True if the given project is still open.
     """
     open_status = get_open_status()
     return project["project_status_id"] == open_status["id"]
@@ -988,9 +1009,10 @@ def is_open(project):
 
 def _notify_project_settings_change(project_id):
     """
-    Drop the project cache and notify the clients after a change on one of its
-    task type or task status links. Those tables are not the project, but the
-    clients read them through it, so the project is what they have to refetch.
+    Drop the project cache and notify the clients after a change on one of
+    its task type or task status links. These tables are not the project.
+    But the clients read them through the project, so the clients must get
+    the project again.
     """
     project_id = str(project_id)
     clear_project_cache(project_id)
@@ -999,8 +1021,8 @@ def _notify_project_settings_change(project_id):
 
 def create_project_task_type_link(project_id, task_type_id, priority):
     """
-    Link a task type to given project with a priority, or update the
-    priority when the link already exists.
+    Link a task type to the given project with a priority. If the link
+    already exists, update the priority.
     """
     if not task_type_id or not fields.is_valid_id(task_type_id):
         raise WrongParameterException(
@@ -1030,8 +1052,8 @@ def create_project_task_status_link(
     project_id, task_status_id, priority, roles_for_board=None
 ):
     """
-    Link a task status to given project, or update the priority and the
-    board roles when the link already exists.
+    Link a task status to the given project. If the link already exists,
+    update the priority and the board roles.
     """
     if not task_status_id or not fields.is_valid_id(task_status_id):
         raise WrongParameterException(
@@ -1064,9 +1086,9 @@ def create_project_task_status_link(
 
 def set_task_status_client_allowed(project_id, task_status_id, value):
     """
-    Override, for given project, whether its clients may set given task
-    status. None reverts to the studio value. The status has to be linked
-    to the project.
+    For the given project, override the permission of the clients to set
+    the given task status. None sets the studio value again. The status
+    must be linked to the project.
     """
     if not task_status_id or not fields.is_valid_id(str(task_status_id)):
         raise TaskStatusNotFoundException()
@@ -1082,8 +1104,8 @@ def set_task_status_client_allowed(project_id, task_status_id, value):
 
 def get_client_allowed_overrides(project_id):
     """
-    Return the task status ids of given project whose client permission is
-    overridden, mapped to the override.
+    Return the task status IDs of the given project whose client permission
+    is overridden, mapped to the override.
     """
     links = ProjectTaskStatusLink.query.filter(
         ProjectTaskStatusLink.project_id == project_id,
@@ -1094,8 +1116,9 @@ def get_client_allowed_overrides(project_id):
 
 def is_task_status_client_allowed(project_id, task_status):
     """
-    Return whether clients of given project may set given task status: the
-    project override when there is one, the studio value otherwise.
+    Return True if the clients of the given project can set the given task
+    status. Use the project override if it exists. If not, use the studio
+    value.
     """
     link = ProjectTaskStatusLink.get_by(
         project_id=project_id, task_status_id=task_status["id"]
@@ -1107,9 +1130,10 @@ def is_task_status_client_allowed(project_id, task_status):
 
 def set_project_task_type_link_priorities(project_id, task_type_ids):
     """
-    Set the priority of the project's task type links from the given ordered
-    id list (priority = position, 1-based). Only existing links are touched,
-    so a reorder never creates links. Returns the updated links.
+    Set the priority of the task type links of the project from the given
+    ordered list of IDs (priority = position, from 1). The function changes
+    only existing links, so a reorder never creates links. Return the
+    updated links.
     """
     links = []
     for priority, task_type_id in enumerate(task_type_ids, start=1):
@@ -1125,9 +1149,10 @@ def set_project_task_type_link_priorities(project_id, task_type_ids):
 
 def set_project_task_status_link_priorities(project_id, task_status_ids):
     """
-    Set the priority of the project's task status links from the given ordered
-    id list (priority = position, 1-based). Only the priority is updated, so
-    the board roles of each link are preserved. Returns the updated links.
+    Set the priority of the task status links of the project from the given
+    ordered list of IDs (priority = position, from 1). The function changes
+    only the priority, so the board roles of each link stay the same.
+    Return the updated links.
     """
     links = []
     for priority, task_status_id in enumerate(task_status_ids, start=1):
@@ -1143,26 +1168,35 @@ def set_project_task_status_link_priorities(project_id, task_status_ids):
 
 def get_project_task_types_raw(project_id, for_entity=None):
     """
-    Task types configured on given project as active records, narrowed to
-    the ones of an entity kind when for_entity is given. for_entity was
-    added nullable in 2018 and only ever backfilled for shots, so a task
-    type predating it reads NULL and means "Asset", the model default.
+    Return the task types configured on the given project as active
+    records. If for_entity is given, return only the task types of this
+    entity kind. for_entity became a nullable column in 2018 and only
+    the shots got a backfill. Because of this, an older task type has NULL,
+    which means "Asset", the model default.
     """
     query = TaskType.query.join(ProjectTaskTypeLink).filter(
         ProjectTaskTypeLink.project_id == project_id
     )
+    if for_entity is not None:
+        query = _filter_task_types_for_entity(query, for_entity)
+    return query.all()
+
+
+def _filter_task_types_for_entity(query, for_entity):
+    """
+    Limit a task type query to the given entity kind. A NULL for_entity
+    means "Asset" (see get_project_task_types_raw).
+    """
     if for_entity == "Asset":
-        query = query.filter(
+        return query.filter(
             or_(TaskType.for_entity == "Asset", TaskType.for_entity.is_(None))
         )
-    elif for_entity is not None:
-        query = query.filter(TaskType.for_entity == for_entity)
-    return query.all()
+    return query.filter(TaskType.for_entity == for_entity)
 
 
 def get_project_task_types(project_id):
     """
-    Return the task types configured on given project.
+    Return the task types configured on the given project.
     """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_types)
@@ -1170,7 +1204,7 @@ def get_project_task_types(project_id):
 
 def get_project_task_statuses(project_id):
     """
-    Return the task statuses configured on given project.
+    Return the task statuses configured on the given project.
     """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
@@ -1178,9 +1212,9 @@ def get_project_task_statuses(project_id):
 
 def get_project_status_automations(project_id):
     """
-    Return the status automations configured on given project, in the
-    order they were created: the automations a status change fires apply
-    in that order.
+    Return the status automations configured on the given project, in the
+    order of their creation. The automations that a status change starts
+    apply in this order.
     """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)
@@ -1188,7 +1222,7 @@ def get_project_status_automations(project_id):
 
 def get_project_preview_background_files(project_id):
     """
-    Return the preview background files configured on given project.
+    Return the preview background files configured on the given project.
     """
     project = get_project_raw(project_id)
     return Project.serialize_list(project.preview_background_files)
@@ -1196,7 +1230,8 @@ def get_project_preview_background_files(project_id):
 
 def get_project_fps(project_id):
     """
-    Return fps set at project level or default fps if it not set.
+    Return the fps set on the project. If it is not set, return the
+    default fps.
     """
     project = get_project(project_id)
     return float(project["fps"] or "25.00")
@@ -1204,13 +1239,12 @@ def get_project_fps(project_id):
 
 def get_task_type_priority_map(project_id, for_entity="Asset"):
     """
-    Return a dict allowing to match a task type id with a priority.
+    Return a dict that maps a task type ID to a priority.
     """
-    task_types = (
-        ProjectTaskTypeLink.query.join(TaskType)
-        .filter(ProjectTaskTypeLink.project_id == project_id)
-        .filter(TaskType.for_entity == for_entity)
-    ).all()
+    query = ProjectTaskTypeLink.query.join(TaskType).filter(
+        ProjectTaskTypeLink.project_id == project_id
+    )
+    task_types = _filter_task_types_for_entity(query, for_entity).all()
     return {
         str(task_type_link.task_type_id): task_type_link.priority
         for task_type_link in task_types
@@ -1219,20 +1253,23 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
 
 def get_task_type_links(project_id, for_entity="Asset"):
     """
-    Return a lisk of links for given project and entity type.
+    Return a list of links for the given project and entity type.
     """
+    query = ProjectTaskTypeLink.query.join(TaskType).filter(
+        ProjectTaskTypeLink.project_id == project_id
+    )
     task_type_links = (
-        ProjectTaskTypeLink.query.join(TaskType)
-        .filter(ProjectTaskTypeLink.project_id == project_id)
-        .filter(TaskType.for_entity == for_entity)
+        _filter_task_types_for_entity(query, for_entity)
         .order_by(ProjectTaskTypeLink.priority.desc())
-    ).all()
+        .all()
+    )
     return ProjectTaskTypeLink.serialize_list(task_type_links)
 
 
 def get_department_team(project_id, department_id):
     """
-    Get all persons in a given department for a given project.
+    Return all the persons of the given department in the given project,
+    as active records.
     """
     persons = (
         Person.query.join(
@@ -1247,7 +1284,7 @@ def get_department_team(project_id, department_id):
 
 def build_open_project_filter():
     """
-    Query filter for project to retrieve only open projects.
+    Return the query filter that keeps only the open projects.
     """
     open_status = get_open_status()
     return Project.project_status_id == open_status["id"]
@@ -1257,8 +1294,8 @@ def narrow_metadata_descriptors(
     query, for_client=False, vendor_departments=None
 ):
     """
-    Narrow given metadata descriptors query to the ones a client or a vendor
-    may read.
+    Limit the given metadata descriptors query to the descriptors that a
+    client or a vendor can read.
     """
     narrowing = build_descriptor_narrowing(for_client, vendor_departments)
     if narrowing is None:
@@ -1270,9 +1307,9 @@ def _fetch_metadata_descriptors_by_project(
     project_ids, for_client=False, vendor_departments=None
 ):
     """
-    Return the metadata descriptors of given projects grouped by project,
-    in one query. Clients only get the descriptors published to them, and
-    a vendor only the ones of their departments.
+    Return the metadata descriptors of the given projects, grouped by
+    project, with one query. Clients get only the descriptors published to
+    them. A vendor gets only the descriptors of their departments.
     """
     descriptors_query = narrow_metadata_descriptors(
         MetadataDescriptor.query.filter(
@@ -1281,7 +1318,8 @@ def _fetch_metadata_descriptors_by_project(
         for_client,
         vendor_departments,
     )
-    # Eager-load departments to avoid N+1 when serializing descriptors
+    # Load the departments eagerly to prevent N+1 queries at the
+    # serialization of the descriptors.
     descriptors_query = descriptors_query.options(
         joinedload(MetadataDescriptor.departments)
     )
@@ -1295,11 +1333,12 @@ def _fetch_metadata_descriptors_by_project(
 
 def build_descriptor_narrowing(for_client=False, vendor_departments=None):
     """
-    Return the criterion keeping the metadata descriptors a client or a
-    vendor may read, None when nothing is narrowed: a client only gets the
-    ones published to clients, a vendor only the ones of their departments
-    or of no department. Shared by every route serving descriptors, so that
-    they all apply the same rule.
+    Return the criterion that keeps the metadata descriptors that a client
+    or a vendor can read. If nothing is limited, return None. A client gets
+    only the descriptors published to clients. A vendor gets only the
+    descriptors of their departments or of no department. All the routes
+    that serve descriptors use this function, so that they all apply the
+    same rule.
     """
     if for_client:
         return MetadataDescriptor.for_client == True
@@ -1315,7 +1354,7 @@ def build_descriptor_narrowing(for_client=False, vendor_departments=None):
 
 def is_valid_resolution(resolution):
     """
-    Return true if the dimension follows the 1920x1080 pattern.
+    Return True if the dimension has the 1920x1080 pattern.
     """
     return resolution is not None and bool(
         re.match(r"^\d{3,4}x\d{3,4}$", resolution)
@@ -1324,19 +1363,19 @@ def is_valid_resolution(resolution):
 
 def is_valid_partial_resolution(resolution):
     """
-    Return true if the dimension follows the x1080 pattern.
+    Return True if the dimension has the x1080 pattern.
     """
     return resolution is not None and bool(re.match(r"^x\d{3,4}$", resolution))
 
 
 def validate_resolution(resolution):
     """
-    Raise WrongParameterException if the resolution is set but doesn't
-    match the canonical "WIDTHxHEIGHT" or "xHEIGHT" format. Empty values
-    (None or "") are accepted: the runtime falls back to 1080p.
+    If the resolution is set but does not match the canonical "WIDTHxHEIGHT"
+    or "xHEIGHT" format, raise WrongParameterException. Empty values (None
+    or "") are accepted: the runtime then uses 1080p.
 
-    Used at the CRUD boundary so users get an immediate 400 instead of
-    a silent fallback at normalization time.
+    The CRUD boundary uses this function. Because of this, users get a 400
+    error immediately, not a silent default value at normalization time.
     """
     if resolution in (None, ""):
         return
@@ -1351,9 +1390,9 @@ def validate_resolution(resolution):
 
 def validate_movie_bitrate(bitrate):
     """
-    Raise WrongParameterException when a movie bitrate is set but is not
-    an integer number of Mbit/s between 1 and the instance high definition
-    bitrate.
+    If a movie bitrate is set but is not an integer number of Mbit/s
+    between 1 and the high definition bitrate of the instance, raise
+    WrongParameterException.
     """
     if bitrate is None:
         return
@@ -1371,14 +1410,23 @@ def validate_movie_bitrate(bitrate):
 
 def validate_movie_bitrates(data, current=None, inherited=None):
     """
-    Check the hd_bitrate_compression and ld_bitrate_compression a settings
-    change sets: each within bounds, and a low definition one never above
-    the high definition bitrate the movies will get. That one resolves as
-    the encoder does: data, then current (the object being changed) for a
-    bitrate absent from data, then inherited (the level the object falls
-    back on), then the config. Bitrates the change leaves as they are, sent
-    back or not, are not checked: the encoder caps them, as it caps an
-    unset low definition bitrate.
+    Check the hd_bitrate_compression and ld_bitrate_compression that a
+    settings change sets:
+
+    - each value must be in the limits.
+    - a low definition bitrate must never be more than the high definition
+      bitrate of the movies.
+
+    Find the high definition bitrate as the encoder does, in this order:
+
+    - data.
+    - current (the object that changes), for a bitrate that is not in data.
+    - inherited (the level that the object uses if its value is not set).
+    - the config.
+
+    Do not check the bitrates that the change does not change, sent again
+    or not. The encoder limits them, as it limits an unset low definition
+    bitrate.
     """
     current = current or {}
     changes = {
@@ -1401,9 +1449,10 @@ def validate_movie_bitrates(data, current=None, inherited=None):
 
 def get_movie_bitrates(project, task_type_link=None):
     """
-    Return the (highdef, lowdef) bitrates in Mbit/s the movies of a task
-    are encoded at: the task type link's, then the project's, then the
-    config's. Each version resolves on its own.
+    Return the (highdef, lowdef) bitrates in Mbit/s for the encoding of the
+    movies of a task. Use the value of the task type link, then the value
+    of the project, then the value of the config. Each value is found
+    separately.
     """
     bitrates = []
     for key, default in (
@@ -1412,9 +1461,10 @@ def get_movie_bitrates(project, task_type_link=None):
     ):
         value = (task_type_link or {}).get(key) or project.get(key)
         bitrates.append(value or default)
-    # Writes only check the bitrates they change: a stored or inherited one
-    # can exceed a ceiling lowered since, or a low definition one its high
-    # definition one. The encoder never exceeds the ceilings.
+    # The writes check only the bitrates that they change. A stored or
+    # inherited bitrate can be more than a ceiling that was decreased
+    # after. A low definition bitrate can be more than its high definition
+    # bitrate. The encoder never goes above the ceilings.
     highdef = min(bitrates[0], config.MOVIE_HIGHDEF_BITRATE)
     lowdef = min(bitrates[1], highdef)
     return highdef, lowdef
@@ -1439,8 +1489,8 @@ def _serialize_task_type_software_link(link):
 
 def get_task_type_software_links(project_id):
     """
-    Return the softwares set for each task type of given project, as
-    project_id, task_type_id and software_id dicts.
+    Return the softwares set for each task type of the given project, as
+    dicts with project_id, task_type_id and software_id.
     """
     links = ProjectTaskTypeSoftwareLink.query.filter_by(
         project_id=project_id
@@ -1453,9 +1503,9 @@ def get_task_type_software_links(project_id):
 
 def add_task_type_software(project_id, task_type_id, software_id):
     """
-    Link given software to given task type of given project. The task type
-    must be one of the project, the software must not be archived. An
-    existing link is returned as is.
+    Link the given software to the given task type of the given project.
+    The task type must be one of the project. The software must not be
+    archived. If the link exists, return it as it is.
     """
     _check_task_type_software_ids(task_type_id, software_id)
     project = get_project_raw(project_id)
@@ -1486,8 +1536,9 @@ def add_task_type_software(project_id, task_type_id, software_id):
 
 def remove_task_type_software(project_id, task_type_id, software_id):
     """
-    Unlink given software from given task type of given project. Return the
-    deleted link, or None when the link does not exist.
+    Unlink the given software from the given task type of the given
+    project. Return the deleted link. If the link does not exist, return
+    None.
     """
     _check_task_type_software_ids(task_type_id, software_id)
     project = get_project_raw(project_id)

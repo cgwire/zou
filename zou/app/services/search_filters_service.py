@@ -20,9 +20,9 @@ from zou.app.utils import cache, permissions
 
 def get_filters():
     """
-    Retrieve search filters used by current user. It groups them by
-    list type and project_id. If the filter is not related to a project,
-    the project_id is all.
+    Return the search filters of the current user, grouped by list type and
+    project_id. If a filter is not related to a project, its project_id is
+    all.
     """
     current_user = persons_service.get_current_user()
     return get_user_filters(current_user["id"])
@@ -31,20 +31,21 @@ def get_filters():
 @cache.memoize_function(120)
 def get_user_filters(current_user_id):
     """
-    Retrieve search filters used for given user. It groups them by
-    list type and project_id. If the filter is not related to a project,
-    the project_id is all.
+    Return the search filters of the given user, grouped by list type and
+    project_id. If a filter is not related to a project, its project_id is
+    all.
 
-    Memoized on current_user_id alone, so it must only ever be called with
-    the id of the current user: the body reads get_current_user() and
-    has_manager_permissions(), which answer for the caller, not for the id.
+    Call this function only with the id of the current user. The cache keys
+    on current_user_id alone, but get_current_user() and
+    has_manager_permissions() give the values of the caller, not of the id.
 
-    has_manager_permissions() also reads the per project role when a project
-    access check has resolved one earlier in the request. The only route
-    reaching this resolves none, so it answers with the global role and the
-    result stays stable per user. Adding a project scoped variant would
-    break that: the first caller's answer would be served to the others for
-    the whole TTL. Pass the scoping in as an argument if that day comes.
+    If a project access check found a per project role before in the
+    request, has_manager_permissions() reads that role. The only route that
+    calls this function finds no project role. Thus, the global role
+    applies and the result stays the same for each user. Do not add a
+    project scoped variant: the cache would give the result of the first
+    caller to the other callers for the full TTL. If you need a project
+    scope, give it as an argument.
     """
     result = {}
 
@@ -80,8 +81,8 @@ def get_user_filters(current_user_id):
             department_id is not None
             and str(department_id) in current_user["departments"]
         )
-        # The department tells whom else a row reaches: its owner lists it
-        # whatever the department.
+        # The department tells which other users see a row. The owner always
+        # sees it, whatever the department.
         is_own = str(search_filter.person_id) == str(current_user_id)
 
         if is_own or department_id is None or is_manager or is_in_departments:
@@ -113,7 +114,7 @@ def create_filter(
     department_id=None,
 ):
     """
-    Add a new search filter to the database.
+    Add a search filter to the database.
     """
     current_user = persons_service.get_current_user()
     _check_project_and_department_exist(project_id, department_id)
@@ -161,7 +162,7 @@ def create_filter(
 
 def update_filter(search_filter_id, data):
     """
-    Update given filter from database.
+    Update the given filter in the database.
     """
     current_user = persons_service.get_current_user()
     search_filter = _get_own_or_as_admin(
@@ -182,17 +183,18 @@ def update_filter(search_filter_id, data):
         )
         if search_filter_group is None:
             raise SearchFilterGroupNotFoundException
-        # A row keeping its group passes, so the ones saved before this rule
-        # stay editable.
+        # A row that keeps its group passes the check. Thus, the rows saved
+        # before this rule stay editable.
         if str(search_filter_group_id) != str(
             search_filter.search_filter_group_id
         ):
             _check_group_is_in_project(
                 search_filter_group, search_filter.project_id
             )
-            # Kitsu sends the former department back with the new group, so
-            # an unchanged one means the group's: a group without one, or a
-            # department picked in the same save, leaves the body as it is.
+            # Kitsu sends the old department again with the new group. Thus, an
+            # unchanged department means the department of the group. If the
+            # group has no department, or if the user selected a department in
+            # the same save, do not change the body.
             if search_filter_group.department_id is not None and str(
                 data.get("department_id", search_filter.department_id)
             ) == str(search_filter.department_id):
@@ -223,7 +225,7 @@ def update_filter(search_filter_id, data):
 
 def remove_filter(search_filter_id):
     """
-    Remove given filter from database.
+    Remove the given filter from the database.
     """
     current_user = persons_service.get_current_user()
     search_filter = _get_own_or_as_admin(
@@ -238,16 +240,16 @@ def remove_filter(search_filter_id):
 
 def clear_filter_group_cache():
     """
-    Drop the memoized filter group list of every user.
+    Remove the memoized filter group list of all the users from the cache.
     """
     cache.cache.delete_memoized(get_user_filter_groups)
 
 
 def get_filter_groups():
     """
-    Retrieve search filter groups used by current user. It groups them by
-    list type and project_id. If the filter group is not related to a project,
-    the project_id is all.
+    Return the search filter groups of the current user, grouped by list
+    type and project_id. If a filter group is not related to a project, its
+    project_id is all.
     """
     current_user = persons_service.get_current_user()
     return get_user_filter_groups(current_user["id"])
@@ -256,13 +258,14 @@ def get_filter_groups():
 @cache.memoize_function(10)
 def get_user_filter_groups(current_user_id):
     """
-    Retrieve search filter groups used for given user. It groups them by
-    list type and project_id. If the filter group is not related to a project,
-    the project_id is all.
+    Return the search filter groups of the given user, grouped by list type
+    and project_id. If a filter group is not related to a project, its
+    project_id is all.
 
-    Same caveat as get_user_filters: memoized on current_user_id alone while
-    the body answers for the caller, so it must only be called with the
-    current user's id and from a route that resolves no project role.
+    The warning of get_user_filters applies. The cache keys on
+    current_user_id alone, but the body gives the values of the caller.
+    Call this function only with the id of the current user. Call it only
+    from a route that finds no project role.
     """
     result = {}
 
@@ -332,7 +335,7 @@ def create_filter_group(
     department_id=None,
 ):
     """
-    Add a new search filter group to the database.
+    Add a search filter group to the database.
     """
     current_user = persons_service.get_current_user()
     _check_project_and_department_exist(project_id, department_id)
@@ -365,7 +368,7 @@ def create_filter_group(
 
 def get_filter_group(search_filter_group_id):
     """
-    Get given filter group from the database.
+    Return the given filter group from the database.
     """
     current_user = persons_service.get_current_user()
     search_filter_group = _get_own_or_as_admin(
@@ -378,7 +381,8 @@ def get_filter_group(search_filter_group_id):
 
 def update_filter_group(search_filter_group_id, data):
     """
-    Update given filter group from database.
+    Update the given filter group in the database. The filters of the group
+    get its new department and its is_shared value.
     """
     current_user = persons_service.get_current_user()
     search_filter_group = _get_own_or_as_admin(
@@ -399,9 +403,9 @@ def update_filter_group(search_filter_group_id, data):
     search_filter_group.update(data)
 
     if str(search_filter_group.department_id) != str(former_department_id):
-        # The filters on the department of the group follow it: left there,
-        # they would leave the group empty for those it reaches now. A filter
-        # set on another department stays on it.
+        # The filters on the department of the group move with it. Else, the
+        # group is empty for the users of the new department. A filter on a
+        # different department stays on it.
         if (
             SearchFilter.query.filter_by(
                 search_filter_group_id=search_filter_group_id,
@@ -413,12 +417,12 @@ def update_filter_group(search_filter_group_id, data):
             clear_filter_cache()
 
     if data.get("is_shared", None) is not None:
-        # The group carries the authorized value by now, since
-        # _deny_sharing_without_manager_access turned down what the caller
-        # could not ask for. The filters have to follow it rather than the
-        # body: update_filter refuses any change to a filter whose is_shared
-        # differs from its group, so a group left out of step with them
-        # makes them unmodifiable for good.
+        # The group now has the permitted value, because
+        # _deny_sharing_without_manager_access refused the values that the
+        # caller cannot ask for. Thus, the filters get the value of the
+        # group, not of the body. update_filter refuses all changes to a
+        # filter whose is_shared is not the same as its group. If the
+        # values are different, the filters stay locked permanently.
         if (
             SearchFilter.query.filter_by(
                 search_filter_group_id=search_filter_group_id
@@ -434,7 +438,9 @@ def update_filter_group(search_filter_group_id, data):
 
 def remove_filter_group(search_filter_group_id):
     """
-    Remove given filter group from database.
+    Remove the given filter group from the database, with the filters that
+    its owner put in it. The filters of the other members stay, out of the
+    group.
     """
     current_user = persons_service.get_current_user()
     search_filter_group = _get_own_or_as_admin(
@@ -442,8 +448,8 @@ def remove_filter_group(search_filter_group_id):
     )
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
-    # The filters of the other members in a shared group stay theirs, out
-    # of the group.
+    # In a shared group, the filters of the other members stay with
+    # their owners, out of the group.
     group_filters = SearchFilter.query.filter_by(
         search_filter_group_id=search_filter_group_id
     )
@@ -463,9 +469,9 @@ def remove_filter_group(search_filter_group_id):
 
 def _reaches_team_filter(project_id_column, current_user_id):
     """
-    Query filter keeping a shared filter or group to the teams of its
-    project, or to everyone when it names no project. An admin reaches
-    every production.
+    Return the query filter that keeps a shared filter or group for the
+    teams of its project. If it has no project, it is for all the users.
+    An admin sees all the productions.
     """
     if permissions.has_admin_permissions():
         return true()
@@ -480,21 +486,22 @@ def _reaches_team_filter(project_id_column, current_user_id):
 
 def clear_filter_cache():
     """
-    Drop the memoized filter list of every user. A row shows in the lists of
-    its owner and, shared now or until this change, of its team: a write is
-    rare and a list costs little to rebuild, so telling them apart saves
-    nothing.
+    Remove the memoized filter list of all the users from the cache. A row
+    shows in the list of its owner. If the row is shared now, or was shared
+    before this change, it also shows in the lists of its team. Writes are
+    rare and a list is fast to build again. Thus, a selective removal gives
+    no benefit.
     """
     cache.cache.delete_memoized(get_user_filters)
 
 
 def _deny_sharing_without_manager_access(data, instance):
     """
-    Silently turn off a sharing request the caller is not allowed to make:
-    sharing is a manager privilege on the project of the row, and a filter
-    without a project cannot be shared at all. The department of a row that
-    stays shared tells who it reaches, so changing it takes the same
-    privilege. Mutates data in place.
+    Silently cancel a sharing request that the caller has no permission to
+    make. Only a manager of the project of the row can share it. A filter
+    without a project cannot be shared. The department of a shared row
+    tells who sees it. Thus, a change of this department needs the same
+    permission. Change data in place.
     """
     if permissions_service.can_share_filter(instance.project_id):
         return
@@ -513,8 +520,8 @@ def _deny_sharing_without_manager_access(data, instance):
 
 def _check_project_and_department_exist(project_id=None, department_id=None):
     """
-    Raise a not found exception for a project or a department of no row, which
-    would otherwise reach a foreign key and end in an internal error.
+    If the project or the department does not exist, raise a not found
+    exception. Else, the foreign key causes an internal error.
     """
     if project_id is not None:
         projects_service.get_project_raw(project_id)
@@ -524,8 +531,10 @@ def _check_project_and_department_exist(project_id=None, department_id=None):
 
 def _check_group_is_in_project(search_filter_group, project_id):
     """
-    Sharing a group takes a manager of its project, and its filters follow it:
-    a filter of another project would reach a team beyond that right.
+    If the given group is not in the given project, raise
+    WrongParameterException. Only a manager of its project can share a
+    group, and its filters move with it. A filter of a different project
+    would go to a team outside the permission of this manager.
     """
     if str(search_filter_group.project_id) != str(project_id):
         raise WrongParameterException(
@@ -535,9 +544,9 @@ def _check_group_is_in_project(search_filter_group, project_id):
 
 def _check_name_is_free(model, name, **list_scope):
     """
-    Refuse a name already given to a row of the same list. The scope holds
-    one owner: a shared row of someone else can be out of the sight of the
-    caller, who could not tell what the name clashes with.
+    Refuse a name that a row of the same list already has. The scope has one
+    owner. The caller possibly cannot see a shared row of a different user,
+    and thus cannot know which row has the same name.
     """
     if model.get_by(name=name, **list_scope) is not None:
         raise WrongParameterException(
@@ -547,9 +556,9 @@ def _check_name_is_free(model, name, **list_scope):
 
 def _check_new_name_is_free(instance, data, **group_scope):
     """
-    Same check for an update, which can change the name of the row. A row
-    keeping it passes, even when it changes group, so the ones saved before
-    this rule stay editable.
+    Do the same check for an update, which can change the name of the row.
+    A row that keeps its name passes, also when it changes group. Thus, the
+    rows saved before this rule stay editable.
     """
     name = data.get("name", instance.name)
     if name != instance.name:
@@ -566,9 +575,9 @@ def _check_new_name_is_free(instance, data, **group_scope):
 
 def _get_own_or_as_admin(model, instance_id, current_user):
     """
-    Return the row of given model belonging to the current user, falling
-    back to the row whoever owns it when they are an admin. Returns None
-    when nothing matches, the caller raises.
+    Return the row of the given model that the current user owns. If the
+    current user is an admin, return the row whatever its owner. If no row
+    matches, return None: the caller raises the exception.
     """
     instance = model.get_by(id=instance_id, person_id=current_user["id"])
     if instance is None and permissions.has_admin_permissions():
@@ -578,11 +587,12 @@ def _get_own_or_as_admin(model, instance_id, current_user):
 
 def remove_search_filters(**kw):
     """
-    Delete the search filters and search filter groups matching given
-    column values. A group takes the filters it holds with it, whoever
-    owns them, as removing a single group does: they go first, since they
-    reference their group. A shared filter shows in the listing of every
-    user, so the memoized listings are dropped for all of them.
+    Delete the search filters and search filter groups that match the given
+    column values. When you delete a group, also delete all its filters,
+    whatever their owner. remove_filter_group is different: it keeps the
+    filters of the other members. Delete the filters first, because they
+    reference their group. A shared filter shows in the list of all the
+    users. Thus, remove the memoized lists of all the users from the cache.
     """
 
     group_ids = SearchFilterGroup.query.with_entities(

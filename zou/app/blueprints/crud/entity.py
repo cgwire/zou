@@ -51,11 +51,9 @@ class EntityEventMixin(object):
     def emit_event(self, event_name, entity_dict):
         instance_id = entity_dict["id"]
         type_name = entity_types_service.get_base_entity_type_name(entity_dict)
-        if event_name in ["update", "delete"]:
-            if type_name == "shot":
-                shots_service.clear_shot_cache(instance_id)
-            if type_name == "asset":
-                assets_service.clear_asset_cache(instance_id)
+        # The update route clears the cache itself.
+        if event_name == "delete":
+            self.clear_entity_type_cache(entity_dict)
         # ConceptFolder gives concept-folder:update and concept_folder_id,
         # the names the concept folder routes emit.
         words = [word.lower() for word in re.findall("[A-Z][a-z]*", type_name)]
@@ -64,6 +62,22 @@ class EntityEventMixin(object):
             {f"{'_'.join(words)}_id": instance_id},
             project_id=entity_dict["project_id"],
         )
+
+    def clear_entity_type_cache(self, entity_dict):
+        entity_id = entity_dict["id"]
+        if entity_types_service.is_shot(entity_dict):
+            shots_service.clear_shot_cache(entity_id)
+        elif entity_types_service.is_sequence(entity_dict):
+            shots_service.clear_sequence_cache(entity_id)
+        elif entity_types_service.is_edit(entity_dict):
+            edits_service.clear_edit_cache(entity_id)
+        elif entity_types_service.is_episode(entity_dict):
+            shots_service.clear_episode_cache(entity_id)
+        elif entity_types_service.is_concept(entity_dict):
+            concepts_service.clear_concept_cache(entity_id)
+        elif entity_types_service.is_asset_dict(entity_dict):
+            assets_service.clear_asset_cache(entity_id)
+        entities_service.clear_entity_cache(entity_id)
 
 
 class EntitiesResource(BaseModelsResource, EntityEventMixin):
@@ -297,23 +311,15 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if entity_types_service.is_shot(entity_dict):
                 index_service.remove_shot_index(entity_dict["id"])
                 index_service.index_shot(entity)
-                shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
-            elif entity_types_service.is_sequence(entity_dict):
-                shots_service.clear_sequence_cache(entity_dict["id"])
             elif entity_types_service.is_edit(entity_dict):
-                edits_service.clear_edit_cache(entity_dict["id"])
-            elif entity_types_service.is_episode(entity_dict):
-                shots_service.clear_episode_cache(entity_dict["id"])
-            elif entity_types_service.is_concept(entity_dict):
-                concepts_service.clear_concept_cache(entity_dict["id"])
+                self.save_version_if_needed(entity_dict, previous_version)
             elif entity_types_service.is_asset(entity):
                 index_service.remove_asset_index(entity_dict["id"])
                 index_service.index_asset(entity)
                 if is_ready_for_changed:
                     breakdown_service.refresh_casting_stats(entity_dict)
-                assets_service.clear_asset_cache(entity_dict["id"])
-            entities_service.clear_entity_cache(entity_dict["id"])
+            self.clear_entity_type_cache(entity_dict)
 
             self.emit_update_event(entity_dict)
             return entity_dict, 200
@@ -333,8 +339,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def save_version_if_needed(self, shot, previous_shot):
         """
-        Record a version of given shot when its frame range or its name
-        changed. A client may send one update per field or per keystroke
+        Record a version of given shot or edit when its frame range or its
+        name changed. A client may send one update per field or per keystroke
         (frame in then frame out, a number typed slowly), so such a burst
         by one person is folded into a single version holding the final
         values: see get_recent_version.

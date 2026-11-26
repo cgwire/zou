@@ -547,7 +547,7 @@ class CreationTestCase(ShotsTestCase):
         existing_id = str(existing.id)
 
         real_get_by = Entity.get_by
-        state = {"first_shot_lookup": True, "create_called": False}
+        state = {"first_shot_lookup": True}
 
         def fake_get_by(**kw):
             if (
@@ -559,19 +559,18 @@ class CreationTestCase(ShotsTestCase):
                 return None
             return real_get_by(**kw)
 
-        def fake_create(**kw):
-            state["create_called"] = True
-            raise IntegrityError("INSERT", {}, Exception("duplicate"))
-
         with (
             patch.object(Entity, "get_by", side_effect=fake_get_by),
-            patch.object(Entity, "create", side_effect=fake_create),
+            patch.object(
+                Entity,
+                "create",
+                side_effect=IntegrityError("INSERT", {}, Exception("dup")),
+            ),
         ):
             shot = shots_service.create_shot(
                 self.project.id, parent_id, shot_name
             )
 
-        self.assertTrue(state["create_called"])
         self.assertEqual(shot["id"], existing_id)
 
     def test_a_new_shot_is_announced(self):

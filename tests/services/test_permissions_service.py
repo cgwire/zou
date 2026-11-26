@@ -16,6 +16,7 @@ from zou.app.models.project import ProjectPersonLink
 from zou.app.services import (
     comments_service,
     entities_service,
+    metadata_descriptors_service,
     permissions_service,
     persons_service,
     projects_service,
@@ -874,6 +875,25 @@ class TaskActionAccessTestCase(PermissionsTestCase):
             with self.denied():
                 permissions_service.check_task_action_access(self.task_id)
 
+    def test_a_supervisor_acts_on_the_tasks_of_their_department(self):
+        supervisor = self.join_team(self.a_user("supervisor"))
+        persons_service.add_to_department(
+            str(self.department_animation.id), supervisor["id"]
+        )
+
+        with self.as_role("supervisor"):
+            with self.denied():
+                permissions_service.check_task_action_access(self.task_id)
+
+        # The task type of the fixture task belongs to Modeling.
+        persons_service.add_to_department(
+            str(self.department.id), supervisor["id"]
+        )
+        with self.as_role("supervisor"):
+            self.assertTrue(
+                permissions_service.check_task_action_access(self.task_id)
+            )
+
 
 class DepartmentAccessTestCase(PermissionsTestCase):
     """
@@ -937,24 +957,41 @@ class DepartmentAccessTestCase(PermissionsTestCase):
         self.a_supervisor(department=self.own_department)
 
         with self.as_role("supervisor"):
-            for column in [
-                "priority",
-                "start_date",
-                "due_date",
-                "estimation",
-                "difficulty",
-                "data",
-            ]:
-                with self.subTest(column=column):
-                    self.assertTrue(
-                        permissions_service.check_supervisor_task_access(
-                            self.task_dict, {column: 1}
-                        )
-                    )
+            self.assertTrue(
+                permissions_service.check_supervisor_task_access(
+                    self.task_dict, {"due_date": 1}
+                )
+            )
             with self.denied():
                 permissions_service.check_supervisor_task_access(
                     self.task_dict, {"task_status_id": UNKNOWN}
                 )
+
+    def test_a_supervisor_manages_the_columns_of_their_departments(self):
+        supervisor = self.a_supervisor(department=self.own_department)
+        project_id = str(self.project.id)
+
+        with self.as_role("supervisor"):
+            self.assertTrue(
+                permissions_service.check_all_departments_access(
+                    project_id, [self.own_department]
+                )
+            )
+            with self.denied():
+                permissions_service.check_all_departments_access(
+                    project_id, [self.own_department, self.other_department]
+                )
+
+        # A second department does not force its way into every column.
+        persons_service.add_to_department(
+            self.other_department, supervisor["id"]
+        )
+        with self.as_role("supervisor"):
+            self.assertTrue(
+                permissions_service.check_all_departments_access(
+                    project_id, [self.own_department]
+                )
+            )
 
     def test_a_supervisor_with_departments_sends_no_metadata(self):
         self.a_supervisor(department=self.own_department)
@@ -965,6 +1002,35 @@ class DepartmentAccessTestCase(PermissionsTestCase):
                 permissions_service.check_metadata_department_access(
                     entity, {}
                 )
+
+    def test_a_supervisor_writes_the_metadata_of_their_departments(self):
+        self.a_supervisor(department=self.own_department)
+        for name, department in [
+            ("Contractor", self.own_department),
+            ("Budget", self.other_department),
+        ]:
+            metadata_descriptors_service.add_metadata_descriptor(
+                self.project_id,
+                "Asset",
+                name,
+                "string",
+                [],
+                False,
+                departments=[department],
+            )
+        entity = entities_service.get_entity(str(self.asset.id))
+
+        with self.as_role("supervisor"):
+            self.assertTrue(
+                permissions_service.check_metadata_department_access(
+                    entity, {"data": {"contractor": "Studio A"}}
+                )
+            )
+            for data in [{"budget": "10"}, {"unknown": "x"}]:
+                with self.denied():
+                    permissions_service.check_metadata_department_access(
+                        entity, {"data": data}
+                    )
 
     def test_a_manager_of_the_team_writes_any_column(self):
         self.join_team(self.a_user("manager"))

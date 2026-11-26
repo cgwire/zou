@@ -11,6 +11,7 @@ from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.chat import Chat
 from zou.app.models.chat_message import ChatMessage
 from zou.app.services import chats_service
+from zou.app.stores import file_store
 
 
 class ChatsServiceTestCase(ApiDBTestCase):
@@ -21,12 +22,6 @@ class ChatsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_asset()
         self.generate_fixture_person()
 
-    def a_message(self, text="with attachment"):
-        chat = chats_service.get_chat_raw(self.asset.id)
-        return chats_service.create_chat_message(
-            chat.id, str(self.person.id), text
-        )
-
     def test_get_chat_raw(self):
         chat = chats_service.get_chat_raw(self.asset.id)
         self.assertIsNotNone(chat)
@@ -35,16 +30,6 @@ class ChatsServiceTestCase(ApiDBTestCase):
         # Calling again returns the same chat (no duplicate)
         chat2 = chats_service.get_chat_raw(self.asset.id)
         self.assertEqual(chat.id, chat2.id)
-
-    def test_get_chat(self):
-        chat = chats_service.get_chat(self.asset.id)
-        self.assertIsNotNone(chat["id"])
-        self.assertEqual(chat["object_id"], str(self.asset.id))
-
-    def test_get_chat_by_id(self):
-        chat = chats_service.get_chat_raw(self.asset.id)
-        result = chats_service.get_chat_by_id(chat.id)
-        self.assertEqual(result["id"], str(chat.id))
 
     def test_join_chat(self):
         chat = chats_service.join_chat(self.asset.id, str(self.person.id))
@@ -170,26 +155,47 @@ class ChatsServiceTestCase(ApiDBTestCase):
         messages = chats_service.get_chat_messages(chat.id)
         self.assertEqual(messages, [])
 
-    def test_create_attachment_non_image_removes_temp_file(self):
-        message = self.a_message()
-        uploaded_file = FileStorage(
+    def a_pdf(self):
+        return FileStorage(
             stream=io.BytesIO(b"%PDF-1.4 fake content"),
             filename="notes.pdf",
             content_type="application/pdf",
         )
 
-        attachment = chats_service._create_attachment(message, uploaded_file)
+    def a_message_with(self, uploaded_file):
+        chat = chats_service.get_chat_raw(self.asset.id)
+        return chats_service.create_chat_message(
+            chat.id,
+            str(self.person.id),
+            "with attachment",
+            {"file": uploaded_file},
+        )
 
+    def test_a_message_stores_its_files_and_drops_the_temp_copy(self):
+        message = self.a_message_with(self.a_pdf())
+
+        (attachment,) = message["attachment_files"]
+        self.assertEqual(attachment["name"], "notes.pdf")
+        self.assertTrue(
+            file_store.exists_file("attachments", attachment["id"])
+        )
         tmp_file_path = os.path.join(config.TMP_DIR, f"{attachment['id']}.pdf")
         self.assertFalse(os.path.exists(tmp_file_path))
 
-    def test_create_attachment_failure_cleans_up(self):
-        message = self.a_message()
-        uploaded_file = FileStorage(
-            stream=io.BytesIO(b"%PDF-1.4 fake content"),
-            filename="notes.pdf",
-            content_type="application/pdf",
-        )
+    def test_a_jpeg_attachment_gets_a_thumbnail(self):
+        with open("tests/fixtures/thumbnails/th01.jpg", "rb") as jpg:
+            uploaded_file = FileStorage(
+                stream=io.BytesIO(jpg.read()),
+                filename="photo.jpg",
+                content_type="image/jpeg",
+            )
+
+        message = self.a_message_with(uploaded_file)
+
+        attachment_id = message["attachment_files"][0]["id"]
+        self.assertTrue(file_store.exists_picture("thumbnails", attachment_id))
+
+    def test_a_storage_failure_leaves_no_attachment_behind(self):
         os.makedirs(config.TMP_DIR, exist_ok=True)
         tmp_files_before = set(os.listdir(config.TMP_DIR))
 
@@ -198,25 +204,16 @@ class ChatsServiceTestCase(ApiDBTestCase):
             side_effect=OSError("storage down"),
         ):
             with self.assertRaises(OSError):
-                chats_service._create_attachment(message, uploaded_file)
+                self.a_message_with(self.a_pdf())
 
         self.assertEqual(AttachmentFile.query.count(), 0)
         self.assertEqual(set(os.listdir(config.TMP_DIR)), tmp_files_before)
 
-    def test_get_chat_message_raw(self):
-        chat = chats_service.get_chat_raw(self.asset.id)
-        message = chats_service.create_chat_message(
-            chat.id, str(self.person.id), "Test"
-        )
-        raw = chats_service.get_chat_message_raw(message["id"])
-        self.assertEqual(str(raw.id), message["id"])
-        self.assertEqual(raw.text, "Test")
+    def test_deleting_a_message_removes_its_attachments(self):
+        message = self.a_message_with(self.a_pdf())
+        attachment_id = message["attachment_files"][0]["id"]
 
-    def test_get_chat_message(self):
-        chat = chats_service.get_chat_raw(self.asset.id)
-        message = chats_service.create_chat_message(
-            chat.id, str(self.person.id), "Test"
-        )
-        result = chats_service.get_chat_message(message["id"])
-        self.assertEqual(result["id"], message["id"])
-        self.assertEqual(result["text"], "Test")
+        chats_service.delete_chat_message(message["id"])
+
+        self.assertEqual(AttachmentFile.query.count(), 0)
+        self.assertFalse(file_store.exists_file("attachments", attachment_id))

@@ -22,15 +22,17 @@ from zou.app.utils import cache, events, fs, thumbnail
 
 def clear_chat_message_cache(chat_message_id):
     """
-    Drop the memoized serialization of given chat message.
+    Remove the memoized serialization of the given chat message from the
+    cache.
     """
     cache.cache.delete_memoized(get_chat_message, chat_message_id)
 
 
 def _serialize_message(message):
     """
-    Serialize a chat message with a light version of its attachments: the
-    fields the clients need to display and download them.
+    Serialize a chat message with a light version of its attachments. This
+    version holds the fields that the clients need to show and download
+    the attachments.
     """
     serialized_message = message.serialize()
     serialized_message["attachment_files"] = [
@@ -46,7 +48,8 @@ def _serialize_message(message):
 
 def get_chat_raw(entity_id):
     """
-    Return chat corresponding to given entity ID.
+    Return the chat of the given entity ID as an active record. If the
+    entity has no chat yet, create it.
     """
     chat = Chat.get_by(object_id=entity_id)
     if chat is None:
@@ -56,7 +59,8 @@ def get_chat_raw(entity_id):
 
 def get_chat(entity_id):
     """
-    Return chat corresponding to given entity ID.
+    Return the chat of the given entity ID as a dict. If the entity has no
+    chat yet, create it.
     """
     chat = get_chat_raw(entity_id)
     return chat.serialize(relations=True)
@@ -64,7 +68,7 @@ def get_chat(entity_id):
 
 def get_chat_by_id(chat_id):
     """
-    Return chat corresponding to given entity ID.
+    Return the chat that has the given chat ID.
     """
     chat = Chat.get(chat_id)
     return chat.serialize(relations=True)
@@ -72,7 +76,8 @@ def get_chat_by_id(chat_id):
 
 def get_chat_message_raw(chat_message_id):
     """
-    Return chat message corresponding to given chat message ID.
+    Return the chat message that has the given chat message ID, as an
+    active record.
     """
     return ChatMessage.get(chat_message_id)
 
@@ -80,14 +85,14 @@ def get_chat_message_raw(chat_message_id):
 @cache.memoize_function(1200)
 def get_chat_message(chat_message_id):
     """
-    Return chat message corresponding to given chat message ID.
+    Return the chat message that has the given chat message ID, as a dict.
     """
     return _serialize_message(get_chat_message_raw(chat_message_id))
 
 
 def join_chat(entity_id, person_id):
     """
-    Join chat for given entity ID.
+    Join the chat of the given entity ID and emit chat:joined.
     """
     chat = get_chat_raw(entity_id)
     person = persons_service.get_person_raw(person_id)
@@ -103,7 +108,7 @@ def join_chat(entity_id, person_id):
 
 def leave_chat(entity_id, person_id):
     """
-    Leave chat for given entity ID.
+    Leave the chat of the given entity ID and emit chat:left.
     """
     chat = get_chat_raw(entity_id)
     person = persons_service.get_person_raw(person_id)
@@ -120,7 +125,7 @@ def leave_chat(entity_id, person_id):
 
 def get_chat_messages(chat_id):
     """
-    Return chat messages for given chat ID.
+    Return the chat messages of the given chat ID.
     """
     messages = (
         ChatMessage.query.filter(ChatMessage.chat_id == chat_id)
@@ -132,7 +137,7 @@ def get_chat_messages(chat_id):
 
 def get_chat_messages_for_entity(entity_id):
     """
-    Return chat messages for given entity ID.
+    Return the chat messages of the given entity ID.
     """
     chat = get_chat_raw(entity_id)
     return get_chat_messages(chat.id)
@@ -140,7 +145,9 @@ def get_chat_messages_for_entity(entity_id):
 
 def create_chat_message(chat_id, person_id, message, files=None):
     """
-    Create a new chat message.
+    Create a chat message with the given uploaded files as attachments.
+    Update the last message date of the chat and emit chat:new-message.
+    If the chat does not exist, raise ChatNotFoundException.
     """
     chat = base_service.get_instance(Chat, chat_id, ChatNotFoundException)
     chat_message = ChatMessage.create(
@@ -164,13 +171,14 @@ def create_chat_message(chat_id, person_id, message, files=None):
 
 def delete_chat_message(chat_message_id):
     """
-    Delete chat message.
+    Delete the chat message and its attachment files. Emit
+    chat:deleted-message.
     """
     message = get_chat_message_raw(chat_message_id)
 
     for attachment in message.attachment_files:
         attachment_file_id = str(attachment.id)
-        # Chat attachments are removed whatever REMOVE_FILES says.
+        # Remove the chat attachments, whatever the value of REMOVE_FILES.
         file_store.remove_file("attachments", attachment_file_id, force=True)
         file_store.remove_picture("thumbnails", attachment_file_id, force=True)
         attachment.delete()
@@ -190,7 +198,7 @@ def delete_chat_message(chat_message_id):
 
 def build_participant_filter(person_id):
     """
-    Query filter for returning chats for current user.
+    Return the query filter that keeps the chats of the given person.
     """
     person = persons_service.get_person_raw(person_id)
     return Chat.participants.contains(person)
@@ -198,7 +206,8 @@ def build_participant_filter(person_id):
 
 def get_chats_for_person(person_id):
     """
-    Return chats for current user.
+    Return the chats that the given person is a participant of. Keep only
+    the chats of open projects.
     """
     chats = (
         Chat.query.join(Entity, Chat.object_id == Entity.id)
@@ -224,16 +233,16 @@ def get_chats_for_person(person_id):
 
 def _add_attachments_to_message(message, files):
     """
-    Create an attachment entry and for each given uploaded files and tie it
-    to given message.
+    For each given uploaded file, create an attachment entry and link it to
+    the given message.
     """
     message["attachment_files"] = []
     for uploaded_file in files.values():
         try:
             attachment_file = _create_attachment(message, uploaded_file)
         except IntegrityError:
-            # The name is already taken on this message, retry with a
-            # randomized suffix.
+            # This message already has an attachment with this name. Try again
+            # with a random suffix.
             attachment_file = _create_attachment(
                 message, uploaded_file, randomize=True
             )
@@ -243,12 +252,12 @@ def _add_attachments_to_message(message, files):
 
 def _create_attachment(message, uploaded_file, randomize=False):
     """
-    Store an uploaded file, its thumbnail when it is a picture, and tie the
-    matching attachment entry to given message.
+    Store an uploaded file, and its thumbnail if it is a picture. Link the
+    related attachment entry to the given message.
     """
     tmp_folder = current_app.config["TMP_DIR"]
 
-    # Prepare file name and create db entry
+    # Prepare the file name and create the database entry.
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)
@@ -264,9 +273,9 @@ def _create_attachment(message, uploaded_file, randomize=False):
         chat_message_id=message["id"],
     )
 
-    # Store attachment file. On failure, drop the database entry to avoid
-    # a ghost attachment pointing to a missing object; the temporary file
-    # is removed in every case (it used to leak for non-image files).
+    # Store the attachment file. If this fails, delete the database entry.
+    # Else, the entry points to a missing object. Always remove the
+    # temporary file.
     attachment_file_id = str(attachment_file.id)
     tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
     image_path = None
@@ -275,10 +284,12 @@ def _create_attachment(message, uploaded_file, randomize=False):
         attachment_file.update({"size": size})
         file_store.add_file("attachments", attachment_file_id, tmp_file_path)
 
-        # Create thumbnail for pictures
-        if "png" in mimetype or "jpg" in mimetype:
+        # Create a thumbnail for the pictures.
+        # The standard mimetype is image/jpeg. Some clients send image/jpg.
+        is_jpg = "jpeg" in mimetype or "jpg" in mimetype
+        if "png" in mimetype or is_jpg:
             image_path = tmp_file_path
-            if "jpg" in mimetype:
+            if is_jpg:
                 image_path = thumbnail.convert_jpg_to_png(tmp_file_path)
             thumbnail.resize(image_path, (150, 150), True)
             file_store.add_picture(

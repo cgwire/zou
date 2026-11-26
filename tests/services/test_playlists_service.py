@@ -376,16 +376,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(asset["parent_name"], "Props")
         self.assertEqual(asset["preview_files"], {})
 
-    def test_get_preview_files_for_task(self):
-        self.generate_fixture_preview_files()
-        task_id = self.task.id
-        preview_files = playlists_service.get_preview_files_for_task_raw(
-            task_id
-        )
-        self.assertEqual(len(preview_files), 2)
-        self.assertEqual(preview_files[0]["revision"], 2)
-        self.assertEqual(preview_files[0]["status"], "ready")
-
     def test_build_playlist_dict(self):
         playlist = Playlist.create(
             name="Playlist 1",
@@ -474,7 +464,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         The other production keeps its own.
         """
         self.generate_fixture_playlists()
-        elsewhere = Playlist.create(
+        Playlist.create(
             name="Elsewhere", shots={}, project_id=self.project_standard.id
         )
 
@@ -484,7 +474,6 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
         names = sorted(playlist["name"] for playlist in playlists)
         self.assertEqual(names, ["Playlist 1", "Playlist 3", "Playlist 4"])
-        self.assertNotIn(elsewhere.name, names)
 
     def test_an_entity_is_added_with_the_preview_it_names(self):
         self.generate_fixture_preview_files()

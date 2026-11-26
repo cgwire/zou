@@ -1,3 +1,14 @@
+"""
+Breakdown has two representations:
+
+* Relation entries that link an asset and a shot. They can give a number
+  of occurrences.
+* One entry for each instance of an asset cast in a shot or a scene.
+
+Warning: These two representations are not linked. Their data is not
+synchronized.
+"""
+
 from flask import current_app
 from slugify import slugify
 from sqlalchemy import desc
@@ -26,21 +37,11 @@ from zou.app.services import (
 )
 from zou.app.utils import events, fields
 
-"""
-Breakdown can be represented in two ways:
-
-* Relation entries linking an asset and a shot. A number of number of
-  occurences can be mentioned.
-* Storing an entry for each instance of an asset casted in a shot or a scene.
-
-Warning: These two representations are not linked. Data are not synchronized.
-"""
-
 
 def get_casting(shot_id):
     """
-    Return all assets and their number of occurences listed in given shot
-    (or asset for set dressing).
+    Return all assets and their number of occurrences in the given shot (or
+    in the given asset, for set dressing).
     """
     casting = []
     links = (
@@ -91,9 +92,10 @@ def get_casting(shot_id):
 
 def get_production_episodes_casting(project_id):
     """
-    Return all assets and their number of occurences listed in episodes of given
-    project. Result is returned as a map where keys are episode IDs and values
-    are the casting of the episode, ordered by asset type name then asset name.
+    Return all assets and their number of occurrences in the episodes of the
+    given project. Return a map: the keys are episode IDs and the values are
+    the casting of each episode, ordered by asset type name and then by asset
+    name.
     """
     castings = {}
     Episode = aliased(Entity, name="episode")
@@ -147,9 +149,9 @@ def get_production_episodes_casting(project_id):
 
 def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
     """
-    Return all assets and their number of occurences listed in shots of given
-    sequence. Result is returned as a map where keys are shot IDs and values
-    are casting for given shot.
+    Return all assets and their number of occurrences in the shots of the
+    given sequence. Return a map: the keys are shot IDs and the values are the
+    casting of each shot.
     """
     castings = {}
     if episode_id == "main":
@@ -221,9 +223,9 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
 
 def get_all_sequences_casting(project_id, episode_id=None):
     """
-    Return all assets and their number of occurences listed in shots of given
-    project and episode.  Result is returned as a map where keys are shot IDs
-    and values are casting for given shot.
+    Return all assets and their number of occurrences in the shots of the
+    given project and episode. Return a map: the keys are shot IDs and the
+    values are the casting of each shot.
     """
     return get_sequence_casting(
         None, project_id=project_id, episode_id=episode_id
@@ -232,9 +234,9 @@ def get_all_sequences_casting(project_id, episode_id=None):
 
 def get_asset_type_casting(project_id, asset_type_id):
     """
-    Return all assets and their number of occurences listed in asset of given
-    asset type. Result is returned as a map where keys are asset IDs and values
-    are casting for given asset.
+    Return all assets and their number of occurrences in the assets of the
+    given asset type. Return a map: the keys are asset IDs and the values are
+    the casting of each asset.
     """
     castings = {}
     Asset = aliased(Entity, name="asset")
@@ -271,16 +273,18 @@ def get_asset_type_casting(project_id, asset_type_id):
 
 def update_casting(entity_id, casting):
     """
-    Update casting for given entity. Casting is an array of dictionaries made of
-    two fields: `asset_id` and `nb_occurences`.
+    Replace the casting of the given entity. The casting is a list of dicts
+    made of `asset_id`, `nb_occurences` and an optional `label`. Skip the
+    entries without `asset_id` or `nb_occurences`. On an episode, the removed
+    assets also leave the casting of its shots. Return the given casting.
     """
 
     entity = entities_service.get_entity_raw(entity_id)
     entity_dict = entity.serialize(relations=True)
 
-    # Snapshot the casting before mutating so the emitted event can carry
-    # an explicit added/removed diff. Listeners would otherwise have to
-    # keep their own client-side snapshot to know what changed.
+    # Keep a copy of the casting before the change, thus the emitted event
+    # can carry an explicit added/removed diff. Else, listeners must keep
+    # their own client-side copy to know what changed.
     previous_asset_ids = {
         str(asset_id) for asset_id in entity_dict.get("entities_out") or []
     }
@@ -318,10 +322,13 @@ def update_casting(entity_id, casting):
 
 def _announce_casting_change(entity, added_asset_ids, removed_asset_ids):
     """
-    Refresh what hangs from the casting of given entity once its links
-    changed: its link count, the cached serializations, the shot stats, the
-    episode links derived from the shots, and the listeners through a
-    casting-update event carrying the diff.
+    Refresh the data that depends on the casting of the given entity after
+    its links changed:
+    - its link count,
+    - the cached serializations,
+    - the shot stats,
+    - the episode links that come from the shots,
+    - the listeners, through a casting-update event that carries the diff.
     """
     entity_id = str(entity.id)
     entity.update({"nb_entities_out": _count_live_links(entity.id)})
@@ -360,9 +367,9 @@ def _announce_casting_change(entity, added_asset_ids, removed_asset_ids):
 
 def cast_asset(entity_id, asset_id, nb_occurences=None, label=None):
     """
-    Cast given asset in given entity, leaving the other assets of its
-    casting untouched: a caller working from a stale view of the casting
-    cannot erase them. A count or label of None keeps the current one (one
+    Cast the given asset in the given entity. Do not change the other assets
+    of its casting: a caller that has an old view of the casting cannot erase
+    them. If a count or a label is None, keep the current value (one
     occurrence and no label on a new link).
     """
     entity = entities_service.get_entity_raw(entity_id)
@@ -372,9 +379,9 @@ def cast_asset(entity_id, asset_id, nb_occurences=None, label=None):
     if label is None:
         label = link.label if link else ""
     create_casting_link(entity.id, asset_id, nb_occurences, label)
-    # The asset list of an episode is drawn from its casting: the asset
-    # just joined the episode, and only asset:update makes the clients
-    # reload it (same as update_casting on an episode).
+    # The asset list of an episode comes from its casting: the asset is
+    # now in the episode, and only asset:update makes the clients load it
+    # again (same as update_casting on an episode).
     if entity_types_service.is_episode(entity.serialize()):
         events.emit(
             "asset:update",
@@ -388,9 +395,9 @@ def cast_asset(entity_id, asset_id, nb_occurences=None, label=None):
 
 def uncast_asset(entity_id, asset_id, cascade_to_shots=True):
     """
-    Remove given asset from the casting of given entity, leaving the other
-    assets untouched. Nothing happens when the asset was not cast. On an
-    episode, the asset also leaves the casting of its shots unless
+    Remove the given asset from the casting of the given entity. Do not
+    change the other assets. If the asset was not cast, do nothing. On an
+    episode, the asset also leaves the casting of its shots, unless
     cascade_to_shots is False.
     """
     link = get_entity_link_raw(entity_id, asset_id)
@@ -408,9 +415,9 @@ def uncast_asset(entity_id, asset_id, cascade_to_shots=True):
 
 def _clear_casting_cache(entity_id):
     """
-    Drop the memoized serializations of an entity whose casting changed.
-    They carry nb_entities_out, and create_casting_link reads the entity
-    on its way through, so the count is cached before it is written.
+    Remove the memoized serializations of an entity whose casting changed.
+    They carry nb_entities_out. create_casting_link reads the entity before
+    it writes the link, thus the count is cached before the write.
     """
     entity_id = str(entity_id)
     if entity_types_service.is_shot(entities_service.get_entity(entity_id)):
@@ -421,7 +428,10 @@ def _clear_casting_cache(entity_id):
 
 def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     """
-    Add a link between given entity and given asset.
+    Create or update the link between the given entity and the given asset.
+    A new link on a shot also casts the asset in its episode. Log the
+    duplicate link errors that concurrent requests cause, do not raise them.
+    Return the link, or None if a concurrent request created it first.
     """
     try:
         link = EntityLink.get_by(
@@ -471,8 +481,8 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
 
 def _extract_removal(entity, casting):
     """
-    Return the assets dropped from the casting of an entity: the ones it
-    was linked to and the new casting no longer names.
+    Return the assets removed from the casting of an entity: the assets that
+    it was linked to and that the new casting does not name.
     """
     assets = []
     asset_map = {}
@@ -486,7 +496,7 @@ def _extract_removal(entity, casting):
 
 def _remove_asset_from_episode_shots(asset_id, episode_id):
     """
-    Drop an asset from the casting of every shot of given episode.
+    Remove an asset from the casting of each shot of the given episode.
     """
     shots = shots_service.get_shots_for_episode(episode_id)
     shot_ids = [shot["id"] for shot in shots]
@@ -497,7 +507,7 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
         shot = shots_service.get_shot_raw(str(link.entity_in_id))
         link.delete()
         shots_service.clear_shot_cache(str(shot.id))
-        # Counts the links, so it runs once the link is gone.
+        # This counts the links, thus it runs after the link removal.
         refresh_shot_casting_stats(shot.serialize())
         events.emit(
             "shot:casting-update",
@@ -514,8 +524,8 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
 
 def _get_episode_id_for_shot(shot):
     """
-    Return the ID of the episode given shot belongs to, or None when its
-    sequence has no parent episode, or when it has no sequence at all.
+    Return the ID of the episode of the given shot. Return None if its
+    sequence has no parent episode or if the shot has no sequence.
     """
     if shot["parent_id"] is None:
         return None
@@ -525,10 +535,10 @@ def _get_episode_id_for_shot(shot):
 
 def _detach_asset_from_episode_if_unused(asset_id, episode_id):
     """
-    Casting an asset in a shot automatically casts it in the parent episode
-    too (see `_create_episode_casting_link`). Symmetrically, once an asset is
-    removed from a shot's casting, remove it from the episode as well, unless
-    it is still casted in another shot of that episode.
+    Remove the asset from the parent episode after its removal from the
+    casting of a shot, unless the asset is still cast in another shot of that
+    episode. This is the opposite of `_create_episode_casting_link`: a cast in
+    a shot also casts the asset in the parent episode.
     """
     shots = shots_service.get_shots_for_episode(episode_id)
     shot_ids = [shot["id"] for shot in shots]
@@ -543,8 +553,8 @@ def _detach_asset_from_episode_if_unused(asset_id, episode_id):
         return
 
     link = EntityLink.get_by(entity_in_id=episode_id, entity_out_id=asset_id)
-    # A link the manager set from the episode breakdown carries no flag:
-    # it is a decision of its own, not a mirror of the shots.
+    # A link that the manager set from the episode breakdown has no flag:
+    # it is a separate decision, not a copy of the shots.
     if link is None or not (link.data or {}).get("auto"):
         return
 
@@ -562,9 +572,9 @@ def _detach_asset_from_episode_if_unused(asset_id, episode_id):
         },
         project_id=str(episode.project_id),
     )
-    # Mirror the asset:update event emitted when the link was auto-created
-    # in `_create_episode_casting_link`, so listeners refresh the asset the
-    # same way on both sides of the auto-casting link.
+    # Emit the same asset:update event as when the link was created
+    # automatically in `_create_episode_casting_link`. Thus listeners
+    # refresh the asset the same way on both sides of the auto-casting link.
     events.emit(
         "asset:update",
         {"asset_id": str(asset_id)},
@@ -574,12 +584,11 @@ def _detach_asset_from_episode_if_unused(asset_id, episode_id):
 
 def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
     """
-    When an asset is casted in a shot, the asset is automatically casted in
-    the episode.
+    If an asset is cast in a shot, cast the asset automatically in the
+    episode, with a link flagged as auto.
     """
-    # A shot laid out before its sequences exist hangs from nothing, and
-    # then there is no episode to cast the asset in: reading the sequence
-    # anyway turned the whole casting into a 404.
+    # A shot created before its sequences exist has no parent. Then there
+    # is no episode to cast the asset in.
     if (
         entity_types_service.is_shot(entity)
         and entity["parent_id"] is not None
@@ -597,9 +606,9 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
                     label=label,
                     data={"auto": True},
                 )
-                # The count is what the breakdown of the episode is drawn
-                # from, and the detach path below decrements it: without
-                # this, an episode cast through its shots reported none.
+                # The breakdown of the episode comes from this count, and
+                # the removal path below decreases it. Without this, an
+                # episode cast through its shots showed no assets.
                 episode = entities_service.get_entity_raw(
                     sequence["parent_id"]
                 )
@@ -617,7 +626,7 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
 
 def get_cast_in(asset_id):
     """
-    Get the list of shots where an asset is casted in.
+    Return the list of shots, then of assets, in which an asset is cast.
     """
     cast_in = []
     Sequence = aliased(Entity, name="sequence")
@@ -682,7 +691,8 @@ def get_cast_in(asset_id):
 
 def _group_serialized_instances(keyed_instances):
     """
-    Group serialized asset instances by key, given (key, instance) pairs.
+    Group the serialized asset instances by key, from the given (key,
+    instance) pairs.
     """
     result = {}
     for key, asset_instance in keyed_instances:
@@ -692,7 +702,7 @@ def _group_serialized_instances(keyed_instances):
 
 def _get_instances_of_asset(asset_id):
     """
-    Return every asset instance of given asset, ordered by number.
+    Return all asset instances of the given asset, ordered by number.
     """
     return (
         AssetInstance.query.filter(AssetInstance.asset_id == asset_id)
@@ -703,10 +713,11 @@ def _get_instances_of_asset(asset_id):
 
 def get_asset_instances_for_scene(scene_id, asset_type_id=None):
     """
-    Return all asset instances for given scene.
+    Return all asset instances for the given scene.
 
-    Asset instances are a different way to represent the casting of a shot.
-    They allow to track precisely output files generated when building a shot.
+    Asset instances are a different representation of the casting of a shot.
+    They help to track precisely the output files that the build of a shot
+    generates.
     """
     query = AssetInstance.query.filter(
         AssetInstance.scene_id == scene_id
@@ -725,7 +736,7 @@ def get_asset_instances_for_scene(scene_id, asset_type_id=None):
 
 def get_asset_instances_for_shot(shot_id):
     """
-    Return asset instances casted in given shot.
+    Return the asset instances cast in the given shot.
     """
     shot = shots_service.get_shot_raw(shot_id)
     return _group_serialized_instances(
@@ -736,7 +747,7 @@ def get_asset_instances_for_shot(shot_id):
 
 def get_shot_asset_instances_for_asset(asset_id):
     """
-    Return asset instances casted in a shot for given asset.
+    Return the asset instances cast in a shot for the given asset.
     """
     return _group_serialized_instances(
         (str(shot.id), asset_instance)
@@ -747,7 +758,7 @@ def get_shot_asset_instances_for_asset(asset_id):
 
 def get_scene_asset_instances_for_asset(asset_id):
     """
-    Return all asset instances of an asset casted in layout scenes.
+    Return all asset instances of an asset cast in layout scenes.
     """
     return _group_serialized_instances(
         (str(asset_instance.scene_id), asset_instance)
@@ -757,7 +768,7 @@ def get_scene_asset_instances_for_asset(asset_id):
 
 def get_camera_instances_for_scene(scene_id):
     """
-    Return all instances of type Camera for given layout scene.
+    Return all instances of type Camera for the given layout scene.
     """
     camera_entity_type = entity_types_service.get_or_create_asset_type(
         "Camera"
@@ -767,7 +778,7 @@ def get_camera_instances_for_scene(scene_id):
 
 def add_asset_instance_to_scene(scene_id, asset_id, description=""):
     """
-    Create a new asset instance for given asset and scene.
+    Create an asset instance for the given asset and scene.
     """
     instance = (
         AssetInstance.query.filter(AssetInstance.scene_id == scene_id)
@@ -800,7 +811,7 @@ def add_asset_instance_to_scene(scene_id, asset_id, description=""):
 
 def add_asset_instance_to_shot(shot_id, asset_instance_id):
     """
-    Add asset instance to instance casting of given shot.
+    Add the asset instance to the instance casting of the given shot.
     """
     shot = shots_service.get_shot_raw(shot_id)
     asset_instance = get_asset_instance_raw(asset_instance_id)
@@ -816,7 +827,7 @@ def add_asset_instance_to_shot(shot_id, asset_instance_id):
 
 def remove_asset_instance_for_shot(shot_id, asset_instance_id):
     """
-    Remove asset instance from instance casting of given shot.
+    Remove the asset instance from the instance casting of the given shot.
     """
     shot = shots_service.get_shot_raw(shot_id)
     asset_instance = get_asset_instance_raw(asset_instance_id)
@@ -831,8 +842,8 @@ def remove_asset_instance_for_shot(shot_id, asset_instance_id):
 
 def build_asset_instance_name(asset_id, number):
     """
-    Helpers to generate normalized asset instance name. It is used to build
-    default instance names.
+    Return a normalized asset instance name. It is used to build default
+    instance names.
     """
     asset = base_service.get_instance(Entity, asset_id, AssetNotFoundException)
     asset_name = slugify(asset.name, separator="_", lowercase=False)
@@ -842,10 +853,10 @@ def build_asset_instance_name(asset_id, number):
 
 def get_asset_instances_for_asset(asset_id, asset_type_id=None):
     """
-    Return all asset instances inside given asset.
+    Return all asset instances inside the given asset.
 
-    Asset instances for asset are used for environment (instantiation of props)
-    or for props (instantiation of sub props).
+    Asset instances of an asset are used for environments (instances of
+    props) or for props (instances of sub props).
     """
     query = AssetInstance.query.filter(
         AssetInstance.target_asset_id == asset_id
@@ -866,7 +877,7 @@ def add_asset_instance_to_asset(
     asset_id, asset_to_instantiate_id, description=""
 ):
     """
-    Create a new asset instance for given asset and scene.
+    Create an instance of the asset to instantiate inside the given asset.
     """
     instance = (
         AssetInstance.query.filter(AssetInstance.target_asset_id == asset_id)
@@ -899,7 +910,7 @@ def add_asset_instance_to_asset(
 
 def get_entity_casting(entity_id):
     """
-    Get entities related to entity as external entities.
+    Return the entities related to the entity as external entities.
     """
     entity = entities_service.get_entity_raw(entity_id)
     return Entity.serialize_list(entity.entities_out, obj_type="Asset")
@@ -907,7 +918,7 @@ def get_entity_casting(entity_id):
 
 def get_entity_link_raw(entity_in_id, entity_out_id):
     """
-    Get link matching given entities.
+    Return the link that matches the given entities.
     """
     link = EntityLink.get_by(
         entity_in_id=entity_in_id, entity_out_id=entity_out_id
@@ -917,7 +928,7 @@ def get_entity_link_raw(entity_in_id, entity_out_id):
 
 def get_entity_link_between(entity_in_id, entity_out_id):
     """
-    Get link matching given entities.
+    Return the link that matches the given entities.
     """
     link = get_entity_link_raw(entity_in_id, entity_out_id)
     if link:
@@ -928,9 +939,8 @@ def get_entity_link_between(entity_in_id, entity_out_id):
 
 def refresh_casting_stats(asset):
     """
-    For each shot including given asset, for all related tasks, it computes
-    how many assets are available for this task and saves the result
-    on the task level.
+    For each shot that includes the given asset, compute for each related
+    task the number of available assets. Save the result on the task level.
     """
 
     cast_in = get_cast_in(asset["id"])
@@ -946,14 +956,16 @@ def refresh_casting_stats(asset):
 
 def refresh_shot_casting_stats(shot, priority_map=None):
     """
-    For all tasks related to given shot, it computes how many assets are
-    available for this task and saves the result on the task level.
+    For all tasks related to the given shot, compute the number of available
+    assets for each task. Save the result on the task level. Also sync the
+    nb_entities_out of the shot with its live links again.
     """
     if priority_map is None:
         priority_map = _get_task_type_priority_map(shot["project_id"])
-    # The shots page divides the ready count by this counter, the casting
-    # page lists the live links: archiving an asset keeps its links and
-    # deleting one drops them, and neither path touched the counter.
+    # The shots page divides the ready count by this counter. The casting
+    # page lists the live links. The archive of an asset keeps its links,
+    # the deletion of an asset removes them, and neither path changed the
+    # counter.
     shot_raw = Entity.get(shot["id"])
     nb_live = _count_live_links(shot["id"])
     if shot_raw.nb_entities_out != nb_live:
@@ -988,8 +1000,8 @@ def refresh_shot_casting_stats(shot, priority_map=None):
 
 def refresh_all_shot_casting_stats():
     """
-    For all shots in all open projects, it computes how many assets are
-    available. It saves the result on the task level.
+    For all shots in all open projects, compute the number of available
+    assets. Save the result on the task level.
     """
     for project in projects_service.open_projects():
         priority_map = _get_task_type_priority_map(project["id"])
@@ -999,8 +1011,8 @@ def refresh_all_shot_casting_stats():
 
 def _count_live_links(entity_id):
     """
-    Count the assets cast in given entity that are not canceled, which is
-    what get_casting lists.
+    Count the assets that are cast in the given entity and that are not
+    canceled. get_casting lists the same assets.
     """
     return (
         EntityLink.query.filter_by(entity_in_id=entity_id)
@@ -1012,8 +1024,8 @@ def _count_live_links(entity_id):
 
 def _get_task_type_priority_map(project_id):
     """
-    Map each shot task type of a project to its priority, which is what
-    orders the pipeline steps.
+    Map each shot task type of a project to its priority. The priority gives
+    the order of the pipeline steps.
     """
     task_types = (
         ProjectTaskTypeLink.query.join(TaskType)
@@ -1030,9 +1042,9 @@ def _get_task_type_priority_map(project_id):
 
 def _is_asset_ready(asset, task, priority_map):
     """
-    Tell whether an asset is ready for given task: a shared asset coming
-    from another project always is, otherwise its ready_for step must
-    come at or after the task's own step in the pipeline order.
+    Return True if an asset is ready for the given task. A shared asset from
+    another project is always ready. Else, its ready_for step must come at
+    or after the step of the task in the pipeline order.
     """
     is_ready = False
     if not asset.get("canceled", False):
@@ -1047,10 +1059,11 @@ def _is_asset_ready(asset, task, priority_map):
 
 def remove_entity_link(link_id):
     """
-    Delete the entity link matching given id and return it. It goes through
-    the breakdown uncasting, which refreshes the link counter, the casting
-    caches and stats, and the episode link mirrored from the shots. Removing
-    one link leaves the shots of an episode untouched.
+    Delete the entity link that matches the given ID and return it. The
+    deletion goes through the breakdown uncast operation, which refreshes
+    the link counter, the casting caches and stats, and the episode link that
+    comes from the shots. The removal of one link does not change the shots
+    of an episode.
     """
 
     link = EntityLink.get_by(id=link_id)
@@ -1063,7 +1076,7 @@ def remove_entity_link(link_id):
 
 def get_asset_instance_raw(asset_instance_id):
     """
-    Return given asset instance as active record.
+    Return the given asset instance as an active record.
     """
     return base_service.get_instance(
         AssetInstance, asset_instance_id, AssetInstanceNotFoundException
@@ -1072,6 +1085,6 @@ def get_asset_instance_raw(asset_instance_id):
 
 def get_asset_instance(asset_instance_id):
     """
-    Return given asset instance as a dict.
+    Return the given asset instance as a dict.
     """
     return get_asset_instance_raw(asset_instance_id).serialize()

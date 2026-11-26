@@ -20,7 +20,6 @@ from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
-    assets_service,
     comments_service,
     projects_service,
     status_automations_service,
@@ -1735,12 +1734,14 @@ class StatusAutomationRunnerTestCase(ApiDBTestCase):
             out_field_type="ready_for",
         )
 
-        with mock.patch.object(
-            assets_service, "update_asset", wraps=assets_service.update_asset
-        ) as update_asset:
-            self.comment(first_task, self.done)
+        updates = self.capture_events("asset:update")
 
-        self.assertEqual(update_asset.call_count, 1)
+        self.comment(first_task, self.done)
+
+        self.assertEqual(
+            [update["data"].get("ready_for") for update in updates],
+            [str(layout.id)],
+        )
 
     def test_a_chain_stops_after_ten_automation_comments(self):
         task_types = [self.a_task_type(f"Step {index}") for index in range(12)]

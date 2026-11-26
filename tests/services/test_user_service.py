@@ -145,6 +145,29 @@ class NotificationTestCase(UserContextTestCase):
             ]
         self.assertEqual(texts, ["For you", ""])
 
+    def test_a_client_reply_comes_back_without_its_text(self):
+        """
+        Replies follow the comment rule: the artist reads the reply of the
+        studio, not the one of a client.
+        """
+        comment = self.a_comment(text="Lets go")
+        comments_service.reply_comment(
+            comment["id"], "Too dark", person_id=self.user_client["id"]
+        )
+        comments_service.reply_comment(
+            comment["id"], "Fixed", person_id=self.user["id"]
+        )
+
+        reply_texts = {
+            notification["author_id"]: notification["reply_text"]
+            for notification in self.bell(notification_type="reply")
+        }
+
+        self.assertEqual(
+            reply_texts,
+            {self.user_client["id"]: "", self.user["id"]: "Fixed"},
+        )
+
     def test_the_bell_holds_one_notification(self):
         self.a_comment(text="Lets go")
         self.a_comment(text="And again")

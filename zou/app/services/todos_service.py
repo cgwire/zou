@@ -1,6 +1,5 @@
 from sqlalchemy import func, or_
 from sqlalchemy.orm import aliased, subqueryload
-from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
 
 from zou.app import db
@@ -24,15 +23,15 @@ from zou.app.utils import fields, permissions, query as query_utils
 
 def get_person_done_tasks(person_id, projects):
     """
-    Return all finished tasks performed by a person.
+    Return all finished tasks that the given person did.
     """
     return get_person_tasks(person_id, projects, is_done=True)
 
 
 def get_person_related_tasks(person_id, task_type_id, projects):
     """
-    Retrieve all tasks for given task types and to entiities
-    that have at least one person assignation, in given projects.
+    Return all tasks of the given task type on the entities where the
+    given person has at least one assigned task, in the given projects.
     """
     person = Person.get(person_id)
     project_ids = [project["id"] for project in projects]
@@ -55,7 +54,9 @@ def get_person_related_tasks(person_id, task_type_id, projects):
 
 def get_person_tasks(person_id, projects, is_done=None):
     """
-    Retrieve all tasks for given person and projects.
+    Return the tasks assigned to the given person in the given projects.
+    If is_done is True, return the finished tasks, most recent end date
+    first. Else, return the unfinished tasks.
     """
     Person.get(person_id)
     project_ids = [project["id"] for project in projects]
@@ -104,10 +105,9 @@ def get_person_tasks(person_id, projects, is_done=None):
     else:
         query = query.filter(TaskStatus.is_done == False)
 
-    # Execute query once and reuse results
     query_results = query.all()
 
-    # Add episodes linked to assets
+    # Add the episodes linked to the assets
     asset_ids = []
     for row in query_results:
         asset_ids.append(str(row[0].entity_id))
@@ -129,8 +129,6 @@ def get_person_tasks(person_id, projects, is_done=None):
             cast_in_episode_names[asset_id] = []
         cast_in_episode_ids[asset_id].append(episode_id)
         cast_in_episode_names[asset_id].append(episode_name)
-
-    # Build the result
 
     tasks = []
     for row in query_results:
@@ -185,10 +183,10 @@ def get_person_tasks_to_check(
     limit=100,
 ):
     """
-    Retrieve all tasks requiring a feedback for given projects, through a
-    task filter such as user_service.build_supervision_scope_filter returns.
-    When a page number is given, return a pagination envelope instead of a
-    bare list.
+    Return all tasks that wait for feedback in the given projects. Use a
+    task filter, for example the filter that
+    user_service.build_supervision_scope_filter returns. If a page number
+    is given, return a pagination envelope instead of a plain list.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -252,9 +250,9 @@ def get_person_tasks_to_check(
             )
 
     if episode_id is not None:
-        # match every way a row resolves its episode: the sequence chain,
-        # an episode scoped entity (source_id) and a sequence level task
-        # (parent_id)
+        # match all the ways that a row gets its episode: the sequence
+        # chain, an episode scoped entity (source_id) and a sequence level
+        # task (parent_id)
         query = query.filter(
             or_(
                 Episode.id == episode_id,
@@ -310,8 +308,8 @@ def get_person_tasks_to_check(
             Entity.name,
         ],
     }
-    # the unpaginated legacy path never had an ordering: do not tax it
-    # with a six column sort its callers do not need
+    # the unpaginated legacy path never had an order: do not slow it with
+    # a sort on six columns that its callers do not need
     if page is not None or order_by is not None:
         query = query.order_by(
             *order_columns.get(order_by, name_order), Task.id
@@ -364,9 +362,14 @@ def get_person_tasks_to_check(
 
 def get_person_tasks_to_check_filter_values(project_ids=None, scope=None):
     """
-    Return the distinct project, task type, task status, episode and
-    assignee ids present in the tasks requiring a feedback for given
-    projects, through a task filter such as
+    Return the distinct IDs of these items in the tasks that wait for
+    feedback in the given projects:
+    - projects
+    - task types
+    - task statuses
+    - episodes
+    - assignees.
+    Use a task filter, for example the filter that
     user_service.build_supervision_scope_filter returns.
     """
     Sequence = aliased(Entity, name="sequence")
@@ -429,9 +432,8 @@ def get_person_tasks_to_check_filter_values(project_ids=None, scope=None):
         values["project_ids"].add(project_id)
         values["task_type_ids"].add(task_type_id)
         values["task_status_ids"].add(task_status_id)
-        # resolve the episode the way the rows display it: the sequence
-        # chain, then the entity source id, then the parent of a
-        # sequence level task
+        # get the episode as the rows show it: the sequence chain, then
+        # the entity source id, then the parent of a sequence level task
         if episode_id is None:
             episode_id = source_id
         if entity_type_name == "Sequence" and parent_id is not None:
@@ -448,9 +450,9 @@ def get_person_tasks_to_check_filter_values(project_ids=None, scope=None):
 
 def _apply_open_tasks_filters(query, filters):
     """
-    Apply the open tasks pool scoping and filters. Shared by the listing,
-    its stats and the burndown aggregates so the three queries always
-    agree on which tasks are in the pool.
+    Apply the scope and the filters of the open tasks pool. The listing,
+    its stats and the burndown aggregates share this function. Thus the
+    three queries always agree on the tasks in the pool.
     """
     if (
         filters.project_id is not None
@@ -507,12 +509,12 @@ def _apply_open_tasks_filters(query, filters):
 
 def get_open_tasks(filters, order_by=None, limit=200, page=None):
     """
-    Return all tasks matching given filters from open projects.
+    Return a page of the tasks of open projects that match the given
+    filters. The page is a dict with data, stats, limit, is_more and page.
+    If no task type is given, leave out the concept tasks.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
-
-    from zou.app import db
 
     query_stats = (
         db.session.query(
@@ -653,12 +655,15 @@ def get_open_tasks(filters, order_by=None, limit=200, page=None):
 
 def get_open_tasks_burndown(filters):
     """
-    Return burndown aggregates for tasks matching given filters from open
-    projects: totals, schedule bounds and the amount of tasks done per day.
-    Schedule bounds come from the task dates and fall back to the
-    project dates when the tasks carry none. Activity days preceding that
-    window are folded onto its first day, as long as a start date exists
-    to anchor them, late ones extend it.
+    Return the burndown aggregates for the tasks of open projects that
+    match the given filters:
+    - totals
+    - schedule bounds
+    - the number of tasks done each day.
+    The schedule bounds come from the task dates. If the tasks have no
+    dates, use the project dates. If a start date exists, fold the
+    activity days before that window onto its first day. Activity days
+    after the window extend it.
     """
     query = (
         db.session.query(
@@ -706,18 +711,17 @@ def get_open_tasks_burndown(filters):
         .all()
     )
 
-    # each bound falls back to the project dates independently, so the
-    # two raw values can come out inverted: order them before anything
-    # reads them as a window
+    # each bound uses the project dates separately, so the two raw values
+    # can be in the wrong order: sort them before other code reads them
+    # as a window
     schedule_start = first_start_date or first_project_start
     planning_dates = [
         date
         for date in (schedule_start, last_due_date or last_project_end)
         if date is not None
     ]
-    # the fold needs a start date to anchor on: a pool carrying due dates
-    # alone would otherwise see every day of its activity collapse onto
-    # the due date
+    # the fold needs a start date as an anchor. Else, for a pool with only
+    # due dates, all the days of its activity go onto the due date
     window_start = min(planning_dates) if schedule_start is not None else None
 
     done_rows = _fold_done_rows_before(done_rows, window_start)
@@ -744,13 +748,12 @@ def get_open_tasks_burndown(filters):
 
 def get_open_tasks_stats():
     """
-    Return the amount of tasks, done tasks, estimation, and duration for each
-    status in open projects. Aggregate the amounts for each project.
+    Return the number of tasks, the number of done tasks, the estimation
+    and the duration for each status in open projects. Calculate the
+    totals for each project.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
-
-    from zou.app import db
 
     query_stats = (
         db.session.query(
@@ -821,11 +824,11 @@ def get_open_tasks_stats():
 
 def _fold_done_rows_before(done_rows, window_start):
     """
-    Fold the activity days preceding the schedule window onto its first
-    day. A task carrying an imported done date (1899-12-31 and the like)
-    would otherwise drag the whole burndown window back to that date.
-    Folding rather than dropping them: those tasks count in the total, so
-    losing their done amount would keep the curve above zero.
+    Fold the activity days before the schedule window onto its first day.
+    Else, a task with an imported done date (1899-12-31 or similar) moves
+    the start of the burndown window back to that date. Do not remove these
+    days: their tasks count in the total. Without their done amount, the
+    curve stays above zero.
     """
     if window_start is None:
         return done_rows
@@ -854,13 +857,14 @@ def get_tasks_for_project(
     cursor_id=None,
 ):
     """
-    Return all tasks for given project, or with only_assigned the ones
-    assigned to the current user: all of them, a page of them, or the ones
-    following a cursor (see query_utils.get_paginated_results).
+    Return all tasks of the given project. If only_assigned is True,
+    return only the tasks assigned to the current user. Return all of them,
+    a page of them, or the tasks after a cursor (see
+    query_utils.get_paginated_results).
     """
     query = (
-        # subqueryload: one query whatever the size, selectinload sends
-        # one IN of 500 ids per batch on large projects.
+        # subqueryload: one query for all sizes. selectinload sends one IN
+        # of 500 ids for each batch on large projects.
         Task.query.options(subqueryload(Task.assignees).load_only(Person.id))
         .filter(Task.project_id == project_id)
         .order_by(Task.updated_at.desc())
@@ -889,7 +893,7 @@ def get_tasks_for_project(
 
 def get_todos():
     """
-    Get all unfinished tasks assigned to current user.
+    Return all unfinished tasks assigned to the current user.
     """
     current_user = persons_service.get_current_user()
     projects = user_service.related_projects()
@@ -898,7 +902,8 @@ def get_todos():
 
 def get_done_tasks():
     """
-    Get all finished tasks assigned to current user for open projects.
+    Return all finished tasks assigned to the current user in open
+    projects.
     """
     current_user = persons_service.get_current_user()
     projects = user_service.related_projects()
@@ -907,20 +912,21 @@ def get_done_tasks():
 
 def _get_tasks_to_check_scope():
     """
-    Return (allowed, project_ids, scope) used to scope the tasks-to-check
-    queries depending on the roles held per project by the current user.
+    Return (allowed, project_ids, scope). The tasks-to-check queries use
+    this tuple as their scope. It depends on the role of the current user
+    in each project.
     """
     if permissions.has_admin_permissions():
         return True, None, None
-    # Read per project: the role held on each project of the team.
+    # Read the roles per project: the role on each project of the team.
     roles = user_service.get_team_project_roles()
     project_ids = [
         project_id
         for project_id, role in roles.items()
         if role in ("manager", "supervisor")
     ]
-    # A global manager or supervisor on no team yet is allowed, and scoped
-    # to nothing.
+    # Allow a global manager or supervisor who is not on a team yet, with
+    # an empty scope.
     if not project_ids and not (
         permissions.has_manager_permissions()
         or permissions.has_supervisor_permissions()
@@ -948,12 +954,17 @@ def get_tasks_to_check(
     limit=100,
 ):
     """
-    Get all tasks waiting for feedback in the user department. When a page
-    number is given, return a pagination envelope instead of a bare list.
+    Return all tasks that wait for feedback and that the current user
+    supervises:
+    - all tasks for an admin
+    - all tasks of a managed project
+    - the tasks of the departments of the user on a supervised project.
+    If a page number is given, return a pagination envelope instead of a
+    plain list.
     """
     allowed, project_ids, scope = _get_tasks_to_check_scope()
     if not allowed:
-        # an empty project scope yields the same empty list or envelope
+        # an empty project scope gives the same empty list or envelope
         # shape as the allowed path, clamping included
         project_ids, scope = [], None
 
@@ -975,8 +986,8 @@ def get_tasks_to_check(
 
 def get_tasks_to_check_filter_values():
     """
-    Return the distinct filter values available for the tasks waiting for
-    feedback in the user department.
+    Return the distinct filter values of the tasks that wait for feedback
+    and that the current user supervises.
     """
     allowed, project_ids, scope = _get_tasks_to_check_scope()
     if not allowed:

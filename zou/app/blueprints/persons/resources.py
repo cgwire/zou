@@ -804,7 +804,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
                 except ValueError:
                     person_IP = None
             emails_service.send_password_changed_by_admin_email(
-                person, current_user, person_IP=person_IP
+                person, person_IP=person_IP
             )
             return {"success": True}
 
@@ -863,7 +863,7 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
                 except ValueError:
                     person_IP = None
             emails_service.send_2fa_disabled_by_admin_email(
-                person, current_user, person_IP=person_IP
+                person, person_IP=person_IP
             )
             return {"success": True}
 

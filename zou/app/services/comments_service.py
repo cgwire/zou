@@ -60,15 +60,16 @@ from zou.app.utils import (
     query as query_utils,
 )
 
-# Chained status automations stop past this number of nested automation
-# comments: a cycle the fired set misses, or a runaway chain.
+# A chain of status automations stops after this number of nested automation
+# comments. This stops a cycle that the fired set does not find, or a chain
+# that does not end.
 MAX_AUTOMATION_DEPTH = 10
 
-# Raster image types that are safe to display inline. Paired with the global
-# X-Content-Type-Options: nosniff header, the browser honors the declared type
-# and will not sniff a disguised HTML payload into an executable document.
-# image/svg+xml is deliberately excluded: SVG can embed scripts and would run
-# in Kitsu's origin (stored XSS).
+# Raster image types that are safe to show inline. With the global
+# X-Content-Type-Options: nosniff header, the browser uses the declared type.
+# It does not sniff a disguised HTML payload into an executable document.
+# image/svg+xml is not in this list on purpose: an SVG can contain scripts, and
+# these scripts run in the origin of Kitsu (stored XSS).
 INLINE_SAFE_MIMETYPES = {
     "image/jpeg",
     "image/png",
@@ -81,8 +82,8 @@ INLINE_SAFE_MIMETYPES = {
 
 def is_inline_safe_mimetype(mimetype):
     """
-    Return True when an attachment with this mimetype may be served inline
-    (displayed in the browser) instead of forced as a download.
+    Return True if an attachment with this mimetype can be served inline (shown
+    in the browser). Otherwise, the attachment is sent as a download.
     """
     if not mimetype:
         return False
@@ -105,14 +106,14 @@ def create_comment(
     _automation_depth=0,
 ):
     """
-    Create a new comment and related: news, notifications and events.
+    Create a new comment and the related news, notifications and events.
 
-    A batch passes posted_comments, the set of the (task id string, text)
-    pairs it posts: the hashtags repost a text on no task the set pairs
-    with it, and add the pairs of their reposts to the set.
+    A batch gives posted_comments: the set of the (task id string, text) pairs
+    that it posts. The hashtags do not post a text again on a task that the set
+    pairs with this text. They add the pairs of their new posts to the set.
 
-    The two private arguments carry a cascade of status automations to the
-    comments the automations post; callers leave them out.
+    The two private arguments send a cascade of status automations to the
+    comments that the automations post. Callers do not give them.
     """
     if checklist is None:
         checklist = []
@@ -142,8 +143,8 @@ def create_comment(
     if with_hashtags:
         _handle_hashtags(author, task_type, task, text, posted_comments)
 
-    # Read from the row: get_task is memoized, and a sync import updates the
-    # row without dropping that cache.
+    # Read the value from the row: get_task is memoized, and a sync import
+    # updates the row but does not remove that cache entry.
     previous_task_status_id = str(
         tasks_service.get_task_raw(task_id).task_status_id
     )
@@ -164,12 +165,12 @@ def create_comment(
 
 def _handle_hashtags(person, task_type, task, text, posted_comments=None):
     """
-    Post the same comment on the sibling tasks the hashtags of the text
-    name, so a supervisor can address several task types at once.
+    Post the same comment on the sibling tasks that the hashtags of the text
+    name. Thus a supervisor can send a comment to many task types at one time.
 
-    posted_comments, when given, is a mutable set of (task id string, text)
-    pairs a batch posts: a sibling paired with this text is left alone, and
-    the pairs of the reposts are added to the set.
+    If posted_comments is given, it is a mutable set of the (task id string,
+    text) pairs that a batch posts. If the set pairs a sibling with this text,
+    do not post on that sibling. Add the pairs of the new posts to the set.
     """
     hashtags = get_comment_hashtags(text)
     if len(hashtags) > 0:
@@ -207,11 +208,12 @@ def _handle_hashtags(person, task_type, task, text, posted_comments=None):
 
 def _check_retake_capping(task_status, task, created_at=None):
     """
-    Raise when a retake would exceed the cap. The cap is read on the
-    entity when it sets one, on the project otherwise; zero means no cap.
-    A comment dated now that leaves the task on that status adds no retake:
-    the cap does not apply. A comment with a date of its own can come before
-    others, and the replay of the history can count one more retake.
+    Raise an exception if a retake goes above the cap. If the entity sets a
+    cap, read the cap on the entity. Otherwise, read it on the project. A cap
+    of zero means no cap. A comment dated now that keeps the task on that
+    status adds no retake: the cap does not apply. A comment with its own date
+    can come before other comments. Then the replay of the history can count
+    one more retake.
     """
     adds_no_retake = (
         task_status["id"] == task["task_status_id"] and not created_at
@@ -233,8 +235,8 @@ def _check_retake_capping(task_status, task, created_at=None):
 
 def _get_comment_author(person_id):
     """
-    Return the person the comment is attributed to: the one given, or the
-    current user when no id is passed.
+    Return the author of the comment: the given person, or the current user if
+    no id is given.
     """
     if person_id is not None and person_id != "":
         person = persons_service.get_person(person_id)
@@ -245,12 +247,12 @@ def _get_comment_author(person_id):
 
 def _manage_status_change(task_status, task, comment):
     """
-    Apply the status the comment carries to its task, and return the task
-    with whether the status actually changed.
+    Apply the status of the comment to its task. Return the task and whether
+    the status changed.
 
-    A comment posted with an older date than the last one does not move
-    the task: the whole history is replayed instead, so importing old
-    comments cannot rewind a task.
+    If the date of the comment is older than the date of the last comment, the
+    task does not move. The function replays all the history. Thus an import of
+    old comments cannot move a task back.
     """
     is_last_comment = (
         task["last_comment_date"] is None
@@ -272,14 +274,14 @@ def _manage_status_change(task_status, task, comment):
                     retake_count = 0
                 new_data["retake_count"] = retake_count + 1
 
-            # The end date and the done date are stamped by update_task,
-            # which owns that policy: it rolls them back too when a task
-            # leaves a feedback or a done status.
+            # update_task sets the end date and the done date, because it owns
+            # that policy. It also resets them when a task leaves a feedback
+            # status or a done status.
 
             if task_status["is_wip"] and task["real_start_date"] is None:
-                # Naive UTC like every other datetime stored: an aware
-                # value is converted by the server session timezone on
-                # the way into a timestamp without time zone column.
+                # Use naive UTC, like all other stored datetimes. The server
+                # session timezone converts an aware value when it goes into a
+                # timestamp without time zone column.
                 new_data["real_start_date"] = (
                     date_helpers.get_utc_now_datetime()
                 )
@@ -298,11 +300,12 @@ def _manage_status_change(task_status, task, comment):
                 project_id=task["project_id"],
             )
             if task_status["is_feedback_request"]:
-                # Backwards-compatible: the legacy /actions/tasks/<id>/to-review
-                # endpoint emitted task:to-review whenever a task moved to a
-                # feedback-request status. Modern Kitsu posts a comment with
-                # the new task_status_id instead, so we re-emit the event from
-                # here to keep existing gazu listeners working.
+                # Backward compatibility: the legacy
+                # /actions/tasks/<id>/to-review endpoint emitted task:to-review
+                # each time a task moved to a feedback-request status. Modern
+                # Kitsu posts a comment with the new task_status_id. Thus we
+                # emit the event again here, so that the existing gazu
+                # listeners continue to work.
                 events.emit(
                     "task:to-review",
                     {
@@ -320,8 +323,8 @@ def _manage_status_change(task_status, task, comment):
 
 def _manage_subscriptions(task, comment, status_changed):
     """
-    Notify the people following the task, and feed the news stream.
-    Concepts are left out of the news stream on purpose.
+    Notify the people who follow the task, and add news to the news stream.
+    Concepts are not in the news stream on purpose.
     """
     notifications_service.create_notifications_for_task_and_comment(
         task, comment, change=status_changed
@@ -342,18 +345,21 @@ def _run_status_automations(
     task, previous_task_status_id, person_id, fired_automations, depth
 ):
     """
-    Run the status automations of the task project after a comment. Only a
-    status change can fire one: an automation fires when the change turns
-    its trigger from false to true. They are all decided on the tasks as
-    the change leaves them, before any of them applies its change, so that
-    none is decided on what another changed. They then apply in the order
-    they were created: on a target they share, each one finds what the
-    previous ones set, and its target guard reads that. A failing automation
-    never fails the comment, which is already saved.
+    Run the status automations of the project of the task after a comment.
 
-    The comments posted by automations run the automations again. Within
-    one user action, an automation applies its change at most once per
-    entity, and the chain stops past MAX_AUTOMATION_DEPTH nested comments.
+    - Only a status change can fire an automation. An automation fires when the
+      change makes its trigger go from false to true.
+    - The decision for all automations uses the tasks as the change leaves
+      them, before any automation applies its change. Thus no decision uses the
+      change of another automation.
+    - Then the automations apply in their creation order. On a shared target,
+      each automation finds the values of the previous ones, and its target
+      guard reads these values.
+    - If an automation fails, the comment does not fail: it is already saved.
+
+    The comments that automations post run the automations again. In one user
+    action, an automation applies its change one time per entity at most. The
+    chain stops after MAX_AUTOMATION_DEPTH nested comments.
     """
     if str(task["task_status_id"]) == previous_task_status_id:
         return
@@ -395,7 +401,7 @@ def _run_status_automations(
                 depth,
             )
         except WrongParameterException as exception:
-            # The change was refused before any write, for instance by the
+            # A check refused the change before any write, for example the
             # retake cap of the target task.
             current_app.logger.warning(
                 f"Status automation {automation['id']} skipped: {exception}"
@@ -420,10 +426,10 @@ def _get_fired_status_automations(
     candidates, task, previous_task_status_id, depth
 ):
     """
-    Return the candidate automations the status change of given task
-    fires, each with its conditions as the runner reads them and the tasks
-    it was decided on. Those tasks are read once, as the change leaves
-    them; "before" puts the previous status of the task back.
+    Return the candidate automations that the status change of the given task
+    fires. Each automation comes with its conditions, as the runner reads them,
+    and with the tasks of its decision. These tasks are read one time, as the
+    change leaves them. "before" puts back the previous status of the task.
     """
     entity = entities_service.get_entity(task["entity_id"])
     entity_type = entity_types_service.get_entity_type(
@@ -490,7 +496,7 @@ def _apply_status_automation(
     depth,
 ):
     """
-    Apply the change of an automation the status change of given task
+    Apply the change of an automation that the status change of the given task
     fired.
     """
     if automation["out_field_type"] == "status":
@@ -518,9 +524,9 @@ def _apply_status_automation(
 
 def _record_fire(automation, task, fired_automations):
     """
-    Record that given automation applies its change on the entity of the
-    task, and return False when it already did for this user action: a
-    cycle, stopped there.
+    Record that the given automation applies its change on the entity of the
+    task. If it already did for this user action, return False: this is a
+    cycle, and it stops there.
     """
     fired_key = (automation["id"], task["entity_id"])
     if fired_key in fired_automations:
@@ -537,13 +543,13 @@ def _get_effective_conditions(automation, trigger, priorities):
     """
     Return the conditions of a trigger as the runner reads them.
 
-    With a status output, a condition on a task type that comes after the
-    output in the production (a strictly higher priority, a missing one
-    counting as 0) never fires the automation, to avoid change cycles.
-    Under "and" it still has to be met; under "or" it is left out, since
-    once met it would keep the trigger met and block every other change.
-    A task type that no longer exists makes its condition false, and a
-    status that no longer exists is dropped from its condition.
+    With a status output, a condition can be on a task type that comes after
+    the output in the production: a strictly higher priority, where a missing
+    priority counts as 0. This condition never fires the automation, to prevent
+    change cycles. Under "and", the condition must still be met. Under "or", it
+    is removed: when it is met, it keeps the trigger met and blocks all other
+    changes. If a task type does not exist anymore, its condition is false. If
+    a status does not exist anymore, it is removed from its condition.
     """
     is_status_output = automation["out_field_type"] != "ready_for"
     out_priority = priorities.get(automation["out_task_type_id"], 0) or 0
@@ -572,10 +578,11 @@ def _get_effective_conditions(automation, trigger, priorities):
 
 def _get_priority_map(project_id, automation, priority_maps):
     """
-    Return the task type priorities given automation reads, as the
-    single-condition runner did: those of the task types for its entity
-    type. An old row naming an asset type ("props") finds none, so it fires
-    whatever the priorities. ``priority_maps`` keeps the maps already read.
+    Return the task type priorities that the given automation reads, as the
+    single-condition runner did: the priorities of the task types for its
+    entity type. An old row that names an asset type ("props") finds no
+    priority. Thus it fires whatever the priorities are. ``priority_maps``
+    keeps the maps that were already read.
     """
     for_entity = automation["entity_type"].capitalize()
     if for_entity not in priority_maps:
@@ -603,8 +610,8 @@ def _is_task_status(task_status_id):
 
 def _get_condition_tasks(entity_id, conditions):
     """
-    Return the tasks of given entity for the task types of the conditions,
-    grouped by task type and ordered by name.
+    Return the tasks of the given entity for the task types of the conditions,
+    grouped by task type and sorted by name.
     """
     task_type_ids = {
         condition["task_type_id"]
@@ -625,10 +632,10 @@ def _get_condition_tasks(entity_id, conditions):
 
 def _is_trigger_met(operator, conditions, tasks_by_type, status_overrides):
     """
-    Tell whether a trigger is met. A condition is met when every task of
-    its task type has one of its statuses; a condition on a task type the
-    entity has no task of is ignored. With no condition left, the trigger
-    is not met.
+    Return True if a trigger is met. A condition is met when all tasks of its
+    task type have one of its statuses. If the entity has no task of the task
+    type of a condition, ignore that condition. If no condition is left, the
+    trigger is not met.
     """
     values = []
     for condition in conditions:
@@ -659,8 +666,11 @@ def _apply_status_change(
     depth,
 ):
     """
-    Post the comment moving the first task, by name, of the output task
-    type to the output status, authored by the author of the triggering
+    Post the comment that moves the first task, by name, of the output task
+    type to the output status. The author is the author of the comment that
+    fired the automation. If the target guard refuses the task, or if the
+    automation already fired on the entity, do not post it. If the automation
+    asks for it, import the last revision of the source task into the new
     comment.
     """
     tasks_to_update = tasks_service.get_tasks_for_entity_and_task_type(
@@ -696,11 +706,11 @@ def _apply_status_change(
 
 def _is_target_status_allowed(automation, task):
     """
-    Tell whether the target guard of an automation lets its change apply:
-    when statuses are listed, only to a target task in one of them, so that
-    an automation does not overwrite the work in progress. A guard that is
-    not a list, which only a direct write stores, reads as none, as Kitsu
-    shows it and a write reads it.
+    Return True if the target guard of an automation lets its change apply. If
+    the guard lists statuses, the change applies only to a target task in one
+    of them. Thus an automation does not overwrite the work in progress. A
+    guard that is not a list counts as no guard, as Kitsu shows it and as a
+    write reads it. Only a direct write can store such a guard.
     """
     allowed_task_status_ids = automation.get("out_only_if_task_status_ids")
     if allowed_task_status_ids is None:
@@ -719,9 +729,10 @@ def _is_target_status_allowed(automation, task):
 
 def _get_automation_comment_text(trigger, conditions, task, tasks_by_type):
     """
-    Name the change that fired the automation. With several conditions all
-    to be met, name every condition the entity has, in their order: the
-    commented task for its own, the first task by name for the others.
+    Name the change that fired the automation. If all of several conditions
+    must be met, name each condition that the entity has, in their order. Use
+    the commented task for its own condition, and the first task by name for
+    the other conditions.
     """
     if trigger["operator"] == "and" and len(trigger["conditions"]) > 1:
         changes = [
@@ -750,9 +761,10 @@ def _describe_status(task_type_id, task):
 
 def _get_revision_source_task_id(trigger, conditions, task, tasks_by_type):
     """
-    Return the task whose last revision the automation imports: under
-    "and", the task of the first condition the entity has, the commented
-    task when it is of that type; under "or", the commented task.
+    Return the task whose last revision the automation imports. Under "and",
+    return the task of the first condition that the entity has. If the
+    commented task is of that type, return the commented task. Under "or",
+    return the commented task.
     """
     if trigger["operator"] == "and":
         for condition in conditions:
@@ -794,8 +806,9 @@ def new_comment(
     for_client=False,
 ):
     """
-    Create a new comment for given object (by default, it considers this object
-    as a Task).
+    Create a new comment for the given object, with its attachments. By
+    default, the object is a Task. Emit comment:new and return the comment as a
+    dict.
     """
     if files is None:
         files = {}
@@ -824,7 +837,7 @@ def new_comment(
         task_status_id=task_status_id,
         person_id=person_id,
         mentions=get_comment_mentions(task["project_id"], text),
-        department_mentions=get_comment_department_mentions(task_id, text),
+        department_mentions=get_comment_department_mentions(text),
         checklist=checklist,
         text=text,
         created_at=created_at_date,
@@ -850,16 +863,15 @@ def new_comment(
 
 def move_comment_to_task(comment_id, target_task_id):
     """
-    Move a comment from its current task to another task that belongs to the
-    same entity. The original creation date, text, attachments, mentions and
-    status change carried by the comment are preserved. Notifications and
-    news linked to the comment on the source task are removed and recreated
-    against the target task so the target task's watchers are notified as if
-    they received a new comment.
+    Move a comment from its current task to another task of the same entity.
+    Keep the original creation date, text, attachments, mentions and status
+    change of the comment. Remove the notifications and news of the comment on
+    the source task, and create them again for the target task. Thus the
+    watchers of the target task get notifications, as for a new comment.
 
-    Comments tied to a preview revision (preview_file_id set or previews
-    populated) cannot be moved: previews stay attached to the task that
-    owns the revision.
+    A comment tied to a preview revision (preview_file_id set or previews
+    populated) cannot move: the previews stay attached to the task that owns
+    the revision.
     """
     comment = get_comment_raw(comment_id)
     source_task = tasks_service.get_task(str(comment.object_id))
@@ -926,13 +938,12 @@ def move_comment_to_task(comment_id, target_task_id):
 
 def reset_mentions(comment):
     """
-    Recompute the people and departments a comment mentions from its text.
+    Find again, from its text, the people and departments that a comment
+    mentions.
     """
     task = tasks_service.get_task(comment["object_id"])
     mentions = get_comment_mentions(task["project_id"], comment["text"])
-    department_mentions = get_comment_department_mentions(
-        task["project_id"], comment["text"]
-    )
+    department_mentions = get_comment_department_mentions(comment["text"])
     comment_to_update = Comment.get(comment["id"])
     comment_to_update.mentions = mentions
     comment_to_update.department_mentions = department_mentions
@@ -947,15 +958,15 @@ def reset_mentions(comment):
 
 def acknowledge_comment(comment_id):
     """
-    Add current user to the list of people who acknowledged given comment.
-    If he's already present, remove it.
+    Add the current user to the list of people who acknowledged the given
+    comment. If the user is already in the list, remove the user.
     """
     comment = get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id))
     project_id = task["project_id"]
-    # Reload the person through the session: appending the cached
-    # current_user instance to the relationship raises an identity
-    # conflict when another instance of the row lives in the session.
+    # Load the person again through the session. If another instance of the row
+    # is in the session, an append of the cached current_user instance to the
+    # relationship raises an identity conflict.
     current_user_id = persons_service.get_current_user()["id"]
     current_user = Person.get(current_user_id)
 
@@ -967,8 +978,8 @@ def acknowledge_comment(comment_id):
     else:
         _ack_comment(project_id, comment, current_user)
     comment.save()
-    # Kitsu draws the checkmark from the comment it reads back, not from
-    # the answer of this call.
+    # Kitsu shows the checkmark from the comment that it reads back, not from
+    # the response of this call.
     clear_comment_cache(str(comment.id))
     return comment.serialize(relations=True)
 
@@ -997,8 +1008,8 @@ def _unack_comment(project_id, comment, user):
 
 def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     """
-    Tell the clients an acknowledgement was added or removed. Not
-    persisted: it is a live signal, the link table is the record.
+    Tell the clients that an acknowledgement was added or removed. This event
+    is not persisted: it is a live signal, and the link table is the record.
     """
     events.emit(
         f"comment:{name}",
@@ -1010,8 +1021,9 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
 
 def reply_comment(comment_id, text, person_id=None, files=None):
     """
-    Add a reply entry to the JSONB field of given comment model. Create
-    notifications needed for this.
+    Add a reply entry to the JSONB field of the given comment model, with its
+    attachments. Emit comment:reply, create the necessary notifications and
+    return the reply as a dict.
     """
     if files is None:
         files = {}
@@ -1030,9 +1042,7 @@ def reply_comment(comment_id, text, person_id=None, files=None):
         "person_id": person["id"],
         "text": text,
         "mentions": get_comment_mention_ids(task["project_id"], text),
-        "department_mentions": get_comment_department_mention_ids(
-            task["project_id"], text
-        ),
+        "department_mentions": get_comment_department_mention_ids(text),
         "created_at": date_helpers.get_now(),
     }
     replies = list(comment.replies)
@@ -1059,14 +1069,14 @@ def reply_comment(comment_id, text, person_id=None, files=None):
     notifications_service.create_notifications_for_task_and_reply(
         task, comment_dict, reply
     )
-    # Embed the author so the just-posted reply renders with name and avatar.
+    # Embed the author, so that the new reply shows its name and avatar.
     reply["person"] = persons_service.get_short_person(reply["person_id"])
     return reply
 
 
 def get_reply(comment_id, reply_id):
     """
-    Return the reply matching given id inside given comment.
+    Return the reply that has the given ID inside the given comment.
     """
     comment = get_comment_raw(comment_id)
     for reply in comment.replies or []:
@@ -1077,8 +1087,8 @@ def get_reply(comment_id, reply_id):
 
 def delete_reply(comment_id, reply_id):
     """
-    Remove given reply from its comment, together with its attachments and
-    the notifications it raised.
+    Remove the given reply from its comment, with its attachments and the
+    notifications that it created.
     """
     comment = get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id))
@@ -1112,8 +1122,8 @@ def delete_reply(comment_id, reply_id):
 
 def get_comment_mentions(project_id, text):
     """
-    Check for people mention (@full name) in text and returns matching person
-    active records.
+    Find the people mentions (@full name) in the text and return the matching
+    person active records.
     """
     project = Project.get(project_id)
     return [
@@ -1126,17 +1136,18 @@ def get_comment_mentions(project_id, text):
 
 def get_comment_mention_ids(project_id, text):
     """
-    Return the ids of the people mentioned in given text.
+    Return the ids of the people mentioned in the given text.
     """
     return [
         str(mention.id) for mention in get_comment_mentions(project_id, text)
     ]
 
 
-def get_comment_department_mentions(project_id, text):
+def get_comment_department_mentions(text):
     """
-    Check for department mention (@name) in text and returns matching person
-    active records.
+    Find the department mentions (@name) in the text and return the matching
+    department active records. All departments of the studio can be mentioned,
+    whatever the production.
     """
     return [
         department
@@ -1145,34 +1156,31 @@ def get_comment_department_mentions(project_id, text):
     ]
 
 
-def get_comment_department_mention_ids(project_id, text):
+def get_comment_department_mention_ids(text):
     """
-    Return the ids of the departments mentioned in given text.
+    Return the ids of the departments mentioned in the given text.
     """
     return [
-        str(mention.id)
-        for mention in get_comment_department_mentions(project_id, text)
+        str(mention.id) for mention in get_comment_department_mentions(text)
     ]
 
 
 def get_text_mentions(project_id, text):
     """
-    Return the people and departments given text mentions in the production
-    as it is now, shaped like the mentions of a comment dict.
+    Return the people and departments that the given text mentions in the
+    production as it is now. Use the shape of the mentions of a comment dict.
     """
     return {
         "mentions": get_comment_mention_ids(project_id, text),
-        "department_mentions": get_comment_department_mention_ids(
-            project_id, text
-        ),
+        "department_mentions": get_comment_department_mention_ids(text),
     }
 
 
 def get_comment_hashtags(text):
     """
-    Check for task type mentions (#full name) in text and returns matching
-    tags. If all is present, return only all because it includes everything
-    else.
+    Find the task type mentions (#full name) in the text and return the
+    matching tags. If "all" is present, return only "all", because it includes
+    all other tags.
     """
     hashtags = [
         hashtag[1:].lower()
@@ -1185,7 +1193,7 @@ def get_comment_hashtags(text):
 
 def filter_tasks_by_hashtags(tasks, hashtags, original_task_type):
     """
-    Filter tasks based on hashtags, excluding specified task types.
+    Filter the tasks with the hashtags, and exclude the specified task types.
     """
     if "all" in hashtags:
         return [
@@ -1209,8 +1217,9 @@ def filter_tasks_by_hashtags(tasks, hashtags, original_task_type):
 
 def add_attachments_to_comment(comment, files, reply_id=None):
     """
-    Create an attachment entry and for each given uploaded files and tie it
-    to given comment.
+    Create an attachment entry for each given uploaded file, and tie it to the
+    given comment. Change the comment dict in place. Return the comment and the
+    list of the new attachment files.
     """
     if comment.get("attachment_files", None) is None:
         comment["attachment_files"] = []
@@ -1229,17 +1238,17 @@ def add_attachments_to_comment(comment, files, reply_id=None):
             comment["attachment_files"].append(attachment_file)
             new_attachment_files.append(attachment_file)
     if new_attachment_files:
-        # The dict handed in is a serialization the caller read somewhere,
-        # and appending to it leaves the stored one behind: a file attached
-        # to a comment posted earlier would not show until the window
-        # closes.
+        # The given dict is a serialization that the caller read from a
+        # different location. An append to it does not change the stored
+        # serialization. Thus a file attached to an older comment does not show
+        # until the window closes.
         clear_comment_cache(comment["id"])
     return comment, new_attachment_files
 
 
 def clear_comment_cache(comment_id):
     """
-    Drop every memoized serialization of given comment.
+    Remove all memoized serializations of the given comment.
     """
     cache.cache.delete_memoized(get_comment, comment_id)
     cache.cache.delete_memoized(get_comment, comment_id, True)
@@ -1247,7 +1256,10 @@ def clear_comment_cache(comment_id):
 
 def get_comments(task_id, is_client=False, is_manager=False):
     """
-    Return all comments related to given task.
+    Return the comments of the given task that the caller can read, newest
+    first. A client gets the comments flagged for clients, and the client
+    comments that the project shows to clients. A studio comment with previews
+    stays, but its text, attachments, checklist and replies are blank.
     """
     comments = []
     query = prepare_query(task_id, is_client, is_manager)
@@ -1316,8 +1328,9 @@ def get_comments(task_id, is_client=False, is_manager=False):
 
 def prepare_query(task_id, is_client, is_manager):
     """
-    Build the comment query of a task, scoped to what the caller may read:
-    a client only sees the comments flagged for clients.
+    Build the comment query of a task. If the caller is not a manager and not a
+    client, the caller does not get the comments of clients. get_comments does
+    the scoping of a client after this query.
     """
     Editor = aliased(Person, name="editor_id")
     query = (
@@ -1357,7 +1370,8 @@ def prepare_query(task_id, is_client, is_manager):
 
 def embed_reply_authors(comments):
     """
-    Attach a minimal author to each reply so guest repliers render too.
+    Attach a minimal author to each reply, so that the replies of guests also
+    show.
     """
     reply_person_ids = {
         reply.get("person_id")
@@ -1375,11 +1389,10 @@ def embed_reply_authors(comments):
 
 def run_task_comments_query(query):
     """
-    Execute a comment query and return the comments with their author,
-    editor and task status, plus their ids. Acknowledgements, mentions,
-    department mentions, previews, attachments and reply authors are left
-    to the callers, which add the ones they serve in a fixed number of
-    queries.
+    Execute a comment query. Return the comments with their author, editor and
+    task status, and their ids. The callers add the acknowledgements, mentions,
+    department mentions, previews, attachments and reply authors that they
+    serve. They do this in a fixed number of queries.
     """
     comment_ids = []
     comments = []
@@ -1470,7 +1483,7 @@ def _build_department_mention_map_for_comments(comment_ids):
 def build_preview_map_for_comments(comment_ids, is_client=False):
     """
     Return the previews attached to each comment. Clients never get the
-    previews of a revision that is not published to them.
+    rejected previews.
     """
     preview_map = {}
     query = (
@@ -1514,7 +1527,7 @@ def build_preview_map_for_comments(comment_ids, is_client=False):
 
 def get_comment_raw(comment_id):
     """
-    Return comment matching give id as an active record.
+    Return the comment that has the given ID, as an active record.
     """
     try:
         comment = Comment.get(comment_id)
@@ -1529,17 +1542,17 @@ def get_comment_raw(comment_id):
 @cache.memoize_function(120)
 def get_comment(comment_id, relations=False):
     """
-    Return comment matching give id as a dict.
+    Return the comment that has the given ID, as a dict.
     """
     return get_comment_raw(comment_id).serialize(relations=relations)
 
 
 def get_task_comment(task_id, comment_id):
     """
-    Return the comment matching given id as a dict, provided it is on given
-    task. Raise CommentNotFoundException otherwise. It reads the row, not
-    the cache: a read that races the move of the comment to another task can
-    leave the cache on the former task for two minutes.
+    Return the comment that has the given ID as a dict, if it is on the given
+    task. Otherwise, raise CommentNotFoundException. This function reads the
+    row, not the cache. A read at the same time as a move of the comment to
+    another task can keep the former task in the cache for two minutes.
     """
     comment = get_comment_raw(comment_id)
     if str(comment.object_id) != str(task_id):
@@ -1549,10 +1562,10 @@ def get_task_comment(task_id, comment_id):
 
 def get_comment_preview_file(task_id, comment_id, preview_file_id):
     """
-    Return given preview file as a dict, provided it is attached to given
-    comment and both are on given task. Raise the not found exception of
-    the comment or of the preview otherwise: rights checked on a task say
-    nothing of the other ids a route receives along with it.
+    Return the given preview file as a dict, if it is attached to the given
+    comment and both are on the given task. Otherwise, raise the not found
+    exception of the comment or of the preview. The rights checked on a task
+    tell nothing about the other ids that a route receives with it.
     """
     comment = get_comment_raw(comment_id)
     if str(comment.object_id) != str(task_id):
@@ -1571,8 +1584,8 @@ def get_comment_preview_file(task_id, comment_id, preview_file_id):
 
 def get_comments_for_project(project_id, page=0, limit=None, cursor_id=None):
     """
-    Return all comments for given project, a page of them, or the ones
-    following a cursor (see query_utils.get_paginated_results).
+    Return all comments of the given project, a page of them, or the comments
+    after a cursor (see query_utils.get_paginated_results).
     """
     query = (
         Comment.query.join(Task, Task.id == Comment.object_id)
@@ -1589,8 +1602,9 @@ def get_comments_for_project(project_id, page=0, limit=None, cursor_id=None):
 
 def _add_relation_ids_to_comments(comments):
     """
-    Same relation id lists as Comment.serialize(relations=True), read in
-    one query per relation for the whole list instead of five per comment.
+    Add to each comment the same relation id lists as
+    Comment.serialize(relations=True). Read them in one query per relation for
+    the full list, not in five queries per comment.
     """
     comment_ids = [comment["id"] for comment in comments]
     link_maps = {
@@ -1617,18 +1631,20 @@ def _add_relation_ids_to_comments(comments):
 
 def add_preview_file_to_comment(comment_id, person_id, task_id, revision=None):
     """
-    Add a preview to comment preview list. Auto set the revision field
-    (add 1 if it's a new preview, keep the preview revision in other cases).
-    A revision of None means "auto-pick the next revision"; an explicit 0
-    is a valid, stored revision.
+    Add a preview to the preview list of the comment. Set the revision field
+    automatically: add 1 for a new preview, else keep the revision of the
+    preview. A revision of None means "use the next revision". An explicit 0 is
+    a valid, stored revision. If the project allows one preview per revision
+    and the revision has one, raise TooManyPreviewFilesException. Emit
+    preview-file:new and comment:update, and return the preview file as a dict.
     """
     comment = get_comment_raw(comment_id)
     news = News.get_by(comment_id=comment_id)
     task = Task.get(comment.object_id)
     project_id = str(task.project_id)
-    # The next revision and position are read then written: two uploads
-    # on the same task at once would pick the same ones, and nothing in
-    # the schema refuses that. The lock serializes them per task.
+    # The next revision and position are read, then written. Two uploads on the
+    # same task at the same time can get the same values, and the schema does
+    # not refuse that. The lock serializes them per task.
     with redis_lock.with_lock(f"preview_revision_lock:{task_id}"):
         position = 1
         if revision is None and len(comment.previews) == 0:
@@ -1687,7 +1703,9 @@ def copy_preview_file_in_another_one(
     original_preview_file_id, preview_file_to_update_id
 ):
     """
-    Copy preview file data/files from one preview file to another one.
+    Copy the data and the files of one preview file to another preview file. If
+    the target preview belongs to a comment, emit comment:update and
+    preview-file:add-file. Return the updated preview file as a dict.
     """
     original_preview_file = files_service.get_preview_file(
         original_preview_file_id
@@ -1698,7 +1716,7 @@ def copy_preview_file_in_another_one(
     stored_movie_prefixes = []
     copied_files = {}
     if is_movie:
-        # The source is copied too: when the normalization is skipped it is
+        # Copy the source too. If the normalization is skipped, the source is
         # the only stored movie, and the preview routes serve it.
         for prefix in files_service.MOVIE_PREFIXES:
             copied = preview_files_service.copy_preview_file_on_storage(
@@ -1769,8 +1787,8 @@ def copy_preview_file_in_another_one(
         "duration": original_preview_file["duration"],
     }
     if is_movie:
-        # The copy knows which movie versions it found: record them so
-        # that the movie routes do not probe the storage again.
+        # The copy knows which movie versions it found. Record them, so that
+        # the movie routes do not examine the storage again.
         target_preview_file = files_service.get_preview_file_raw(
             preview_file_to_update_id
         )
@@ -1818,9 +1836,9 @@ def copy_preview_file_in_another_one(
 
 def get_last_client_comments(project_id, task_ids):
     """
-    Return the last comment written by a client of the project on each given
-    task of the project, in one query. The client is the one whose project
-    role, or global role without it, is client.
+    Return the last comment that a client of the project wrote on each given
+    task of the project, in one query. A client is a person whose project role
+    is client. If the person has no project role, use the global role.
     """
     return [
         comment.serialize()
@@ -1844,9 +1862,9 @@ def get_last_client_comments(project_id, task_ids):
 
 def copy_last_client_comments(project_id, task_ids, person_id, prefix=""):
     """
-    Copy the last client comment of each given task into a new comment of
-    given person, so the artists who do not see the client comments get it.
-    The task keeps its status. A task without client comment is skipped.
+    Copy the last client comment of each given task into a new comment of the
+    given person. Thus the artists who do not see the client comments get it.
+    The task keeps its status. If a task has no client comment, skip it.
     """
     result = []
     for client_comment in get_last_client_comments(project_id, task_ids):

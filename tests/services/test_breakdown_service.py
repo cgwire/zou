@@ -2,7 +2,10 @@ import pytest
 
 from tests.base import ApiDBTestCase
 from tests.services.cases import AssetsTestCase
-from zou.app.exceptions import EntityLinkNotFoundException
+from zou.app.exceptions import (
+    AssetInstanceNotFoundException,
+    EntityLinkNotFoundException,
+)
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.services import (
     assets_service,
@@ -964,13 +967,14 @@ class AssetReadTestCase(AssetsTestCase):
     def test_get_asset_instance(self):
         self.generate_fixture_scene()
         self.generate_fixture_scene_asset_instance()
-        self.generate_fixture_shot_asset_instance(
-            self.shot, self.asset_instance
-        )
+
         asset_instance = breakdown_service.get_asset_instance(
             self.asset_instance.id
         )
-        self.assertDictEqual(asset_instance, self.asset_instance.serialize())
+
+        self.assertEqual(asset_instance["id"], str(self.asset_instance.id))
+        with pytest.raises(AssetInstanceNotFoundException):
+            breakdown_service.get_asset_instance(UNKNOWN)
 
 
 class EntityLinkTestCase(ApiDBTestCase):

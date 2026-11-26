@@ -12,8 +12,8 @@ from zou.app.utils import cache, fields
 
 def _get_subscription_raw(**criterions):
     """
-    Return the subscription matching given criterions as an active record,
-    or None when one of the given ids is malformed.
+    Return the subscription that matches the given criterions as an active
+    record. If one of the given IDs is not valid, return None.
     """
     try:
         return Subscription.get_by(**criterions)
@@ -24,7 +24,8 @@ def _get_subscription_raw(**criterions):
 @cache.memoize_function(120)
 def is_person_subscribed(person_id, task_id):
     """
-    Returns true if the user subscribed to given task notifications.
+    Return True if the user subscribed to the notifications of the given
+    task.
     """
     subscription = Subscription.get_by(task_id=task_id, person_id=person_id)
     return subscription is not None
@@ -32,15 +33,17 @@ def is_person_subscribed(person_id, task_id):
 
 def get_task_subscriptions(task):
     """
-    Return all notification subscriptions related to given task.
+    Return all the notification subscriptions of the given task, as active
+    records.
     """
     return Subscription.get_all_by(task_id=task["id"])
 
 
 def get_sequence_subscriptions_for_task(task):
     """
-    Return all sequence subscriptions for given task. It returns something only
-    if the task is related to a shot of which the sequence has a subscription.
+    Return all the sequence subscriptions for the given task, as active
+    records. The list is empty unless the task is for a shot whose sequence
+    has a subscription.
     """
     sequence_subscriptions = []
     entity = Entity.get(task["entity_id"])
@@ -53,14 +56,14 @@ def get_sequence_subscriptions_for_task(task):
 
 def get_task_subscription_raw(person_id, task_id):
     """
-    Return subscription matching given person and task.
+    Return the subscription that matches the given person and task.
     """
     return _get_subscription_raw(person_id=person_id, task_id=task_id)
 
 
 def has_task_subscription(person_id, task_id):
     """
-    Return true if a subscription exists for this person and this task.
+    Return True if a subscription exists for this person and this task.
     """
     subscription = get_task_subscription_raw(person_id, task_id)
     return subscription is not None
@@ -68,7 +71,7 @@ def has_task_subscription(person_id, task_id):
 
 def subscribe_to_task(person_id, task_id):
     """
-    Add a subscription entry for given person and task.
+    Add a subscription entry for the given person and task.
     """
     subscription = get_task_subscription_raw(person_id, task_id)
     if subscription is None:
@@ -77,9 +80,9 @@ def subscribe_to_task(person_id, task_id):
                 person_id=person_id, task_id=task_id
             )
         except IntegrityError:
-            # A concurrent request subscribed the same person between the
-            # read above and this insert: subscription_task_uc rejects the
-            # loser, which returns the winning row.
+            # A concurrent request subscribed the same person between the read
+            # above and this insert. subscription_task_uc rejects this insert.
+            # This request then returns the row of the other request.
             subscription = get_task_subscription_raw(person_id, task_id)
             if subscription is None:
                 raise
@@ -89,7 +92,7 @@ def subscribe_to_task(person_id, task_id):
 
 def unsubscribe_from_task(person_id, task_id):
     """
-    Remove subscription entry for given person and task.
+    Remove the subscription entry for the given person and task.
     """
     subscription = get_task_subscription_raw(person_id, task_id)
     if subscription is None:
@@ -101,7 +104,8 @@ def unsubscribe_from_task(person_id, task_id):
 
 def get_sequence_subscription_raw(person_id, sequence_id, task_type_id):
     """
-    Return subscription matching given person, sequence and task type.
+    Return the subscription that matches the given person, sequence and task
+    type.
     """
     return _get_subscription_raw(
         person_id=person_id,
@@ -112,7 +116,7 @@ def get_sequence_subscription_raw(person_id, sequence_id, task_type_id):
 
 def has_sequence_subscription(person_id, sequence_id, task_type_id):
     """
-    Return true if a subscription exists for this person, sequence and task
+    Return True if a subscription exists for this person, sequence and task
     type.
     """
     subscription = get_sequence_subscription_raw(
@@ -123,7 +127,7 @@ def has_sequence_subscription(person_id, sequence_id, task_type_id):
 
 def subscribe_to_sequence(person_id, sequence_id, task_type_id):
     """
-    Add a subscription entry for given person, sequence and task type.
+    Add a subscription entry for the given person, sequence and task type.
     """
     subscription = get_sequence_subscription_raw(
         person_id, sequence_id, task_type_id
@@ -139,7 +143,8 @@ def subscribe_to_sequence(person_id, sequence_id, task_type_id):
 
 def unsubscribe_from_sequence(person_id, sequence_id, task_type_id):
     """
-    Remove subscription entry for given person, sequence and task type.
+    Remove the subscription entry for the given person, sequence and task
+    type.
     """
     subscription = get_sequence_subscription_raw(
         person_id, sequence_id, task_type_id
@@ -152,7 +157,7 @@ def unsubscribe_from_sequence(person_id, sequence_id, task_type_id):
 
 def get_subscriptions_for_project(project_id):
     """
-    Return all subscriptions for given project.
+    Return all the subscriptions for the given project.
     """
     subscriptions = Subscription.query.join(Task).filter(
         Task.project_id == project_id
@@ -162,8 +167,8 @@ def get_subscriptions_for_project(project_id):
 
 def get_subscriptions_for_user(project_id, entity_type_id=None):
     """
-    Return a map of the task ids the current user subscribed to in given
-    project. Scoped to the caller, so it must never be memoized.
+    Return a map of the task IDs the current user subscribed to in the given
+    project. Do not memoize this function. The result depends on the caller.
     """
     if project_id is None:
         return {}
@@ -178,7 +183,7 @@ def get_subscriptions_for_user(project_id, entity_type_id=None):
     if entity_type_id is not None:
         query = query.filter(Entity.entity_type_id == entity_type_id)
     else:
-        # Without an explicit type, keep the asset types the caller may see.
+        # If no type is given, keep the asset types that the caller can see.
         query = query.filter(entity_types_service.build_asset_type_filter())
 
     return {str(subscription.task_id): True for subscription in query.all()}

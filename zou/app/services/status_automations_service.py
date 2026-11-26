@@ -33,7 +33,7 @@ OUT_FIELD_TYPES = [out_field_type for out_field_type, _ in CHANGE_TYPES]
 
 def clear_status_automation_cache():
     """
-    Drop the memoized status automation list.
+    Remove the memoized list of status automations.
     """
     cache.cache.delete_memoized(get_status_automations)
 
@@ -48,7 +48,7 @@ def get_status_automations():
 
 def get_status_automation_raw(status_automation_id):
     """
-    Get status automation matching given id as an active record.
+    Return the status automation that has the given ID, as an active record.
     """
     return base_service.get_instance(
         StatusAutomation,
@@ -59,9 +59,9 @@ def get_status_automation_raw(status_automation_id):
 
 def guard_status_automation_deletion(status_automation_id):
     """
-    Refuse the deletion of a status automation a project or a project
-    template uses. Neither link table has a delete rule: the foreign key
-    would refuse it with a raw database error.
+    Refuse the deletion of a status automation that a project or a project
+    template uses. The two link tables have no delete rule. Thus the foreign
+    key refuses the deletion with a raw database error.
     """
     if ProjectStatusAutomationLink.query.filter_by(
         status_automation_id=status_automation_id
@@ -77,10 +77,10 @@ def guard_status_automation_deletion(status_automation_id):
 
 def get_trigger(automation):
     """
-    Return the trigger of given automation (a dict): its ``in_conditions``,
-    or the group of its legacy ``in_task_type_id`` and ``in_task_status_id``
-    when it has none. Return None, with a warning log, when neither gives a
-    trigger or when the stored one is malformed.
+    Return the trigger of the given automation (a dict): its ``in_conditions``.
+    If it has none, return the group of its legacy ``in_task_type_id`` and
+    ``in_task_status_id``. If these values give no trigger, or if the stored
+    trigger is malformed, log a warning and return None.
     """
     group = automation.get("in_conditions")
     if group is None:
@@ -104,9 +104,9 @@ def get_trigger(automation):
 
 def is_simple_trigger(group):
     """
-    Tell whether given trigger is one condition with one status, the only
-    trigger the legacy ``in_task_type_id`` and ``in_task_status_id`` can
-    tell.
+    Return True if the given trigger is one condition with one status. This is
+    the only trigger that the legacy ``in_task_type_id`` and
+    ``in_task_status_id`` can store.
     """
     return (
         len(group["conditions"]) == 1
@@ -116,18 +116,19 @@ def is_simple_trigger(group):
 
 def normalize_trigger(data, instance=None):
     """
-    Complete the payload of a status automation write. ``instance`` is the
-    stored automation (a dict) on an update.
+    Complete the payload of a status automation write. On an update,
+    ``instance`` is the stored automation (a dict).
 
-    The trigger comes from ``in_conditions`` when the payload changes it,
-    else from the legacy ``in_task_type_id`` and ``in_task_status_id``
-    (completed from the stored ones on an update, dropped when both are
-    null next to ``in_conditions``). Ids are stored in one form, and the
-    legacy columns mirror a simple trigger, null otherwise. An empty entity
-    type is stored as "asset": the runner would never fire it. The write is
-    validated when it changes the trigger, the entity type or the output:
-    clients send the whole form, and a stored row must stay editable.
-    Raise WrongParameterException when the write is invalid.
+    If the payload changes ``in_conditions``, the trigger comes from it.
+    Otherwise, it comes from the legacy ``in_task_type_id`` and
+    ``in_task_status_id``. On an update, the stored values complete them. If
+    both are null next to ``in_conditions``, they are removed. The ids are
+    stored in one form. The legacy columns mirror a simple trigger, and are
+    null for other triggers. An empty entity type is stored as "asset": the
+    runner never fires an automation with an empty entity type. If the write
+    changes the trigger, the entity type or the output, it is validated. The
+    clients send the full form, and a stored row must stay editable. If the
+    write is not valid, raise WrongParameterException.
     """
     if not isinstance(data, dict):
         raise WrongParameterException("A JSON object is expected.")
@@ -183,9 +184,9 @@ def normalize_trigger(data, instance=None):
 
 def get_automations_using_task_type(task_type_id):
     """
-    Return the status automations, archived ones included, that read or
-    write given task type. Read from the table, not from the memoized list:
-    the answer guards a deletion.
+    Return the status automations, archived ones included, that read or write
+    the given task type. Read from the table, not from the memoized list,
+    because the answer guards a deletion.
     """
     task_type_id = str(task_type_id)
     return [
@@ -197,8 +198,8 @@ def get_automations_using_task_type(task_type_id):
 
 def get_automations_using_task_status(task_status_id):
     """
-    Return the status automations, archived ones included, that read or
-    write given task status.
+    Return the status automations, archived ones included, that read or write
+    the given task status.
     """
     task_status_id = str(task_status_id)
     return [
@@ -210,9 +211,9 @@ def get_automations_using_task_status(task_status_id):
 
 def guard_task_type_deletion(task_type):
     """
-    Refuse the deletion of a task type a status automation uses. Dropping
-    it from the automation would change when the automation fires, so the
-    admin has to do it.
+    Refuse the deletion of a task type that a status automation uses. A removal
+    of the task type from the automation changes when the automation fires.
+    Thus the admin must do it.
     """
     automations = get_automations_using_task_type(task_type["id"])
     if automations:
@@ -223,7 +224,7 @@ def guard_task_type_deletion(task_type):
 
 def guard_task_status_deletion(task_status):
     """
-    Refuse the deletion of a task status a status automation uses.
+    Refuse the deletion of a task status that a status automation uses.
     """
     automations = get_automations_using_task_status(task_status["id"])
     if automations:
@@ -236,8 +237,9 @@ def guard_task_status_deletion(task_status):
 
 def _check_out_field_type(data, stored):
     """
-    Refuse an output type outside the choices of the column. A value sent
-    back as stored stays: older releases stored an empty one.
+    Refuse an output type that is not in the choices of the column. If the
+    value is the same as the stored value, accept it: older releases stored an
+    empty value.
     """
     out_field_type = data.get("out_field_type", "status")
     if out_field_type not in OUT_FIELD_TYPES and out_field_type != stored.get(
@@ -250,10 +252,11 @@ def _check_out_field_type(data, stored):
 
 def _drop_null_legacy_pair(data):
     """
-    Drop the legacy pair a client sends as null next to ``in_conditions``,
-    which gives the trigger: the pair then neither changes the trigger nor
-    clears the mirror. A single null stays a legacy value: not read next to
-    a new trigger, refused when it changes the stored pair.
+    Remove the legacy pair that a client sends as null next to
+    ``in_conditions``, which gives the trigger. Thus the pair does not change
+    the trigger and does not clear the mirror. A single null stays a legacy
+    value. It is not read next to a new trigger. If it changes the stored pair,
+    it is refused.
     """
     if data.get("in_conditions") is not None and all(
         field in data and data[field] is None
@@ -265,10 +268,10 @@ def _drop_null_legacy_pair(data):
 
 def _get_written_group(data, stored, stored_group):
     """
-    Return the trigger the write leaves on the automation, and whether the
-    write changes it: ``in_conditions`` when it changes the trigger, else
-    the legacy pair when it changes the mirror. A trigger sent back as
-    stored changes nothing, even a malformed one.
+    Return the trigger that the write leaves on the automation, and whether the
+    write changes it. If the write changes the trigger, use ``in_conditions``.
+    Else, if the write changes the mirror, use the legacy pair. A trigger that
+    is the same as the stored trigger changes nothing, even if it is malformed.
     """
     written_group = data.get("in_conditions")
     if written_group is not None and written_group != stored.get(
@@ -299,8 +302,9 @@ def _get_written_group(data, stored, stored_group):
 
 def _get_written_legacy_pair(data, stored):
     """
-    Return the legacy task type and status a write sets, completed from the
-    stored ones on an update, or None when the write leaves them unchanged.
+    Return the legacy task type and status that a write sets. On an update, the
+    stored values complete them. If the write does not change them, return
+    None.
     """
     if not any(field in data for field in LEGACY_TRIGGER_FIELDS):
         return None
@@ -318,8 +322,8 @@ def _get_written_legacy_pair(data, stored):
 
 def _normalize_group(group):
     """
-    Check the shape of a trigger and return it with its ids in one form and
-    its status sets without duplicates. Nested groups are refused for now.
+    Check the shape of a trigger. Return it with its ids in one form and its
+    status sets without duplicates. For now, nested groups are refused.
     """
     if not isinstance(group, dict):
         raise WrongParameterException(
@@ -398,10 +402,10 @@ def _normalize_id(value, label):
 
 def _normalize_stored_group(group):
     """
-    Return the stored trigger in the form of a written one, so that the
-    payload of a round trip compares equal. A value that does not normalize,
-    which only a sync or a direct write can store, counts as no trigger: a
-    write that does not send a new one leaves it as stored.
+    Return the stored trigger in the form of a written trigger, so that the
+    payload of a round trip compares equal. A value that does not normalize
+    counts as no trigger. Only a sync or a direct write can store such a value.
+    If a write does not send a new trigger, this value does not change.
     """
     if group is None:
         return None
@@ -420,9 +424,11 @@ def _normalize_stored_ids(values):
 
 def _get_group_key(group):
     """
-    Return what tells two triggers apart: the operator, the order of the
-    conditions (the first one gives the imported revision), not the order
-    of the statuses.
+    Return the data that makes two triggers different:
+    - the operator,
+    - the order of the conditions (the first one gives the imported revision).
+
+    The order of the statuses is not in this data.
     """
     if group is None:
         return None
@@ -448,8 +454,8 @@ def _to_text(value):
 
 def _to_id(value):
     """
-    Return given id in its stored form, so that ids compare whatever their
-    case, or as text when it is not an id.
+    Return the given ID in its stored form, so that the comparison of ids
+    ignores their case. If the value is not an id, return it as text.
     """
     try:
         return str(uuid.UUID(str(value)))
@@ -459,7 +465,7 @@ def _to_id(value):
 
 def _to_entity_type(value):
     """
-    Return given entity type in lowercase: older clients wrote "Asset".
+    Return the given entity type in lowercase: older clients wrote "Asset".
     """
     return None if value is None else str(value).lower()
 
@@ -486,9 +492,9 @@ def _validate_automation(
 
 def _get_for_entity(entity_type):
     """
-    Return the for_entity of the task types an automation on given entity
-    type uses. Old rows can name an asset type ("props") instead of
-    "asset": they use the asset task types.
+    Return the for_entity of the task types that an automation on the given
+    entity type uses. Old rows can name an asset type ("props") and not
+    "asset". These rows use the asset task types.
     """
     if entity_type == "asset" or _is_asset_type_name(entity_type):
         return "Asset"
@@ -513,7 +519,7 @@ def _validate_conditions(group, for_entity, out_field_type, out_task_type_id):
             raise WrongParameterException(
                 f"Task type {task_type_id} does not exist."
             )
-        # A task type older than for_entity reads null there, which means
+        # A task type older than for_entity has null in this column. Null means
         # "Asset", as get_project_task_types_raw reads it.
         if (task_type.for_entity or "Asset") != for_entity:
             raise WrongParameterException(
@@ -565,8 +571,8 @@ def _is_well_formed_group(group):
 
 def _get_conditions(group):
     """
-    Read the conditions of a stored trigger leniently: the deletion guards
-    must see every id, even in a malformed trigger.
+    Return the conditions of a stored trigger. Read them leniently: the
+    deletion guards must see all ids, also in a malformed trigger.
     """
     if not isinstance(group, dict) or not isinstance(
         group.get("conditions"), list

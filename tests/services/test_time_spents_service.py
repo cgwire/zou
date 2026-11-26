@@ -239,6 +239,30 @@ class TimeSpentScopeTestCase(TimeSpentsTestCase):
             [("P01", 300)],
         )
 
+    def animation_supervision_scope(self):
+        return user_service.build_supervision_scope_filter(
+            {str(self.project.id): "supervisor"},
+            [str(self.department_animation.id)],
+        )
+
+    def test_a_table_scoped_to_what_a_supervisor_supervises(self):
+        month_table = time_spents_service.get_month_table(
+            "2018", scope=self.animation_supervision_scope()
+        )
+        self.assertEqual(month_table, {"6": {self.person_id: 300}})
+
+    def test_entries_scoped_to_what_a_supervisor_supervises(self):
+        entries = time_spents_service.get_month_time_spents(
+            self.person_id,
+            "2018",
+            "6",
+            scope=self.animation_supervision_scope(),
+        )
+        self.assertEqual(
+            [(entry["entity_name"], entry["duration"]) for entry in entries],
+            [("P01", 300)],
+        )
+
 
 class TimeSpentEntryTestCase(TimeSpentsTestCase):
     """
@@ -651,7 +675,7 @@ class ProjectTimeSpentTestCase(TimeSpentsTestCase):
         # month used to land in the previous one for users west of UTC.
         self.log(self.task_id, "2018-07-01", 100)
         result = time_spents_service.get_project_month_time_spents(
-            str(self.project.id), timezone="America/Los_Angeles"
+            str(self.project.id)
         )
         person = result[self.task_type.department_id][self.person.id]
         self.assertEqual(person["2018-07"], 100)

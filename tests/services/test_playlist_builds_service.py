@@ -218,18 +218,15 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
                 playlist_builds_service, "_run_remote_job_build_playlist"
             ) as run_remote,
         ):
-            self.assertRaises(
-                Exception,
-                playlist_builds_service.build_playlist_movie_file,
-                playlist,
-                job,
-                [],
-                params,
-                False,
-                True,
-            )
+            with self.assertRaisesRegex(
+                Exception, "Failure while building playlist"
+            ):
+                playlist_builds_service.build_playlist_movie_file(
+                    playlist, job, [], params, False, True
+                )
 
         run_remote.assert_not_called()
+        self.assertEqual(BuildJob.get(job["id"]).status.code, "failed")
 
     def test_a_remote_build_warms_the_download_cache(self):
         """
@@ -328,6 +325,32 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
         send_email.assert_called_once()
         self.assertIn(job["id"], send_email.call_args.args[1])
+
+    def test_the_build_mail_escapes_the_playlist_name(self):
+        self.generate_fixture_preview_files()
+        self.generate_fixture_playlists()
+        self.playlist.update({"name": '<a href="https://evil">x</a>'})
+        playlist = self.playlist.serialize()
+        job = playlist_builds_service.start_build_job(playlist)
+        finished = {**job, "status": "succeeded"}
+
+        with (
+            patch.object(
+                playlist_builds_service,
+                "build_playlist_movie_file",
+                return_value=finished,
+            ),
+            patch.object(
+                playlist_builds_service.emails, "send_email"
+            ) as send_email,
+        ):
+            playlist_builds_service.build_playlist_job(
+                playlist, job, [], None, self.user["email"], False, False
+            )
+
+        body = send_email.call_args.args[1]
+        self.assertNotIn('<a href="https://evil">', body)
+        self.assertIn("&lt;a href=", body)
 
     def test_build_playlist_job_mails_outside_the_app_context(self):
         # KITSU-API-52H: the RQ worker runs the job without app context. A

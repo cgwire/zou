@@ -47,7 +47,7 @@ def get_scene_type():
 
 def is_shot(entity):
     """
-    Returns True if given entity has 'Shot' as entity type
+    Return True if the entity type of the given entity is 'Shot'.
     """
     shot_type = get_shot_type()
     return str(entity["entity_type_id"]) == shot_type["id"]
@@ -55,7 +55,7 @@ def is_shot(entity):
 
 def is_scene(entity):
     """
-    Returns True if given entity has 'Scene' as entity type
+    Return True if the entity type of the given entity is 'Scene'.
     """
     scene_type = get_scene_type()
     return str(entity["entity_type_id"]) == scene_type["id"]
@@ -63,7 +63,7 @@ def is_scene(entity):
 
 def is_sequence(entity):
     """
-    Returns True if given entity has 'Sequence' as entity type
+    Return True if the entity type of the given entity is 'Sequence'.
     """
     sequence_type = get_sequence_type()
     return str(entity["entity_type_id"]) == sequence_type["id"]
@@ -71,7 +71,7 @@ def is_sequence(entity):
 
 def is_episode(entity):
     """
-    Returns True if given entity has 'Episode' as entity type
+    Return True if the entity type of the given entity is 'Episode'.
     """
     episode_type = get_episode_type()
     return str(entity["entity_type_id"]) == episode_type["id"]
@@ -79,9 +79,9 @@ def is_episode(entity):
 
 def get_base_entity_type_name(entity_dict):
     """
-    Return the entity type name of given entity, as the API names it:
-    Shot, Sequence, Episode, Edit, Concept, ConceptFolder, or Asset for
-    everything else.
+    Return the entity type name of the given entity, as the API uses it:
+    Shot, Sequence, Episode, Edit, Scene, Concept or ConceptFolder. For
+    all other entities, return Asset.
     """
     type_name = "Asset"
     if is_shot(entity_dict):
@@ -112,23 +112,22 @@ def get_edit_type():
 
 def clear_asset_type_cache(asset_type_id=None):
     """
-    Drop the memoized asset type list, and the serialization of given
-    asset type when one is named.
+    Remove the memoized asset type list and all the memoized asset types.
+    If an asset type is given, also remove its entity type cache.
     """
     if asset_type_id is not None:
-        cache.cache.delete_memoized(get_asset_type, asset_type_id)
         clear_entity_type_cache(asset_type_id)
     cache.cache.delete_memoized(get_all_asset_types)
-    # get_asset_type carries the task types of the workflow, so editing it
-    # must not keep serving the previous one for the whole TTL.
+    # get_asset_type contains the task types of the workflow. After an
+    # edit, it must not return the previous value until the TTL ends.
     cache.cache.delete_memoized(get_asset_type)
 
 
 def get_temporal_type_ids():
     """
-    Return the ids of the entity types that are not asset types: everything
-    positioned in time (shot, sequence, episode, edit, scene, concept) and
-    the folders the concepts are sorted in.
+    Return the IDs of the entity types that are not asset types. These are
+    the types that have a position in time (shot, sequence, episode, edit,
+    scene, concept) and the folders that contain the concepts.
     """
     shot_type = get_shot_type()
     scene_type = get_scene_type()
@@ -151,8 +150,8 @@ def get_temporal_type_ids():
 
 def build_asset_type_filter():
     """
-    Generate a query filter to filter entity that are assets (it means not shot,
-    not sequence, not episode and not scene)
+    Return a query filter that keeps only the entities that are assets.
+    The type of these entities is not in get_temporal_type_ids.
     """
     ids_to_exclude = get_temporal_type_ids()
     return ~Entity.entity_type_id.in_(ids_to_exclude)
@@ -160,8 +159,8 @@ def build_asset_type_filter():
 
 def build_entity_type_asset_type_filter():
     """
-    Generate a query filter to filter entity types that are asset types (it
-    means not shot, not sequence, not episode and not scene)
+    Return a query filter that keeps only the entity types that are asset
+    types. These types are not in get_temporal_type_ids.
     """
     ids_to_exclude = get_temporal_type_ids()
     return ~EntityType.id.in_(ids_to_exclude)
@@ -169,9 +168,9 @@ def build_entity_type_asset_type_filter():
 
 def get_asset_types(criterions=None):
     """
-    Retrieve all asset types available. Only the no-criterion variant is
-    memoized: criterion dicts vary per request and used to pollute the
-    cache with entries that were never hit again.
+    Return all the available asset types. The cache keeps only the result
+    without criterions. Criterion dicts change for each request, and their
+    cache entries were not used again.
     """
     if not criterions:
         return get_all_asset_types()
@@ -179,10 +178,10 @@ def get_asset_types(criterions=None):
     project_id = criterions.pop("project_id", None)
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
     if project_id is not None:
-        # An asset type belongs to no production: what a production holds
-        # is assets of that type. The criterion is a membership test
-        # rather than a column of the queried table, so it cannot go
-        # through the generic criterion helper.
+        # An asset type is not part of a production: a production contains
+        # assets of that type. The criterion is a membership test, not a
+        # column of the queried table. Thus the generic criterion helper
+        # cannot apply it.
         query = query.filter(
             EntityType.id.in_(
                 db.session.query(Entity.entity_type_id).filter(
@@ -190,10 +189,9 @@ def get_asset_types(criterions=None):
                 )
             )
         )
-    # The queried table is EntityType. Handing the helper Entity built the
-    # filters against the other table, which cross joined the two: the
-    # project criterion then restricted nothing and the name criterion,
-    # read off the assets rather than off their types, matched nothing.
+    # Build the filters on EntityType, the queried table. On Entity, the
+    # helper makes a cross join of the two tables. Then the criteria
+    # filter nothing or match nothing.
     query = query_utils.apply_criterions_to_db_query(
         EntityType, query, criterions
     )
@@ -205,7 +203,7 @@ def get_asset_types(criterions=None):
 @cache.memoize_function(240)
 def get_all_asset_types():
     """
-    Retrieve all asset types, without criterion.
+    Return all the asset types, without criterions.
     """
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
     return EntityType.serialize_list(
@@ -215,8 +213,8 @@ def get_all_asset_types():
 
 def serialize_asset_types(asset_type_ids):
     """
-    Return the serialized asset types matching given ids, without querying
-    when there is none.
+    Return the serialized asset types that have the given IDs. If there
+    are no IDs, do not query the database.
     """
     result = []
     if len(asset_type_ids) > 0:
@@ -228,7 +226,7 @@ def serialize_asset_types(asset_type_ids):
 
 def get_asset_type_raw(asset_type_id):
     """
-    Return given asset type instance as active record.
+    Return the given asset type as an active record.
     """
     try:
         asset_type = EntityType.get(asset_type_id)
@@ -244,7 +242,7 @@ def get_asset_type_raw(asset_type_id):
 @cache.memoize_function(240)
 def get_asset_type(asset_type_id):
     """
-    Return given asset type instance as a dict.
+    Return the given asset type as a dict.
     """
     return get_asset_type_raw(asset_type_id).serialize(
         obj_type="AssetType", relations=True
@@ -253,14 +251,13 @@ def get_asset_type(asset_type_id):
 
 def find_asset_type_by_name(name):
     """
-    Return the asset type matching given name as an active record, None
-    when there is none.
+    Return the asset type that has the given name as an active record. If
+    there is no such asset type, return None.
 
-    The match is case insensitive, to align with the asset type creation
-    route which refuses a name already taken in another case. Resolving
-    the temporal types first makes sure they exist before the lookup, so
-    a name like Shot is recognised as one instead of read as an asset
-    type.
+    The match is case insensitive. The asset type creation route also
+    refuses a name that exists in a different case. The temporal types
+    are resolved first to make sure that they exist before the search.
+    Thus a name like Shot is a temporal type, not an asset type.
     """
     temporal_type_ids = get_temporal_type_ids()
     asset_type = EntityType.query.filter(
@@ -273,7 +270,9 @@ def find_asset_type_by_name(name):
 
 def get_or_create_asset_type(name):
     """
-    For a given name, get matching asset type. Create if it does not exist.
+    Return the asset type that has the given name as a dict. If it does
+    not exist, create it and emit an asset-type:new event. If the name is
+    the name of a temporal type, raise WrongParameterException.
     """
     asset_type = find_asset_type_by_name(name)
     if asset_type is None:
@@ -286,22 +285,24 @@ def get_or_create_asset_type(name):
 
 def is_asset(entity):
     """
-    Returns true if given entity is an asset, not a shot.
+    Return True if the given entity (an active record) is an asset. The
+    type of an asset is not a temporal type (shot, sequence, edit...).
     """
     return str(entity.entity_type_id) not in get_temporal_type_ids()
 
 
 def is_asset_dict(entity):
     """
-    Returns true if given entity is an asset, not a shot.
-    It supposes that the entity is represented as a dict.
+    Return True if the given entity (a dict) is an asset. The type of an
+    asset is not a temporal type.
     """
-    return entity["entity_type_id"] not in get_temporal_type_ids()
+    return str(entity["entity_type_id"]) not in get_temporal_type_ids()
 
 
 def is_asset_type(entity_type):
     """
-    Returns true if given entity type is an asset, not a shot.
+    Return True if the given entity type (a dict or an active record) is
+    an asset type. An asset type is not a temporal type.
     """
     entity_type_id = ""
     if isinstance(entity_type, dict):
@@ -321,7 +322,7 @@ def get_concept_type():
 
 def is_concept(entity):
     """
-    Returns True if given entity has 'Concept' as entity type
+    Return True if the entity type of the given entity is 'Concept'.
     """
     concept_type = get_concept_type()
     return str(entity["entity_type_id"]) == concept_type["id"]
@@ -337,7 +338,7 @@ def get_concept_folder_type():
 
 def is_concept_folder(entity):
     """
-    Returns True if given entity has 'ConceptFolder' as entity type
+    Return True if the entity type of the given entity is 'ConceptFolder'.
     """
     concept_folder_type = get_concept_folder_type()
     return str(entity["entity_type_id"]) == concept_folder_type["id"]
@@ -345,8 +346,8 @@ def is_concept_folder(entity):
 
 def clear_entity_type_cache(entity_type_id):
     """
-    Drop the memoized serializations of given entity type. The by-name
-    lookups are flushed whole, since the name is not known here.
+    Remove the memoized serializations of the given entity type. Remove
+    all the memoized searches by name, because the name is not known here.
     """
     cache.cache.delete_memoized(_get_entity_type_cached, str(entity_type_id))
     cache.cache.delete_memoized(get_entity_type_by_name)
@@ -355,20 +356,15 @@ def clear_entity_type_cache(entity_type_id):
 
 def get_temporal_entity_type_by_name(name):
     """
-    Return the entity type matching given name, creating it if needed. A
-    cached None (the type did not exist yet when it was first looked up) is
-    dropped and looked up again.
+    Return the entity type that has the given name. If it does not exist,
+    create it.
     """
-    entity_type = get_entity_type_by_name(name)
-    if entity_type is None:
-        cache.cache.delete_memoized(get_entity_type_by_name, name)
-        entity_type = get_entity_type_by_name(name)
-    return entity_type
+    return get_entity_type_by_name(name)
 
 
 def is_edit(entity):
     """
-    Return True if given entity dict has 'Edit' as entity type.
+    Return True if the entity type of the given entity dict is 'Edit'.
     """
     edit_type = get_temporal_entity_type_by_name("Edit")
     return str(entity["entity_type_id"]) == edit_type["id"]
@@ -383,12 +379,12 @@ def _get_entity_type_cached(entity_type_id):
 
 def get_entity_type(entity_type_id):
     """
-    Return an entity type matching given id, as a dict. Raises an exception
-    if nothing is found.
+    Return the entity type that has the given ID as a dict. If it does not
+    exist, raise EntityTypeNotFoundException.
 
-    The id is normalised before it reaches the memoization, which keys on
-    the argument: callers hold it as a UUID read off a row as often as they
-    hold the string form, and the two must not be two cache entries.
+    The ID becomes a string before the memoization, because the cache keys
+    on the argument. Callers give a UUID from a row or a string. These two
+    forms must not make two cache entries.
     """
     return _get_entity_type_cached(str(entity_type_id))
 
@@ -396,7 +392,8 @@ def get_entity_type(entity_type_id):
 @cache.memoize_function(240)
 def get_entity_type_by_name(name):
     """
-    Return entity type maching *name*. If it doesn't exist, it creates it.
+    Return the entity type that has the given *name*. If it does not
+    exist, create it.
     """
     entity_type = EntityType.get_by(name=name)
     if entity_type is None:
@@ -407,7 +404,8 @@ def get_entity_type_by_name(name):
 @cache.memoize_function(240)
 def get_entity_type_by_name_or_not_found(name):
     """
-    Return entity type maching *name*. If it doesn't exist, it raises.
+    Return the entity type that has the given *name*. If it does not
+    exist, raise EntityTypeNotFoundException.
     """
     entity_type = EntityType.get_by(name=name)
     if entity_type is None:

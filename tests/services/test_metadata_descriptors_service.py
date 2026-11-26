@@ -828,18 +828,6 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
                 self.project.id, "Asset", descriptor_ids
             )
 
-    def test_get_metadata_descriptor_raw(self):
-        descriptor = self.add("Weight")
-        raw = metadata_descriptors_service.get_metadata_descriptor_raw(
-            descriptor["id"]
-        )
-        self.assertEqual(str(raw.id), descriptor["id"])
-        self.assertRaises(
-            MetadataDescriptorNotFoundException,
-            metadata_descriptors_service.get_metadata_descriptor_raw,
-            "wrong-id",
-        )
-
     def test_get_metadata_descriptor(self):
         descriptor = self.add("Weight")
         result = metadata_descriptors_service.get_metadata_descriptor(
@@ -847,3 +835,8 @@ class ProjectMetadataDescriptorTestCase(ApiDBTestCase):
         )
         self.assertEqual(result["id"], descriptor["id"])
         self.assertEqual(result["name"], "Weight")
+        self.assertRaises(
+            MetadataDescriptorNotFoundException,
+            metadata_descriptors_service.get_metadata_descriptor,
+            "wrong-id",
+        )

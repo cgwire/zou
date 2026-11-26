@@ -15,7 +15,7 @@ from zou.app.utils import cache, fields, fs
 
 def get_attachment_file_raw(attachment_file_id):
     """
-    Return attachment file matching given id as an active record.
+    Return the attachment file that has the given ID as an active record.
     """
     return base_service.get_instance(
         AttachmentFile, attachment_file_id, AttachmentFileNotFoundException
@@ -25,7 +25,7 @@ def get_attachment_file_raw(attachment_file_id):
 @cache.memoize_function(120)
 def get_attachment_file(attachment_file_id):
     """
-    Return attachment file model matching given id.
+    Return the attachment file that has the given ID as a dict.
     """
     attachment_file = get_attachment_file_raw(attachment_file_id)
     return attachment_file.serialize()
@@ -33,14 +33,15 @@ def get_attachment_file(attachment_file_id):
 
 def clear_attachment_file_cache(attachment_file_id):
     """
-    Drop the memoized serialization of given attachment file.
+    Remove the memoized dict of the given attachment file.
     """
     cache.cache.delete_memoized(get_attachment_file, attachment_file_id)
 
 
 def get_attachment_file_path(attachment_file):
     """
-    Get attachement file path when stored locally.
+    Return the path of the given attachment file when the file is stored
+    locally.
     """
     return fs.get_file_path_and_file(
         config,
@@ -55,9 +56,11 @@ def get_attachment_file_path(attachment_file):
 
 def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
     """
-    Store an uploaded file and tie the matching attachment entry to given
-    comment. With randomize, the file name gets a random suffix, which is
-    how a name collision on the same comment is resolved.
+    Store an uploaded file and link a new attachment file entry to the
+    given comment. If randomize is True, add a random suffix to the file
+    name. This prevents a name collision on the same comment. If reply_id
+    is not a reply of the comment, ignore it. If the storage fails, delete
+    the attachment entry and raise the error again.
     """
     tmp_folder = current_app.config["TMP_DIR"]
     filename = uploaded_file.filename
@@ -86,9 +89,9 @@ def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
     )
     attachment_file_id = str(attachment_file.id)
 
-    # On storage failure, drop the database entry to avoid a ghost
-    # attachment pointing to a missing object; the temporary file is
-    # removed in every case.
+    # If the storage fails, delete the database entry. This prevents an
+    # attachment that points to a missing object. Always remove the
+    # temporary file.
     tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
     try:
         size = fs.get_file_size(tmp_file_path)
@@ -111,7 +114,8 @@ def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
 
 def _attachment_files_query():
     """
-    Base query joining the attachment files to the task they comment on.
+    Return the base query that joins the attachment files to the tasks of
+    their comments.
     """
     return AttachmentFile.query.join(Comment).join(
         Task, Task.id == Comment.object_id
@@ -120,8 +124,8 @@ def _attachment_files_query():
 
 def get_all_attachment_files_for_project(project_id):
     """
-    Return all attachment files listed into given project. It is mainly needed
-    for synchronisation purposes.
+    Return all attachment files of the given project. The synchronization
+    feature mainly uses this function.
     """
     attachment_files = _attachment_files_query().filter(
         Task.project_id == project_id
@@ -131,7 +135,7 @@ def get_all_attachment_files_for_project(project_id):
 
 def get_all_attachment_files_for_task(task_id):
     """
-    Return all attachment files listed into given task.
+    Return all attachment files of the given task.
     """
     attachment_files = _attachment_files_query().filter(Task.id == task_id)
     return fields.serialize_models(attachment_files)
@@ -164,8 +168,9 @@ def build_attachment_map_for_comments(comment_ids):
 
 def remove_attachment_file(attachment_file):
     """
-    Remove all files related to given attachment file, then remove the
-    attachment file entry from the database.
+    Remove all files of the given attachment file. Then remove the
+    attachment file entry from the database. Return the attachment file
+    as it was before the deletion.
     """
 
     files_service.remove_quietly(
@@ -179,8 +184,9 @@ def remove_attachment_file(attachment_file):
 
 def remove_attachment_file_by_id(attachment_file_id):
     """
-    Remove all files related to given attachment file, then remove the
-    attachment file entry from the database.
+    Remove all files of the given attachment file. Then remove the
+    attachment file entry from the database. If the attachment file does
+    not exist, raise AttachmentFileNotFoundException.
     """
     attachment_file = AttachmentFile.get(attachment_file_id)
     if attachment_file is None:

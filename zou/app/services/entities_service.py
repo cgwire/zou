@@ -27,9 +27,9 @@ from zou.app.utils import (
     query as query_utils,
 )
 
-# Entity types positioned in time, as opposed to the asset types. Their
-# name doubles as the event prefix (shot:update, edit:update...), so every
-# type missing from this list is reported to the clients as an asset.
+# The entity types that have a position in time, as opposed to the asset types.
+# Their name is also the event prefix (shot:update, edit:update...). Thus the
+# clients get each type that is not in this list as an asset.
 TEMPORAL_ENTITY_TYPE_NAMES = [
     "Shot",
     "Sequence",
@@ -41,9 +41,9 @@ TEMPORAL_ENTITY_TYPE_NAMES = [
 ]
 
 
-# Builders for each task field of the with-tasks views. Every view picks
-# its exact field list so its response shape stays unchanged; is_subscribed
-# and assignees are always added by build_task.
+# The builders for each task field of the with-tasks views. Each view selects
+# its exact field list, so that the shape of its response does not change.
+# build_task always adds is_subscribed and assignees.
 _TASK_FIELD_BUILDERS = {
     "id": lambda row: row.id,
     "entity_id": lambda row: row.entity_id,
@@ -70,9 +70,9 @@ _TASK_FIELD_BUILDERS = {
     "data": lambda row: fields.serialize_value(row.data),
 }
 
-# The studio side of a task, blank: who works on it, how long it takes,
-# when it is due, how often it came back. A client never reads these; the
-# keys stay so that every consumer keeps the response shape.
+# The blank studio values of a task: who works on it, how long it takes, when
+# it is due, and how many times it came back. A client never reads these
+# values. The keys stay, so that all consumers keep the response shape.
 CLIENT_BLANK_TASK_VALUES = {
     "assignees": [],
     "assigner_id": None,
@@ -115,10 +115,11 @@ ENTITIES_AND_TASKS_TASK_FIELDS = [
 
 def clear_entity_cache(entity_id):
     """
-    Drop the memoized serialization and full name of given entity.
+    Remove the memoized serialization and full name of the given entity.
     """
-    # Renaming a parent (sequence, episode) still leaves the children
-    # names cached up to their TTL; only the entity's own name goes.
+    # If a parent (sequence, episode) gets a new name, the names of the
+    # children stay in the cache until their TTL ends. Only the name of the
+    # entity is removed.
     entity_id = str(entity_id)
     cache.cache.delete_memoized(_get_entity_cached, entity_id)
     cache.cache.delete_memoized(get_full_entity_name, entity_id)
@@ -126,9 +127,10 @@ def clear_entity_cache(entity_id):
 
 def _load_entities(entity_ids, *already_loaded):
     """
-    Return the serialized entities for given ids, keyed by id. Entities
-    present in the already loaded maps are reused, only the rest is queried.
-    The maps are searched in order, so the first one wins.
+    Return the serialized entities for the given IDs, keyed by id. Use again
+    the entities that are in the loaded maps, and query only the other
+    entities. The search goes through the maps in order, so the first map has
+    priority.
     """
     entities = {}
     missing = {str(entity_id) for entity_id in entity_ids}
@@ -145,7 +147,7 @@ def _load_entities(entity_ids, *already_loaded):
 
 def _collect_parent_ids(entities_map):
     """
-    Return the ids of the parents of given entities, skipping the roots.
+    Return the ids of the parents of the given entities. Skip the roots.
     """
     return {
         entity["parent_id"]
@@ -157,9 +159,11 @@ def _collect_parent_ids(entities_map):
 @cache.memoize_function(1200)
 def get_full_entity_name(entity_id):
     """
-    Get full entity name whether it's an asset or a shot. If it's a shot
-    the result is "Episode name / Sequence name / Shot name". If it's an
-    asset the result is "Asset type name / Asset name".
+    Return the full name of an entity, for an asset or a shot. Return a tuple
+    (name, episode_id, preview_file_id). The name has these forms:
+    - for a shot: "Episode name / Sequence name / Shot name",
+    - for a sequence: "Episode name / Sequence name",
+    - for an asset: "Asset type name / Asset name".
     """
     entity = get_entity(entity_id)
     episode_id = None
@@ -190,9 +194,9 @@ def get_full_entity_name(entity_id):
 
 def get_full_entity_names(entity_ids):
     """
-    Batch version of get_full_entity_name. Takes a list of entity IDs
-    and returns a dict mapping entity_id -> (name, episode_id,
-    preview_file_id). Uses 2-3 queries instead of N.
+    Return the full names of many entities, as get_full_entity_name does. The
+    function takes a list of entity IDs. It returns a dict that maps entity_id
+    to (name, episode_id, preview_file_id). It uses 2 or 3 queries, not N.
     """
     if not entity_ids:
         return {}
@@ -202,7 +206,7 @@ def get_full_entity_names(entity_ids):
     entities_map = _load_entities(unique_ids)
     parent_ids = _collect_parent_ids(entities_map)
     parents_map = _load_entities(parent_ids, entities_map)
-    # Grandparents are the episodes of the sequences.
+    # The grandparents are the episodes of the sequences.
     grandparent_ids = _collect_parent_ids(parents_map)
     grandparents_map = _load_entities(
         grandparent_ids, entities_map, parents_map
@@ -213,13 +217,12 @@ def get_full_entity_names(entity_ids):
     all_entities.update(parents_map)
     all_entities.update(entities_map)
 
-    # Get type IDs for classification
     shot_type = entity_types_service.get_shot_type()
     episode_type = entity_types_service.get_episode_type()
     sequence_type = entity_types_service.get_sequence_type()
 
-    # Anything that is not a shot, an episode or a sequence is an asset, so
-    # its entity type has to be resolved to build the name.
+    # All entities that are not a shot, an episode or a sequence are assets.
+    # Thus the name needs the entity type of the asset.
     asset_type_ids = {
         entity["entity_type_id"]
         for entity in entities_map.values()
@@ -235,7 +238,6 @@ def get_full_entity_names(entity_ids):
             ).all()
         }
 
-    # Build names
     result = {}
     for eid in unique_ids:
         str_eid = str(eid)
@@ -289,7 +291,7 @@ def get_full_entity_names(entity_ids):
 
 def find_entity_raw(**lookup):
     """
-    Return the entity matching given columns (name, project_id,
+    Return the entity that has the given column values (name, project_id,
     entity_type_id, parent_id...) as an active record, or None.
     """
     return Entity.get_by(**lookup)
@@ -297,8 +299,8 @@ def find_entity_raw(**lookup):
 
 def get_entity_raw(entity_id):
     """
-    Return an entity type matching given id, as an active record. Raises an
-    exception if nothing is found.
+    Return the entity that has the given ID, as an active record. If the entity
+    does not exist, raise an exception.
     """
     return base_service.get_instance(
         Entity, entity_id, EntityNotFoundException
@@ -314,19 +316,19 @@ def _get_entity_cached(entity_id):
 
 def get_entity(entity_id):
     """
-    Return an entity type matching given id, as a dict. Raises an exception if
-    nothing is found.
+    Return the entity that has the given ID, as a dict. If the entity does not
+    exist, raise an exception.
 
-    The id is normalised before it reaches the memoization: see
-    get_entity_type.
+    The id is normalized before it goes to the memoization: see
+    entity_types_service.get_entity_type.
     """
     return _get_entity_cached(str(entity_id))
 
 
 def get_for_entity_from_task(task):
     """
-    Return the entity type name for given task. All asset types are returned
-    as "Asset".
+    Return the entity type name for the given task. Return "Asset" for all
+    asset types.
     """
     entity = get_entity(task["entity_id"])
     entity_type = entity_types_service.get_entity_type(
@@ -339,9 +341,9 @@ def get_for_entity_from_task(task):
 
 def build_assigned_task_filter():
     """
-    Filter keeping the entities holding a task assigned to the current
-    user. An EXISTS clause never repeats an entity the way a join on its
-    tasks does, so a limit on the query counts entities.
+    Return a filter that keeps the entities with a task assigned to the current
+    user. An EXISTS clause never repeats an entity, but a join on its tasks
+    can. Thus a limit on the query counts entities.
     """
     return (
         db.session.query(Task.id)
@@ -353,10 +355,10 @@ def build_assigned_task_filter():
 
 def build_assigned_child_query(Child):
     """
-    Query of the tasks assigned to the current user on given child, an
-    alias of Entity. The caller says how the child relates to the listed
-    entity and turns the query into an EXISTS filter: it never repeats an
-    entity the way joins do, so a limit counts entities.
+    Return the query of the tasks assigned to the current user on the given
+    child, an alias of Entity. The caller tells how the child relates to the
+    listed entity, and makes an EXISTS filter from the query. This filter never
+    repeats an entity, but joins can. Thus a limit counts entities.
     """
     return (
         db.session.query(Task.id)
@@ -377,10 +379,10 @@ def get_entities_for_project(
     cursor_id=None,
 ):
     """
-    Retrieve all entities related to given project of which entity is entity
-    type: all of them, a page of them, or the ones following a cursor (see
-    query_utils.get_paginated_results). The scope is one more filter, for
-    the listings that keep a user to a part of the production.
+    Return the entities of the given project that have the given entity type:
+    all of them, a page of them, or the entities after a cursor (see
+    query_utils.get_paginated_results). The scope is one more filter, for the
+    listings that limit a user to a part of the production.
     """
     query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
@@ -411,7 +413,7 @@ def get_entity_links_for_project(
     cursor_created_at=None,
 ):
     """
-    Retrieve entity links for given project.
+    Return the entity links of the given project.
     """
     query = EntityLink.query.filter(Entity.project_id == project_id).join(
         Entity, EntityLink.entity_in_id == Entity.id
@@ -456,7 +458,7 @@ def get_entity_links_for_project(
 
 def blank_task_for_client(task):
     """
-    Return given task dict with its studio fields blank, for a client.
+    Return the given task dict with blank studio fields, for a client.
     """
     return {
         **task,
@@ -470,8 +472,8 @@ def blank_task_for_client(task):
 
 def blank_tasks_for_current_user(tasks):
     """
-    Blank the studio fields of given task dicts when the current user is a
-    client on the resolved project, else return them as they are.
+    If the current user is a client on the resolved project, make the studio
+    fields of the given task dicts blank. Otherwise, return them as they are.
     """
     if not permissions.has_client_permissions():
         return tasks
@@ -480,9 +482,10 @@ def blank_tasks_for_current_user(tasks):
 
 def blank_entity_tasks_for_current_user(entity):
     """
-    Return given entity dict with the studio fields of its tasks blank when
-    the current user is a client on the resolved project. The entity dict
-    may come from a memoized getter, so it is copied, never changed.
+    Return the given entity dict. If the current user is a client on the
+    resolved project, the studio fields of its tasks are blank. The entity dict
+    can come from a memoized getter, so the function copies it and never
+    changes it.
     """
     if not permissions.has_client_permissions():
         return entity
@@ -491,8 +494,8 @@ def blank_entity_tasks_for_current_user(entity):
 
 def _blank_builder(name):
     """
-    Return a task field builder serving the blank value of given field to
-    every row, a copy each time so that no row shares a list.
+    Return a task field builder that gives the blank value of the given field
+    to each row. Each row gets a new copy, so that no row shares a list.
     """
     return lambda row: copy.copy(CLIENT_BLANK_TASK_VALUES[name])
 
@@ -506,27 +509,30 @@ def fetch_entity_task_map(
     for_client=None,
 ):
     """
-    Shared core of the get_*_and_tasks views: fetch the tasks and the
-    assignee links of the entities selected by apply_filters (a callable
-    adding entity-scoped filters and joins to a query whose FROM clause
-    contains Entity) with two narrow flat queries, then group them.
+    Get the tasks and the assignee links of the entities that apply_filters
+    selects, and group them. This is the shared core of the get_*_and_tasks
+    views. apply_filters is a callable. It adds entity filters and joins to a
+    query whose FROM clause contains Entity. The function uses two narrow flat
+    queries.
 
-    Returns (tasks_by_entity, build_task): task rows grouped by entity id
-    (uuid as text) and a builder producing task dicts restricted to
-    task_fields, so every view keeps its exact response shape; with
-    compact=True the builder produces a list of values in the order of
-    task_fields instead. With assigned_to=True only the tasks assigned to
-    the current user are fetched. With for_client=True the studio fields
-    come blank, as CLIENT_BLANK_TASK_VALUES lists them. Left to None, the
-    role is read here, so the caller resolves the project before; a
-    memoized caller passes False, and its route blanks after the access
-    check.
+    Return (tasks_by_entity, build_task):
+    - tasks_by_entity: the task rows grouped by entity id (uuid as text),
+    - build_task: a builder that makes task dicts with only task_fields. Thus
+      each view keeps its exact response shape.
+
+    With compact=True, the builder makes a list of values in the order of
+    task_fields. With assigned_to=True, the function gets only the tasks
+    assigned to the current user. With for_client=True, the studio fields are
+    blank, as CLIENT_BLANK_TASK_VALUES lists them. If for_client is None, the
+    function reads the role, so the caller must resolve the project before. A
+    memoized caller gives False, and its route makes the fields blank after the
+    access check.
     """
     task_query = apply_filters(
         Task.query.join(Entity, Task.entity_id == Entity.id)
     ).with_entities(
-        # uuid::text in SQL: casting uuids per task row in Python shows
-        # up in profiles on task-heavy productions.
+        # Use uuid::text in SQL. A cast of the uuids for each task row in
+        # Python is visible in the profiles of productions with many tasks.
         cast(Task.id, Text).label("id"),
         cast(Task.entity_id, Text).label("entity_id"),
         cast(Task.task_type_id, Text).label("task_type_id"),
@@ -564,8 +570,8 @@ def fetch_entity_task_map(
 
     if for_client is None:
         for_client = permissions.has_client_permissions()
-    # The views without assignees in task_fields still add them below: a
-    # client gets no links at all, so none of them comes back.
+    # The views without assignees in task_fields still add them below. A client
+    # gets no links, so no assignee comes back.
     assignees_by_task = {}
     if not for_client:
         for task_id, person_id in link_query.all():
@@ -617,12 +623,17 @@ def fetch_entity_task_map(
 
 def get_project_board_fingerprint(project_id, user_id):
     """
-    Cheap change signal for the with-tasks boards of given project. It
-    covers everything those payloads embed: the entities of the project
-    (parents' names included, a sequence is an entity too), the tasks
-    (assigning saves the task), the project row and the entity type
-    names, plus the caller's subscriptions. Five scalar reads, orders of
-    magnitude cheaper than the boards they guard.
+    Return a cheap change signal for the with-tasks boards of the given
+    project. The signal covers all the data in these payloads:
+    - the entities of the project, with the names of the parents (a sequence is
+      also an entity),
+    - the tasks (an assignment saves the task),
+    - the project row,
+    - the entity type names,
+    - the subscriptions of the caller.
+
+    It uses five scalar reads. It is much cheaper than the boards that it
+    guards.
     """
     signals = [
         Entity.query.with_entities(
@@ -656,11 +667,11 @@ def get_project_board_fingerprint(project_id, user_id):
 
 def get_project_board_etag(criterions):
     """
-    Build the conditional GET validator for a with-tasks board, or None
-    when the request is not scoped to one project. Hashes the board
-    fingerprint with the caller, its effective role and the resolved
-    criterions (vendor scoping included). Call it after the permission
-    checks: the effective role needs the project resolved.
+    Build the conditional GET validator for a with-tasks board. If the request
+    is not for one project, return None. The validator is a hash of the board
+    fingerprint, the caller, its effective role and the resolved criterions
+    (vendor scoping included). Call it after the permission checks. The
+    effective role needs the resolved project.
     """
     project_id = criterions.get("project_id")
     if project_id is None:
@@ -676,8 +687,8 @@ def get_project_board_etag(criterions):
 
 def get_entities_and_tasks(criterions=None):
     """
-    Get all entities for given criterions with related tasks for each
-    entity, as a list of dicts.
+    Return all entities for the given criterions, with the related tasks of
+    each entity, as a list of dicts.
     """
     if criterions is None:
         criterions = {}
@@ -694,8 +705,9 @@ def get_entities_and_tasks(criterions=None):
             )
         if "project_id" in criterions:
             query = query.filter(Entity.project_id == criterions["project_id"])
-        # "all" is the cross-episode pseudo-episode Kitsu uses for its
-        # production-wide views: no episode filter, like shots_service.
+        # "all" is the pseudo-episode for all episodes that Kitsu uses for its
+        # views of the full production. Like shots_service, do not filter on
+        # the episode.
         episode_id = criterions.get("episode_id")
         if episode_id == "main":
             query = query.filter(Entity.parent_id == None)
@@ -760,8 +772,8 @@ def get_entities_and_tasks(criterions=None):
 
 def get_entity_link(link_id):
     """
-    Return the entity link matching given id, as a dict. Raises an exception
-    if nothing is found.
+    Return the entity link that has the given ID, as a dict. If the link does
+    not exist, raise an exception.
     """
     link = EntityLink.get_by(id=link_id)
     if link is None:
@@ -771,9 +783,9 @@ def get_entity_link(link_id):
 
 def get_linked_entities_with_tasks(entity_id, only_assigned=False):
     """
-    Return all entities and their tasks linked to given entity, or with
-    only_assigned the entities holding a task assigned to the current user,
-    with those tasks only.
+    Return all entities linked to the given entity, with their tasks. With
+    only_assigned, return only the entities with a task assigned to the current
+    user, and only these tasks.
     """
     entities_in = (
         db.session.query(EntityConceptLink.entity_in_id)

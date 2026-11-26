@@ -29,10 +29,11 @@ from zou.app.services import (
 )
 from zou.app.utils import events, fields
 
-# Production-setting fields that are copied between Project and
-# ProjectTemplate. Excluded on purpose: name, description (set explicitly),
-# any team / dates / production-data fields, and the JSONB columns
-# file_tree / data which are handled separately.
+# The production setting fields that the code copies between Project and
+# ProjectTemplate. These fields are not in the list on purpose:
+# - name and description, which the code sets explicitly,
+# - the team, date and production data fields,
+# - the JSONB columns file_tree and data, which have their own code.
 PRODUCTION_SETTING_FIELDS = [
     "fps",
     "ratio",
@@ -55,15 +56,15 @@ PRODUCTION_SETTING_FIELDS = [
 
 def clear_project_template_cache():
     """
-    Stub kept so call sites are stable. Template reads are not cached for
-    now because templates are admin-only and updated infrequently — adding
-    a memoize layer is easy if/when access patterns change.
+    Do nothing. This stub keeps the call sites stable. The template reads are
+    not cached for now, because only admins use templates and templates change
+    rarely. If the access patterns change, it is easy to add a memoize layer.
     """
 
 
 def _notify_template_change(template_id, action="update"):
     """
-    Drop the template cache and tell the clients the template moved.
+    Remove the template cache and tell the clients that the template changed.
     """
     clear_project_template_cache()
     events.emit(
@@ -79,7 +80,8 @@ def _notify_template_change(template_id, action="update"):
 
 def get_project_template_raw(template_id):
     """
-    Return template ORM instance for given id, or raise.
+    Return the template that has the given ID, as an active record. If it does
+    not exist, raise ProjectTemplateNotFoundException.
     """
     try:
         template = ProjectTemplate.get(template_id)
@@ -92,15 +94,18 @@ def get_project_template_raw(template_id):
 
 def get_project_template(template_id):
     """
-    Return template dict for given id, or raise.
+    Return the template that has the given ID, as a dict. If it does not exist,
+    raise ProjectTemplateNotFoundException.
     """
     return get_project_template_raw(template_id).serialize()
 
 
 def create_project_template(name, description=None, **settings):
     """
-    Create a new empty template. Extra keyword arguments are forwarded as
-    production settings.
+    Create a new empty template. If other keyword arguments are production
+    settings, file_tree, data or metadata_descriptors, send them to the
+    template. Ignore all other arguments. If the name is empty or already in
+    use, raise WrongParameterException.
     """
     if not name:
         raise WrongParameterException("name is required")
@@ -125,13 +130,13 @@ def create_project_template(name, description=None, **settings):
 
 def update_project_template(template_id, changes):
     """
-    Update template fields.
+    Update the fields of the template.
     """
     template = get_project_template_raw(template_id)
     projects_service.validate_movie_bitrates(
         changes or {}, current=template.serialize()
     )
-    # Filter out fields the caller can't change directly.
+    # Remove the fields that the caller cannot change directly.
     safe_changes = {
         key: value
         for key, value in (changes or {}).items()
@@ -159,7 +164,7 @@ def update_project_template(template_id, changes):
 
 def delete_project_template(template_id):
     """
-    Delete a template (and its link rows via the link tables).
+    Delete a template and its rows in the link tables.
     """
     template = get_project_template_raw(template_id)
     template_dict = template.serialize()
@@ -175,15 +180,16 @@ def delete_project_template(template_id):
 
 def _ensure_template_exists(template_id):
     """
-    Raise if no template matches given id, and return it.
+    Return the template that has the given ID, as an active record. If it does
+    not exist, raise ProjectTemplateNotFoundException.
     """
     return get_project_template_raw(template_id)
 
 
 def _check_required_id(model, value, field_name, label):
     """
-    Raise a WrongParameterException unless given id is a valid UUID pointing
-    at an existing row, and return that row.
+    Return the row that has the given ID. If the id is not a valid UUID of an
+    existing row, raise WrongParameterException.
     """
     if not value or not fields.is_valid_id(value):
         raise WrongParameterException(
@@ -197,8 +203,8 @@ def _check_required_id(model, value, field_name, label):
 
 def get_template_task_types(template_id):
     """
-    Return the task types of given template, each carrying the priority
-    stored on its link, sorted by priority then name.
+    Return the task types of the given template, sorted by priority, then by
+    name. Each task type has the priority stored on its link.
     """
     template = _ensure_template_exists(template_id)
     links = ProjectTemplateTaskTypeLink.get_all_by(
@@ -230,9 +236,9 @@ def add_task_type_to_template(
     is_client_visible=None,
 ):
     """
-    Link a task type to given template, or update its priority and its
-    movie bitrates when the link already exists. Bitrates left to None are
-    not touched, so a reorder keeps them.
+    Link a task type to the given template. If the link already exists, update
+    its priority, its movie bitrates and its client visibility. The values left
+    to None do not change, so a reorder keeps them.
     """
     _check_required_id(TaskType, task_type_id, "task_type_id", "Task type")
     template = _ensure_template_exists(template_id)
@@ -270,8 +276,8 @@ def add_task_type_to_template(
 
 def remove_task_type_from_template(template_id, task_type_id):
     """
-    Unlink a task type from given template and from its workflows, no-op when
-    not linked.
+    Unlink a task type from the given template and from its workflows. If the
+    task type is not linked, do nothing.
     """
     link = ProjectTemplateTaskTypeLink.get_by(
         project_template_id=template_id, task_type_id=task_type_id
@@ -286,8 +292,9 @@ def remove_task_type_from_template(template_id, task_type_id):
 
 def get_template_task_statuses(template_id):
     """
-    Return the task statuses of given template, each carrying the priority
-    and the board roles stored on its link, sorted by priority then name.
+    Return the task statuses of the given template, sorted by priority, then by
+    name. Each task status has the priority and the board roles stored on its
+    link.
     """
     template = _ensure_template_exists(template_id)
     links = ProjectTemplateTaskStatusLink.get_all_by(
@@ -318,9 +325,9 @@ def add_task_status_to_template(
     is_client_allowed=UNSET,
 ):
     """
-    Link a task status to given template, or update the fields provided
-    when the link already exists. Fields left to None are untouched.
-    is_client_allowed is untouched when left to UNSET, and None resets it
+    Link a task status to the given template. If the link already exists,
+    update the given fields. The fields left to None do not change. If
+    is_client_allowed is UNSET, it does not change. If it is None, it goes back
     to the studio value.
     """
     _check_required_id(
@@ -358,7 +365,8 @@ def add_task_status_to_template(
 
 def remove_task_status_from_template(template_id, task_status_id):
     """
-    Unlink a task status from given template, no-op when not linked.
+    Unlink a task status from the given template. If the task status is not
+    linked, do nothing.
     """
     link = ProjectTemplateTaskStatusLink.get_by(
         project_template_id=template_id, task_status_id=task_status_id
@@ -370,8 +378,8 @@ def remove_task_status_from_template(template_id, task_status_id):
 
 def set_template_task_type_priorities(template_id, task_type_ids):
     """
-    Set the priority of the template's task type links from the given ordered
-    id list (priority = position, 1-based) in a single pass. Returns the
+    Set the priority of the task type links of the template from the given
+    sorted id list (priority = position, 1-based) in a single pass. Return the
     updated links.
     """
     return [
@@ -382,9 +390,10 @@ def set_template_task_type_priorities(template_id, task_type_ids):
 
 def set_template_task_status_priorities(template_id, task_status_ids):
     """
-    Set the priority of the template's task status links from the given
-    ordered id list (priority = position, 1-based). Board roles are preserved
-    since only the priority is passed. Returns the updated links.
+    Set the priority of the task status links of the template from the given
+    sorted id list (priority = position, 1-based). The board roles do not
+    change, because the function gives only the priority. Return the updated
+    links.
     """
     return [
         add_task_status_to_template(template_id, task_status_id, priority)
@@ -394,8 +403,8 @@ def set_template_task_status_priorities(template_id, task_status_ids):
 
 def get_template_asset_types(template_id):
     """
-    Return the asset types of given template: id, name and the workflow
-    specific to the template, empty when the studio one applies.
+    Return the asset types of the given template: id, name and the workflow of
+    the template. If the studio workflow applies, the workflow is empty.
     """
     template = _ensure_template_exists(template_id)
     workflows = defaultdict(list)
@@ -417,8 +426,8 @@ def set_template_asset_type_workflow(
     template_id, asset_type_id, task_type_ids
 ):
     """
-    Replace the workflow of an asset type for given template. An empty list
-    removes it, so the asset type follows the studio workflow again.
+    Replace the workflow of an asset type for the given template. An empty list
+    removes the workflow, so the asset type uses the studio workflow again.
     """
     template = _ensure_template_exists(template_id)
     if asset_type_id not in {str(at.id) for at in template.asset_types}:
@@ -456,7 +465,7 @@ def set_template_asset_type_workflow(
 def _links_in_settings(workflow_links, settings):
     """
     Return the workflow links whose asset type and task type are both in the
-    settings of given project or template: a stale link must not be copied.
+    settings of the given project or template. Do not copy a stale link.
     """
     asset_type_ids = {asset_type.id for asset_type in settings.asset_types}
     task_type_ids = {task_type.id for task_type in settings.task_types}
@@ -470,7 +479,8 @@ def _links_in_settings(workflow_links, settings):
 
 def add_asset_type_to_template(template_id, asset_type_id):
     """
-    Link an asset type to given template, no-op when already linked.
+    Link an asset type to the given template. If it is already linked, do
+    nothing.
     """
     asset_type = _check_required_id(
         EntityType, asset_type_id, "asset_type_id", "Asset type"
@@ -485,8 +495,8 @@ def add_asset_type_to_template(template_id, asset_type_id):
 
 def remove_asset_type_from_template(template_id, asset_type_id):
     """
-    Unlink an asset type from given template with its workflow, no-op when
-    not linked.
+    Unlink an asset type from the given template, with its workflow. If it is
+    not linked, do nothing.
     """
     template = _ensure_template_exists(template_id)
     asset_type = EntityType.get(asset_type_id)
@@ -504,7 +514,7 @@ def remove_asset_type_from_template(template_id, asset_type_id):
 
 def get_template_status_automations(template_id):
     """
-    Return the status automations of given template.
+    Return the status automations of the given template.
     """
     template = _ensure_template_exists(template_id)
     return ProjectTemplate.serialize_list(template.status_automations)
@@ -512,7 +522,8 @@ def get_template_status_automations(template_id):
 
 def add_status_automation_to_template(template_id, status_automation_id):
     """
-    Link a status automation to given template, no-op when already linked.
+    Link a status automation to the given template. If it is already linked, do
+    nothing.
     """
     automation = _check_required_id(
         StatusAutomation,
@@ -532,7 +543,8 @@ def add_status_automation_to_template(template_id, status_automation_id):
 
 def remove_status_automation_from_template(template_id, status_automation_id):
     """
-    Unlink a status automation from given template, no-op when not linked.
+    Unlink a status automation from the given template. If it is not linked, do
+    nothing.
     """
     template = _ensure_template_exists(template_id)
     automation = StatusAutomation.get(status_automation_id)
@@ -547,8 +559,8 @@ def remove_status_automation_from_template(template_id, status_automation_id):
 
 def get_template_preview_background_files(template_id):
     """
-    Return the preview background files of given template, with the flag
-    telling which one is the default.
+    Return the preview background files of the given template, with the flag
+    that shows which file is the default.
     """
     template = _ensure_template_exists(template_id)
     return [
@@ -565,8 +577,8 @@ def add_preview_background_file_to_template(
     template_id, preview_background_file_id
 ):
     """
-    Link a preview background file to given template, no-op when already
-    linked.
+    Link a preview background file to the given template. If it is already
+    linked, do nothing.
     """
     background = _check_required_id(
         PreviewBackgroundFile,
@@ -592,8 +604,8 @@ def remove_preview_background_file_from_template(
     template_id, preview_background_file_id
 ):
     """
-    Unlink a preview background file from given template, and clear the
-    template default when it was the one removed.
+    Unlink a preview background file from the given template. If this file is
+    the template default, clear the default.
     """
     template = _ensure_template_exists(template_id)
     background = PreviewBackgroundFile.get(preview_background_file_id)
@@ -603,7 +615,6 @@ def remove_preview_background_file_from_template(
             template.save()
         except ValueError:
             pass
-    # Clear default if it was the removed one
     if str(template.default_preview_background_file_id or "") == str(
         preview_background_file_id
     ):
@@ -615,7 +626,7 @@ def set_template_default_preview_background_file(
     template_id, preview_background_file_id
 ):
     """
-    Set which of the template's preview background files is the default.
+    Set which preview background file of the template is the default.
     """
     template = _ensure_template_exists(template_id)
     if preview_background_file_id is not None:
@@ -633,7 +644,7 @@ def set_template_default_preview_background_file(
 
 def set_template_metadata_descriptors(template_id, descriptors):
     """
-    Replace the JSONB metadata descriptor snapshot on the template.
+    Replace the JSONB snapshot of the metadata descriptors on the template.
     """
     template = _ensure_template_exists(template_id)
     if descriptors is None:
@@ -654,8 +665,8 @@ def set_template_metadata_descriptors(template_id, descriptors):
 
 def _clean_descriptor_dict(descriptor):
     """
-    Normalize a metadata descriptor dict so the snapshot has a stable shape
-    regardless of how the caller submitted it.
+    Normalize a metadata descriptor dict, so that the snapshot has a stable
+    shape. The shape does not change with the form that the caller sent.
     """
     name = descriptor.get("name", "")
     field_name = descriptor.get("field_name") or slugify.slugify(
@@ -686,15 +697,21 @@ def _clean_descriptor_dict(descriptor):
 
 def create_template_from_project(project_id, name, description=None):
     """
-    Extract the configuration of an existing project into a new template.
+    Copy the configuration of an existing project into a new template.
 
-    Copies: production settings, task type links (with priorities), task
-    status links (with priorities and roles_for_board), asset type links,
-    status automation links, metadata descriptors (serialized to JSONB),
-    file_tree and data (free metadata).
+    The function copies:
+    - the production settings,
+    - the task type links, with priorities, bitrates and client visibility,
+    - the task status links, with priorities, roles_for_board and client
+      permission,
+    - the asset type links and their workflows,
+    - the status automation links,
+    - the preview background links and the default background,
+    - the metadata descriptors, serialized to JSONB,
+    - file_tree and data (free metadata).
 
-    Does NOT copy: team members, dates, man_days, nb_episodes, episode_span,
-    preview backgrounds, project_status, or any production data.
+    The function does NOT copy team members, dates, man_days, nb_episodes,
+    episode_span, project_status, or production data.
     """
     project = projects_service.get_project_raw(project_id)
 
@@ -714,7 +731,7 @@ def create_template_from_project(project_id, name, description=None):
             "A project template with this name already exists"
         )
 
-    # Snapshot link tables
+    # Make a snapshot of the link tables.
     from zou.app.models.project import (
         ProjectAssetTypeTaskTypeLink,
         ProjectTaskStatusLink,
@@ -789,8 +806,8 @@ def create_template_from_project(project_id, name, description=None):
 
 def _snapshot_descriptors(project_id):
     """
-    Serialize the project's MetadataDescriptor rows into the JSONB shape
-    used on the template.
+    Serialize the MetadataDescriptor rows of the project into the JSONB shape
+    of the template.
     """
     descriptors = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id
@@ -828,18 +845,21 @@ def _snapshot_descriptors(project_id):
 
 def apply_template_to_project(project_id, template_id, override_settings=None):
     """
-    Apply a template's configuration to a project. Existing links are kept;
-    duplicates are skipped (additive strategy). Production settings are
-    written to the project unless `override_settings` provides an explicit
-    value for that field.
+    Apply the configuration of a template to a project. Keep the existing links
+    and skip the duplicates (additive strategy). Write the production settings
+    to the project. If `override_settings` gives an explicit value for a field,
+    write that value instead. The template also adds its asset type workflows,
+    preview backgrounds, default background and metadata descriptors. Clear the
+    project cache, emit project:update and return the project as a dict.
     """
     project = projects_service.get_project_raw(project_id)
     template = get_project_template_raw(template_id)
 
     override_settings = override_settings or {}
 
-    # Build the field map: explicit overrides win, template fills the rest.
-    # The result is then written to the project in a single update.
+    # Build the field map: the explicit overrides have priority, and the
+    # template gives the other values. Then write the result to the project in
+    # a single update.
     settings_to_apply = {}
     for field in PRODUCTION_SETTING_FIELDS:
         if field in override_settings and override_settings[field] is not None:
@@ -911,8 +931,8 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
             )
             db.session.add(new_link)
 
-    # Additive, like the other links: a workflow the project already sets
-    # for an asset type stays as it is.
+    # Additive, like the other links: if the project already sets a workflow
+    # for an asset type, this workflow does not change.
     asset_types_with_workflow = {
         link.asset_type_id
         for link in ProjectAssetTypeTaskTypeLink.query.filter_by(
@@ -966,7 +986,8 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
 
     db.session.commit()
 
-    # Apply default background if template has one and target doesn't
+    # If the template has a default background and the target does not, apply
+    # it.
     if (
         template.default_preview_background_file_id is not None
         and "default_preview_background_file_id" not in override_settings
@@ -980,7 +1001,6 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
             }
         )
 
-    # Apply metadata descriptors snapshot
     descriptors_snapshot = template.metadata_descriptors or []
     for descriptor in descriptors_snapshot:
         _create_descriptor_from_snapshot(project.id, descriptor)
@@ -992,9 +1012,10 @@ def apply_template_to_project(project_id, template_id, override_settings=None):
 
 def _create_descriptor_from_snapshot(project_id, descriptor):
     """
-    Create a MetadataDescriptor on the target project from the JSONB
-    snapshot. Skips silently if a descriptor with the same (entity_type,
-    name) already exists.
+    Create a MetadataDescriptor on the target project from the JSONB snapshot
+    and return it as a dict. If a descriptor with the same (entity_type, name,
+    task_type_id) already exists, return it as an active record. If the
+    snapshot is incomplete or not valid, return None.
     """
     name = descriptor.get("name") or ""
     entity_type = descriptor.get("entity_type")

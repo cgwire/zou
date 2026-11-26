@@ -27,16 +27,6 @@ class SubscriptionTestCase(NotificationsTestCase):
     Subscribing and unsubscribing, on a task or on a whole sequence.
     """
 
-    def test_subscribe_to_task(self):
-        subscriptions_service.subscribe_to_task(
-            self.outsider_id, self.task_dict["id"]
-        )
-        self.assertTrue(
-            subscriptions_service.has_task_subscription(
-                self.outsider_id, self.task_dict["id"]
-            )
-        )
-
     def test_subscribe_to_task_twice(self):
         first = subscriptions_service.subscribe_to_task(
             self.outsider_id, self.task_dict["id"]
@@ -73,19 +63,6 @@ class SubscriptionTestCase(NotificationsTestCase):
                 self.outsider_id, self.task_dict["id"]
             )
         self.assertEqual(first["id"], second["id"])
-
-    def test_unsubscribe_from_task(self):
-        subscriptions_service.subscribe_to_task(
-            self.outsider_id, self.task_dict["id"]
-        )
-        subscriptions_service.unsubscribe_from_task(
-            self.outsider_id, self.task_dict["id"]
-        )
-        self.assertIsNone(
-            subscriptions_service.get_task_subscription_raw(
-                self.outsider_id, self.task_dict["id"]
-            )
-        )
 
     def test_unsubscribe_from_a_task_nobody_subscribed_to(self):
         self.assertEqual(

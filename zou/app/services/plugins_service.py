@@ -23,9 +23,12 @@ logger = logging.getLogger(__name__)
 
 def install_plugin(path, force=False):
     """
-    Install a plugin: create folder, copy files, run migrations,
-    and call pre/post install hooks.
-    Supports local paths, zip files, and git repository URLs.
+    Install a plugin. The source can be a local path, a zip file or a git
+    repository URL. The steps are:
+    - Call the pre_install hook.
+    - Create the plugin folder and copy the files into it.
+    - Run the migrations.
+    - Call the post_install hook.
     """
     is_zip_url = path.startswith(("http://", "https://")) and path.endswith(
         ".zip"
@@ -86,8 +89,8 @@ def install_plugin(path, force=False):
             f"[Plugins] Database migrations for {manifest.id} applied."
         )
 
-        # Re-query plugin instance after migrations
-        # (Alembic operations may have detached it from the session)
+        # Get the plugin instance again after the migrations. The Alembic
+        # operations can detach it from the session.
         plugin = Plugin.get_by(plugin_id=manifest.id)
 
         _run_plugin_hook(manifest.id, plugin_path, "post_install", manifest)
@@ -106,29 +109,37 @@ def install_plugin(path, force=False):
 
 def uninstall_plugin(plugin_id):
     """
-    Uninstall a plugin: call pre/post uninstall hooks, downgrade
-    migrations, remove files, delete from database and remove folder.
+    Uninstall a plugin. The steps are:
+    - Call the pre_uninstall hook.
+    - Downgrade the migrations.
+    - Call the post_uninstall hook.
+    - Remove the files and the folder, and delete the database entry.
+    If the plugin has no files and no database entry, or if its files have
+    no readable manifest, raise ValueError.
     """
     logger.info(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
 
-    # A plugin left in a broken state (missing or invalid manifest) must stay
-    # uninstallable, so the hooks are simply called without a manifest.
+    # A plugin without files (only a database entry) stays uninstallable.
+    # If the files exist, the downgrade needs the manifest to find the
+    # version table of the plugin: without it, the plugin tables would stay
+    # and a new install would fail.
     manifest = None
-    try:
-        manifest = PluginManifest.from_plugin_path(plugin_path)
-    except Exception:
-        logger.warning(
-            f"Plugin {plugin_id} has no readable manifest, uninstalling "
-            "without its hooks.",
-            exc_info=1,
-        )
+    if plugin_path.exists():
+        try:
+            manifest = PluginManifest.from_plugin_path(plugin_path)
+        except Exception as e:
+            raise ValueError(
+                f"Plugin '{plugin_id}' has no readable manifest, its "
+                f"migrations cannot be downgraded: {e}"
+            ) from e
 
     _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
 
-    downgrade_plugin_migrations(plugin_path)
+    if manifest is not None:
+        downgrade_plugin_migrations(plugin_path)
 
-    # Run post_uninstall before removing files (module must still exist)
+    # Run post_uninstall before the file removal: the module must still exist.
     _run_plugin_hook(plugin_id, plugin_path, "post_uninstall", manifest)
 
     installed = uninstall_plugin_files(plugin_path)
@@ -146,8 +157,8 @@ def uninstall_plugin(plugin_id):
 
 def _import_plugin_module(plugin_id, plugin_path):
     """
-    Import a plugin module dynamically from its install path.
-    Returns the module or None if import fails.
+    Import a plugin module dynamically from its install path. Return the
+    module, or None if the import fails.
     """
     plugin_path = Path(plugin_path)
     plugin_folder = plugin_path.parent
@@ -165,8 +176,9 @@ def _import_plugin_module(plugin_id, plugin_path):
         logger.warning(f"⚠️  [Plugins] Could not import plugin module: {e}")
         return None
     except Exception:
-        # Import can fail on reinstall (e.g. SQLAlchemy table already
-        # defined). Return the partially-loaded module if available.
+        # The import can fail on a reinstall (for example, the SQLAlchemy
+        # table is already defined). If the partially loaded module exists,
+        # return it.
         if plugin_id in sys.modules:
             return sys.modules[plugin_id]
         return None
@@ -178,8 +190,8 @@ def _import_plugin_module(plugin_id, plugin_path):
 def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
     """
     Run a lifecycle hook (pre_install, post_install, pre_uninstall,
-    post_uninstall) on a plugin module if it exists.
-    Errors are logged but never block the install/uninstall flow.
+    post_uninstall) on a plugin module, if the hook exists. Log the errors.
+    An error never stops the install or the uninstall.
     """
     try:
         plugin_module = _import_plugin_module(plugin_id, plugin_path)
@@ -199,7 +211,7 @@ def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
 
 def print_added_routes(plugin_id, plugin_path):
     """
-    Print the added routes for a plugin.
+    Log the routes that the given plugin adds.
     """
     logger.info(f"[Plugins] Routes added by {plugin_id}:")
 
@@ -215,6 +227,6 @@ def print_added_routes(plugin_id, plugin_path):
 
 def get_plugins():
     """
-    Get all plugins.
+    Return all the plugins.
     """
     return [plugin.present() for plugin in Plugin.query.all()]

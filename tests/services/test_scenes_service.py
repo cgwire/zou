@@ -44,15 +44,6 @@ class SceneUtilsTestCase(ApiDBTestCase):
             ),
         )
 
-    def test_remove_shot_from_scene(self):
-        scenes_service.add_shot_to_scene(self.first_scene, self.shot_01)
-
-        shot = scenes_service.remove_shot_from_scene(
-            self.first_scene, self.shot_01
-        )
-
-        self.assertIsNone(shot["source_id"])
-
     def test_remove_shot_from_scene_announces_the_break(self):
         scenes_service.add_shot_to_scene(self.first_scene, self.shot_01)
         captured = self.capture_events("shot:remove-from-scene")

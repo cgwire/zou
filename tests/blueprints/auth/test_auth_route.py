@@ -1183,6 +1183,17 @@ class EmailOTPTestCase(ApiDBTestCase):
         )
         self.assertTrue(response["login"])
 
+        # The code works one time only.
+        self.post(
+            "auth/login",
+            {
+                "email": email,
+                "password": self.credentials["password"],
+                "email_otp": otp,
+            },
+            400,
+        )
+
     def test_send_email_otp_not_enabled(self):
         """
         GET /auth/email-otp answers like a sent OTP when the account has

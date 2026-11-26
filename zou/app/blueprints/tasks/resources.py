@@ -1029,6 +1029,7 @@ class OpenTasksStatsResource(MethodView, ArgsMixin):
         """
         Get open tasks stats
         """
+        check_open_tasks_access(None)
         return todos_service.get_open_tasks_stats()
 
 

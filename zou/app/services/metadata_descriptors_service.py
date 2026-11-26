@@ -22,10 +22,10 @@ from zou.app.services import (
 )
 from zou.app.utils import events, fields
 
-# Keys the built-in fields of an entity use in its data: the frame rate and
-# the size of its previews, its retake cap, its frame range, and its trim
-# handles. A column of the same field name would share their values. Kitsu
-# keeps the same list in src/lib/descriptors.js.
+# Keys that the built-in fields of an entity use in its data: the frame
+# rate and the size of its previews, its maximum number of retakes, its
+# frame range and its trim handles. A column with the same field name would
+# share their values. Kitsu keeps the same list in src/lib/descriptors.js.
 BUILT_IN_ENTITY_DATA_FIELDS = (
     "fps",
     "frame_in",
@@ -39,8 +39,8 @@ BUILT_IN_ENTITY_DATA_FIELDS = (
 
 def _migrate_metadata_field_name(model, old_key, new_key):
     """
-    Move a value from old_key to new_key in model.data, without committing.
-    No-op if old_key is absent. Returns whether an update was applied.
+    Move a value from old_key to new_key in model.data, without a commit. If
+    old_key is absent, do nothing. Return True if an update was applied.
     """
     metadata = fields.serialize_value(model.data) or {}
     value = metadata.pop(old_key, None)
@@ -53,12 +53,15 @@ def _migrate_metadata_field_name(model, old_key, new_key):
 
 def _entity_query_for_descriptor_entity_type(descriptor):
     """
-    Entities whose `data` holds a value for this descriptor (neither
-    Project nor Task). A field name is unique per entity type only, so the
-    query keeps the entities of the descriptor type: every asset type for
-    Asset, the type of that name for a shot, scene, sequence, episode or
-    edit column, none for any other name. Rows without the key are left
-    out: a removal rewrites only the rows it changes.
+    Return the entities whose `data` holds a value for this descriptor (not
+    Project and not Task). A field name is unique only for each entity type,
+    thus the query keeps the entities of the descriptor type:
+    - each asset type for Asset,
+    - the type with that name for a shot, scene, sequence, episode or edit
+      column,
+    - no type for any other name.
+    Leave out the rows without the key: a removal writes again only the rows
+    that it changes.
     """
     query = Entity.query.filter(
         Entity.project_id == descriptor.project_id,
@@ -83,7 +86,7 @@ def _entity_query_for_descriptor_entity_type(descriptor):
 
 def _task_query_for_descriptor(descriptor):
     """
-    Tasks whose `data` holds a value for this Task descriptor.
+    Return the tasks whose `data` holds a value for this Task descriptor.
     """
     return Task.query.filter(
         Task.project_id == descriptor.project_id,
@@ -94,7 +97,7 @@ def _task_query_for_descriptor(descriptor):
 
 def _strip_metadata_field_from_model_data(model, field_name):
     """
-    Remove field_name from model.data when `data` is not null.
+    Remove field_name from model.data if `data` is not null.
     """
     metadata = fields.serialize_value(model.data)
     if metadata is not None:
@@ -104,9 +107,10 @@ def _strip_metadata_field_from_model_data(model, field_name):
 
 def _migrate_descriptor_field_rename(descriptor, new_field_name):
     """
-    Apply a metadata field rename to Project.data or matching Entity rows.
-    Nothing is committed: the caller commits the moved values with the
-    descriptor, so a failed update of the descriptor rolls them back too.
+    Apply the rename of a metadata field to Project.data or to the matching
+    Entity rows. Do not commit: the caller commits the moved values with the
+    descriptor. Thus, if the update of the descriptor fails, the moved values
+    roll back too.
     """
     if descriptor.entity_type == "Project":
         project = projects_service.get_project_raw(descriptor.project_id)
@@ -129,9 +133,10 @@ def _migrate_descriptor_field_rename(descriptor, new_field_name):
 
 def _remove_stored_values_for_metadata_descriptor(descriptor):
     """
-    Remove descriptor field values from Project.data (Project type), from
-    the Task.data rows of its task type (Task type) or from the Entity.data
-    rows of its entity type (other types).
+    Remove the field values of the descriptor from:
+    - Project.data, for the Project type,
+    - the Task.data rows of its task type, for the Task type,
+    - the Entity.data rows of its entity type, for the other types.
     """
     if descriptor.entity_type == "Project":
         project = projects_service.get_project_raw(descriptor.project_id)
@@ -147,8 +152,8 @@ def _remove_stored_values_for_metadata_descriptor(descriptor):
 
 def _find_descriptors_by_field(project_ids, entity_type, field_name):
     """
-    Return the metadata descriptors sharing given field name and entity type
-    across given projects.
+    Return the metadata descriptors that have the given field name and entity
+    type in the given projects.
     """
     return MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id.in_(project_ids),
@@ -159,10 +164,10 @@ def _find_descriptors_by_field(project_ids, entity_type, field_name):
 
 def build_metadata_descriptors_filter(descriptor_visibilities):
     """
-    Return a filter keeping the metadata descriptors of the projects of
-    given (project_ids, for_client, vendor_departments) triples, each
-    narrowed as its triple says: a query spanning several projects narrows
-    each on the role held on it.
+    Return a filter that keeps the metadata descriptors of the projects of
+    the given (project_ids, for_client, vendor_departments) triples. Each
+    triple narrows its projects: a query on many projects narrows each
+    project for the role held on it.
     """
     criteria = []
     for project_ids, for_client, vendor_departments in descriptor_visibilities:
@@ -181,8 +186,8 @@ def build_metadata_descriptors_filter(descriptor_visibilities):
 def check_metadata_descriptor_field_name(entity_type, field_name):
     """
     Refuse the key of a built-in field as the field name of a column whose
-    values live in the entity data. Project and task columns store theirs
-    in the project or the task data, where these keys mean nothing.
+    values are in the entity data. Project and task columns store their values
+    in the project data or the task data, where these keys have no meaning.
     """
     if (
         entity_type not in ("Project", "Task")
@@ -195,13 +200,14 @@ def check_metadata_descriptor_field_name(entity_type, field_name):
 
 def _check_metadata_descriptor_rename(descriptor, name, field_name):
     """
-    Refuse a new name longer than the name or field name column holds, or
-    that another descriptor of the same project, entity type and task type,
-    the scope of the unique indexes, holds as its name or as its field
-    name. The update of the descriptor would fail on it once the stored
-    values moved to the new key, overwriting any value already there. A
-    new field name must not be the key of a built-in field either, while a
-    column created on one before that check keeps it.
+    Refuse a new name in these conditions:
+    - It is longer than the name column or the field name column holds.
+    - Another descriptor of the same project, entity type and task type (the
+      scope of the unique indexes) holds it as its name or its field name.
+    The update of the descriptor would fail on it after the stored values
+    moved to the new key, and overwrite any value already there. A new field
+    name must also not be the key of a built-in field. A column created with
+    such a key before this check keeps it.
     """
     columns = MetadataDescriptor.__table__.c
     if (
@@ -241,10 +247,13 @@ def add_metadata_descriptor(
     task_type_id=None,
 ):
     """
-    Register a custom field for the given `entity_type` in this project.
-    Values are stored in `Entity.data` (Asset, Shot, …), in `Project.data`
-    when `entity_type` is ``Project`` or in `Task.data` when it is
-    ``Task`` (scoped to `task_type_id`).
+    Register a custom field for the given `entity_type` in this project. The
+    values are stored in:
+    - `Entity.data` (Asset, Shot, …),
+    - `Project.data` if `entity_type` is ``Project``,
+    - `Task.data` if it is ``Task`` (scoped to `task_type_id`).
+    Raise WrongParameterException if the field name is the key of a built-in
+    field or if the descriptor already exists.
     """
     if not departments:
         departments = []
@@ -287,8 +296,8 @@ def get_metadata_descriptors(
     project_id, for_client=False, vendor_departments=None
 ):
     """
-    Get all metadata descriptors for given project and entity type, narrowed
-    for a client or a vendor as the open projects listing narrows them.
+    Return all metadata descriptors for the given project. For a client or a
+    vendor, narrow them as the open projects listing does.
     """
     query = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id
@@ -297,7 +306,7 @@ def get_metadata_descriptors(
         query, for_client, vendor_departments
     )
 
-    # Eager-load departments to avoid N+1 during serialization
+    # Load the departments now to prevent N+1 queries in serialization
     query = query.options(joinedload(MetadataDescriptor.departments))
     descriptors = query.all()
     return fields.serialize_models(descriptors, relations=True)
@@ -305,7 +314,7 @@ def get_metadata_descriptors(
 
 def get_metadata_descriptor_raw(metadata_descriptor_id):
     """
-    Get metadata descriptor for given id as active record.
+    Return the metadata descriptor for the given ID as an active record.
     """
     return base_service.get_instance(
         MetadataDescriptor,
@@ -316,7 +325,7 @@ def get_metadata_descriptor_raw(metadata_descriptor_id):
 
 def get_metadata_descriptor(metadata_descriptor_id):
     """
-    Get metadata descriptor for given id as dict.
+    Return the metadata descriptor for the given ID as a dict.
     """
     return get_metadata_descriptor_raw(metadata_descriptor_id).serialize(
         relations=True
@@ -325,8 +334,8 @@ def get_metadata_descriptor(metadata_descriptor_id):
 
 def get_project_metadata_descriptor(project_id, metadata_descriptor_id):
     """
-    Get metadata descriptor for given id as dict, provided it belongs to
-    given project. The id comes from the client next to a project it may
+    Return the metadata descriptor for the given ID as a dict, if it belongs
+    to the given project. The client sends the ID with a project that it can
     access: a descriptor of another project is not found.
     """
     descriptor = get_metadata_descriptor(metadata_descriptor_id)
@@ -339,8 +348,8 @@ def is_metadata_descriptor_visible(
     metadata_descriptor_id, for_client=False, vendor_departments=None
 ):
     """
-    Return True if given metadata descriptor is left in by the narrowing of
-    a client or a vendor.
+    Return True if the narrowing for a client or a vendor keeps the given
+    metadata descriptor.
     """
     query = projects_service.narrow_metadata_descriptors(
         MetadataDescriptor.query.filter(
@@ -354,14 +363,14 @@ def is_metadata_descriptor_visible(
 
 def update_metadata_descriptor(metadata_descriptor_id, changes):
     """
-    Update metadata descriptor information for given id. Whatever can
-    refuse the changes runs before a rename moves the stored values, and
-    the moved values are committed with the descriptor: a failed update
-    leaves them under their old key.
+    Update the metadata descriptor for the given ID. All the checks that can
+    refuse the changes run before a rename moves the stored values. The moved
+    values are committed with the descriptor: if the update fails, they stay
+    under their old key.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
     if not changes.get("name"):
-        # Without a new name, the column keeps its own.
+        # If no new name is given, the column keeps its name.
         changes.pop("name", None)
 
     if "departments" in changes:
@@ -399,9 +408,11 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
 
 def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
     """
-    Reorder metadata descriptors for a given project and entity type.
-    Updates position field based on the order of descriptor IDs provided.
-    Descriptors not in the list are added at the end, ordered by name.
+    Reorder the metadata descriptors for the given project and entity type.
+    Update the position field from the order of the given descriptor IDs. Add
+    the descriptors that are not in the list at the end, ordered by name. If
+    an ID is not a descriptor of this project and entity type, raise
+    WrongParameterException. Return the descriptors in their new order.
     """
     descriptors = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id,
@@ -434,14 +445,15 @@ def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
         MetadataDescriptor.project_id == project_id,
         MetadataDescriptor.entity_type == entity_type,
     ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
-    # Eager-load departments to avoid N+1 during serialization
+    # Load the departments now to prevent N+1 queries in serialization
     query = query.options(joinedload(MetadataDescriptor.departments))
     return fields.serialize_models(query.all(), relations=True)
 
 
 def remove_metadata_descriptor(metadata_descriptor_id):
     """
-    Delete metadata descriptor and related informations.
+    Delete the metadata descriptor and remove its values from the project
+    data, the task data or the entity data.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
     _remove_stored_values_for_metadata_descriptor(descriptor)
@@ -468,9 +480,9 @@ def add_metadata_descriptor_to_projects(
     departments=None,
 ):
     """
-    Create the same metadata descriptor in every given project that does not
-    already own one with the same field name and entity type. Returns the
-    list of created descriptors.
+    Create the same metadata descriptor in each given project that does not
+    have one with the same field name and entity type. Return the list of
+    created descriptors.
     """
     field_name = slugify.slugify(name, separator="_")
     created = []
@@ -501,9 +513,9 @@ def add_metadata_descriptor_to_projects(
 def copy_project_metadata_descriptors(project_id):
     """
     Copy the Project-scoped metadata descriptors (the all-projects columns)
-    owned by open projects onto the given project so that its cells are
-    editable right away. One copy per distinct field name; field names the
-    project already owns are left untouched. Returns the created descriptors.
+    of the open projects to the given project. Thus its cells are editable
+    immediately. Make one copy for each distinct field name. Do not change the
+    field names that the project already has. Return the created descriptors.
     """
     descriptors = (
         MetadataDescriptor.query.join(
@@ -546,10 +558,10 @@ def update_metadata_descriptor_on_projects(
     project_ids, entity_type, field_name, changes
 ):
     """
-    Update every metadata descriptor sharing the given field name and entity
-    type across the given projects. A new name is checked on every project
-    first, so that a refusal leaves them all unchanged. Returns the list of
-    updated descriptors.
+    Update each metadata descriptor that has the given field name and entity
+    type in the given projects. Check a new name on each project first, thus
+    a refusal leaves all of them unchanged. Return the list of updated
+    descriptors.
     """
     descriptors = _find_descriptors_by_field(
         project_ids, entity_type, field_name
@@ -569,8 +581,8 @@ def remove_metadata_descriptor_from_projects(
     project_ids, entity_type, field_name
 ):
     """
-    Remove every metadata descriptor sharing the given field name and entity
-    type across the given projects. Returns the list of removed ids.
+    Remove each metadata descriptor that has the given field name and entity
+    type in the given projects. Return the list of removed IDs.
     """
     descriptors = _find_descriptors_by_field(
         project_ids, entity_type, field_name
@@ -587,10 +599,10 @@ def reorder_metadata_descriptors_on_projects(
     project_ids, entity_type, field_order
 ):
     """
-    Apply the same column order, given as a list of field names, on every
-    given project. Descriptors whose field name is not listed keep trailing
-    positions (handled by reorder_metadata_descriptors). Returns the list of
-    updated descriptors across all projects.
+    Apply the same column order, given as a list of field names, to each
+    given project. The descriptors whose field name is not in the list keep
+    the last positions (reorder_metadata_descriptors does this). Return the
+    list of updated descriptors of all projects.
     """
     updated = []
     for project_id in project_ids:
@@ -617,9 +629,9 @@ def get_not_allowed_descriptors_fields_for_vendor(
     entity_type="Asset", departments=None, projects_ids=None
 ):
     """
-    Return, per project, the metadata field names a vendor of given
-    departments must not see: the descriptors restricted to departments they
-    do not belong to.
+    Return, for each project, the metadata field names that a vendor of the
+    given departments must not see: the descriptors restricted to departments
+    that the vendor is not a member of.
     """
     if departments is None:
         departments = []
@@ -641,7 +653,8 @@ def remove_not_allowed_fields_from_metadata(
     not_allowed_descriptors_field_names=None, data=None
 ):
     """
-    Return given metadata without the fields the caller must not see.
+    Return the given metadata without the fields that the caller must not
+    see.
     """
     if not_allowed_descriptors_field_names is None:
         not_allowed_descriptors_field_names = []
@@ -658,14 +671,15 @@ def remove_not_allowed_metadata_for_vendor(
     entity_type, departments, entities, project_id=None
 ):
     """
-    Strip from a serialized listing the metadata a vendor of given departments
-    must not see, in place. No departments means nothing to narrow down.
+    Remove from a serialized listing, in place, the metadata that a vendor of
+    the given departments must not see. If departments is None, remove
+    nothing.
 
-    The listings that carry the tasks pick their columns one by one and mask
-    them while they build their rows. These hand back whole serialized
-    entities, so the restricted descriptors come along unless they are taken
-    out here. Some of those listings drop the project on the way, hence the
-    fallback the caller passes in.
+    The listings that carry the tasks select their columns one by one and
+    mask them while they build their rows. These listings return full
+    serialized entities, thus the restricted descriptors stay in them unless
+    this function removes them. Some of these listings remove the project
+    from the entities, thus the caller gives a default project_id.
     """
     if departments is None:
         return entities

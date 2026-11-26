@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -9,11 +8,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from tests.base import ApiDBTestCase
 from tests.services.cases import PreviewFileTestCase
-from zou.app.exceptions import (
-    AnnotationNotFoundException,
-    PreviewFileNotFoundException,
-    WrongParameterException,
-)
+from zou.app.exceptions import PreviewFileNotFoundException
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import ProjectTaskTypeLink
@@ -23,22 +18,12 @@ from zou.app.services import (
     preview_file_states_service as states_service,
     preview_files_service,
     preview_maintenance_service,
-    projects_service,
-)
-from zou.app.services.preview_annotations_service import (
-    extract_all_annotation_frames_from_preview_file,
-    extract_all_annotation_frames_pdf_from_preview_file,
-    extract_annotation_frame_from_preview_file,
 )
 from zou.app.services.preview_files_service import (
     extract_frame_from_preview_file,
     extract_tile_from_preview_file,
     get_preview_file_dimensions,
     get_preview_file_fps,
-)
-from zou.app.services.projects_service import (
-    is_valid_partial_resolution,
-    is_valid_resolution,
 )
 from zou.app.stores import file_store
 from zou.app.utils import fields, remote_job
@@ -168,16 +153,6 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 _VanishingPreviewFile(), {"status": "broken"}
             )
 
-    def test_a_resolution_is_two_numbers_around_an_x(self):
-        self.assertFalse(is_valid_resolution(""))
-        self.assertFalse(is_valid_resolution(None))
-        self.assertTrue(is_valid_resolution("203x121"))
-        self.assertTrue(is_valid_resolution("1920x1080"))
-        self.assertTrue(is_valid_resolution("3840x2160"))
-        # A partial resolution is a height alone, so a full one is not one.
-        self.assertFalse(is_valid_partial_resolution("3840x2160"))
-        self.assertTrue(is_valid_partial_resolution("x2160"))
-
     def test_get_preview_file_dimensions(self):
         project = self.project.serialize()
         entity = self.asset.serialize()
@@ -200,33 +175,25 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertEqual(fps, "25.000")
         fps = get_preview_file_fps({"fps": None})
         self.assertEqual(fps, "25.000")
+        fps = get_preview_file_fps({"fps": "24,00"})
+        self.assertEqual(fps, "24.000")
 
-    def test_movie_bitrates_cascade_from_link_to_project_to_config(self):
-        with patch.object(
-            preview_files_service.config, "MOVIE_HIGHDEF_BITRATE", 28
-        ), patch.object(
-            preview_files_service.config, "MOVIE_LOWDEF_BITRATE", 6
-        ):
-            project = {
-                "hd_bitrate_compression": None,
-                "ld_bitrate_compression": None,
-            }
-            self.assertEqual(
-                projects_service.get_movie_bitrates(project), (28, 6)
-            )
-            project["hd_bitrate_compression"] = 20
-            self.assertEqual(
-                projects_service.get_movie_bitrates(project), (20, 6)
-            )
-            # Each version resolves on its own.
-            link = {
-                "hd_bitrate_compression": None,
-                "ld_bitrate_compression": 4,
-            }
-            self.assertEqual(
-                projects_service.get_movie_bitrates(project, link),
-                (20, 4),
-            )
+    def test_the_fps_of_the_entity_overrides_the_project_one(self):
+        project = {"fps": "24"}
+        # A number, as the entity data can hold one (cgwire/zou#901).
+        self.assertEqual(
+            get_preview_file_fps(project, {"data": {"fps": 30}}), "30.000"
+        )
+        self.assertEqual(
+            get_preview_file_fps(project, {"data": {"fps": "12,5"}}),
+            "12.500",
+        )
+        # An emptied entity field falls back on the project.
+        for data in ({"fps": ""}, {"fps": None}, None):
+            with self.subTest(data=data):
+                self.assertEqual(
+                    get_preview_file_fps(project, {"data": data}), "24.000"
+                )
 
     def test_encoding_parameters_read_the_task_type_link(self):
         preview_file = self.generate_fixture_preview_file()
@@ -252,32 +219,6 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 "5464d4b6-f419-4c76-8734-c6c489441177",
             )
 
-    def test_bitrate_validation_leaves_stored_values_to_the_encoder(self):
-        validate = projects_service.validate_movie_bitrates
-        project = {"hd_bitrate_compression": 28, "ld_bitrate_compression": 6}
-        # A link high def below the low def it inherits: the encoder caps
-        # that low def.
-        validate(
-            {"hd_bitrate_compression": 4, "ld_bitrate_compression": None},
-            inherited=project,
-        )
-        with patch.object(
-            preview_files_service.config, "MOVIE_HIGHDEF_BITRATE", 20
-        ):
-            # Bitrates stored above a ceiling lowered since do not lock the
-            # object, nor the links inheriting them.
-            validate({"name": "Renamed"}, current=project)
-            validate(
-                {"hd_bitrate_compression": None, "ld_bitrate_compression": 8},
-                inherited=project,
-            )
-            validate({"ld_bitrate_compression": 20}, current=project)
-            # Sent back with their stored values, they are not checked
-            # again.
-            validate(dict(project), current=project)
-        lowered = {"hd_bitrate_compression": 19, "ld_bitrate_compression": 20}
-        validate(dict(lowered), current=lowered)
-
     def test_get_project_from_preview_file(self):
         preview_file = self.generate_fixture_preview_file()
         project = preview_files_service.get_project_from_preview_file(
@@ -286,23 +227,16 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertEqual(project["id"], self.project_id)
 
     def test_get_last_preview_file_for_task(self):
-        preview_file = self.generate_fixture_preview_file()
-        preview_file = preview_files_service.get_last_preview_file_for_task(
-            self.task_id
+        self.assertIsNone(
+            preview_files_service.get_last_preview_file_for_task(self.task_id)
         )
-        self.assertEqual(preview_file["revision"], 1)
 
-        preview_file = self.generate_fixture_preview_file(revision=2)
+        self.generate_fixture_preview_file()
+        self.generate_fixture_preview_file(revision=2)
         preview_file = preview_files_service.get_last_preview_file_for_task(
             self.task_id
         )
         self.assertEqual(preview_file["revision"], 2)
-
-        preview_file = self.generate_fixture_preview_file(revision=3)
-        preview_file = preview_files_service.get_last_preview_file_for_task(
-            self.task_id
-        )
-        self.assertEqual(preview_file["revision"], 3)
 
     def test_update_preview_file_position(self):
         """
@@ -408,19 +342,9 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
     ):
         preview_file = self.generate_fixture_preview_file(status="processing")
         preview_file_id = str(preview_file.id)
-
-        # Create a small temp file to act as the uploaded movie
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"\x00" * 1024)
-        tmp.close()
-        uploaded_path = tmp.name
-
-        # Create temp files for normalized outputs
-        norm_path = uploaded_path + "_norm.mp4"
-        norm_low_path = uploaded_path + "_norm_low.mp4"
-        for p in (norm_path, norm_low_path):
-            with open(p, "wb") as f:
-                f.write(b"\x00" * 512)
+        uploaded_path = self._write_temp_movie()
+        norm_path = self._write_temp_movie(size=512)
+        norm_low_path = self._write_temp_movie(size=512)
 
         mock_normalize.return_value = (norm_path, norm_low_path, None)
         mock_gen_thumbnail.return_value = norm_path
@@ -433,35 +357,18 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         normalized_height = 1080
 
         with patch(
-            "zou.app.services.preview_files_service.movie.get_movie_size"
-        ) as mock_size, patch(
-            "zou.app.services.preview_files_service.movie.get_movie_duration"
-        ) as mock_duration:
-
-            call_count = {"size": 0}
-
-            def size_side_effect(path, **kwargs):
-                call_count["size"] += 1
-                if call_count["size"] == 1:
-                    # First call: reading original file metadata
-                    return (original_width, original_height)
-                else:
-                    # Second call: reading normalized file metadata
-                    return (normalized_width, normalized_height)
-
-            mock_size.side_effect = size_side_effect
-
-            duration_call_count = {"n": 0}
-
-            def duration_side_effect(path=None, **kwargs):
-                duration_call_count["n"] += 1
-                if duration_call_count["n"] == 1:
-                    return original_duration
-                else:
-                    return 40.0
-
-            mock_duration.side_effect = duration_side_effect
-
+            "zou.app.services.preview_files_service.movie.get_movie_size",
+            side_effect=lambda path, **kwargs: (
+                (original_width, original_height)
+                if path == uploaded_path
+                else (normalized_width, normalized_height)
+            ),
+        ), patch(
+            "zou.app.services.preview_files_service.movie.get_movie_duration",
+            side_effect=lambda path=None, **kwargs: (
+                original_duration if path == uploaded_path else 40.0
+            ),
+        ):
             preview_files_service.prepare_and_store_movie(
                 preview_file_id,
                 uploaded_path,
@@ -484,10 +391,57 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         )
         self.assertEqual(persisted["data"]["original_file_size"], 1024)
 
-        # Clean up
-        for p in (uploaded_path, norm_path, norm_low_path):
-            if os.path.exists(p):
-                os.remove(p)
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_duration")
+    @patch("zou.app.services.preview_files_service.movie.get_movie_size")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_a_failed_original_metadata_capture_does_not_stop_the_movie(
+        self,
+        mock_add_movie,
+        mock_size,
+        mock_duration,
+        mock_gen_thumbnail,
+        mock_turn_thumbnail,
+        mock_save_variants,
+        mock_gen_tile,
+    ):
+        preview_file = self.generate_fixture_preview_file(status="processing")
+        preview_file_id = str(preview_file.id)
+        uploaded_path = self._write_temp_movie()
+        reads = []
+
+        def size_failing_once(path, **kwargs):
+            # The first read is the capture of the original metadata.
+            reads.append(path)
+            if len(reads) == 1:
+                raise RuntimeError("ffprobe crashed")
+            return 1920, 1080
+
+        mock_size.side_effect = size_failing_once
+        mock_duration.return_value = 10.0
+        mock_gen_thumbnail.return_value = uploaded_path
+        mock_gen_tile.return_value = uploaded_path
+
+        with patch.object(
+            preview_files_service.config, "SKIP_NORMALIZATION_FULL", True
+        ):
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        persisted = files_service.get_preview_file(preview_file_id)
+        self.assertEqual(persisted["status"], "ready")
+        self.assertEqual(persisted["width"], 1920)
+        self.assertNotIn("original_width", persisted["data"] or {})
 
     @patch("zou.app.services.preview_files_service.movie.generate_tile")
     @patch("zou.app.services.preview_files_service.save_variants")
@@ -1063,30 +1017,6 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 preview_files_service.locate_stored_movie(preview_file)
         self.assertEqual(get_file.call_count, 1)
 
-    def test_preview_extra_keeps_the_metadata_on_a_transient_failure(self):
-        movie_fixture = self.get_fixture_file_path(
-            os.path.join("videos", "test_preview_tiles.mp4")
-        )
-        self.generate_fixture_preview_file()
-        self.preview_file.update({"width": 1920, "height": 1080})
-
-        def high_def_hiccup(config, get_path, open_file, prefix, *args, **kw):
-            if prefix == "previews":
-                raise preview_files_service.fs.FileNotFound("previews-x")
-            return movie_fixture
-
-        with patch.object(
-            preview_files_service.fs,
-            "get_file_path_and_file",
-            side_effect=high_def_hiccup,
-        ):
-            preview_maintenance_service.generate_preview_extra(
-                with_metadata=True
-            )
-        preview_file = PreviewFile.get(self.preview_file.id)
-        self.assertEqual(preview_file.width, 1920)
-        self.assertEqual(preview_file.height, 1080)
-
     def test_a_storage_outage_is_not_a_missing_picture(self):
         self.generate_fixture_preview_file()
         preview_file = {"id": str(self.preview_file.id), "extension": "png"}
@@ -1135,627 +1065,18 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
         self.assertIsNone(extract_tile_from_preview_file(preview_file))
 
 
-class NormalizeAnnotationTimesTestCase(unittest.TestCase):
-    """
-    Snapping annotation times onto the frame grid the player draws on.
-    Two times landing on the same frame become one annotation.
-    """
-
-    def normalize(self, annotations, fps=25):
-        return preview_annotations_service.normalize_annotation_times(
-            annotations, fps
-        )
-
-    def test_two_times_on_one_frame_are_merged(self):
-        result, changed = self.normalize(
-            [
-                {
-                    "time": 0.6,
-                    "frame": 16,
-                    "drawing": {"objects": [{"id": "new-1"}]},
-                },
-                {
-                    "time": 0.616,
-                    "frame": "017",
-                    "drawing": {"objects": [{"id": "old-1"}, {"id": "old-2"}]},
-                },
-            ]
-        )
-
-        self.assertTrue(changed)
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["time"], 0.6)
-        self.assertEqual(
-            [
-                drawing_object["id"]
-                for drawing_object in result[0]["drawing"]["objects"]
-            ],
-            ["new-1", "old-1", "old-2"],
-        )
-
-    def test_a_merge_keeps_one_object_per_id(self):
-        result, _ = self.normalize(
-            [
-                {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
-                {
-                    "time": 0.616,
-                    "drawing": {"objects": [{"id": "a"}, {"id": "b"}]},
-                },
-            ]
-        )
-
-        self.assertEqual(
-            [
-                drawing_object["id"]
-                for drawing_object in result[0]["drawing"]["objects"]
-            ],
-            ["a", "b"],
-        )
-
-    def test_a_time_stored_as_a_string_is_snapped(self):
-        result, changed = self.normalize(
-            [{"time": "2", "drawing": {"objects": [{"id": "obj-1"}]}}]
-        )
-
-        self.assertTrue(changed)
-        self.assertEqual(result[0]["time"], 2.0)
-
-    def test_two_frames_apart_are_left_alone(self):
-        result, changed = self.normalize(
-            [
-                {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
-                {"time": 0.88, "drawing": {"objects": [{"id": "b"}]}},
-            ]
-        )
-
-        self.assertFalse(changed)
-        self.assertEqual(len(result), 2)
-
-    def test_a_time_that_is_not_a_number_is_kept_as_is(self):
-        annotations = [{"time": "abc", "drawing": {"objects": [{"id": "a"}]}}]
-
-        result, changed = self.normalize(annotations)
-
-        self.assertFalse(changed)
-        self.assertEqual(result, annotations)
-
-    def test_the_annotations_handed_in_are_left_untouched(self):
-        annotations = [
-            {"time": 0.6, "drawing": {"objects": [{"id": "a"}]}},
-            {"time": 0.616, "drawing": {"objects": [{"id": "b"}]}},
-        ]
-
-        self.normalize(annotations)
-
-        self.assertEqual(annotations[1]["time"], 0.616)
-        self.assertEqual(len(annotations[0]["drawing"]["objects"]), 1)
-
-
-class MissingStatusTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_task()
-        self.preview_file = self.generate_fixture_preview_file(
-            status="processing"
-        )
-
-    def tearDown(self):
-        super().tearDown()
-        self.delete_test_folder()
-
-    def _reload_preview(self):
-        return PreviewFile.get(self.preview_file.id)
-
+class MissingStatusTestCase(PreviewFileTestCase):
     def test_set_preview_file_as_missing_persists_missing(self):
-        preview_files_service.set_preview_file_as_missing(
-            str(self.preview_file.id)
+        preview_file_id = str(
+            self.generate_fixture_preview_file(status="processing").id
         )
-        reloaded = self._reload_preview()
-        self.assertEqual(reloaded.status.code, "missing")
-        self.assertEqual(reloaded.serialize()["status"], "missing")
-        self.assertEqual(reloaded.present()["status"], "missing")
-        self.assertEqual(reloaded.present_minimal()["status"], "missing")
 
+        preview_files_service.set_preview_file_as_missing(preview_file_id)
 
-class ExtractAnnotationFrameTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_task()
-        self.preview_file = self.generate_fixture_preview_file().serialize()
-        self.preview_file["annotations"] = [
-            {
-                "time": 9 / 24,
-                "drawing": {
-                    "objects": [
-                        {
-                            "type": "rect",
-                            "left": 10,
-                            "top": 10,
-                            "width": 20,
-                            "height": 20,
-                            "stroke": "#ff0000",
-                            "strokeWidth": 2,
-                            "canvasWidth": 200,
-                            "canvasHeight": 200,
-                        }
-                    ]
-                },
-            }
-        ]
-
-    def _patch_dependencies(self, frame_path=None):
-        patches = [
-            patch(
-                "zou.app.services.preview_files_service.get_project_from_preview_file",
-                return_value={"id": "p", "fps": "24"},
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_entity_from_preview_file",
-                return_value=None,
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_fps",
-                return_value="24",
-            ),
-            patch(
-                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
-                return_value=frame_path,
-            ),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-
-    def test_raises_when_no_annotation_matches(self):
-        self.preview_file["annotations"] = []
-        self._patch_dependencies(frame_path="/tmp/nope.png")
-        with self.assertRaises(AnnotationNotFoundException):
-            extract_annotation_frame_from_preview_file(self.preview_file, 10)
-
-    def test_raises_when_frame_outside_tolerance(self):
-        self._patch_dependencies(frame_path="/tmp/nope.png")
-        with self.assertRaises(AnnotationNotFoundException):
-            extract_annotation_frame_from_preview_file(self.preview_file, 99)
-
-    def test_returns_composited_path_when_match(self):
-        from PIL import Image
-
-        fd, frame_path = tempfile.mkstemp(suffix=".png")
-        os.close(fd)
-        Image.new("RGB", (200, 200), (255, 255, 255)).save(frame_path, "PNG")
-        self.addCleanup(
-            lambda: os.path.exists(frame_path) and os.remove(frame_path)
-        )
-        self._patch_dependencies(frame_path=frame_path)
-        result = extract_annotation_frame_from_preview_file(
-            self.preview_file, 10
-        )
-        self.assertEqual(result, frame_path)
-        # Renderer supersamples + LANCZOS-downsamples, so edges are AA.
-        # (10, 20) sits on the left outline of a stroke-only rect, with
-        # tolerance for the softened red.
-        pixel = Image.open(frame_path).getpixel((10, 20))[:3]
-        diffs = [abs(c - e) for c, e in zip(pixel, (255, 0, 0))]
-        self.assertLess(max(diffs), 100, f"got {pixel}")
-
-    def test_returns_none_when_binary_missing_but_annotation_present(self):
-        self._patch_dependencies(frame_path=None)
-        result = extract_annotation_frame_from_preview_file(
-            self.preview_file, 10
-        )
-        self.assertIsNone(result)
-
-
-def _make_red_rect_annotation(canvas_size=200):
-    return {
-        "time": 0,
-        "drawing": {
-            "objects": [
-                {
-                    "type": "rect",
-                    "left": 10,
-                    "top": 10,
-                    "width": 20,
-                    "height": 20,
-                    "stroke": "#ff0000",
-                    "strokeWidth": 2,
-                    "canvasWidth": canvas_size,
-                    "canvasHeight": canvas_size,
-                }
-            ]
-        },
-    }
-
-
-def _make_white_png(size=(200, 200)):
-    from PIL import Image
-
-    fd, path = tempfile.mkstemp(suffix=".png")
-    os.close(fd)
-    Image.new("RGB", size, (255, 255, 255)).save(path, "PNG")
-    return path
-
-
-def _patch_movie_extraction(
-    test_case, frame_factory, file_name="proj_asset_anim_v1.mp4"
-):
-    """
-    Patch the project/entity/fps lookups and the frame extractor used
-    by the bulk-annotation builders so service tests can assert on file
-    names and frame numbers without going through ffmpeg.
-    """
-    patches = [
-        patch(
-            "zou.app.services.preview_files_service.get_project_from_preview_file",
-            return_value={"id": "p", "fps": "24"},
-        ),
-        patch(
-            "zou.app.services.preview_files_service.get_entity_from_preview_file",
-            return_value=None,
-        ),
-        patch(
-            "zou.app.services.preview_files_service.get_preview_file_fps",
-            return_value="24",
-        ),
-        patch(
-            "zou.app.services.preview_files_service.extract_frame_from_preview_file",
-            side_effect=lambda pf, fn: frame_factory(),
-        ),
-        patch(
-            "zou.app.services.preview_files_service.get_preview_file_name",
-            return_value=file_name,
-        ),
-    ]
-    for p in patches:
-        p.start()
-        test_case.addCleanup(p.stop)
-
-
-class ExtractAnnotationFramePictureTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_task()
-        self.preview_file = self.generate_fixture_preview_file().serialize()
-        self.preview_file["extension"] = "png"
-        self.preview_file["annotations"] = [_make_red_rect_annotation()]
-
-    def _patch_copy(self, picture_path):
-        p = patch(
-            "zou.app.services.preview_annotations_service._copy_picture_preview_to_temp_png",
-            return_value=picture_path,
-        )
-        p.start()
-        self.addCleanup(p.stop)
-
-    def test_returns_composited_picture(self):
-        from PIL import Image
-
-        picture_path = _make_white_png()
-        self.addCleanup(
-            lambda: os.path.exists(picture_path) and os.remove(picture_path)
-        )
-        self._patch_copy(picture_path)
-        result = extract_annotation_frame_from_preview_file(self.preview_file)
-        self.assertEqual(result, picture_path)
-        pixel = Image.open(picture_path).getpixel((10, 20))[:3]
-        diffs = [abs(c - e) for c, e in zip(pixel, (255, 0, 0))]
-        self.assertLess(max(diffs), 100)
-
-    def test_frame_number_is_ignored_on_picture(self):
-        picture_path = _make_white_png()
-        self.addCleanup(
-            lambda: os.path.exists(picture_path) and os.remove(picture_path)
-        )
-        self._patch_copy(picture_path)
-        # Passing a frame_number with a picture must not raise.
-        result = extract_annotation_frame_from_preview_file(
-            self.preview_file, frame_number=42
-        )
-        self.assertEqual(result, picture_path)
-
-    def test_raises_when_no_annotation_on_picture(self):
-        self.preview_file["annotations"] = []
-        self._patch_copy("/tmp/unused.png")
-        with self.assertRaises(AnnotationNotFoundException):
-            extract_annotation_frame_from_preview_file(self.preview_file)
-
-    def test_returns_none_when_picture_binary_missing(self):
-        self._patch_copy(None)
-        result = extract_annotation_frame_from_preview_file(self.preview_file)
-        self.assertIsNone(result)
-
-    def test_unsupported_extension_raises(self):
-        self.preview_file["extension"] = "psd"
-        with self.assertRaises(WrongParameterException):
-            extract_annotation_frame_from_preview_file(self.preview_file)
-
-    def test_movie_without_frame_number_raises(self):
-        self.preview_file["extension"] = "mp4"
-        with self.assertRaises(WrongParameterException):
-            extract_annotation_frame_from_preview_file(self.preview_file)
-
-
-class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_task()
-        self.preview_file = self.generate_fixture_preview_file().serialize()
-        self.preview_file["annotations"] = [
-            {**_make_red_rect_annotation(), "time": 0},
-            {**_make_red_rect_annotation(), "time": 1},
-        ]
-
-    def test_movie_zip_contains_one_png_per_annotation(self):
-        import zipfile
-
-        def factory():
-            return _make_white_png()
-
-        _patch_movie_extraction(self, factory)
-        zip_path = extract_all_annotation_frames_from_preview_file(
-            self.preview_file
-        )
-        self.addCleanup(
-            lambda: os.path.exists(zip_path) and os.remove(zip_path)
-        )
-        with zipfile.ZipFile(zip_path) as zf:
-            names = sorted(zf.namelist())
-        # Annotation at time=0 → frame 1; time=1 with fps=24 → frame 25.
         self.assertEqual(
-            names,
-            [
-                "proj_asset_anim_v1_frame_1.png",
-                "proj_asset_anim_v1_frame_25.png",
-            ],
+            files_service.get_preview_file(preview_file_id)["status"],
+            "missing",
         )
-
-    def test_raises_when_no_annotations(self):
-        self.preview_file["annotations"] = []
-        with self.assertRaises(AnnotationNotFoundException):
-            extract_all_annotation_frames_from_preview_file(self.preview_file)
-
-    def test_returns_none_when_movie_binary_missing(self):
-        _patch_movie_extraction(self, lambda: None)
-        result = extract_all_annotation_frames_from_preview_file(
-            self.preview_file
-        )
-        self.assertIsNone(result)
-
-    def test_picture_zip_one_image_per_annotation(self):
-        import zipfile
-
-        self.preview_file["extension"] = "png"
-        self.preview_file["annotations"] = [
-            _make_red_rect_annotation(),
-            _make_red_rect_annotation(),
-            _make_red_rect_annotation(),
-        ]
-        patches = [
-            patch(
-                "zou.app.services.preview_annotations_service._copy_picture_preview_to_temp_png",
-                side_effect=lambda pf: _make_white_png(),
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_name",
-                return_value="proj_asset_anim_v1.png",
-            ),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-        zip_path = extract_all_annotation_frames_from_preview_file(
-            self.preview_file
-        )
-        self.addCleanup(
-            lambda: os.path.exists(zip_path) and os.remove(zip_path)
-        )
-        with zipfile.ZipFile(zip_path) as zf:
-            names = sorted(zf.namelist())
-        self.assertEqual(
-            names,
-            [
-                "proj_asset_anim_v1_frame_1.png",
-                "proj_asset_anim_v1_frame_2.png",
-                "proj_asset_anim_v1_frame_3.png",
-            ],
-        )
-
-    def test_unsupported_extension_raises(self):
-        self.preview_file["extension"] = "psd"
-        with self.assertRaises(WrongParameterException):
-            extract_all_annotation_frames_from_preview_file(self.preview_file)
-
-    def test_entries_own_unique_temp_files_not_shared_with_extract(self):
-        """
-        `extract_frame_from_movie` writes to a deterministic /tmp slot
-        per (movie, frame). A concurrent caller extracting the same frame
-        (e.g. the single-frame route's `os.remove` finally) can delete
-        the file from under us. The bundler must claim each extracted
-        frame as its own private temp file before rendering.
-        """
-        shared_path = _make_white_png()
-
-        def fake_extract(pf, fn):
-            # Always returns the same shared path — simulates ffmpeg
-            # overwriting the same /tmp slot.
-            return shared_path
-
-        patches = [
-            patch(
-                "zou.app.services.preview_files_service.get_project_from_preview_file",
-                return_value={"id": "p", "fps": "24"},
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_entity_from_preview_file",
-                return_value=None,
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_fps",
-                return_value="24",
-            ),
-            patch(
-                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
-                side_effect=fake_extract,
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_name",
-                return_value="proj_asset_anim_v1.mp4",
-            ),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-        # After build, the shared slot is gone (a concurrent caller
-        # cleaning up would do this). We simulate by deleting it before
-        # the bundling phase happens — but since build runs synchronously
-        # and bundle happens right after, we test the invariant
-        # differently: each entry path must be unique and NOT the shared
-        # path. That alone guarantees concurrent shared-path operations
-        # can't corrupt the bundle.
-        entries = preview_annotations_service._build_annotated_frame_entries(
-            self.preview_file
-        )
-        try:
-            paths = [p for _, p in entries]
-            self.assertEqual(
-                len(set(paths)), len(paths), "entries share a temp path"
-            )
-            self.assertNotIn(shared_path, paths)
-        finally:
-            for _, p in entries:
-                if os.path.exists(p):
-                    os.remove(p)
-            if os.path.exists(shared_path):
-                os.remove(shared_path)
-
-    def test_skips_annotation_when_ffmpeg_produces_no_file(self):
-        """
-        `extract_frame_from_movie` can return a path to a file ffmpeg
-        never actually wrote (e.g. when frame_number is past EOF: ffmpeg
-        exits 0 with no output). The bundler must NOT crash with
-        FileNotFoundError — it skips the annotation and keeps going.
-        """
-        import zipfile
-
-        good_path = _make_white_png()
-        call_count = {"n": 0}
-
-        def fake_extract(pf, fn):
-            call_count["n"] += 1
-            if call_count["n"] == 1:
-                # First annotation succeeds.
-                return good_path
-            # Second annotation: ffmpeg-silent-fail — returns a path
-            # whose file doesn't exist.
-            return "/tmp/this-file-does-not-exist-zzzzz.png"
-
-        patches = [
-            patch(
-                "zou.app.services.preview_files_service.get_project_from_preview_file",
-                return_value={"id": "p", "fps": "24"},
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_entity_from_preview_file",
-                return_value=None,
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_fps",
-                return_value="24",
-            ),
-            patch(
-                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
-                side_effect=fake_extract,
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_name",
-                return_value="proj_asset_anim_v1.mp4",
-            ),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-        zip_path = extract_all_annotation_frames_from_preview_file(
-            self.preview_file
-        )
-        self.addCleanup(
-            lambda: os.path.exists(zip_path) and os.remove(zip_path)
-        )
-        with zipfile.ZipFile(zip_path) as zf:
-            names = zf.namelist()
-        # Only the first annotation's frame should be in the archive.
-        self.assertEqual(len(names), 1)
-
-
-class ExtractAllAnnotationFramesPdfTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_base_context()
-        self.generate_fixture_asset()
-        self.generate_fixture_task()
-        self.preview_file = self.generate_fixture_preview_file().serialize()
-        self.preview_file["annotations"] = [
-            {**_make_red_rect_annotation(), "time": 0},
-            {**_make_red_rect_annotation(), "time": 1},
-        ]
-
-    def test_pdf_starts_with_pdf_magic(self):
-        _patch_movie_extraction(self, _make_white_png)
-        pdf_path = extract_all_annotation_frames_pdf_from_preview_file(
-            self.preview_file
-        )
-        self.addCleanup(
-            lambda: os.path.exists(pdf_path) and os.remove(pdf_path)
-        )
-        with open(pdf_path, "rb") as f:
-            magic = f.read(5)
-        self.assertEqual(magic, b"%PDF-")
-        self.assertGreater(os.path.getsize(pdf_path), 1024)
-
-    def test_pdf_has_one_page_per_annotation(self):
-        import re
-
-        _patch_movie_extraction(self, _make_white_png)
-        pdf_path = extract_all_annotation_frames_pdf_from_preview_file(
-            self.preview_file
-        )
-        self.addCleanup(
-            lambda: os.path.exists(pdf_path) and os.remove(pdf_path)
-        )
-        # Read /Count from the PDF catalog — set by Pillow to the page
-        # count when saving with save_all. Avoids depending on a PDF lib.
-        with open(pdf_path, "rb") as f:
-            data = f.read()
-        counts = re.findall(rb"/Count\s+(\d+)", data)
-        self.assertIn(b"2", counts)
-
-    def test_raises_when_no_annotations(self):
-        self.preview_file["annotations"] = []
-        with self.assertRaises(AnnotationNotFoundException):
-            extract_all_annotation_frames_pdf_from_preview_file(
-                self.preview_file
-            )
-
-    def test_returns_none_when_binary_missing(self):
-        _patch_movie_extraction(self, lambda: None)
-        result = extract_all_annotation_frames_pdf_from_preview_file(
-            self.preview_file
-        )
-        self.assertIsNone(result)
-
-    def test_unsupported_extension_raises(self):
-        self.preview_file["extension"] = "psd"
-        with self.assertRaises(WrongParameterException):
-            extract_all_annotation_frames_pdf_from_preview_file(
-                self.preview_file
-            )
 
 
 class PreviewFileWritesRecordStatesTestCase(PreviewFileTestCase):

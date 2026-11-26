@@ -1,12 +1,12 @@
 """
-Cascading removals: what goes with a task, a preview, an entity, an episode
-or a whole project.
+Cascade removals: the items that go with a task, a preview, an entity, an
+episode or a whole project.
 
-This is the top of the service layers, above the entity services (assets,
-shots, edits, concepts) that call remove_task for their force branch. Those
-services are imported inside the functions that need them rather than at
-module level: importing them here at module level would close the cycle
-they open by importing this module.
+This service is at the top of the service layers. It is above the entity
+services (assets, shots, edits, concepts), which call remove_task for
+their force branch. This module imports those services inside the
+functions that need them, not at module level. Those services import
+this module, so a module-level import here makes an import cycle.
 """
 
 import datetime
@@ -49,14 +49,14 @@ from zou.app.utils import date_helpers, events, fields
 
 logger = logging.getLogger(__name__)
 
-# The previews with a thumbnail: pictures are stored as png and movies as
-# mp4, while the other files keep their own extension.
+# The previews that have a thumbnail. The service stores pictures as png
+# and movies as mp4. The other files keep their own extension.
 THUMBNAIL_EXTENSIONS = ("png", "mp4")
 
 
 def _remove_older_than(model, date_column, days_old):
     """
-    Delete every row of given model older than *days_old*.
+    Delete all the rows of the given model that are older than *days_old*.
     """
     limit_date = date_helpers.get_utc_now_datetime() - datetime.timedelta(
         days=days_old
@@ -67,11 +67,11 @@ def _remove_older_than(model, date_column, days_old):
 
 def get_task_ids(*criterions, **kw):
     """
-    Return the ids of the tasks matching given filters, as strings. The
-    removal loops walk these rather than ORM instances: every removal
-    commits, which expires the instances left to walk, and reading the id
-    of one that another request deleted meanwhile would raise
-    ObjectDeletedError. remove_task skips a task that is already gone.
+    Return the IDs of the tasks that match the given filters, as strings.
+    The removal loops use these IDs, not ORM instances. Each removal does a
+    commit, which expires the remaining instances. If another request
+    deleted one of them, a read of its ID raises ObjectDeletedError.
+    remove_task skips a task that does not exist any more.
     """
     return [
         str(row[0])
@@ -84,8 +84,9 @@ def get_task_ids(*criterions, **kw):
 
 def remove_comment(comment_id):
     """
-    Remove a comment from database and everything related (notifs, news, and
-    preview files)
+    Remove a comment and all the related data from the database:
+    notifications, news, preview files and attachment files. Then emit a
+    comment:delete event.
     """
     comment = Comment.get(comment_id)
     if comment is None:
@@ -124,22 +125,22 @@ def remove_comment(comment_id):
             project_id=str(task.project_id),
         )
     else:
-        # The task may already be gone; still notify listeners so
-        # they drop the comment from their state.
+        # The task can be already deleted. Notify the listeners all the
+        # same, so that they remove the comment from their state.
         events.emit("comment:delete", {"comment_id": comment.id})
     return comment.serialize()
 
 
 def remove_task(task_id, force=False, restore_main=True):
     """
-    Remove given task. Force deletion if the task has some comments and files
-    related. This will lead to the deletion of all of them.
+    Remove the given task. If the task has related comments and files, force
+    the deletion. This deletes all of them.
 
-    An entity that showed a preview of the task gets the newest main preview
-    of its other tasks, see _restore_entity_main_preview. The removals of
-    the entity or of the project pass restore_main=False, since the entity
-    goes too, and so does _remove_task_batch, which restores it once at the
-    end.
+    If an entity showed a preview of the task, the entity gets the newest
+    main preview of its other tasks (see _restore_entity_main_preview). The
+    entity removal and the project removal pass restore_main=False, because
+    the entity also goes. _remove_task_batch also passes it, and restores
+    the preview once at the end.
     """
 
     task = Task.get(task_id)
@@ -176,8 +177,8 @@ def remove_task(task_id, force=False, restore_main=True):
             preview_file.id == entity.preview_file_id
             for preview_file in preview_files
         )
-        # Restoring after each removal would announce previews about to go:
-        # the entity is told once, after the last one.
+        # A restore after each removal announces previews that go next.
+        # The service tells the entity once, after the last removal.
         for preview_file in preview_files:
             remove_preview_file(preview_file, restore_main=False)
         if restore_main and is_entity_main:
@@ -210,9 +211,10 @@ def remove_task(task_id, force=False, restore_main=True):
 
 def remove_output_files_for_entity(entity_id):
     """
-    Remove all OutputFile rows that reference the given entity (entity_id).
-    This avoids FK violation when deleting the entity. Clears PreviewFile
-    source_file_id references before deleting each OutputFile.
+    Remove all the OutputFile rows that reference the given entity
+    (entity_id). This prevents an FK violation when the entity is deleted.
+    Before the deletion of each OutputFile, clear the PreviewFile
+    source_file_id references to it.
     """
     output_files = OutputFile.query.filter_by(entity_id=entity_id).all()
     for output_file in output_files:
@@ -225,9 +227,9 @@ def remove_output_files_for_entity(entity_id):
 
 def remove_output_files_for_project(project_id):
     """
-    Remove all OutputFile rows that reference any entity in the project.
-    Called after preview files and tasks are already removed, so no need to
-    clear PreviewFile.source_file_id.
+    Remove all the OutputFile rows that reference an entity of the project.
+    The caller removed the preview files and tasks before this call.
+    Because of this, it is not necessary to clear PreviewFile.source_file_id.
     """
     output_files = (
         OutputFile.query.join(Entity, OutputFile.entity_id == Entity.id)
@@ -241,8 +243,8 @@ def remove_output_files_for_project(project_id):
 
 def remove_preview_file_by_id(preview_file_id, force=False):
     """
-    Remove all files related to the preview file matching given id, then
-    remove the preview file entry from the database.
+    Remove all the files related to the preview file that has the given ID.
+    Then remove the preview file entry from the database.
     """
     preview_file = PreviewFile.get(preview_file_id)
     if preview_file is None:
@@ -252,14 +254,15 @@ def remove_preview_file_by_id(preview_file_id, force=False):
 
 def remove_preview_file(preview_file, force=False, restore_main=True):
     """
-    Remove all files related to given preview file, then remove the preview file
-    entry from the database.
+    Remove all the files related to the given preview file. Then remove the
+    preview file entry from the database.
 
-    The task and the entity that showed it as their main preview get back the
-    previous one, see _restore_task_main_preview and
-    _restore_entity_main_preview. The bulk removals, which take every
-    preview of the task or of the project, pass restore_main=False: a
-    restore there would pick a preview about to go and announce it.
+    The task and the entity that showed it as their main preview get back
+    the previous one (see _restore_task_main_preview and
+    _restore_entity_main_preview). The bulk removals pass
+    restore_main=False, because they remove all the previews of the task or
+    of the project. A restore there can select a preview that goes next and
+    announce it.
     """
     task = Task.get(preview_file.task_id)
     entity = Entity.get(task.entity_id)
@@ -273,8 +276,8 @@ def remove_preview_file(preview_file, force=False, restore_main=True):
     if news is not None:
         news.update({"preview_file_id": None})
         news_service.clear_news_cache([news], task.project_id)
-    # The news of a comment lists every preview file of its revision, the
-    # ones it does not point at too.
+    # The news of a comment lists all the preview files of its revision,
+    # also the preview files that it does not point to.
     for comment in preview_file.comments:
         news_service.clear_comment_news_cache(comment.id, task.project_id)
 
@@ -284,15 +287,16 @@ def remove_preview_file(preview_file, force=False, restore_main=True):
     preview_file.comments = []
     preview_file.save()
     preview_file.delete()
-    # The download routes read their whole authorization off the memoized
-    # serialization: left in place, it keeps handing out the task the
-    # permission is checked against, and the file goes on being served.
+    # The download routes get all their authorization data from the
+    # memoized serialization. If the serialization stays, it continues
+    # to give the task that the permission check uses. Then the service
+    # continues to serve the file.
     files_service.clear_preview_file_cache(preview_file_id)
 
-    # Mark the physical files deleted only once the DB row is gone: if
-    # the delete fails, the row must not end up pointing at missing files.
-    # They are always marked, REMOVE_FILES and force only decide whether
-    # the purge removes them.
+    # Mark the physical files as deleted only after the DB row is
+    # deleted. If the delete fails, the row must not point to missing
+    # files. The service always marks them. REMOVE_FILES and force only
+    # decide if the purge removes them.
     if extension == "png":
         clear_picture_files(preview_file_id, force=force)
     elif extension == "mp4":
@@ -313,9 +317,10 @@ def remove_preview_file(preview_file, force=False, restore_main=True):
 
 def _get_last_main_preview_file(*criterions):
     """
-    Return the newest main preview (position 1) matching given criterions
-    among the ready pictures and movies, the only ones an upload makes
-    current with a thumbnail, or None.
+    Return the newest main preview (position 1) that matches the given
+    criterions, or None. The search is only on the ready pictures and
+    movies, because only these get a thumbnail and become current after an
+    upload.
     """
     return (
         PreviewFile.query.join(Task, PreviewFile.task_id == Task.id)
@@ -330,10 +335,10 @@ def _get_last_main_preview_file(*criterions):
 
 def _restore_task_main_preview(task):
     """
-    Undo for a removed preview what its upload did to the task (see
-    tasks_service.update_preview_file_info): it goes back to its newest
-    remaining main preview, and the clients are told, so that they drop the
-    removed one.
+    For a removed preview, undo what its upload did to the task (see
+    tasks_service.update_preview_file_info). The task gets back its newest
+    remaining main preview. The service tells the clients, so that they
+    drop the removed preview.
     """
     last_preview_file = _get_last_main_preview_file(
         PreviewFile.task_id == task.id
@@ -352,12 +357,12 @@ def _restore_task_main_preview(task):
 
 def _restore_entity_main_preview(entity):
     """
-    Undo for a removed preview what its upload did to the entity: when the
-    project sets it automatically, it goes back to the newest main preview
-    among all its tasks, since an upload on any of them takes it. In a
-    project that sets it by hand, or with no such preview left, the entity
-    is left without one. Either way the clients are told, so that they drop
-    the removed thumbnail.
+    For a removed preview, undo what its upload did to the entity. If the
+    project sets the preview automatically, the entity gets back the newest
+    main preview of all its tasks. An upload on any of these tasks sets it.
+    If the project sets it manually, or if no such preview remains, the
+    entity has no preview. In all cases, the service tells the clients, so
+    that they drop the removed thumbnail.
     """
     main_preview_file = None
     project = projects_service.get_project(str(entity.project_id))
@@ -371,7 +376,7 @@ def _restore_entity_main_preview(entity):
                 entity.id, str(main_preview_file.id)
             )
         except PreviewFileNotFoundException:
-            # Removed meanwhile by another deletion.
+            # Another deletion removed the preview file before this call.
             main_preview_file = None
     if main_preview_file is None:
         tasks_service.unset_entity_main_preview(entity.id)
@@ -381,8 +386,9 @@ def remove_preview_background_file_by_id(
     preview_background_file_id, force=False
 ):
     """
-    Remove all files related to given preview background file, then remove the
-    preview background file entry from the database.
+    Remove all the files related to the preview background file that has the
+    given ID. Then remove the preview background file entry from the
+    database.
     """
     preview_background_file = PreviewBackgroundFile.get(
         preview_background_file_id
@@ -394,8 +400,8 @@ def remove_preview_background_file_by_id(
 
 def remove_preview_background_file(preview_background_file, force=False):
     """
-    Remove all files related to given preview background file, then remove the
-    preview background file entry from the database.
+    Remove all the files related to the given preview background file. Then
+    remove the preview background file entry from the database.
     """
     clear_preview_background_files(preview_background_file.id, force=force)
     preview_background_file.delete()
@@ -404,8 +410,8 @@ def remove_preview_background_file(preview_background_file, force=False):
 
 def _remove_files_quietly(files, force=False):
     """
-    Mark deleted the given (bucket, prefix, id) stored files at once,
-    ignoring a failure, see _remove_quietly.
+    Mark all the given (bucket, prefix, id) stored files as deleted in one
+    operation. If this fails, log a warning and continue.
     """
     try:
         file_store.remove_files(files, force=force)
@@ -417,7 +423,8 @@ def _remove_files_quietly(files, force=False):
 
 def clear_preview_background_files(preview_background_id, force=False):
     """
-    Mark deleted all files related to given preview background file.
+    Mark as deleted all the files related to the given preview background
+    file.
     """
     _remove_files_quietly(
         [
@@ -430,8 +437,8 @@ def clear_preview_background_files(preview_background_id, force=False):
 
 def clear_picture_files(preview_file_id, force=False):
     """
-    Mark deleted all files related to given preview file, supposing the
-    original file was a picture.
+    Mark as deleted all the files related to the given preview file. This
+    function supposes that the original file was a picture.
     """
     _remove_files_quietly(
         [
@@ -449,15 +456,15 @@ def clear_picture_files(preview_file_id, force=False):
 
 def clear_movie_files(preview_file_id, force=False):
     """
-    Mark deleted all files related to given preview file, supposing the
-    original file was a movie.
+    Mark as deleted all the files related to the given preview file. This
+    function supposes that the original file was a movie.
     """
     files = [
         ("movies", movie_type, str(preview_file_id))
         for movie_type in files_service.MOVIE_PREFIXES
     ]
     # The movie pipeline also stores the first frame as the "original"
-    # picture, next to the thumbnails cut from it.
+    # picture, with the thumbnails made from it.
     files += [
         ("pictures", image_type, str(preview_file_id))
         for image_type in [
@@ -473,8 +480,8 @@ def clear_movie_files(preview_file_id, force=False):
 
 def clear_generic_files(preview_file_id, force=False):
     """
-    Mark deleted all files related to given preview file, supposing the
-    original file was a generic file.
+    Mark as deleted all the files related to the given preview file. This
+    function supposes that the original file was a generic file.
     """
     _remove_files_quietly(
         [("files", "previews", str(preview_file_id))], force=force
@@ -483,10 +490,10 @@ def clear_generic_files(preview_file_id, force=False):
 
 def _remove_task_batch(task_ids):
     """
-    Remove fully given tasks. An entity that showed a preview of one of them
-    gets its main preview back once, after the last task: restored after
-    each one, it could take the preview of a task still to go and announce
-    it.
+    Fully remove the given tasks. If an entity showed a preview of one of
+    them, the entity gets its main preview back once, after the last task.
+    A restore after each task can select the preview of a task that goes
+    next and announce it.
     """
     entity_ids = [
         str(row[0])
@@ -503,8 +510,8 @@ def _remove_task_batch(task_ids):
 
 def remove_tasks(project_id, task_ids):
     """
-    Remove fully given tasks and related for given project. The project id
-    filter is there to facilitate right management.
+    Fully remove the given tasks and the related data for the given project.
+    The project ID filter makes the permission management easier.
     """
     task_ids = [task_id for task_id in task_ids if fields.is_valid_id(task_id)]
     _remove_task_batch(
@@ -515,7 +522,8 @@ def remove_tasks(project_id, task_ids):
 
 def remove_tasks_for_entity(entity_id):
     """
-    Remove fully all tasks and related for given entity, which goes next.
+    Fully remove all the tasks and the related data for the given entity.
+    The caller deletes the entity next.
     """
     for task_id in get_task_ids(entity_id=entity_id):
         remove_task(task_id, force=True, restore_main=False)
@@ -523,7 +531,8 @@ def remove_tasks_for_entity(entity_id):
 
 def remove_tasks_for_project_and_task_type(project_id, task_type_id):
     """
-    Remove fully all tasks and related for given project and task type.
+    Fully remove all the tasks and the related data for the given project
+    and task type.
     """
     task_ids = get_task_ids(project_id=project_id, task_type_id=task_type_id)
     _remove_task_batch(task_ids)
@@ -532,11 +541,12 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
 
 def remove_production_schedule_versions_for_project(project_id):
     """
-    Delete production schedule versions of a project together with their
-    task links. Done explicitly because, until migration d7a3e5b1c9f2, the
-    databases initialized from the squashed migration had no delete rule on
-    the keys of these tables, and the table self-references through
-    ``production_schedule_from``.
+    Delete the production schedule versions of a project and their task
+    links. This function does it explicitly for these reasons:
+
+    - Until migration d7a3e5b1c9f2, the databases initialized from the
+      squashed migration had no delete rule on the keys of these tables.
+    - The table references itself through ``production_schedule_from``.
     """
     version_ids = [
         str(row[0])
@@ -549,7 +559,8 @@ def remove_production_schedule_versions_for_project(project_id):
     if not version_ids:
         return
 
-    # Break self-references so the rows can be deleted in any order.
+    # Remove the self-references, so that the rows can be deleted in any
+    # order.
     ProductionScheduleVersion.query.filter(
         ProductionScheduleVersion.production_schedule_from.in_(version_ids)
     ).update({"production_schedule_from": None}, synchronize_session=False)
@@ -563,30 +574,31 @@ def remove_production_schedule_versions_for_project(project_id):
 
 def remove_old_events(days_old=90):
     """
-    Remove events older than *days_old*.
+    Remove the events that are older than *days_old*.
     """
     _remove_older_than(ApiEvent, ApiEvent.created_at, days_old)
 
 
 def remove_old_login_logs(days_old=90):
     """
-    Remove login logs older than *days_old*.
+    Remove the login logs that are older than *days_old*.
     """
     _remove_older_than(LoginLog, LoginLog.created_at, days_old)
 
 
 def remove_old_notifications(days_old=90):
     """
-    Remove notifications older than *days_old*.
+    Remove the notifications that are older than *days_old*.
     """
     _remove_older_than(Notification, Notification.created_at, days_old)
 
 
 def remove_preview_file_row(preview_file_id):
     """
-    Delete a preview file row and tell the clients, nothing else: no
-    stored binary, no task or entity pointing at it. The whole cascade is
-    remove_preview_file, which this name stays apart from.
+    Delete a preview file row and tell the clients. Do nothing more: do not
+    remove a stored binary, and do not change a task or an entity that
+    points to it. The full cascade is remove_preview_file. Keep this name
+    different from it.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     preview_file.delete()

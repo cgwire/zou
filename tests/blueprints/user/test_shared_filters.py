@@ -23,6 +23,10 @@ class SharedFilterMixin:
     path = None
     detail_path = None
     model = None
+    # Body fields of the create route and the length of their column.
+    column_lengths = [("name", 200), ("list_type", 80), ("entity_type", 80)]
+    # Body fields and values that the update route refuses.
+    refused_edits = [("name", "n" * 201), ("name", "")]
 
     def clear_cache(self):
         raise NotImplementedError
@@ -192,38 +196,36 @@ class SharedFilterMixin:
         self.log_in_cg_artist()
         self.assertEqual(self.visible_names(), ["private", "shared"])
 
-    def test_a_name_of_the_column_length_is_kept(self):
-        self.create("n" * 200)
-        self.assertEqual(self.visible_names(), ["n" * 200])
+    def test_a_value_of_the_column_length_is_kept(self):
+        for index, (field, length) in enumerate(self.column_lengths):
+            with self.subTest(field=field):
+                self.post(
+                    self.path,
+                    {
+                        **self.payload(f"row {index}"),
+                        field: "v" * length,
+                    },
+                )
+        self.assertEqual(self.model.query.count(), len(self.column_lengths))
 
-    def test_a_name_longer_than_its_column_is_refused(self):
-        self.post(self.path, self.payload("n" * 201), 400)
-        self.assertEqual(self.visible_names(), [])
+    def test_a_value_longer_than_its_column_is_refused(self):
+        for field, length in self.column_lengths:
+            with self.subTest(field=field):
+                self.post(
+                    self.path,
+                    {**self.payload("n"), field: "v" * (length + 1)},
+                    400,
+                )
+        self.assertEqual(self.model.query.count(), 0)
 
-    def test_renaming_beyond_the_column_length_is_refused(self):
-        created = self.create("before")
-        self.put(f"{self.path}{created['id']}", {"name": "n" * 201}, 400)
-        self.assertEqual(self.visible_names(), ["before"])
-
-    def test_renaming_to_nothing_is_refused(self):
-        created = self.create("before")
-        self.put(f"{self.path}{created['id']}", {"name": ""}, 400)
-        self.assertEqual(self.visible_names(), ["before"])
-
-    def test_a_list_type_of_the_column_length_is_kept(self):
-        self.create("n", list_type="t" * 80)
-
-    def test_a_list_type_longer_than_its_column_is_refused(self):
-        self.post(self.path, self.payload("n", list_type="t" * 81), 400)
-        self.assertEqual(self.visible_names(), [])
-
-    def test_an_entity_type_of_the_column_length_is_kept(self):
-        self.create("n", entity_type="t" * 80)
-        self.assertEqual(self.visible_names(), ["n"])
-
-    def test_an_entity_type_longer_than_its_column_is_refused(self):
-        self.post(self.path, self.payload("n", entity_type="t" * 81), 400)
-        self.assertEqual(self.visible_names(), [])
+    def test_an_edit_beyond_the_column_or_to_nothing_is_refused(self):
+        row = self.create("before")
+        detail_path = f"{self.detail_path}{row['id']}"
+        stored = self.get(detail_path)
+        for field, value in self.refused_edits:
+            with self.subTest(field=field, value=value):
+                self.put(f"{self.path}{row['id']}", {field: value}, 400)
+        self.assertEqual(self.get(detail_path), stored)
 
     def test_a_name_used_in_the_list_is_refused(self):
         self.create("wip")
@@ -634,6 +636,11 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filters/"
     detail_path = "data/search-filters/"
     model = SearchFilter
+    column_lengths = SharedFilterMixin.column_lengths + [("query", 5000)]
+    refused_edits = SharedFilterMixin.refused_edits + [
+        ("search_query", "q" * 5001),
+        ("search_query", ""),
+    ]
 
     def clear_cache(self):
         search_filters_service.clear_filter_cache()
@@ -1050,36 +1057,13 @@ class SharedFilterTestCase(SharedFilterMixin, ApiDBTestCase):
 
         self.put(path, {"search_filter_group_id": group_id}, 400)
 
-    def test_a_query_of_the_column_length_is_kept(self):
-        self.create("long", query="q" * 5000)
-        self.assertEqual(self.visible_names(), ["long"])
-
-    def test_a_query_longer_than_its_column_is_refused(self):
-        self.post(self.path, self.payload("long", query="q" * 5001), 400)
-        self.assertEqual(self.visible_names(), [])
-
-    def test_editing_a_query_beyond_the_column_length_is_refused(self):
-        created = self.create("mine")
-        self.put(
-            f"{self.path}{created['id']}", {"search_query": "q" * 5001}, 400
-        )
-        self.assertEqual(self.saved_query(), "props")
-
-    def test_editing_a_query_to_nothing_is_refused(self):
-        created = self.create("mine")
-        self.put(f"{self.path}{created['id']}", {"search_query": ""}, 400)
-        self.assertEqual(self.saved_query(), "props")
-
-    def saved_query(self):
-        self.clear_cache()
-        result = self.get(self.path)
-        return result["asset"][self.project_id][0]["search_query"]
-
 
 class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
     path = "data/user/filter-groups/"
     detail_path = "data/search-filter-groups/"
     model = SearchFilterGroup
+    column_lengths = SharedFilterMixin.column_lengths + [("color", 8)]
+    refused_edits = SharedFilterMixin.refused_edits + [("color", "#ffffff00")]
 
     def clear_cache(self):
         search_filters_service.clear_filter_group_cache()
@@ -1092,20 +1076,3 @@ class SharedFilterGroupTestCase(SharedFilterMixin, ApiDBTestCase):
             "project_id": self.project_id,
             **overrides,
         }
-
-    def test_a_color_of_the_column_length_is_kept(self):
-        self.create("n", color="#ffffff0")
-        self.assertEqual(self.visible_names(), ["n"])
-
-    def test_a_color_longer_than_its_column_is_refused(self):
-        self.post(self.path, self.payload("n", color="#ffffff00"), 400)
-        self.assertEqual(self.visible_names(), [])
-
-    def test_editing_a_color_beyond_the_column_length_is_refused(self):
-        created = self.create("mine", color="#000000")
-        self.put(f"{self.path}{created['id']}", {"color": "#ffffff00"}, 400)
-        self.clear_cache()
-        result = self.get(self.path)
-        self.assertEqual(
-            result["asset"][self.project_id][0]["color"], "#000000"
-        )

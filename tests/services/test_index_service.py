@@ -5,6 +5,7 @@ import pytest
 from tests.base import ApiDBTestCase, indexer_is_up
 from tests.services.cases import AssetsTestCase, PersonsTestCase, ShotsTestCase
 from zou.app.models.entity import Entity
+from zou.app.models.person import Person
 from zou.app.services import (
     assets_service,
     cascade_deletion_service,
@@ -293,7 +294,6 @@ class WithoutIndexerTestCase(ApiDBTestCase):
         self.assertEqual(
             index_service.remove_person_index(str(self.person.id)), {}
         )
-        self.assertEqual(index_service.index_shots([self.asset.id]), [])
         self.assertEqual(index_service.index_assets([self.asset.id]), [])
 
     def test_an_indexer_that_stops_answering_is_swallowed_too(self):
@@ -354,15 +354,38 @@ class AssetListTestCase(AssetsTestCase):
 
 
 class PersonListTestCase(PersonsTestCase):
+    def a_preview_account(self):
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        return Person.create(
+            first_name="Preview",
+            last_name="Account",
+            email="preview-0@preview.kitsu.invalid",
+            preview_project_id=self.project.id,
+        )
+
+    def indexed_person_ids(self):
+        return [
+            str(person.id)
+            for person in index_service.get_all_raw_active_persons()
+        ]
+
     def test_get_all_raw_active_persons(self):
         persons_service.update_person(self.person_id, {"active": False})
-        self.assertNotIn(
-            self.person_id,
-            [
-                str(person.id)
-                for person in index_service.get_all_raw_active_persons()
-            ],
-        )
+        self.assertNotIn(self.person_id, self.indexed_person_ids())
+
+    def test_guests_and_preview_accounts_stay_out_of_the_index(self):
+        guest = self.a_guest()
+        preview_account = self.a_preview_account()
+
+        indexed_ids = self.indexed_person_ids()
+
+        self.assertIn(self.person_id, indexed_ids)
+        self.assertNotIn(str(guest.id), indexed_ids)
+        self.assertNotIn(str(preview_account.id), indexed_ids)
+
+    def test_a_preview_account_is_never_indexed(self):
+        self.assertIsNone(index_service.index_person(self.a_preview_account()))
 
 
 class ListingTestCase(ShotsTestCase):

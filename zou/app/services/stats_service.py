@@ -43,7 +43,8 @@ DEFAULT_EVOLUTION_STATS = {
 
 def _new_status_entry(task_status_short_name, task_status_color):
     """
-    Return an empty count bucket carrying the task status display fields.
+    Return an empty count bucket that holds the display fields of the task
+    status.
     """
     return {
         "name": task_status_short_name,
@@ -56,8 +57,8 @@ def _new_status_entry(task_status_short_name, task_status_color):
 
 def _add_to_bucket(bucket, count, nb_frames, nb_drawings):
     """
-    Add given counts to a bucket. A null column counts as zero: the sums come
-    from the database, where nb_frames and nb_drawings are nullable.
+    Add the given counts to a bucket. A null column counts as zero: the sums
+    come from the database, where nb_frames and nb_drawings are nullable.
     """
     bucket["count"] += count or 0
     bucket["frames"] += nb_frames or 0
@@ -66,7 +67,7 @@ def _add_to_bucket(bucket, count, nb_frames, nb_drawings):
 
 def get_main_stats():
     """
-    Return the counts sent to the CGWire website by the telemetry.
+    Return the counts that the telemetry sends to the CGWire website.
     """
     return {
         "number_of_video_previews": PreviewFile.query.filter(
@@ -84,8 +85,8 @@ def get_main_stats():
 
 def get_episode_stats_for_project(project_id, only_assigned=False):
     """
-    Retrieve number of tasks by status, task_types and episodes
-    for given project.
+    Return the number of tasks of the given project, by task status, task
+    type and episode.
     """
     results = {}
     episode_counts = _get_episode_counts(project_id, only_assigned)
@@ -97,8 +98,8 @@ def get_episode_stats_for_project(project_id, only_assigned=False):
 
 def _get_episode_counts(project_id, only_assigned=False):
     """
-    Count the tasks of a project grouped by episode, task type and task
-    status, with their frame and drawing sums.
+    Count the tasks of a project by episode, task type and task status.
+    Also give the sums of their frames and drawings.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -149,8 +150,8 @@ def add_entry_to_stats(
     entity_nb_frames,
 ):
     """
-    Add to stats results, information of given count for given entity, task
-    type and task satus.
+    Add the given count to the stats results, for the given episode, task
+    type and task status. Also add it to the "all" aggregate of the episode.
     """
     episode_id = str(episode_id)
     task_type_id = str(task_type_id)
@@ -165,7 +166,7 @@ def add_entry_to_stats(
         "drawings": task_nb_drawings or 0,
     }
 
-    # Aggregate for episode
+    # Aggregate for the episode
     results[episode_id].setdefault("all", {})
     results[episode_id]["all"].setdefault(
         task_status_id,
@@ -192,8 +193,9 @@ def add_entry_to_all_stats(
     entity_nb_frames,
 ):
     """
-    Add to aggregated entry of stats results, information of given count for
-    given entity, task type and task satus.
+    Add the given count to the aggregated entry of the stats results, for
+    the given task type and task status. This entry is the sum for all the
+    episodes.
     """
     task_type_id = str(task_type_id)
     task_status_id = str(task_status_id)
@@ -215,10 +217,10 @@ def add_entry_to_all_stats(
 
 def get_episode_retake_stats_for_project(project_id, only_assigned=False):
     """
-    Retrieve number of retakes and done tasks by task_types and episodes for
-    given project. It gives the max retake count by episode too and show
-    the evolution of the number of retakes. The result is returned a dict.
-    Exemple of entry returned:
+    Return the number of retakes and done tasks of the given project, by
+    task type and episode, as a dict. Also give the maximum retake count by
+    episode and the evolution of the number of retakes.
+    Example of a returned entry:
         "1dcdc0f2-8aa1-4267-b56d-7621d86eef4b": {
             "max_retake_count": 4,
             "evolution": {
@@ -230,7 +232,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
                     },
                     "done": {
                         "count": 117,
-                        "frames": 3900
+                        "frames": 3900,
                         "drawings": 8000
                     }
                 },
@@ -289,8 +291,8 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             nb_drawings,
         )
 
-    # Another loop is needed because we need to know the max retake count
-    # for each entries prior to build evolution stats.
+    # A second loop is necessary: the evolution stats need the maximum
+    # retake count of each entry before they start.
     for (
         episode_id,
         nb_drawings,
@@ -315,8 +317,11 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
 
 def _get_retake_stats_query(project_id, only_assigned):
     """
-    Build the query feeding the retake stats: one row per task, with its
-    episode, its retake count and whether its status is done or retake.
+    Build the query for the retake stats. The query gives one row per task
+    with these values:
+    - the episode
+    - the retake count
+    - whether the status is done or retake.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -344,8 +349,8 @@ def _get_retake_stats_query(project_id, only_assigned):
 
 def _init_entries(results, episode_id, task_type_id):
     """
-    Make sure the episode, the task type and their aggregates hold a default
-    entry before counts are added to them.
+    Make sure that the episode, the task type and their aggregates have a
+    default entry. Do this before you add counts to them.
     """
     if episode_id not in results:
         results[episode_id] = {"all": copy.deepcopy(DEFAULT_RETAKE_STATS)}
@@ -376,14 +381,14 @@ def _add_stats(
         (episode_id, "all"),
         (episode_id, task_type_id),
     ]:
-        # In this loop we compute the aggregated "current" statistics.
-        # They represent the present state of the production
+        # This loop calculates the aggregated "current" statistics.
+        # They show the present state of the production.
 
         entry = results[key1][key2]
         if entry["max_retake_count"] < retake_count:
             entry["max_retake_count"] = retake_count
 
-        # For the "current" stats we prioritize `is_done` over `is_retake`
+        # For the "current" stats, `is_done` has priority over `is_retake`.
         if is_done:
             key = "done"
         elif is_retake:
@@ -405,17 +410,16 @@ def _add_evolution_stats(
     nb_drawings,
 ):
     """
-    Add one task to the evolution stats, which count, for each take
-    number up to the maximum, how the production stood at that take.
+    Add one task to the evolution stats. For each take number up to the
+    maximum, these stats show the state of the production at that take.
     """
     for key1, key2 in [(episode_id, "all"), (episode_id, task_type_id)]:
-        # In this loop we compute the "evolution" statistics
-        # They represent the dynamics of the production
+        # This loop calculates the "evolution" statistics.
+        # They show the changes of the production over time.
         max_retake_count = results[key1][key2]["max_retake_count"]
         evolution_data = results[key1][key2]["evolution"]
-        # Note that tasks can have both `is_done` and `is_retake` values:
-        # We simply count them twice in two different takes
-        # (at take `retake_count` and take `retake_count+1`).
+        # A task counts as a retake at each take up to its retake count. At
+        # the later takes, it counts as done or other. is_retake is not used.
         for i in range(1, max_retake_count + 1):
             take_number = str(i)
             if take_number not in evolution_data:

@@ -5,10 +5,10 @@ from zou.app.utils import events
 
 def get_instance(model, instance_id, exception):
     """
-    Get instance of any model from its ID and raise given exception if not
-    found. An ID that is not a valid UUID raises the same exception: the
-    driver rejects it with a StatementError, which callers must not have to
-    tell apart from a missing row.
+    Return the instance of the given model that has the given ID. If it does
+    not exist, raise the given exception. If the ID is not a valid UUID, raise
+    the same exception: the driver rejects it with a StatementError, and
+    callers must not have to tell it apart from a missing row.
     """
     if instance_id is None:
         raise exception()
@@ -26,9 +26,9 @@ def get_instance(model, instance_id, exception):
 
 def get_typed_instance(model, instance_id, entity_type_id, exception):
     """
-    Same as get_instance for a polymorphic model, where the id alone does not
-    say what the row is. Matching the type too is what turns an id of the
-    wrong kind into the given exception instead of the wrong object.
+    Do the same as get_instance for a polymorphic model, where the ID alone
+    does not tell what the row is. The type check makes sure that an ID of the
+    wrong kind raises the given exception and does not give the wrong object.
     """
     try:
         instance = model.get_by(id=instance_id, entity_type_id=entity_type_id)
@@ -43,8 +43,9 @@ def get_typed_instance(model, instance_id, entity_type_id, exception):
 
 def get_or_create_instance_by_name(model, **kwargs):
     """
-    Get instance of any model by name. If it doesn't exist it creates a new
-    instance of this model from positional arguments dict.
+    Return the instance of the given model that has the given name. If it does
+    not exist, create an instance of this model from the given keyword
+    arguments and emit a `<table>:new` event. Return the instance as a dict.
     """
     instance = model.get_by(name=kwargs["name"])
     if instance is None:
@@ -62,8 +63,8 @@ def get_or_create_instance_by_name(model, **kwargs):
 
 def get_model_map_from_array(models):
     """
-    Return a map matching based on given model list. The map keys are the model
-    IDs and the values are the models. It's convenient to find a model by its
+    Return a map made from the given list of models. The map keys are the
+    model IDs and the values are the models. Use it to find a model from its
     ID.
     """
     return {model["id"]: model for model in models}

@@ -51,10 +51,10 @@ def get_working_file_path(
     sep=os.sep,
 ):
     """
-    Return working file path based on given paramaters. The task is mandatory
-    to get the whole context. The mode matches a template described in the
-    file tree file. Software, output type and name are required only if they
-    are set in the template.
+    Return the working file path for the given parameters. The task is
+    necessary to get the full context. The mode matches a template of the
+    file tree file. Software, output type and name are necessary only if
+    the template has them.
     """
     file_name = get_working_file_name(
         task,
@@ -87,9 +87,9 @@ def get_output_file_path(
     sep=os.sep,
 ):
     """
-    Return output file path based on given parameters. It starts from the
-    entity and not from a task, unlike the working variant: an output file
-    belongs to the entity and carries its task type instead.
+    Return the output file path for the given parameters. It starts from the
+    entity, not from a task as the working variant does. An output file
+    belongs to the entity and has a task type.
     """
     file_name = get_output_file_name(
         entity,
@@ -117,9 +117,9 @@ def get_working_file_name(
     task, mode="working", software=None, output_type=None, name="", revision=1
 ):
     """
-    Render the working file name of given task with the file name template of
-    its project. output_type is accepted to mirror the output variant, the
-    working templates have no <OutputType> token to fill.
+    Render the working file name of the given task with the file name
+    template of its project. output_type is accepted to match the output
+    variant. The working templates have no <OutputType> token.
     """
     entity = entities_service.get_entity(task["entity_id"])
     project = get_project_of_entity(entity)
@@ -149,9 +149,9 @@ def get_output_file_name(
     nb_elements=1,
 ):
     """
-    Render the output file name of given entity with the file name template of
-    its project. An output covering several elements gets a _[1-N] suffix, the
-    range notation the DCCs expand into one file per element.
+    Render the output file name of the given entity with the file name
+    template of its project. An output for many elements gets a _[1-N]
+    suffix. The DCCs expand this range notation into one file per element.
     """
     project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
@@ -184,9 +184,9 @@ def get_instance_file_name(
     nb_elements=1,
 ):
     """
-    Render the output file name of an asset instance inside given temporal
-    entity. The asset comes from the instance, the project from the entity the
-    instance sits in.
+    Render the output file name of an asset instance in the given temporal
+    entity. The asset comes from the instance. The project comes from the
+    entity that contains the instance.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
     project = get_project_of_entity(temporal_entity)
@@ -220,9 +220,10 @@ def get_working_folder_path(
     sep=os.sep,
 ):
     """
-    Render the working folder of given task: the root path of the mode, then
-    the folder template with its tokens filled and its slashes turned into the
-    separator of the target platform.
+    Render the working folder of the given task. The result is:
+    - the root path of the mode
+    - then the folder template, with its tokens filled and its slashes
+      changed into the separator of the target platform.
     """
     entity = entities_service.get_entity(task["entity_id"])
     project = get_project_of_entity(entity)
@@ -257,8 +258,8 @@ def get_output_folder_path(
     sep=os.sep,
 ):
     """
-    Render the output folder of given entity, same way as the working one but
-    with the output tokens: task type, output type and representation.
+    Render the output folder of the given entity, as for the working folder.
+    Use the output tokens: task type, output type and representation.
     """
     project = get_project_of_entity(entity)
     tree = get_tree_from_project(project)
@@ -294,9 +295,9 @@ def get_instance_folder_path(
     sep=os.sep,
 ):
     """
-    Render the output folder of an asset instance. The template is looked up
-    from the instance and not from the temporal entity it sits in, so a tree
-    can give instances a layout of their own.
+    Render the output folder of an asset instance. Find the template from
+    the instance, not from the temporal entity that contains it. Thus, a
+    tree can give a different layout to instances.
     """
     asset = entities_service.get_entity(asset_instance["asset_id"])
     project = get_project_of_entity(temporal_entity)
@@ -326,14 +327,14 @@ def get_instance_folder_path(
 
 def get_project_of_entity(entity):
     """
-    Return the project given entity belongs to.
+    Return the project of the given entity.
     """
     return projects_service.get_project(entity["project_id"])
 
 
 def get_tree_from_project(project):
     """
-    Return the file tree configured on given project.
+    Return the file tree of the given project.
     """
     return project["file_tree"]
 
@@ -343,9 +344,10 @@ _file_tree_cache = {}
 
 def get_tree_from_file(tree_name):
     """
-    Read a file tree shipped in zou/app/file_trees. The name is matched
-    against a plain identifier first: os.path.join neither normalizes ".."
-    nor keeps the prefix when the second argument is absolute.
+    Read a file tree that zou supplies in zou/app/file_trees. First, make
+    sure that the name is a plain identifier. os.path.join does not
+    normalize "..". If the second argument is absolute, it removes the
+    prefix.
     """
     from zou.app import app
 
@@ -369,13 +371,13 @@ def get_tree_from_file(tree_name):
 
 def _get_template(tree, mode, entity, section):
     """
-    Return the template of given section ("folder_path" or "file_name") for
-    the kind of given entity. A tree missing the mode or the kind is
-    malformed: the KeyError is turned into the domain exception.
+    Return the template of the given section ("folder_path" or "file_name")
+    for the kind of the given entity. A tree without the mode or the kind is
+    malformed: change the KeyError into the domain exception.
     """
-    # The tree is read inside each branch, not hoisted: the entity kind is
-    # resolved first, as it always was, so a malformed tree keeps surfacing
-    # after the dispatch rather than before it.
+    # Read the tree in each branch, not before the branches. The entity
+    # kind is found first. Thus, the error of a malformed tree still
+    # occurs after the dispatch, not before it.
     try:
         if entity["type"] == "AssetInstance":
             if entity.get("target_asset_id", None) is not None:
@@ -397,14 +399,14 @@ def _get_template(tree, mode, entity, section):
 
 def get_folder_path_template(tree, mode, entity):
     """
-    Return the folder path template matching the kind of given entity.
+    Return the folder path template for the kind of the given entity.
     """
     return _get_template(tree, mode, entity, "folder_path")
 
 
 def get_file_name_template(tree, mode, entity):
     """
-    Return the file name template matching the kind of given entity.
+    Return the file name template for the kind of the given entity.
     """
     return _get_template(tree, mode, entity, "file_name")
 
@@ -423,10 +425,10 @@ def get_file_name_root(
     revision=1,
 ):
     """
-    Render the file name template of given tree and slugify the result with
-    the style of the mode. UUIDs are collected before slugifying and put back
-    after: slugify would lowercase and cut them, and an id is meant to stay
-    usable as an id.
+    Render the file name template of the given tree. Slugify the result with
+    the style of the mode. Keep the UUIDs before the slugify step and put
+    them back after it. Slugify changes them to lowercase and cuts them, but
+    an id must stay usable as an id.
     """
     if asset_instance is None:
         file_name_template = get_file_name_template(tree, mode, entity)
@@ -456,15 +458,16 @@ def get_file_name_root(
 
 def change_folder_path_separators(folder_path, sep):
     """
-    Rewrite a template's slashes with the separator of the target platform.
+    Replace the slashes of a template with the separator of the target
+    platform.
     """
     return folder_path.replace("/", sep)
 
 
 def get_root_path(tree, mode, sep):
     """
-    Build the absolute prefix every path of given mode starts with:
-    mountpoint, then root when one is set.
+    Build the absolute prefix of all the paths of the given mode: the
+    mountpoint, then the root if it is set.
     """
     if tree is None:
         raise MalformedFileTreeException(
@@ -504,10 +507,10 @@ def update_variable(
     style="lowercase",
 ):
     """
-    Replace every <Token> of a template by its value. A token may name the
-    field to read, as in <Shot.id>; an unknown field falls back to name. Every
-    value is slugified and styled, except an id, which has to stay verbatim to
-    remain usable.
+    Replace each <Token> of a template with its value. A token can give the
+    field to read, as in <Shot.id>. If the field is unknown, use name.
+    Slugify and style each value, but not an id. An id must stay as it is
+    to stay usable.
     """
     variables = re.findall(r"<([\w\.]*)>", template)
 
@@ -560,9 +563,9 @@ def get_folder_from_datatype(
     field="name",
 ):
     """
-    Return the value a template token stands for. This is the dispatch of the
-    whole file tree rendering: every <Token> the templates accept is resolved
-    here, and an unknown one makes the tree malformed.
+    Return the value of a template token. This is the dispatch of all the
+    file tree rendering. All the <Token> values that the templates accept
+    are found here. An unknown token makes the tree malformed.
     """
     if datatype == "Project":
         folder = get_folder_from_project(entity, field)
@@ -614,8 +617,8 @@ def get_folder_from_datatype(
 
 def get_folder_from_project(entity, field="name"):
     """
-    Value of the <Project> token: read on the project of given entity, not on
-    the entity.
+    Return the value of the <Project> token. Read it on the project of the
+    given entity, not on the entity.
     """
     project = get_project_of_entity(entity)
     return project[field]
@@ -623,23 +626,23 @@ def get_folder_from_project(entity, field="name"):
 
 def get_folder_from_task(task, field="name"):
     """
-    Value of the <Task> token.
+    Return the value of the <Task> token.
     """
     return task[field]
 
 
 def get_folder_from_shot(shot, field="name"):
     """
-    Value of the <Shot> token.
+    Return the value of the <Shot> token.
     """
     return shot[field]
 
 
 def get_folder_from_output_type(output_type, field="name"):
     """
-    Value of the <OutputType> token, lowercased. A template asking for an
-    output type when none is given falls back to Geometry, created on the fly
-    if the studio never made one.
+    Return the value of the <OutputType> token, in lowercase. If a template
+    needs an output type and none is given, use Geometry. If Geometry does
+    not exist, create it.
     """
     if output_type is None:
         output_type = files_service.get_or_create_output_type("Geometry")
@@ -649,9 +652,10 @@ def get_folder_from_output_type(output_type, field="name"):
 
 def get_folder_from_department(task, task_type, field="name"):
     """
-    Value of the <Department> token, resolved from the task type when there is
-    one and from the task otherwise. Empty when neither is given, which keeps
-    a template usable on a path that has no task.
+    Return the value of the <Department> token. If a task type is given, get
+    it from the task type. Else, get it from the task. If neither is given,
+    return an empty value. Thus, a template stays usable on a path without a
+    task.
     """
     folder = ""
     if task_type is None and task is not None:
@@ -667,8 +671,9 @@ def get_folder_from_department(task, task_type, field="name"):
 
 def get_folder_from_task_type(task, task_type, field="name"):
     """
-    Value of the <TaskType> token, taken from the given task type or read back
-    from the task. Empty when neither is given, like the department token.
+    Return the value of the <TaskType> token, from the given task type or
+    from the task. If neither is given, return an empty value, as for the
+    department token.
     """
     folder = ""
     if task_type is None and task is not None:
@@ -682,16 +687,16 @@ def get_folder_from_task_type(task, task_type, field="name"):
 
 def get_folder_from_asset(asset, field="name"):
     """
-    Return the asset folder name, empty when there is no asset.
+    Return the asset folder name. If there is no asset, return an empty
+    value.
     """
     return asset[field] if asset is not None else ""
 
 
 def get_folder_from_sequence(entity, field="name"):
     """
-    Value of the <Sequence> token, walking up from a shot or a scene to its
-    sequence. A name carrying "Seq" is rewritten as S plus the number padded
-    to three digits, so Seq2 and Seq02 land in the same folder.
+    Return the value of the <Sequence> token. Go up from a shot or a scene
+    to its sequence.
     """
     if entity_types_service.is_shot(entity) or entity_types_service.is_scene(
         entity
@@ -702,18 +707,14 @@ def get_folder_from_sequence(entity, field="name"):
         sequence_name = entity[field]
     else:
         sequence_name = ""
-
-    if "Seq" in sequence_name:
-        sequence_number = sequence_name[3:]
-        sequence_name = f"S{sequence_number.zfill(3)}"
     return sequence_name
 
 
 def get_folder_from_episode(entity, field="name"):
     """
-    Return the episode folder name of given entity, walking up through its
-    sequence when it is a shot or a scene. Entities that lead to no episode
-    fall back to e001, the name a flat production uses.
+    Return the episode folder name of the given entity. If it is a shot or a
+    scene, go up through its sequence. If an entity has no episode, use
+    e001, the name for a flat production.
     """
     episode = None
     sequence = None
@@ -730,9 +731,12 @@ def get_folder_from_episode(entity, field="name"):
                 sequence = None
         elif entity_types_service.is_sequence(entity):
             sequence = entity
-        # An entity that is none of those (an asset), a shot without a
-        # sequence or a sequence without an episode (a production that is
-        # not a tv show) has nothing to walk up to, and falls back below.
+        # Some entities have no parent to go up to:
+        # - an entity of a different kind (an asset)
+        # - a shot without a sequence
+        # - a sequence without an episode (a production that is not a tv
+        #   show).
+        # These entities use the default value below.
         if sequence is not None:
             try:
                 episode = shots_service.get_episode_from_sequence(sequence)
@@ -749,7 +753,7 @@ def get_folder_from_episode(entity, field="name"):
 
 def get_folder_from_temporal_entity(entity, field="name"):
     """
-    Return the folder name of given temporal entity (shot, sequence...).
+    Return the folder name of the given temporal entity (shot, sequence...).
     """
     if entity is None:
         raise MalformedFileTreeException("Given temporal entity is null.")
@@ -758,7 +762,7 @@ def get_folder_from_temporal_entity(entity, field="name"):
 
 def get_folder_from_temporal_entity_type(entity, field="name"):
     """
-    Return the folder name of the type of given temporal entity.
+    Return the folder name of the type of the given temporal entity.
     """
     if entity is None:
         raise MalformedFileTreeException("Given temporal entity type is null.")
@@ -770,7 +774,7 @@ def get_folder_from_temporal_entity_type(entity, field="name"):
 
 def get_folder_from_asset_type(asset, field="name"):
     """
-    Return the folder name of the type of given asset.
+    Return the folder name of the type of the given asset.
     """
     if asset is None:
         raise MalformedFileTreeException("Given asset is null.")
@@ -779,9 +783,8 @@ def get_folder_from_asset_type(asset, field="name"):
 
 def get_folder_from_software(software, field="name"):
     """
-    Value of the <Software> token. A template asking for a software when none
-    is given falls back to 3ds Max, created on the fly if the studio never
-    declared it.
+    Return the value of the <Software> token. If a template needs a software
+    and none is given, use 3ds Max. If 3ds Max does not exist, create it.
     """
     if software is None:
         software = files_service.get_or_create_software(
@@ -792,16 +795,18 @@ def get_folder_from_software(software, field="name"):
 
 def get_folder_from_scene(scene, field="name"):
     """
-    Return the scene folder name, empty when there is no scene.
+    Return the scene folder name. If there is no scene, return an empty
+    value.
     """
     return scene[field] if scene is not None else ""
 
 
 def get_folder_from_asset_instance(asset_instance, field):
     """
-    Value of the <Instance> token: the instance name, or its number padded to
-    four digits when the field is not the name or when the instance carries no
-    name. Empty when there is no instance.
+    Return the value of the <Instance> token. This is the instance name. If
+    the field is not the name, or if the instance has no name, use its
+    number padded to four digits. If there is no instance, return an empty
+    value.
     """
     folder = ""
     if asset_instance is not None:
@@ -818,23 +823,24 @@ def get_folder_from_asset_instance(asset_instance, field):
 
 def get_folder_from_representation(representation):
     """
-    Value of the <Representation> token, taken as given: it is a free string
-    the client sends, not a stored entity.
+    Return the value of the <Representation> token as it is given. It is a
+    free string from the client, not a stored entity.
     """
     return representation
 
 
 def get_folder_from_revision(revision):
     """
-    Value of the <Version> and <Revision> tokens, padded to three digits so
-    revisions sort in order in a file browser.
+    Return the value of the <Version> and <Revision> tokens, padded to three
+    digits. Thus, a file browser sorts the revisions in the correct order.
     """
     return str(revision).zfill(3)
 
 
 def join_path(left, right, sep=os.sep):
     """
-    Join two path fragments, skipping the separator when one is empty.
+    Join two path fragments. If one fragment is empty, do not add the
+    separator.
     """
     if left == "":
         return right
@@ -845,8 +851,9 @@ def join_path(left, right, sep=os.sep):
 
 def apply_style(file_name, style):
     """
-    Apply the case a tree asks for. Any other value than uppercase or
-    lowercase leaves the name untouched, which is how a tree opts out.
+    Apply the case that the tree gives. For a value other than uppercase or
+    lowercase, do not change the name. A tree uses this to disable the case
+    change.
     """
     if style == "uppercase":
         file_name = file_name.upper()
@@ -858,6 +865,10 @@ def apply_style(file_name, style):
 
 
 class PathTokens(object):
+    """
+    Return the names of the tokens that a file tree template can have.
+    """
+
     PROJECT = "Project"
     EPISODE = "Episode"
     SEQUENCE = "Sequence"
@@ -880,8 +891,8 @@ class PathTokens(object):
 
 def get_shot_task_from_path(file_path, project, mode="working", sep="/"):
     """
-    Resolve the shot task a working file path points at, by matching the
-    path against the project's shot template.
+    Find the shot task of a working file path. Compare the path with the
+    shot template of the project.
     """
     template_elements = get_shot_template_folders(project, mode, sep)
     elements = get_path_folders(project, file_path, mode, sep)
@@ -910,8 +921,8 @@ def get_shot_task_from_path(file_path, project, mode="working", sep="/"):
 
 def get_asset_task_from_path(file_path, project, mode="working", sep="/"):
     """
-    Resolve the asset task a working file path points at, by matching the
-    path against the project's asset template.
+    Find the asset task of a working file path. Compare the path with the
+    asset template of the project.
     """
     template_elements = get_asset_template_folders(project, mode, sep)
     elements = get_path_folders(project, file_path, mode, sep)
@@ -939,9 +950,9 @@ def get_asset_task_from_path(file_path, project, mode="working", sep="/"):
 
 def extract_variable_values_from_path(elements, template_elements):
     """
-    Map each template token to the value found at the same position in the
-    path. A token may carry a prefix and a suffix (`v<Version>` matching
-    `v003` yields `003`); the first occurrence of a token wins.
+    Map each template token to the value at the same position in the path.
+    A token can have a prefix and a suffix (`v<Version>` and `v003` give
+    `003`). If a token occurs more than one time, use the first occurrence.
     """
     data_names = OrderedDict()
     max_count = min(len(elements), len(template_elements))
@@ -949,8 +960,8 @@ def extract_variable_values_from_path(elements, template_elements):
         if i == max_count:
             break
 
-        # Use prefix and suffix to get only the token value.
-        # For example, for `v<Version>` and `v003`, the result will be `003`
+        # Use the prefix and the suffix to get only the token value.
+        # For example, for `v<Version>` and `v003`, the result is `003`
         # without the `v` prefix.
         token = re.search(
             r"(?P<prefix>\w*)<(?P<token>\w*)>(?P<suffix>\w*)", template_element
@@ -979,21 +990,23 @@ def extract_variable_values_from_path(elements, template_elements):
 
 def get_shot_path_template(tree, mode="working"):
     """
-    Return the shot folder template of given tree, empty when absent.
+    Return the shot folder template of the given tree. If it does not exist,
+    return an empty value.
     """
     return tree[mode]["folder_path"].get("shot", "")
 
 
 def get_asset_path_template(tree, mode="working"):
     """
-    Return the asset folder template of given tree, empty when absent.
+    Return the asset folder template of the given tree. If it does not
+    exist, return an empty value.
     """
     return tree[mode]["folder_path"].get("asset", "")
 
 
 def get_shot_template_folders(project, mode="working", sep="/"):
     """
-    Split the project's shot template into its folder elements.
+    Split the shot template of the project into its folder elements.
     """
     tree = get_tree_from_project(project)
     template = get_shot_path_template(tree, mode)
@@ -1002,7 +1015,7 @@ def get_shot_template_folders(project, mode="working", sep="/"):
 
 def get_asset_template_folders(project, mode="working", sep="/"):
     """
-    Split the project's asset template into its folder elements.
+    Split the asset template of the project into its folder elements.
     """
     tree = get_tree_from_project(project)
     template = get_asset_path_template(tree, mode)
@@ -1011,8 +1024,8 @@ def get_asset_template_folders(project, mode="working", sep="/"):
 
 def get_path_folders(project, file_path, mode="working", sep="/"):
     """
-    Split a file path into folder elements, root stripped, so it lines up
-    with the template elements.
+    Split a file path into folder elements, without the root. Thus, the
+    elements align with the template elements.
     """
     tree = get_tree_from_project(project)
     root = get_root_path(tree, mode, sep)
@@ -1022,8 +1035,8 @@ def get_path_folders(project, file_path, mode="working", sep="/"):
 
 def _get_child_by_name(name, entity_type_id, constraints, parent_token):
     """
-    Return the entity of given type named by a path token, narrowed by its
-    parent when the path already resolved one.
+    Return the entity of the given type that a path token names. If the path
+    already gave a parent, use it to limit the search.
     """
     if not constraints.get(PathTokens.PROJECT):
         return None
@@ -1040,14 +1053,18 @@ def _get_child_by_name(name, entity_type_id, constraints, parent_token):
 
 def get_data_from_token(type_token, value_token, constraints=None):
     """
-    Get the first corresponding data using the given type and value tokens.
+    Return the first data that matches the given type and value tokens:
+    - an active record
+    - a string for a name or a representation
+    - an int for a version.
+    If nothing matches or a constraint is missing, return None.
     """
     if not constraints:
         constraints = {}
     data = None
 
     if type_token == PathTokens.ASSET:
-        # An asset depends on a project and an asset type
+        # An asset needs a project and an asset type.
         if not constraints.get(PathTokens.PROJECT) or not constraints.get(
             PathTokens.ASSET_TYPE
         ):
@@ -1066,7 +1083,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         data = Department.get_by(Department.name.ilike(value_token))
 
     elif type_token == PathTokens.EPISODE:
-        # An episode depends on a project
+        # An episode needs a project.
         if not constraints.get(PathTokens.PROJECT):
             return None
 
@@ -1077,11 +1094,11 @@ def get_data_from_token(type_token, value_token, constraints=None):
         )
 
     elif type_token == PathTokens.SEQUENCE:
-        # A sequence depends on a project, and on an episode only in a
-        # production that has any: the episode narrows the search when the
-        # path carried one. Requiring it made every path of a flat
-        # production stop here, since neither shipped tree puts an
-        # <Episode> token in front of the sequence.
+        # A sequence needs a project. It needs an episode only in a
+        # production with episodes: if the path has an episode, use it to
+        # limit the search. Do not make the episode mandatory. The supplied
+        # trees put no <Episode> token before the sequence. Thus, all the
+        # paths of a flat production stop here.
         data = _get_child_by_name(
             value_token,
             entity_types_service.get_sequence_type()["id"],
@@ -1090,8 +1107,8 @@ def get_data_from_token(type_token, value_token, constraints=None):
         )
 
     elif type_token == PathTokens.SCENE:
-        # A scene depends on a project, and on the sequence it sits in when
-        # the path carried one.
+        # A scene needs a project. If the path has a sequence, the scene also
+        # needs this sequence.
         data = _get_child_by_name(
             value_token,
             entity_types_service.get_scene_type()["id"],
@@ -1103,7 +1120,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         data = OutputType.get_by(OutputType.name.ilike(value_token))
 
     elif type_token == PathTokens.SHOT:
-        # A shot depends on a project and a sequence
+        # A shot needs a project and a sequence.
         if not constraints.get(PathTokens.PROJECT) or not constraints.get(
             PathTokens.SEQUENCE
         ):
@@ -1117,7 +1134,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         )
 
     elif type_token == PathTokens.TASK:
-        # A task depends on a project, a task type and an entity
+        # A task needs a project, a task type and an entity.
         if not constraints.get(PathTokens.PROJECT) or not constraints.get(
             PathTokens.TASK_TYPE
         ):
@@ -1160,7 +1177,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         data = EntityType.get_by(EntityType.name.ilike(value_token))
 
     elif type_token == PathTokens.ENTITY:
-        # An entity depends on a project and an entity type
+        # An entity needs a project and an entity type.
         if not constraints.get(PathTokens.PROJECT) or not constraints.get(
             PathTokens.ENTITY_TYPE
         ):
@@ -1186,9 +1203,9 @@ def get_data_from_token(type_token, value_token, constraints=None):
 
 def guess_shot(project, episode_name, sequence_name, shot_name):
     """
-    Find the shot named by the tokens read from a path, narrowing down episode
-    then sequence then shot. A name that resolves to nothing leaves its parent
-    at None instead of failing, so a flat production still matches. Only a
+    Find the shot that the tokens of a path name. Find the episode, then the
+    sequence, then the shot. If a name gives no result, set its parent to
+    None and continue. Thus, a flat production still matches. Only a
     missing shot name is an error.
     """
     episode_id = None
@@ -1228,9 +1245,9 @@ def guess_shot(project, episode_name, sequence_name, shot_name):
 
 def guess_asset(project, asset_type_name, asset_name):
     """
-    Find the asset named by the tokens read from a path. The asset type only
-    narrows the search: an unknown one leaves it out rather than failing. A
-    missing asset name is an error.
+    Find the asset that the tokens of a path name. The asset type only
+    limits the search. If the asset type is unknown, ignore it and continue.
+    A missing asset name is an error.
     """
     asset_type_id = None
     if len(asset_type_name) > 0:
@@ -1254,10 +1271,11 @@ def guess_asset(project, asset_type_name, asset_name):
 
 def guess_task_type(department_name, task_type_name):
     """
-    Find the task type named by the tokens read from a path. The department
-    disambiguates two task types sharing a name across departments, and only
-    narrows the search: an unknown one is left out rather than failing, as
-    the asset type and the episode are in the two guesses above.
+    Find the task type that the tokens of a path name. The department
+    identifies the correct task type when two departments have task types
+    with the same name. It only limits the search. If the department is
+    unknown, ignore it and continue, as for the asset type and the episode
+    in the two functions above.
     """
     criterions = {"name": task_type_name}
     if len(department_name) > 0:
@@ -1275,9 +1293,9 @@ def guess_task_type(department_name, task_type_name):
 
 def guess_task(entity, task_type, task_name):
     """
-    Find the task of given entity and task type. The task name narrows it down
-    when the path carries one, productions that name their tasks having
-    several for the same type.
+    Find the task of the given entity and task type. If the path has a task
+    name, use it to limit the search. The productions that name their tasks
+    have many tasks for the same type.
     """
     if entity is None:
         raise WrongPathFormatException("No asset or shot found in given path.")
@@ -1295,8 +1313,8 @@ def guess_task(entity, task_type, task_name):
 
 def guess_from_path(project_id, file_path, sep="/"):
     """
-    Get list of possible project file tree templates matching a file path
-    and data ids corresponding to template tokens.
+    Return the list of the project file tree templates that can match a
+    file path. Also return the data ids of the template tokens.
 
     Example:
         .. code-block:: text
@@ -1319,7 +1337,7 @@ def guess_from_path(project_id, file_path, sep="/"):
     tree = get_tree_from_project(project)
 
     for mode in tree.keys():
-        # Apply mode style to file path
+        # Apply the style of the mode to the file path.
         style = tree[mode]["folder_path"].get("style", "")
         root = apply_style(get_root_path(tree, mode, sep), style)
         styled_path = apply_style(file_path, style)
@@ -1329,12 +1347,12 @@ def guess_from_path(project_id, file_path, sep="/"):
 
         styled_path = styled_path[len(root) :]
 
-        # Try to get template data from path
+        # Try to get the template data from the path.
         for template, template_path in tree[mode]["folder_path"].items():
             template_elements = template_path.split(sep)
             elements = styled_path.split(sep)
 
-            # Case when template doesn't match given file path content
+            # The template does not match the content of the given file path.
             try:
                 tokens = extract_variable_values_from_path(
                     elements, template_elements
@@ -1349,33 +1367,32 @@ def guess_from_path(project_id, file_path, sep="/"):
                 "Template": template,
             }
 
-            # Fill template data dictionary following tokens order in
-            # template path (left to right): some data needs a previous data
+            # Fill the template data dict in the order of the tokens in the
+            # template path (left to right). Some data needs the previous data
             # to be found.
-            # This prevents getting wrong data in database, like a data
-            # with same name in other project.
+            # This prevents wrong data from the database, for example data
+            # with the same name in a different project.
             for template_element in template_elements:
-                # Get template_element corresponding token.
-                # Some template_element don't have a corresponding token,
-                # like "05_publish" folder, for example.
+                # Get the token of the template_element.
+                # Some template_element values have no token, for example the
+                # "05_publish" folder.
                 for token, token_value in tokens.items():
                     if f"<{token}>" in template_element:
                         break
                 else:
                     continue
 
-                # Try to get data from database using token and its value
                 data = get_data_from_token(token, token_value, template_data)
 
-                # Stop trying to get data from given template on latest valid
-                # data found.
+                # If no data is found, stop the search for the given template.
+                # Keep the valid data found before.
                 if not data:
                     break
 
-                # The production is the one the caller named, and the one
-                # the route checked their permission against. A path naming
-                # another production is a path for someone else: it must
-                # not come back filled with that production's ids.
+                # The production is the one that the caller gave. The route
+                # checked the permission of the caller on it. A path that names
+                # a different production is for a different user. Do not fill
+                # it with the ids of that production.
                 if token == PathTokens.PROJECT and str(data.id) != str(
                     project["id"]
                 ):
