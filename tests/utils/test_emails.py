@@ -3,6 +3,8 @@ import smtplib
 import unittest
 from unittest.mock import patch
 
+from babel import Locale
+
 from zou.app import app
 from zou.app.utils import emails
 
@@ -103,6 +105,10 @@ class EmailsContentLanguageTestCase(unittest.TestCase):
 
     def test_the_locale_is_sent_as_content_language(self):
         message = self._sent_message(locale="fr_FR")
+        self.assertEqual(message["Content-Language"], "fr-FR")
+
+    def test_a_babel_locale_is_sent_as_content_language(self):
+        message = self._sent_message(locale=Locale("fr", "FR"))
         self.assertEqual(message["Content-Language"], "fr-FR")
 
     def test_no_locale_sends_no_content_language(self):

@@ -45,7 +45,7 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
                 mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
                 extra_headers = {}
                 if locale:
-                    extra_headers["Content-Language"] = locale.replace(
+                    extra_headers["Content-Language"] = str(locale).replace(
                         "_", "-"
                     )
                 message = Message(
