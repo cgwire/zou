@@ -483,9 +483,9 @@ def remove_shot(shot_id, force=False):
 
 def remove_scene(scene_id):
     """
-    Remove the given scene from the database. If the deletion fails
-    because data is still linked to the scene, mark the scene as canceled.
-    Then emit scene:update instead of scene:delete.
+    Remove the given scene from the database and emit scene:delete. If the
+    deletion fails because data is still linked to the scene, mark the
+    scene as canceled and emit scene:update.
     """
     scene = shots_service.get_scene_raw(scene_id)
     try:
