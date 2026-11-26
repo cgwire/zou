@@ -412,6 +412,18 @@ class BackupFailedException(Exception):
     pass
 
 
+class LdapGroupNotFoundException(Exception):
+    pass
+
+
+class LdapAmbiguousUserException(Exception):
+    pass
+
+
+class LdapAccountConflictException(Exception):
+    pass
+
+
 # Former misspelled names, kept so plugins written against them still import.
 TooMuchLoginFailedAttemps = TooManyLoginFailedAttempts
 UnactiveUserException = InactiveUserException

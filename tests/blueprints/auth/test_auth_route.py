@@ -5,11 +5,18 @@ from unittest import mock
 import orjson as json
 import pyotp
 import pytest
-from ldap3.core.exceptions import LDAPPasswordIsMandatoryError
+from ldap3.core.exceptions import (
+    LDAPBindError,
+    LDAPPasswordIsMandatoryError,
+)
 
 from tests.base import ApiDBTestCase
+from zou.app.exceptions import (
+    IsUserLimitReachedException,
+    LdapGroupNotFoundException,
+)
 from zou.app.models.person import Person
-from zou.app.services import auth_service, persons_service
+from zou.app.services import auth_service, ldap_service, persons_service
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import auth, date_helpers, fields
 
@@ -174,6 +181,48 @@ class AuthTestCase(ApiDBTestCase):
         self.assertFalse(result["login"])
         self.assertEqual(result["message"], "Wrong email or password.")
         self.assertIsNotAuthenticated(result, 422)
+
+    def test_login_ldap_group_missing_answers_409(self):
+        with mock.patch.object(
+            auth_service,
+            "check_auth",
+            side_effect=LdapGroupNotFoundException("missing"),
+        ):
+            result = self.post("auth/login", self.credentials, 409)
+        self.assertFalse(result["login"])
+
+    def test_login_ldap_service_account_bind_failure_answers_409(self):
+        self.addCleanup(
+            self.flask_app.config.__setitem__,
+            "AUTH_STRATEGY",
+            self.flask_app.config["AUTH_STRATEGY"],
+        )
+        self.addCleanup(
+            self.flask_app.config.__setitem__,
+            "LDAP_SEARCH_BIND",
+            self.flask_app.config["LDAP_SEARCH_BIND"],
+        )
+        self.flask_app.config["AUTH_STRATEGY"] = "auth_remote_ldap"
+        self.flask_app.config["LDAP_SEARCH_BIND"] = True
+        self.person.update({"is_generated_from_ldap": True})
+        with mock.patch.object(
+            ldap_service,
+            "open_service_connection",
+            side_effect=LDAPBindError("bad service account"),
+        ):
+            result = self.post("auth/login", self.credentials, 409)
+        self.assertFalse(result["login"])
+        self.assertTrue(Person.get(self.person_dict["id"]).active)
+
+    def test_login_user_limit_answers_400(self):
+        with mock.patch.object(
+            auth_service,
+            "check_auth",
+            side_effect=IsUserLimitReachedException(),
+        ):
+            result = self.post("auth/login", self.credentials, 400)
+        self.assertFalse(result["login"])
+        self.assertEqual(result["message"], "User limit reached.")
 
     def test_ldap_login_with_an_empty_password(self):
         """
