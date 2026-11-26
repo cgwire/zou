@@ -5,7 +5,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class FileStatus(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe the state of a given file.
+    This model describes the state of a file.
     """
 
     name = db.Column(db.String(40), unique=True, nullable=False)

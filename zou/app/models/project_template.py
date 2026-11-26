@@ -23,7 +23,8 @@ class ProjectTemplateTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
     priority = db.Column(db.Integer, default=None)
-    # Movie encoding bitrates in Mbit/s, copied to the project links.
+    # The bitrates to encode movies, in Mbit/s. Zou copies them to the project
+    # links.
     hd_bitrate_compression = db.Column(db.Integer, nullable=True)
     ld_bitrate_compression = db.Column(db.Integer, nullable=True)
     is_client_visible = db.Column(db.Boolean(), default=True)
@@ -56,7 +57,7 @@ class ProjectTemplateTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         db.ARRAY(ChoiceType(ROLE_TYPES)),
         default=["user", "admin", "supervisor", "manager", "vendor"],
     )
-    # Null inherits the studio value, TaskStatus.is_client_allowed.
+    # If null, use the studio value, TaskStatus.is_client_allowed.
     is_client_allowed = db.Column(db.Boolean(), nullable=True, default=None)
 
     __table_args__ = (
@@ -86,9 +87,9 @@ class ProjectTemplateAssetTypeLink(db.Model):
 
 class ProjectTemplateAssetTypeTaskTypeLink(db.Model):
     """
-    Workflow of an asset type specific to a template, copied to and from
-    projects. Without rows for a template and asset type pair, the studio
-    workflow applies.
+    The workflow of an asset type, specific to a template. Zou copies it to and
+    from projects. If no rows exist for the pair of a template and an asset
+    type, the studio workflow applies.
     """
 
     __tablename__ = "project_template_asset_type_task_type_link"
@@ -146,16 +147,16 @@ class ProjectTemplatePreviewBackgroundFileLink(db.Model):
 
 class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
     """
-    A reusable snapshot of a project's configuration (task types, task
-    statuses, status automations, asset types, metadata descriptors and
-    production settings). It does not contain any production data (no tasks,
-    no entities, no team).
+    A snapshot of the configuration of a project, for reuse. It contains the
+    task types, task statuses, status automations, asset types, metadata
+    descriptors and production settings. It does not contain production data
+    (no tasks, no entities, no team).
     """
 
     name = db.Column(db.String(80), nullable=False, unique=True, index=True)
     description = db.Column(db.Text())
 
-    # Production settings (mirror of Project)
+    # Production settings (the same as in Project)
     fps = db.Column(db.String(10), default="25")
     ratio = db.Column(db.String(10), default="16:9")
     resolution = db.Column(db.String(12), default="1920x1080")
@@ -180,9 +181,9 @@ class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
     file_tree = db.Column(JSONB)
     data = db.Column(JSONB)
 
-    # Metadata descriptor snapshot stored as JSONB to avoid creating
-    # MetadataDescriptor rows that aren't linked to any project. Each entry
-    # has the shape:
+    # A snapshot of the metadata descriptors, stored as JSONB. Thus Zou does
+    # not create MetadataDescriptor rows that link to no project. Each entry
+    # has this shape:
     #   {
     #     "entity_type": "Asset",
     #     "name": "Difficulty",

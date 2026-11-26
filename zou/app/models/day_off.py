@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class DayOff(db.Model, BaseMixin, SerializerMixin):
     """
-    Tells that someone will have a day off this day.
+    Tells that a person will have a day off on this date.
     """
 
     date = db.Column(db.Date, nullable=False)

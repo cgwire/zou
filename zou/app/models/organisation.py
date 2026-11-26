@@ -11,7 +11,7 @@ SENSITIVE_FIELDS = [
 
 class Organisation(db.Model, BaseMixin, SerializerMixin):
     """
-    Model to represent current organisation settings.
+    This model represents the settings of the current organisation.
     """
 
     name = db.Column(db.String(80), unique=True, nullable=False)

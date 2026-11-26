@@ -7,8 +7,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class DesktopLoginLog(db.Model, BaseMixin, SerializerMixin):
     """
-    Table to log all desktop session logins. The aim is to build report that
-    helps validating presence form.
+    This table logs all the logins of desktop sessions. Its aim is to make
+    reports that help to validate presence forms.
     """
 
     person_id = db.Column(

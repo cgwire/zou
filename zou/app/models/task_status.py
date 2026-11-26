@@ -7,8 +7,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe the state of a task. The flags tell what a status means (done,
-    retake, feedback request, WIP) and who can set it.
+    This model describes the state of a task. The flags tell what a status
+    means (done, retake, feedback request, WIP) and who can set it.
     """
 
     name = db.Column(db.String(40), nullable=False)

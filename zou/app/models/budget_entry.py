@@ -13,8 +13,8 @@ from zou.app.utils import fields
 
 class BudgetEntry(db.Model, BaseMixin, SerializerMixin):
     """
-    Budget entry for a budget. It stores the information about a person
-    (present or not) salary for a given department.
+    An entry of a budget. It stores the salary data of a person (present or
+    not) for the given department.
     """
 
     budget_id = db.Column(

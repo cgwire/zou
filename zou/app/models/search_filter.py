@@ -8,8 +8,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class SearchFilter(db.Model, BaseMixin, SerializerMixin):
     """
-    Filters allow to store quick search on a list: asset list, shot list,
-    sequence list, todo-list...
+    A filter stores a quick search on a list: the asset list, the shot list,
+    the sequence list, the todo list...
     """
 
     list_type = db.Column(db.String(80), nullable=False, index=True)

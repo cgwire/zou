@@ -22,8 +22,8 @@ class ChatParticipant(db.Model):
 
 class Chat(db.Model, BaseMixin, SerializerMixin):
     """
-    Chat feed of an object (an entity by default): its participants and
-    the date of its last message.
+    The chat feed of an object (an entity by default). It stores the
+    participants and the date of the last message.
     """
 
     object_id = db.Column(UUIDType(binary=False), nullable=False, index=True)

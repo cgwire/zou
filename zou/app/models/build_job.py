@@ -16,14 +16,14 @@ TYPES = [("archive", "Archive"), ("movie", "Movie")]
 
 class BuildJob(db.Model, BaseMixin, SerializerMixin):
     """
-    A build job stores information about the state of the building
-    of a given playlist.
+    A build job stores the state of the build of the given playlist.
     """
 
     status = db.Column(ChoiceType(STATUSES), default="running", nullable=False)
     job_type = db.Column(ChoiceType(TYPES), default="movie", nullable=False)
     ended_at = db.Column(db.DateTime)
-    # Explains a degraded or failed build, e.g. a re-encoding fallback.
+    # Tells why a build is degraded or failed, for example a re-encoding
+    # fallback.
     message = db.Column(db.Text())
 
     playlist_id = db.Column(

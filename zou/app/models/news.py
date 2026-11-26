@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class News(db.Model, BaseMixin, SerializerMixin):
     """
-    A news is created each time a comment is posted.
+    Zou creates a news entry each time a person posts a comment.
     """
 
     change = db.Column(db.Boolean, nullable=False, default=False)

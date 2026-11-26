@@ -5,7 +5,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class OutputType(db.Model, BaseMixin, SerializerMixin):
     """
-    Type of an output files (geometry, cache, etc.)
+    The type of an output file (geometry, cache, etc.).
     """
 
     name = db.Column(db.String(40), unique=True, nullable=False, index=True)

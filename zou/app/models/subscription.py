@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class Subscription(db.Model, BaseMixin, SerializerMixin):
     """
-    Allow to subscribe to a task, or to a task type of a sequence.
+    Lets a person subscribe to a task, or to a task type of a sequence.
     """
 
     person_id = db.Column(

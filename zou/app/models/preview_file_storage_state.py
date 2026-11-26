@@ -13,9 +13,10 @@ STORAGE_STATES = [
 
 class PreviewFileStorageState(db.Model, BaseMixin, SerializerMixin):
     """
-    State of one stored file of a preview file: present, confirmed
-    missing, or failed to be generated. Instance-local bookkeeping: it
-    describes this instance's storage, it is never synced or exposed.
+    The state of one stored file of a preview file: present, confirmed missing,
+    or not generated because of a failure. This record is local to the
+    instance: it describes the storage of this instance, and Zou never syncs or
+    exposes it.
     """
 
     preview_file_id = db.Column(

@@ -8,12 +8,11 @@ from zou.app.models.serializer import SerializerMixin
 
 class StoredFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Registry of the objects written to the file storage, one row per
-    object. A deletion only marks the row (deleted_at): the object is
-    removed later by a purge job, which sets purged_at. The journal keeps
-    the history of the operations on the object. Instance-local
-    bookkeeping: it describes this instance's storage, it is never synced
-    or exposed.
+    A registry of the objects in the file storage, with one row for each
+    object. A deletion only marks the row (deleted_at). Later, a purge job
+    removes the object and sets purged_at. The journal keeps the history of the
+    operations on the object. This record is local to the instance: it
+    describes the storage of this instance, and Zou never syncs or exposes it.
     """
 
     bucket = db.Column(db.String(20), nullable=False)
@@ -42,8 +41,8 @@ class StoredFile(db.Model, BaseMixin, SerializerMixin):
 
     __table_args__ = (
         db.UniqueConstraint("bucket", "key", name="stored_file_uc"),
-        # purge_forced first: without REMOVE_FILES, the marked rows that
-        # are not forced pile up, the purge must not read through them.
+        # purge_forced comes first. Without REMOVE_FILES, the marked rows that
+        # are not forced accumulate, and the purge must not read through them.
         db.Index(
             "ix_stored_file_to_purge",
             "purge_forced",

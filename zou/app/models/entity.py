@@ -1,14 +1,14 @@
 """
-The Entity model is polymorphic: assets, shots, sequences, episodes,
-scenes, edits and concepts are all rows in the entity table,
-distinguished by entity_type_id (there is no per-type table). Parenting
-is done through parent_id (e.g. shot -> sequence -> episode) and
-source_id (the "main" episode of an asset), while EntityLink models
-many-to-many casting relations between entities.
+The Entity model is polymorphic. Assets, shots, sequences, episodes, scenes,
+edits and concepts are all rows in the entity table. The entity_type_id column
+tells them apart: there is no table for each type. The parent_id column sets
+the parent (for example shot -> sequence -> episode). The source_id column sets
+the "main" episode of an asset. EntityLink models the many-to-many casting
+relations between entities.
 
-Because there is no ORM subclass per type, "is this a shot?" style
-questions live in the services (shots_service, entities_service...) and
-compare entity_type_id against the cached type ids, not in this model.
+There is no ORM subclass for each type. Thus questions such as "is this a
+shot?" are in the services (shots_service, entities_service...), not in this
+model. The services compare entity_type_id with the cached type IDs.
 """
 
 from sqlalchemy.dialects.postgresql import JSONB
@@ -96,20 +96,19 @@ class EntityConceptLink(db.Model, BaseMixin, SerializerMixin):
 
 class Entity(db.Model, BaseMixin, SerializerMixin):
     """
-    Base model to represent assets, shots, sequences, episodes, scenes,
-    edits and concepts.
-    They have different meaning but they share the same behaviour toward
-    tasks and files.
+    The base model for assets, shots, sequences, episodes, scenes, edits and
+    concepts. Their meanings are different, but they have the same behaviour
+    with tasks and files.
     """
 
     id = BaseMixin.id
     name = db.Column(db.String(160), nullable=False)
-    code = db.Column(db.String(160))  # To store sanitized version of name
+    code = db.Column(db.String(160))  # The sanitized version of the name
     description = db.Column(db.Text())
     shotgun_id = db.Column(db.Integer)
     canceled = db.Column(db.Boolean, default=False)
 
-    nb_frames = db.Column(db.Integer)  # Specific to shots
+    nb_frames = db.Column(db.Integer)  # Only for shots
     nb_entities_out = db.Column(db.Integer, default=0)
     is_casting_standby = db.Column(db.Boolean, default=False)
 
@@ -144,7 +143,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         db.ForeignKey("entity.id"),
         index=True,
         nullable=True,
-    )  # main episode of an asset, or the source scene of a shot.
+    )  # The main episode of an asset, or the source scene of a shot.
 
     preview_file_id = db.Column(
         UUIDType(binary=False),

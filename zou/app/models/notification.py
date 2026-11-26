@@ -18,8 +18,8 @@ TYPES = [
 
 class Notification(db.Model, BaseMixin, SerializerMixin):
     """
-    A notification is stored for a person when a comment, a mention, a
-    reply, a task assignation or a ready playlist concerns them.
+    Zou stores a notification for a person when a comment, a mention, a reply,
+    a task assignment or a ready playlist concerns them.
     """
 
     read = db.Column(db.Boolean, nullable=False, default=False)

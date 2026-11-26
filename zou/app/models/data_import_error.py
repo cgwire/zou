@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class DataImportError(db.Model, BaseMixin, SerializerMixin):
     """
-    Table to allow the storage of import errors.
+    This table stores the import errors.
     """
 
     event_data = db.Column(JSONB, nullable=False)

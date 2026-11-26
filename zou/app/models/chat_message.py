@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class ChatMessage(db.Model, BaseMixin, SerializerMixin):
     """
-    Message shared in the entity chat feeds.
+    A message that a person shares in the chat feed of an entity.
     """
 
     chat_id = db.Column(

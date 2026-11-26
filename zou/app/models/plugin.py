@@ -7,8 +7,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class Plugin(db.Model, BaseMixin, SerializerMixin):
     """
-    A plugin is a module used to extend the functionality of Zou.
-    You can extend the REST API routes and the database models.
+    A plugin is a module that extends the functions of Zou. It can extend the
+    REST API routes and the database models.
     """
 
     plugin_id = db.Column(
@@ -24,7 +24,7 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     revision = db.Column(db.String(12), nullable=True)
     frontend_project_enabled = db.Column(db.Boolean(), default=False)
     frontend_studio_enabled = db.Column(db.Boolean(), default=False)
-    icon = db.Column(db.String(255), nullable=True)  # lucide-vue icon name
+    icon = db.Column(db.String(255), nullable=True)  # A lucide-vue icon name
 
     def present(self):
         return {

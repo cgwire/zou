@@ -9,7 +9,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class Playlist(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a playlist. The goal is to review a set of shipped materials.
+    This model describes a playlist. Its goal is to let users review a set of
+    shipped materials.
     """
 
     name = db.Column(db.String(80), nullable=False)

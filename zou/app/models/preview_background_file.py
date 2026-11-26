@@ -5,7 +5,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class PreviewBackgroundFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe a preview background file.
+    This model describes a preview background file.
     """
 
     name = db.Column(db.String(40), nullable=False)

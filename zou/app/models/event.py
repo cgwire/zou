@@ -8,8 +8,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class ApiEvent(db.Model, BaseMixin, SerializerMixin):
     """
-    Represent notable events occuring on database (asset creation,
-    task assignation, etc.).
+    This model represents an important event in the database (asset creation,
+    task assignment, etc.).
     """
 
     name = db.Column(db.String(80), nullable=False, index=True)
@@ -21,8 +21,8 @@ class ApiEvent(db.Model, BaseMixin, SerializerMixin):
     )
     data = db.Column(JSONB)
 
-    # The event log is always read sorted by creation date, optionally
-    # filtered by project, so both access paths need an index.
+    # Readers always sort the event log by creation date, and can filter it by
+    # project. Thus each of these two access paths needs an index.
     __table_args__ = (
         db.Index(
             "ix_api_event_project_id_created_at", "project_id", "created_at"

@@ -7,9 +7,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class HardwareItemDepartmentLink(db.Model, BaseMixin, SerializerMixin):
     """
-    Uses a many-to-many relationship to link hardware items with departments.
-    It can be used to track which hardware items are used by which departments in
-    order to set budget forecasting.
+    A many-to-many link between hardware items and departments. Use it to
+    record which departments use which hardware items, for budget forecasts.
     """
 
     __tablename__ = "hardware_item_department_link"
@@ -37,9 +36,8 @@ class HardwareItemDepartmentLink(db.Model, BaseMixin, SerializerMixin):
 
 class SoftwareDepartmentLink(db.Model, BaseMixin, SerializerMixin):
     """
-    Uses a many-to-many relationship to link software with departments.
-    It can be used to track which software is used by which departments in
-    order to set budget forecasting.
+    A many-to-many link between software and departments. Use it to record
+    which departments use which software, for budget forecasts.
     """
 
     __tablename__ = "software_department_link"
@@ -67,7 +65,7 @@ class SoftwareDepartmentLink(db.Model, BaseMixin, SerializerMixin):
 
 class Department(db.Model, BaseMixin, SerializerMixin):
     """
-    Studio department like modeling, animation, etc.
+    A studio department, for example modeling or animation.
     """
 
     name = db.Column(db.String(80), unique=True, nullable=False)

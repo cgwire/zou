@@ -8,8 +8,8 @@ from zou.app.utils import fields
 
 class Budget(db.Model, BaseMixin, SerializerMixin):
     """
-    Budget quote for a project. It's a base object where budget entries
-    are linked to.
+    A budget quote for a project. It is a base object, and budget entries link
+    to it.
     """
 
     project_id = db.Column(

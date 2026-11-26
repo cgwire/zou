@@ -8,7 +8,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class SalaryScale(db.Model, BaseMixin, SerializerMixin):
     """
-    Model to represent a salary scale tied to a department.
+    This model represents a salary scale for a department.
     """
 
     department_id = db.Column(

@@ -6,7 +6,7 @@ from zou.app.utils.fields import serialize_value
 
 class SerializerMixin(object):
     """
-    Helpers to facilitate JSON serialization of models.
+    Helpers that make the JSON serialization of models easier.
     """
 
     @classmethod
@@ -20,9 +20,9 @@ class SerializerMixin(object):
     @classmethod
     def _serializable_attrs(cls):
         """
-        Return (all attrs, non-join attrs) for the model, computed once
-        per class: inspecting descriptors for every attribute of every
-        row dominated serialize_list profiles.
+        Return (all attrs, non-join attrs) for the model. Compute them one time
+        for each class: before, the inspection of descriptors for each
+        attribute of each row was the largest cost in serialize_list profiles.
         """
         cached = cls.__dict__.get("_serializable_attrs_cache")
         if cached is None:

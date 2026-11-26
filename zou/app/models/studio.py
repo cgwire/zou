@@ -5,7 +5,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class Studio(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe a studio.
+    This model describes a studio.
     """
 
     name = db.Column(db.String(80), unique=True, nullable=False)

@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class ProductionScheduleVersion(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe a production schedule.
+    This model describes a production schedule.
     """
 
     name = db.Column(db.String(80), nullable=False)
@@ -50,7 +50,7 @@ class ProductionScheduleVersionTaskLinkPersonLink(db.Model):
 
 class ProductionScheduleVersionTaskLink(db.Model, BaseMixin, SerializerMixin):
     """
-    Link a task to a production schedule version.
+    This model links a task to a production schedule version.
     """
 
     production_schedule_version_id = db.Column(

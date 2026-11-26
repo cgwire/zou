@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class Software(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes software used in the studio.
+    This model describes software that the studio uses.
     """
 
     name = db.Column(db.String(40), unique=True, nullable=False)

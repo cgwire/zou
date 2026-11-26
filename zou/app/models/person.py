@@ -74,13 +74,13 @@ SENSITIVE_FIELDS = [
     "fido_credentials",
     "fido_devices",
     "jti",
-    # Lockout state: serialize_safe published how far each account was
-    # into its login burst, and, being filterable, answered who is locked
-    # right now. An admin can still clear it, writes are unaffected.
+    # Lockout state. serialize_safe showed how far each account was in its
+    # login burst. Because the columns were filterable, they also showed who is
+    # locked now. An admin can still clear it: this does not affect writes.
     "login_failed_attemps",
     "last_login_failed",
-    # The identities an account signs in with through SSO: only the
-    # callbacks and an admin unlinking an account have a use for them.
+    # The identities that an account uses to sign in through SSO. Only the
+    # callbacks, and an admin who unlinks an account, use them.
     "oidc_issuer",
     "oidc_subject",
     "saml_issuer",
@@ -103,17 +103,21 @@ TWO_FACTOR_FIELDS = [
 def normalize_country(value):
     """
     Normalize an ISO 3166-1 alpha-2 country code to its canonical uppercase
-    form. Returns an ``(is_valid, normalized)`` tuple:
+    form. Return an ``(is_valid, normalized)`` tuple:
 
-      - ``(True, "FR")`` for a valid two-letter code (any casing/whitespace);
-      - ``(True, None)`` for an empty or ``None`` value (i.e. "no country");
-      - ``(False, None)`` for a malformed value (wrong length, non-ASCII,
-        non-alphabetic, or non-string input such as a SAML single-element
-        list).
+      - ``(True, "FR")`` for a valid two-letter code, with any case or
+        whitespace;
+      - ``(True, None)`` for an empty or ``None`` value ("no country");
+      - ``(False, None)`` for a malformed value: a wrong length, characters
+        that are not ASCII or not letters, or an input that is not a string,
+        such as a single-element list from SAML.
 
-    Single source of truth shared by the API guard (raises 400 on invalid),
-    the CSV import (fails the row on invalid), the SSO sign-in (drops
-    invalid) and the model validator (silently discards invalid).
+    These callers use this function as their single source of truth:
+
+      - the API guard, which raises 400 if the value is not valid;
+      - the CSV import, which fails the row;
+      - the SSO sign-in, which drops the value;
+      - the model validator, which discards the value without an error.
     """
     if value is None:
         return True, None
@@ -129,23 +133,25 @@ def normalize_country(value):
 
 def normalize_locale(value):
     """
-    Normalize a locale to a name Python Babel can parse back. Returns an
+    Normalize a locale to a name that Python Babel can parse back. Return an
     ``(is_valid, normalized)`` tuple:
 
-      - ``(True, "en_US")`` for a locale Babel recognizes (any casing and
-        surrounding whitespace); the value is trimmed but kept as-is rather
-        than re-serialized to Babel's canonical form, so ``zh_CN`` is not
-        rewritten to ``zh_Hans_CN`` and stays within the column width;
-      - ``(True, None)`` for an empty or ``None`` value (i.e. "no locale");
-      - ``(False, None)`` for a value Babel cannot parse (unknown locale,
-        malformed identifier, non-string input such as a SAML single-element
-        list) or one too long for the column.
+      - ``(True, "en_US")`` for a locale that Babel recognizes, with any case
+        and surrounding whitespace. The function trims the value, but does not
+        change it to the canonical form of Babel. Thus ``zh_CN`` does not
+        become ``zh_Hans_CN``, and the value stays in the column width;
+      - ``(True, None)`` for an empty or ``None`` value ("no locale");
+      - ``(False, None)`` for a value that Babel cannot parse (an unknown
+        locale, a malformed identifier, or an input that is not a string, such
+        as a single-element list from SAML), or for a value too long for the
+        column.
 
-    Single source of truth shared by the API guard (raises 400 on invalid)
-    and the model validator (silently discards invalid). Without it an
-    unparseable value would be stored verbatim and then break every later
-    read of the person, since LocaleType re-parses the stored column value
-    through Babel on load.
+    Two callers use this function as their single source of truth: the API
+    guard (it raises 400 if the value is not valid) and the model validator (it
+    discards the value without an error). Without this function, Zou stores an
+    unparseable value as it is. Then each later read of the person fails,
+    because LocaleType parses the stored column value again through Babel on
+    load.
     """
     if value is None:
         return True, None
@@ -156,8 +162,8 @@ def normalize_locale(value):
     normalized = value.strip()
     if normalized == "":
         return True, None
-    # The locale column is a Unicode(10); a longer value would overflow the
-    # column even if Babel accepts it (e.g. the "en_US_POSIX" variant).
+    # The locale column is a Unicode(10). A longer value overflows the column,
+    # even if Babel accepts it (for example the "en_US_POSIX" variant).
     if len(normalized) > 10:
         return False, None
     try:
@@ -193,7 +199,7 @@ class DepartmentLink(db.Model):
 
 class Person(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe a member of the studio (and an API user).
+    A person is a member of the studio (and an API user).
     """
 
     first_name = db.Column(db.String(80), nullable=False)
@@ -303,12 +309,12 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     @validates("country")
     def validate_country(self, key, value):
         """
-        Normalize ISO 3166-1 alpha-2 country codes to their canonical
-        uppercase form. Empty or malformed values are stored as None. API
-        requests and CSV imports are rejected upstream with a clean error;
-        this is the last-resort guard for direct writes (SSO sign-in,
-        scripts) that never raises, even on non-string input (e.g. a
-        single-element list from a SAML assertion).
+        Normalize ISO 3166-1 alpha-2 country codes to their canonical uppercase
+        form. Store None for empty or malformed values. The API requests and
+        the CSV imports reject these values before this point, with a clear
+        error. This validator is the last guard for direct writes (SSO sign-in,
+        scripts). It never raises, even if the input is not a string (for
+        example a single-element list from a SAML assertion).
         """
         is_valid, normalized = normalize_country(value)
         if not is_valid:
@@ -320,13 +326,14 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     @validates("locale")
     def validate_locale(self, key, value):
         """
-        Keep only locales Python Babel can parse back. Empty or malformed
-        values are stored as None (the read path then falls back to the
-        default locale). API requests are rejected upstream with a clean
-        400; this is the last-resort guard for direct writes (SSO sign-in,
-        imports, scripts) that never raises. Without it an unparseable value
-        would be persisted verbatim and break every later read of the person,
-        since LocaleType re-parses the stored column through Babel on load.
+        Keep only the locales that Python Babel can parse back. Store None for
+        empty or malformed values (then the read path uses the default locale).
+        The API requests reject these values before this point, with a clear
+        400 error. This validator is the last guard for direct writes (SSO
+        sign-in, imports, scripts), and it never raises. Without it, Zou stores
+        an unparseable value as it is. Then each later read of the person
+        fails, because LocaleType parses the stored column again through Babel
+        on load.
         """
         is_valid, normalized = normalize_locale(value)
         if not is_valid:
@@ -344,8 +351,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     @full_name.expression
     def full_name(cls):
-        # concat_ws skips NULLs; nullif maps empty strings to NULL so the
-        # result matches the Python property for every combination.
+        # concat_ws skips NULL values. nullif changes empty strings to NULL, so
+        # that the result matches the Python property for all combinations.
         return func.trim(
             func.concat_ws(
                 " ",
@@ -371,9 +378,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     def present_minimal(self, relations=False, milliseconds=False):
         """
-        Build the minimal person dict directly, not through serialize():
-        it is a hot path (embedded author of every comment and reply).
-        Departments are listed only when relations is True.
+        Return the minimal dict of the person. Make it directly, not through
+        serialize(), because this code runs very often: each comment and each
+        reply embeds its author. Include the departments only if relations is
+        True.
         """
         departments = []
         if relations:
@@ -393,7 +401,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "role": fields.serialize_value(self.role),
             "desktop_login": self.desktop_login,
             "is_bot": self.is_bot,
-            # Kitsu versions the avatar URL with it.
+            # Kitsu adds it to the avatar URL as a version.
             "updated_at": fields.serialize_value(
                 self.updated_at, milliseconds=milliseconds
             ),
@@ -401,8 +409,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     def present_client(self):
         """
-        Build the person dict a client reads: a name and an avatar to put
-        on a comment, nothing of how the studio is organised.
+        Return the dict of the person that a client reads: a name and an avatar
+        to put on a comment. It shows nothing about the organisation of the
+        studio.
         """
         return {
             "id": str(self.id),

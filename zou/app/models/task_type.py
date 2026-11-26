@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class TaskType(db.Model, BaseMixin, SerializerMixin):
     """
-    Categorize tasks in domain areas: modeling, animation, etc.
+    A task type puts tasks into domain areas: modeling, animation, etc.
     """
 
     name = db.Column(db.String(40), nullable=False)

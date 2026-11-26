@@ -22,8 +22,8 @@ VALIDATION_STATUSES = [
 
 class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a file which is aimed at being reviewed. It is not a publication
-    neither a working file.
+    This model describes a file for review. It is not a publication and not a
+    working file.
     """
 
     name = db.Column(db.String(250))
@@ -47,8 +47,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     duration = db.Column(db.Float, default=0)
     data = db.Column(JSONB)
 
-    # Token cost of generating this preview file (when produced by an AI
-    # pipeline). Nullable: only set when relevant.
+    # The token cost to make this preview file, if an AI pipeline made it.
+    # Nullable: only set when it applies.
     token_in = db.Column(db.Integer(), nullable=True)
     token_out = db.Column(db.Integer(), nullable=True)
 

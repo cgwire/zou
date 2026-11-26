@@ -75,11 +75,10 @@ acknowledgements_table = db.Table(
 
 class Comment(db.Model, BaseMixin, SerializerMixin):
     """
-    Comment can occur on any object but they are mainly used on tasks.
-    In the case of comment tasks, they are linked to a task status and
-    eventually to some preview files.
-    The status means that comment leads to task status change. The preview file
-    means that the comment relates to this preview in the context of the task.
+    A comment can be on any object, but comments are mainly on tasks. A comment
+    on a task links to a task status and can link to preview files. The status
+    tells that the comment changes the task status. The preview file tells that
+    the comment is about this preview, in the context of the task.
     """
 
     shotgun_id = db.Column(db.Integer)
@@ -130,8 +129,8 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         db.Index("ix_comment_created_at_id", "created_at", "id"),
     )
 
-    # Relationships whose IDs can be fetched directly from join tables
-    # instead of loading full ORM objects.
+    # For these relationships, get the IDs directly from the join tables, and
+    # do not load the full active records.
     _join_table_map = {
         "mentions": (mentions_table, "person"),
         "department_mentions": (department_mentions_table, "department"),
@@ -183,8 +182,9 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     @validates("checklist")
     def validate_checklist(self, key, value):
         """
-        Store a missing checklist as an empty list, the shape every reader
-        expects: an update, an import or a sync may send a null one.
+        Store a missing checklist as an empty list, because every reader
+        expects a list. An update, an import or a sync can send a null
+        checklist.
         """
         return [] if value is None else value
 
