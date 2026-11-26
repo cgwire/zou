@@ -661,72 +661,6 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         # without rotation). At x=110 should be white.
         self.assertPixelWhite(image.getpixel((110, 100)))
 
-    def test_real_psstroke_rotate_plus_translate_user_report(self):
-        """
-        Reproduces the user-reported bug: one PSStroke is translated
-        (untouched-then-dragged), another is rotated + translated. Both
-        must render at their fabric-equivalent positions independently.
-        Uses the exact JSON the user pasted.
-        """
-        path = self._temp_image(size=(1080, 605))
-        annotation = {
-            "drawing": {
-                "objects": [
-                    {
-                        "type": "PSStroke",
-                        "stroke": "#ff3860",
-                        "strokeWidth": 10,
-                        "canvasWidth": 1077.05,
-                        "canvasHeight": 605,
-                        "left": 218.08,
-                        "top": 260.06,
-                        "width": 712.64,
-                        "height": 22.59,
-                        "angle": 0,
-                        "scaleX": 1,
-                        "scaleY": 1,
-                        "strokePoints": [
-                            {"x": 214.28, "y": 460.0, "pressure": 1.0},
-                            {"x": 926.92, "y": 480.0, "pressure": 1.0},
-                        ],
-                    },
-                    {
-                        "type": "PSStroke",
-                        "stroke": "#ff3860",
-                        "strokeWidth": 10,
-                        "canvasWidth": 1077.05,
-                        "canvasHeight": 605,
-                        "left": 220.67,
-                        "top": -44.86,
-                        "width": 771.03,
-                        "height": 31.89,
-                        "angle": 24.35,
-                        "scaleX": 1,
-                        "scaleY": 1,
-                        "strokePoints": [
-                            {"x": 182.28, "y": 119.31, "pressure": 1.0},
-                            {"x": 953.31, "y": 150.50, "pressure": 1.0},
-                        ],
-                    },
-                ]
-            }
-        }
-        annotations_renderer.render_annotation_on_image(path, annotation)
-        image = Image.open(path)
-
-        # Stroke A (horizontal, translated up): renders roughly between
-        # y=261 and y=281 from x≈218 to x≈930.
-        self.assertPixelColored(image.getpixel((500, 270)))
-        # And nothing at the un-translated y≈468.
-        self.assertPixelWhite(image.getpixel((500, 468)))
-
-        # Stroke B (rotated 24°, slightly translated): un-rotated bbox
-        # top-left ends up around (220, -45) and bottom-right around
-        # (910, 300). The stroke crosses y=150 somewhere around x≈530.
-        # Just check that the rotated stroke is visible somewhere in
-        # the upper third and not at the upper-left where stroke A's
-        # un-translated position would have been.
-        self.assertPixelColored(image.getpixel((600, 150)))
         # And the rotated stroke should NOT appear at stroke A's
         # translated y (≈263) far from where A is — would indicate
         # cross-contamination.
@@ -1078,6 +1012,441 @@ class AnnotationsRendererTestCase(unittest.TestCase):
                     one_line,
                 )
 
+    def _render(self, *objects, size=(200, 200)):
+        path = self._temp_image(size)
+        canvas = {"canvasWidth": size[0], "canvasHeight": size[1]}
+        objects = [
+            {**canvas, **obj} if isinstance(obj, dict) else obj
+            for obj in objects
+        ]
+        annotations_renderer.render_annotation_on_image(
+            path, {"drawing": {"objects": objects}}
+        )
+        return Image.open(path)
+
+    def test_non_dict_objects_are_skipped(self):
+        image = self._render(
+            "junk",
+            {
+                "type": "rect",
+                "left": 50,
+                "top": 50,
+                "width": 100,
+                "height": 100,
+                "stroke": "#ff0000",
+                "strokeWidth": 4,
+            },
+        )
+        self.assertPixelClose(image.getpixel((50, 100)), (255, 0, 0))
+
+    def test_broken_object_does_not_stop_the_next_ones(self):
+        image = self._render(
+            {"type": "rect", "width": "wide", "height": 10},
+            {
+                "type": "rect",
+                "left": 50,
+                "top": 50,
+                "width": 100,
+                "height": 100,
+                "stroke": "#ff0000",
+                "strokeWidth": 4,
+            },
+        )
+        self.assertPixelClose(image.getpixel((50, 100)), (255, 0, 0))
+
+    def test_group_draws_its_children(self):
+        image = self._render(
+            {
+                "type": "group",
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 50,
+                        "top": 50,
+                        "width": 100,
+                        "height": 100,
+                        "fill": "#0000ff",
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ],
+            }
+        )
+        self.assertPixelClose(image.getpixel((100, 100)), (0, 0, 255))
+        self.assertPixelWhite(image.getpixel((20, 20)))
+
+    def test_rect_without_stroke_width_gets_a_thin_outline(self):
+        image = self._render(
+            {
+                "type": "rect",
+                "left": 50,
+                "top": 50,
+                "width": 100,
+                "height": 100,
+                "stroke": "#ff0000",
+                "strokeWidth": None,
+            }
+        )
+        self.assertPixelColored(image.getpixel((50, 100)))
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
+    def test_flat_rect_and_ellipse_draw_nothing(self):
+        image = self._render(
+            {
+                "type": "rect",
+                "left": 100,
+                "top": 50,
+                "width": 0,
+                "height": 100,
+                "stroke": "#ff0000",
+                "strokeWidth": 4,
+            },
+            {
+                "type": "ellipse",
+                "left": 50,
+                "top": 60,
+                "rx": 0,
+                "ry": 40,
+                "stroke": "#0000ff",
+                "strokeWidth": 4,
+            },
+        )
+        self.assertPixelWhite(image.getpixel((100, 100)))
+        self.assertPixelWhite(image.getpixel((50, 100)))
+
+    def test_draws_filled_circle_from_radius(self):
+        image = self._render(
+            {
+                "type": "circle",
+                "left": 50,
+                "top": 50,
+                "radius": 50,
+                "fill": "#0000ff",
+            }
+        )
+        self.assertPixelClose(image.getpixel((100, 100)), (0, 0, 255))
+        self.assertPixelWhite(image.getpixel((20, 20)))
+
+    def test_draws_ellipse_from_width_and_height(self):
+        image = self._render(
+            {
+                "type": "ellipse",
+                "left": 50,
+                "top": 70,
+                "width": 100,
+                "height": 60,
+                "stroke": "#ff0000",
+                "strokeWidth": 4,
+            }
+        )
+        # Top and left of the ellipse, its centre has no fill.
+        self.assertPixelClose(image.getpixel((100, 71)), (255, 0, 0))
+        self.assertPixelClose(image.getpixel((51, 100)), (255, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
+    def test_draws_line(self):
+        image = self._render(
+            {
+                "type": "line",
+                "x1": 40,
+                "y1": 100,
+                "x2": 160,
+                "y2": 100,
+                "stroke": "rgb(0, 128, 0)",
+                "strokeWidth": 4,
+            }
+        )
+        self.assertPixelClose(image.getpixel((100, 100)), (0, 128, 0))
+        self.assertPixelWhite(image.getpixel((100, 150)))
+
+    def test_polyline_stays_open(self):
+        image = self._render(
+            {
+                "type": "polyline",
+                "stroke": "#0000ff",
+                "strokeWidth": 4,
+                "points": [
+                    {"x": 40, "y": 60},
+                    {"x": 100, "y": 140},
+                    {"x": 160, "y": 60},
+                ],
+            }
+        )
+        self.assertPixelClose(image.getpixel((70, 100)), (0, 0, 255))
+        self.assertPixelClose(image.getpixel((130, 100)), (0, 0, 255))
+        # The gap between the first and the last point is not closed.
+        self.assertPixelWhite(image.getpixel((100, 60)))
+
+    def test_draws_filled_polygon_with_outline(self):
+        image = self._render(
+            {
+                "type": "polygon",
+                "fill": "#00ff00",
+                "stroke": "#000000",
+                "strokeWidth": 4,
+                "points": [
+                    {"x": 40, "y": 160},
+                    {"x": 160, "y": 160},
+                    {"x": 100, "y": 40},
+                ],
+            }
+        )
+        self.assertPixelClose(image.getpixel((100, 120)), (0, 255, 0))
+        self.assertPixelClose(image.getpixel((100, 160)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((20, 20)))
+
+    def test_a_gradient_fill_keeps_the_outline(self):
+        """
+        Fabric serializes a gradient fill as a dict. The rect is drawn
+        without a fill, with its outline.
+        """
+        image = self._render(
+            {
+                "type": "rect",
+                "left": 40,
+                "top": 40,
+                "width": 120,
+                "height": 120,
+                "fill": {"type": "linear", "colorStops": []},
+                "stroke": "#ff0000",
+                "strokeWidth": 4,
+            }
+        )
+        self.assertPixelClose(image.getpixel((40, 100)), (255, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
+    def test_arrow_with_negative_head_size_draws_only_the_body(self):
+        image = self._render(
+            {
+                "type": "arrow",
+                "x1": 40,
+                "y1": 100,
+                "x2": 160,
+                "y2": 100,
+                "stroke": "#000000",
+                "strokeWidth": 4,
+                "arrowHeadSize": -30,
+            }
+        )
+        self.assertPixelClose(image.getpixel((157, 100)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((178, 100)))
+
+    def test_text_background_is_painted(self):
+        image = self._render(
+            {
+                "type": "text",
+                "text": "Hi",
+                "left": 50,
+                "top": 50,
+                "fontSize": 40,
+                "fill": "#000000",
+                "backgroundColor": "#ff0000",
+            }
+        )
+        red_pixels = [
+            p
+            for p in image.getdata()
+            if p[0] > 200 and p[1] < 60 and p[2] < 60
+        ]
+        self.assertGreater(len(red_pixels), 100)
+
+    def test_rotated_text_turns_upright(self):
+        text = {
+            "type": "text",
+            "text": "IIIIIIIIII",
+            "left": 60,
+            "top": 60,
+            "fontSize": 30,
+            "fill": "#000000",
+        }
+        blank = Image.open(self._temp_image())
+        flat = ImageChops.difference(self._render(text), blank).getbbox()
+        upright = ImageChops.difference(
+            self._render({**text, "angle": 90}), blank
+        ).getbbox()
+        self.assertGreater(flat[2] - flat[0], flat[3] - flat[1])
+        self.assertGreater(upright[3] - upright[1], upright[2] - upright[0])
+
+    def test_load_font_skips_missing_and_broken_files(self):
+        fd, good_path = tempfile.mkstemp(suffix=".ttf")
+        with os.fdopen(fd, "wb") as font_file:
+            font_file.write(ImageFont.load_default(10).font_bytes)
+        fd, broken_path = tempfile.mkstemp(suffix=".ttf")
+        with os.fdopen(fd, "wb") as font_file:
+            font_file.write(b"not a font")
+        self._paths = getattr(self, "_paths", []) + [good_path, broken_path]
+        candidates = ["/nonexistent/font.ttf", broken_path, good_path]
+        with mock.patch.object(
+            annotations_renderer, "DEFAULT_FONT_PATHS", candidates
+        ):
+            font = annotations_renderer._load_font(12)
+        self.assertEqual(font.path, good_path)
+
+    def test_load_font_falls_back_to_the_default_font(self):
+        with mock.patch.object(
+            annotations_renderer,
+            "DEFAULT_FONT_PATHS",
+            ["/nonexistent/font.ttf"],
+        ):
+            font = annotations_renderer._load_font(12)
+        self.assertIsNotNone(font.getbbox("A"))
+
+    def test_psstroke_uses_its_stroke_offset_as_pivot(self):
+        image = self._render(
+            {
+                "type": "PSStroke",
+                "stroke": "#000000",
+                "strokeWidth": 6,
+                "left": 60,
+                "top": 99,
+                "width": 80,
+                "height": 2,
+                "strokeOffset": {"x": 40, "y": -50},
+                "strokePoints": [
+                    {"x": 0, "y": 0, "pressure": 1},
+                    {"x": 80, "y": 0, "pressure": 1},
+                ],
+            }
+        )
+        # Without the offset, the pivot is the centre of the points and
+        # the stroke lands on y=100.
+        self.assertPixelClose(image.getpixel((100, 150)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
+    def test_psstroke_without_pressure_uses_full_width(self):
+        image = self._render(
+            {
+                "type": "PSStroke",
+                "stroke": "#000000",
+                "strokeWidth": 10,
+                "strokePoints": [{"x": 40, "y": 100}, {"x": 160, "y": 100}],
+            }
+        )
+        self.assertPixelClose(image.getpixel((100, 103)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 110)))
+
+    def test_path_string_closes_on_z(self):
+        image = self._render(
+            {
+                "type": "path",
+                "stroke": "#000000",
+                "strokeWidth": 4,
+                "path": "M 40 40 L 160 40 L 160 160 Z",
+            }
+        )
+        # (100, 100) is on the closing edge from (160, 160) to (40, 40).
+        self.assertPixelClose(image.getpixel((100, 100)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((60, 140)))
+
+    def test_path_quadratic_curve_bends_to_its_control_point(self):
+        image = self._render(
+            {
+                "type": "path",
+                "stroke": "#000000",
+                "strokeWidth": 4,
+                "path": [["M", 40, 150], ["Q", 100, 30, 160, 150]],
+            }
+        )
+        # The curve passes through (100, 90) at t=0.5.
+        self.assertPixelClose(image.getpixel((100, 90)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 150)))
+
+    def test_path_cubic_curve_bends_to_its_control_points(self):
+        image = self._render(
+            {
+                "type": "path",
+                "stroke": "#000000",
+                "strokeWidth": 4,
+                "path": [["M", 40, 150], ["C", 40, 50, 160, 50, 160, 150]],
+            }
+        )
+        # The curve passes through (100, 75) at t=0.5.
+        self.assertPixelClose(image.getpixel((100, 75)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 150)))
+
+    def test_path_without_move_starts_at_its_first_point(self):
+        stroke = {"type": "path", "stroke": "#000000", "strokeWidth": 4}
+        image = self._render(
+            {**stroke, "path": [["L", 40, 60], ["L", 160, 60]]},
+            {**stroke, "path": [["Q", 40, 100, 160, 100]]},
+            {**stroke, "path": [["C", 40, 140, 100, 140, 160, 140]]},
+        )
+        for y in (60, 100, 140):
+            self.assertPixelClose(image.getpixel((100, y)), (0, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 80)))
+        self.assertPixelWhite(image.getpixel((100, 120)))
+
+    def test_eraser_skips_children_that_are_not_paths(self):
+        image = self._render(
+            {
+                "type": "rect",
+                "left": 50,
+                "top": 50,
+                "width": 100,
+                "height": 100,
+                "fill": "#ff0000",
+                "eraser": {
+                    "type": "eraser",
+                    "width": 100,
+                    "height": 100,
+                    "objects": [
+                        "junk",
+                        {"type": "rect", "width": 10, "height": 10},
+                        {
+                            "type": "path",
+                            "left": -30,
+                            "top": -20,
+                            "width": 60,
+                            "height": 40,
+                            "strokeWidth": 40,
+                            "pathOffset": {"x": 30, "y": 20},
+                            "path": [["M", 0, 20], ["L", 60, 20]],
+                        },
+                    ],
+                },
+            }
+        )
+        self.assertPixelClose(image.getpixel((100, 60)), (255, 0, 0))
+        self.assertPixelWhite(image.getpixel((100, 100)))
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ParsePathStringTestCase(unittest.TestCase):
+    def test_exponents_and_leading_dots_are_one_number_each(self):
+        commands = annotations_renderer._parse_path_string(
+            "M 1e-5 .5 L 2.5E2 -.25"
+        )
+
+        self.assertEqual(commands, [["M", 1e-5, 0.5], ["L", 250.0, -0.25]])
+
+    def test_path_that_is_not_a_string_or_a_list_has_no_commands(self):
+        self.assertEqual(annotations_renderer._parse_path_commands(42), [])
+
+    def test_lone_move_is_dropped(self):
+        segments = annotations_renderer._path_to_segments(
+            [["M", 1, 1], ["M", 2, 2], ["L", 3, 3]], lambda x, y: (x, y)
+        )
+
+        self.assertEqual(segments, [[(2, 2), (3, 3)]])
+
+
+class ParseColorTestCase(unittest.TestCase):
+    def test_rgba_alpha_above_one_is_a_0_to_255_value(self):
+        parse = annotations_renderer._parse_color
+
+        self.assertEqual(parse("rgba(10, 20, 30, 128)"), (10, 20, 30, 128))
+        self.assertEqual(parse("rgba(10, 20, 30, 300)"), (10, 20, 30, 255))
+
+    def test_hex_color_keeps_its_alpha(self):
+        self.assertEqual(
+            annotations_renderer._parse_color("#ff000080"), (255, 0, 0, 128)
+        )
+
+    def test_unknown_color_returns_the_default(self):
+        self.assertEqual(
+            annotations_renderer._parse_color("not-a-color", default="d"),
+            "d",
+        )

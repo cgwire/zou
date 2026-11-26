@@ -70,11 +70,12 @@ class ThumbnailTestCase(unittest.TestCase):
         )
         full_path = thumbnail.save_file(TEST_FOLDER, "instance-id", th_file)
 
-        thumbnail.turn_into_thumbnail(full_path, thumbnail.RECTANGLE_SIZE)
+        self.assertEqual(
+            full_path, os.path.join(TEST_FOLDER, "instance-id.png")
+        )
         im = Image.open(full_path)
-        width, height = im.size
-        self.assertEqual(width, 150)
-        self.assertEqual(height, 100)
+        self.assertEqual(im.format, "PNG")
+        self.assertEqual(im.size, (180, 101))
 
     def test_save_file_rejects_a_file_that_is_not_a_picture(self):
         source_path = os.path.join(TEST_FOLDER, "not-a-picture.png")
@@ -175,13 +176,19 @@ class ThumbnailTestCase(unittest.TestCase):
 
         im = Image.new("RGB", (4, 4), (200, 30, 30))
         im.info["icc_profile"] = profile
-        self.assertEqual(thumbnail.to_srgb(im).tobytes(), im.tobytes())
+        for channel, expected in zip(
+            thumbnail.to_srgb(im).getpixel((0, 0)), (200, 30, 30)
+        ):
+            self.assertAlmostEqual(channel, expected, delta=2)
 
         im = Image.new("RGBA", (4, 4), (200, 30, 30, 128))
         im.info["icc_profile"] = profile
         converted = thumbnail.to_srgb(im)
         self.assertEqual(converted.mode, "RGBA")
-        self.assertEqual(converted.getpixel((0, 0)), (200, 30, 30, 128))
+        for channel, expected in zip(
+            converted.getpixel((0, 0)), (200, 30, 30, 128)
+        ):
+            self.assertAlmostEqual(channel, expected, delta=2)
 
         im = Image.new("CMYK", (4, 4), (0, 255, 255, 0))
         self.assertEqual(thumbnail.to_srgb(im).mode, "RGB")

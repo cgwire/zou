@@ -9,10 +9,10 @@ from babel import Locale
 from pytz import tzinfo
 from sqlalchemy_utils.types.choice import Choice
 
-# Anchored at both ends: re.match only anchors the start, so an unanchored
-# pattern accepted a valid UUID followed by anything ("<uuid>\n", "<uuid>?x=1")
-# and let it reach the database, where uuid.UUID() raises a StatementError
-# (HTTP 500) instead of the 400 the guards using is_valid_id intend.
+# Anchored at both ends: re.match only anchors the start. An unanchored
+# pattern accepted a valid UUID followed by any text ("<uuid>\n",
+# "<uuid>?x=1") and let it go to the database. There, uuid.UUID() raises a
+# StatementError (HTTP 500), not the 400 that the is_valid_id guards expect.
 _UUID_RE = re.compile(
     r"\A[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}"
     r"-[a-fA-F0-9]{12}\Z"
@@ -21,13 +21,13 @@ _UUID_RE = re.compile(
 
 def serialize_value(value, milliseconds=False):
     """
-    Utility function to handle the normalizing of specific fields.
-    The aim is to make the result JSON serializable
+    Normalize the given value for specific field types. The aim is to make
+    the result JSON serializable.
     """
     if isinstance(value, datetime.datetime):
         if milliseconds:
-            # isoformat() drops the fraction of a round second, which the
-            # cursor listings then fail to parse back.
+            # isoformat() drops the fraction of a round second, and then the
+            # cursor listings cannot parse the value back.
             return value.isoformat(timespec="microseconds")
         else:
             return value.replace(microsecond=0).isoformat()
@@ -63,8 +63,8 @@ def serialize_value(value, milliseconds=False):
 
 def serialize_list(list_value):
     """
-    Serialize a list of any kind of objects into data structures
-    that are JSON serializable.
+    Serialize a list of objects of any type into data structures that are
+    JSON serializable.
     """
     return (
         list_value
@@ -75,8 +75,8 @@ def serialize_list(list_value):
 
 def serialize_dict(dict_value):
     """
-    Serialize a dict of any kind of objects into data structures that are JSON
-    serializable.
+    Serialize a dict of objects of any type into data structures that are
+    JSON serializable.
     """
     result = {}
     for key in dict_value.keys():
@@ -87,14 +87,14 @@ def serialize_dict(dict_value):
 
 def serialize_orm_arrays(array_value):
     """
-    Serialize a orm array into simple data structures (useful for json dumping).
+    Serialize an ORM array into the list of the IDs of its items.
     """
     return [serialize_value(val.id) for val in array_value]
 
 
 def serialize_models(models, relations=False, milliseconds=False):
     """
-    Serialize a list of models (useful for json dumping)
+    Serialize a list of models (useful for JSON dumps).
     """
     return [
         model.serialize(relations=relations, milliseconds=milliseconds)
@@ -105,29 +105,30 @@ def serialize_models(models, relations=False, milliseconds=False):
 
 def present_models(models):
     """
-    Present a list of models (useful for json dumping)
+    Present a list of models (useful for JSON dumps).
     """
     return [model.present() for model in models if model is not None]
 
 
 def gen_uuid():
     """
-    Generate a unique identifier (useful for json dumping).
+    Generate a random unique identifier, as a uuid.UUID.
     """
     return uuid.uuid4()
 
 
 def get_date_object(date_string, date_format="%Y-%m-%d"):
     """
-    Shortcut for date parsing (useful for json dumping).
-    Format for full date string: %Y-%m-%dT%H:%M:%S
+    Parse the given string with the given format and return a datetime.
+    Format for a full date string: %Y-%m-%dT%H:%M:%S
     """
     return datetime.datetime.strptime(date_string, date_format)
 
 
 def get_default_date_object(date_string):
     """
-    Shortcut for date parsing at default format.
+    Parse the given "%Y-%m-%dT%H:%M:%S" string and return a datetime. If
+    the string is empty or does not match, return None.
     """
     date_obj = None
     if date_string is not None and len(date_string) > 0:
@@ -142,7 +143,8 @@ def get_default_date_object(date_string):
 
 def is_valid_id(value):
     """
-    Check if a given value is a valid UUID or its string representation.
+    Check if the given value is a valid UUID or its string representation.
+    Return the match object (truthy) or None.
     """
     return _UUID_RE.match(str(value))
 
@@ -150,7 +152,7 @@ def is_valid_id(value):
 def serialize_datetime(value):
     """
     Serialize a DateTime column value (or None) without the type dispatch
-    of serialize_value: meant for hot loops over known column types.
+    of serialize_value. Use it in hot loops over known column types.
     """
     if value is None:
         return None
@@ -160,9 +162,9 @@ def serialize_datetime(value):
 def pick_fields(entries, field_names):
     """
     Keep only the given field names in each serialized entry (id and type
-    are always kept). Runs after full serialization on purpose: any
-    permission-based field masking has already been applied, so picking
-    can only remove data, never expose it. Unknown names are ignored.
+    always stay). This function runs after the full serialization on
+    purpose: it comes after all the field masks based on permissions. Thus,
+    it can only remove data, never expose it. It ignores unknown names.
     """
     kept = set(field_names) | {"id", "type"}
     return [
@@ -174,7 +176,7 @@ def pick_fields(entries, field_names):
 def boolean(value):
     """
     Parse "true"/"false" (case insensitive, also "1"/"0"/"on") as a boolean.
-    Meant as a query argument type; raises ValueError on anything else.
+    Use it as a query argument type. On any other value, raise ValueError.
     """
     if isinstance(value, bool):
         return value

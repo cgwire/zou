@@ -1,40 +1,16 @@
 import unittest
 
-from zou.app.utils.email_i18n import EMAIL_TRANSLATIONS, get_email_translation
+from zou.app.utils.email_i18n import (
+    EMAIL_TRANSLATIONS,
+    LANGUAGE_LOCALES,
+    get_email_translation,
+)
 
 
 class EmailI18nTestCase(unittest.TestCase):
-    def test_get_email_translation_en_us(self):
-        result = get_email_translation("en_US", "comment_title")
-        self.assertEqual(result, "New Comment")
-
     def test_get_email_translation_fr_fr(self):
         result = get_email_translation("fr_FR", "comment_title")
         self.assertEqual(result, "Nouveau commentaire")
-
-    def test_get_email_translation_es_es(self):
-        result = get_email_translation("es_ES", "comment_title")
-        self.assertEqual(result, "Nuevo comentario")
-
-    def test_get_email_translation_ja_jp(self):
-        result = get_email_translation("ja_JP", "comment_title")
-        self.assertEqual(result, "新しいコメント")
-
-    def test_get_email_translation_de_de(self):
-        result = get_email_translation("de_DE", "comment_title")
-        self.assertEqual(result, "Neuer Kommentar")
-
-    def test_get_email_translation_nl_nl(self):
-        result = get_email_translation("nl_NL", "comment_title")
-        self.assertEqual(result, "Nieuwe reactie")
-
-    def test_get_email_translation_zh_cn(self):
-        result = get_email_translation("zh_CN", "comment_title")
-        self.assertEqual(result, "新评论")
-
-    def test_get_email_translation_pt_br(self):
-        result = get_email_translation("pt_BR", "comment_title")
-        self.assertEqual(result, "Novo comentário")
 
     def test_get_email_translation_with_params(self):
         result = get_email_translation(
@@ -54,35 +30,18 @@ class EmailI18nTestCase(unittest.TestCase):
         result = get_email_translation("it", "comment_title")
         self.assertEqual(result, "New Comment")
 
-    def test_get_email_translation_fallback_none_locale(self):
-        result = get_email_translation(None, "comment_title")
-        self.assertEqual(result, "New Comment")
-
-    def test_get_email_translation_fallback_empty_string(self):
-        result = get_email_translation("", "comment_title")
-        self.assertEqual(result, "New Comment")
+    def test_get_email_translation_fallback_none_or_empty_locale(self):
+        for locale in (None, ""):
+            result = get_email_translation(locale, "comment_title")
+            self.assertEqual(result, "New Comment")
 
     def test_get_email_translation_short_code_mapping(self):
-        result_fr = get_email_translation("fr", "comment_title")
-        self.assertEqual(result_fr, "Nouveau commentaire")
-
-        result_es = get_email_translation("es", "comment_title")
-        self.assertEqual(result_es, "Nuevo comentario")
-
-        result_ja = get_email_translation("ja", "comment_title")
-        self.assertEqual(result_ja, "新しいコメント")
-
-        result_de = get_email_translation("de", "comment_title")
-        self.assertEqual(result_de, "Neuer Kommentar")
-
-        result_nl = get_email_translation("nl", "comment_title")
-        self.assertEqual(result_nl, "Nieuwe reactie")
-
-        result_zh = get_email_translation("zh", "comment_title")
-        self.assertEqual(result_zh, "新评论")
-
-        result_pt = get_email_translation("pt", "comment_title")
-        self.assertEqual(result_pt, "Novo comentário")
+        for code, locale in LANGUAGE_LOCALES.items():
+            self.assertEqual(
+                get_email_translation(code, "comment_title"),
+                EMAIL_TRANSLATIONS[locale]["comment_title"],
+                code,
+            )
 
     def test_get_email_translation_with_script_subtag(self):
         # Babel's canonical form of zh_CN, also used as DEFAULT_LOCALE value
@@ -171,6 +130,19 @@ class EmailI18nTestCase(unittest.TestCase):
         )
         self.assertIn("Studio XYZ", result_fr)
         self.assertIn("Cordialement", result_fr)
+
+    def test_missing_params_return_the_template(self):
+        # A caller that forgets a param must still get a mail, not a
+        # KeyError.
+        result = get_email_translation("en_US", "comment_subject")
+        self.assertEqual(
+            result, EMAIL_TRANSLATIONS["en_US"]["comment_subject"]
+        )
+        self.assertIn("{task_name}", result)
+
+    def test_unknown_key_returns_the_key(self):
+        result = get_email_translation("fr_FR", "no_such_key")
+        self.assertEqual(result, "no_such_key")
 
 
 class EmailEscapingTestCase(unittest.TestCase):

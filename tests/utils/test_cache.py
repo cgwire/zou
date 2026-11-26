@@ -9,12 +9,7 @@ class CacheTestCase(unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        global called
         self.called = 0
-
-    @cache.memoize_function(50)
-    def memoized_function(self, parameter):
-        self.called = self.called + 1
 
     @cache.memoize_function(50)
     def memoized_function2(self, parameter):

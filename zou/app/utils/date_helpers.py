@@ -8,22 +8,38 @@ from zou.app.exceptions import WrongDateFormatException
 
 
 def get_now():
+    """
+    Return the current UTC time as a "YYYY-MM-DDTHH:MM:SS" string.
+    """
     return get_string_with_timezone_from_date(get_utc_now_datetime(), "UTC")
 
 
 def get_utc_now_datetime():
+    """
+    Return the current UTC time as a naive datetime.
+    """
     return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
 
 
 def get_date_from_now(nb_days):
+    """
+    Return the date nb_days before today (local date of the server).
+    """
     return datetime.date.today() - datetime.timedelta(days=nb_days)
 
 
 def get_date_diff(date_a, date_b):
+    """
+    Return the absolute difference between two dates, in seconds (float).
+    """
     return abs((date_b - date_a).total_seconds())
 
 
 def get_date_string(date_obj, milliseconds=False):
+    """
+    Return the given datetime as an ISO string without timezone. If
+    milliseconds is True, include the microseconds.
+    """
     if milliseconds:
         return date_obj.strftime("%Y-%m-%dT%H:%M:%S.%f")
     else:
@@ -32,7 +48,7 @@ def get_date_string(date_obj, milliseconds=False):
 
 def get_date_string_with_timezone(date_string, timezone):
     """
-    Apply given timezone to given date and return it as a string.
+    Apply the given timezone to the given date and return it as a string.
     """
     date_obj = datetime.datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S")
     return format_datetime(date_obj, "yyyy-MM-ddTHH:mm:ss", tzinfo=timezone)
@@ -40,24 +56,25 @@ def get_date_string_with_timezone(date_string, timezone):
 
 def get_string_with_timezone_from_date(date_obj, timezone):
     """
-    Apply given timezone to given date and return it as a string.
+    Apply the given timezone to the given date and return it as a string.
     """
     return format_datetime(date_obj, "yyyy-MM-ddTHH:mm:ss", tzinfo=timezone)
 
 
 def get_simple_string_with_timezone_from_date(date_obj, timezone):
     """
-    Apply given timezone to given date and return it as a string (only date).
+    Apply the given timezone to the given date and return it as a string
+    (date only).
     """
     return format_datetime(date_obj, "yyyy-MM-dd", tzinfo=timezone)
 
 
 def get_today_string_with_timezone(timezone):
     """
-    Get today date in string format with timezone applied.
+    Return the date of today as a string, with the timezone applied.
     """
-    # Start from the current instant: a bare date is taken as midnight UTC
-    # and lands on the previous day once converted west of UTC.
+    # Start from the current instant: a bare date counts as midnight UTC,
+    # and goes to the previous day after the conversion west of UTC.
     return get_simple_string_with_timezone_from_date(
         datetime.datetime.now(tz=datetime.timezone.utc), timezone
     )
@@ -65,14 +82,14 @@ def get_today_string_with_timezone(timezone):
 
 def get_date_from_string(date_str):
     """
-    Parse a date string and returns a date object.
+    Parse a "YYYY-MM-DD" string and return a datetime at midnight.
     """
     return datetime.datetime.strptime(date_str, "%Y-%m-%d")
 
 
 def get_datetime_from_string(date_str, milliseconds=False):
     """
-    Parse a datetime string and returns a datetime object.
+    Parse a datetime string and return a datetime object.
     """
     if milliseconds:
         return datetime.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
@@ -82,7 +99,7 @@ def get_datetime_from_string(date_str, milliseconds=False):
 
 def get_year_interval(year):
     """
-    Get a tuple containing start date and end date for given year.
+    Return a tuple with the start date and the end date of the given year.
     """
     try:
         start = datetime.datetime(int(year), 1, 1)
@@ -94,7 +111,8 @@ def get_year_interval(year):
 
 def get_month_interval(year, month):
     """
-    Get a tuple containing start date and end date for given year and month.
+    Return a tuple with the start date and the end date of the given year
+    and month.
     """
     try:
         start = datetime.datetime(int(year), int(month), 1)
@@ -106,7 +124,8 @@ def get_month_interval(year, month):
 
 def get_week_interval(year, week):
     """
-    Get a tuple containing start date and end date for given year and week.
+    Return a tuple with the start date and the end date of the given year
+    and week.
     """
     try:
         start = datetime.date.fromisocalendar(int(year), int(week), 1)
@@ -118,7 +137,7 @@ def get_week_interval(year, week):
 
 def get_day_interval(year, month, day):
     """
-    Get a tuple containing start date and end date for given day.
+    Return a tuple with the start date and the end date of the given day.
     """
     try:
         start = datetime.datetime(int(year), int(month), int(day))
@@ -130,9 +149,8 @@ def get_day_interval(year, month, day):
 
 def get_timezoned_interval(start, end, timezone):
     """
-    Convert an interval expressed in the given timezone's local time into
-    its naive UTC equivalent, to compare against UTC-stored datetime
-    columns.
+    Convert an interval in the local time of the given timezone into its
+    naive UTC equivalent, for comparison with datetime columns in UTC.
     """
     return (
         get_utc_from_local_datetime(start, timezone),
@@ -142,11 +160,12 @@ def get_timezoned_interval(start, end, timezone):
 
 def get_utc_from_local_datetime(date_obj, timezone):
     """
-    Interpret a naive date or datetime as local time in the given timezone
-    and return the matching naive UTC datetime. A local time met twice,
-    when clocks go back, is taken at its first pass, and one that never
-    happens, when they go forward, as if they had not moved yet: a local
-    midnight is always the first instant of its day.
+    Read a naive date or datetime as local time in the given timezone and
+    return the matching naive UTC datetime. If a local time occurs two
+    times (when clocks go back), use its first occurrence. If a local time
+    does not occur (when clocks go forward), use it as if the clocks did
+    not change yet. Thus, a local midnight is always the first instant of
+    its day.
     """
     if not isinstance(date_obj, datetime.datetime):
         date_obj = datetime.datetime.combine(date_obj, datetime.time.min)
@@ -154,8 +173,8 @@ def get_utc_from_local_datetime(date_obj, timezone):
     try:
         localized = tz.localize(date_obj, is_dst=None)
     except pytz.AmbiguousTimeError:
-        # The earlier of the two instants: is_dst alone would pick the
-        # second pass where winter time is negative DST, as in Dublin.
+        # Use the earlier of the two instants. If winter time is a negative
+        # DST, as in Dublin, is_dst alone would select the second one.
         localized = min(
             tz.localize(date_obj, is_dst=True),
             tz.localize(date_obj, is_dst=False),
@@ -167,7 +186,8 @@ def get_utc_from_local_datetime(date_obj, timezone):
 
 def add_business_days_to_date(date, nb_days):
     """
-    Add a number of business days to a date. Business days are Monday to Friday.
+    Add a number of business days to a date. Business days are Monday to
+    Friday.
     """
     while nb_days > 0:
         date += datetime.timedelta(days=1)

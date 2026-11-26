@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -7,6 +8,7 @@ from flask_fs.errors import FileNotFound
 
 from zou.app import app
 from zou.app.stores import file_store
+from zou.app.utils import fs
 
 
 class FileStoreTestCase(unittest.TestCase):
@@ -553,3 +555,26 @@ class SharedSwiftAuthTestCase(unittest.TestCase):
         ):
             conn = self.backend._new_connection()
         self.assertIsNone(conn.token)
+
+
+class FileStoreConfirmedFileNotFoundTestCase(unittest.TestCase):
+    def test_backend_404_is_confirmed(self):
+        from zou.app.stores import file_store
+
+        class SwiftClientException(Exception):
+            http_status = 404
+
+        bucket = mock.MagicMock()
+        bucket.backend.read_chunks.side_effect = SwiftClientException("404")
+        with pytest.raises(fs.ConfirmedFileNotFound):
+            file_store._read_chunks(bucket, "tiles-some-id")
+
+    def test_local_file_vanishing_on_read_is_confirmed(self):
+        from zou.app.stores import file_store
+
+        def read_stream():
+            raise FileNotFoundError("gone")
+            yield b""
+
+        with pytest.raises(fs.ConfirmedFileNotFound):
+            list(file_store._measured_read(read_stream(), "tiles-some-id"))

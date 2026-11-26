@@ -6,7 +6,7 @@ from zou.app.utils.string import strtobool
 def envtobool(key, default=False):
     """
     Convert an environment variable to a boolean value.
-    If environment variable can't be converted raise ValueError.
+    If the environment variable cannot be converted, raise ValueError.
     """
     try:
         return strtobool(os.getenv(key, default))
@@ -19,7 +19,7 @@ def envtobool(key, default=False):
 def env_with_semicolon_to_list(key, default=None):
     """
     Convert an environment variable to a list.
-    Items are separated by semicolon.
+    A semicolon separates the items.
     """
     env_value = os.getenv(key, None)
     if env_value is None:

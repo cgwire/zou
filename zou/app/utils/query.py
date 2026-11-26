@@ -10,15 +10,15 @@ from zou.app import config
 from zou.app.exceptions import WrongParameterException
 from zou.app.utils import fields, string
 
-# Some criterions accept sentinel values that are not UUIDs (e.g. "all" or
-# "main" for episode_id) and must therefore bypass UUID validation.
+# Some criterions accept sentinel values that are not UUIDs (e.g. "all"
+# or "main" for episode_id). Thus, they must bypass the UUID validation.
 EPISODE_ID_SENTINELS = ["all", "main"]
 
 
 def get_query_criterions_from_request(request):
     """
-    Turn request parameters into a dict where keys are attributes to filter and
-    values are values to filter.
+    Change the request parameters into a dict. The keys are the attributes
+    to filter on, and the values are the values to filter with.
     """
     criterions = {}
     for key, value in request.args.items():
@@ -31,11 +31,11 @@ def check_criterion_id_format(
     criterions, id_fields=("id", "project_id", "episode_id")
 ):
     """
-    Ensure the id criterions extracted from a request hold a valid UUID before
-    they are injected into a custom SQL query. Resources that build queries by
-    hand (the various "*-and-tasks" endpoints) bypass the casting done in
-    apply_criterions_to_db_query, so an invalid UUID would otherwise reach the
-    database and raise a StatementError (HTTP 500) instead of a 400.
+    Make sure that the ID criterions of a request contain a valid UUID
+    before they go into a custom SQL query. Resources that build queries
+    by hand (the "*-and-tasks" endpoints) do not get the cast of
+    apply_criterions_to_db_query. Without this check, an invalid UUID goes
+    to the database and raises a StatementError (HTTP 500), not a 400.
     """
     for id_field in id_fields:
         value = criterions.get(id_field)
@@ -51,7 +51,7 @@ def check_criterion_id_format(
 
 def apply_criterions_to_db_query(model, db_query, criterions):
     """
-    Apply criterions given in HTTP request to the sqlachemy db query object.
+    Apply the criterions of the HTTP request to the SQLAlchemy query object.
     """
 
     many_join_filter = []
@@ -75,7 +75,7 @@ def apply_criterions_to_db_query(model, db_query, criterions):
                 and value[0] == "["
             )
 
-            if key == "name" and field_key is not None:
+            if key == "name":
                 name_filter.append(value)
 
             elif is_many_to_many_field:
@@ -108,11 +108,11 @@ def apply_criterions_to_db_query(model, db_query, criterions):
 
 def apply_cursor(query, cursor_id=None, limit=None):
     """
-    Restrict the query to the rows following given one, newest created
-    first, to walk a whole listing request by request: the client asks again
-    with the id of the last row it got until a page comes back short. Unlike
-    pages, rows written during the walk never shift the others. The id
-    settles the order of rows created together.
+    Limit the query to the rows after the given row, newest first (by
+    creation date). The client walks a full listing request by request: it
+    sends the ID of the last row that it got, until a page comes back
+    short. Rows written during the walk never shift the other rows, as
+    they do with pages. The ID sets the order of rows created together.
     """
     limit = limit or config.NB_RECORDS_PER_PAGE
     if limit < 0:
@@ -140,8 +140,8 @@ def apply_cursor(query, cursor_id=None, limit=None):
 
 def is_whole_list(page=0, limit=None, cursor_id=None):
     """
-    True when the paging options of a listing ask for neither a page nor a
-    cursor walk: the listing answers with all its rows.
+    Tell whether the paging options of a listing ask for no page and no
+    cursor walk. In this case, the listing answers with all its rows.
     """
     return page < 1 and not limit and not cursor_id
 
@@ -151,9 +151,10 @@ def get_paginated_results(
 ):
     """
     Apply pagination to the query object. A page answers with an envelope.
-    Without a page, a limit or a cursor id answers with a plain list walked
-    by cursor (see apply_cursor), and nothing with the whole list. The rows
-    go through serialize when the listing has its own way to present them.
+    Without a page, a limit or a cursor ID answers with a plain list, which
+    the client walks by cursor (see apply_cursor). Without all of these,
+    the answer is the full list. If the listing has its own way to present
+    the rows, the rows go through serialize.
     """
     if serialize is None:
 
@@ -170,17 +171,18 @@ def get_paginated_results(
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
-        # The id ends the sort of every paged listing: rows left equal by
-        # the listing order (same name, same date) would otherwise move
-        # from a page to the other, one coming twice and another never.
+        # The ID is the last sort key of every paged listing. Without it,
+        # rows that the listing order cannot separate (same name, same
+        # date) could move from one page to another: one row comes two
+        # times and another row never comes.
         model = query.column_descriptions[0]["entity"]
         query = query.order_by(model.id)
         query = query.limit(limit)
         query = query.offset(offset)
 
         if total < offset:
-            # Past the last page: the envelope still describes the whole
-            # collection, so total stays the real count like nb_pages does.
+            # After the last page, the envelope still describes the full
+            # collection: total stays the real count, as nb_pages does.
             result = {
                 "data": [],
                 "total": total,
@@ -209,7 +211,11 @@ def get_cursor_results(
     limit=None,
     relations=False,
 ):
-    """ """
+    """
+    Return the rows of the query created after cursor_created_at, oldest
+    first, at most limit of them, in a {data, total, limit} dict. total
+    counts the full query, without the cursor filter.
+    """
     limit = limit or config.NB_RECORDS_PER_PAGE
     total = query.count()
     query = (
@@ -230,7 +236,7 @@ def get_cursor_results(
 
 def apply_sort_by(model, query, sort_by):
     """
-    Apply an order by clause to a sqlalchemy query from a string parameter.
+    Apply an order by clause to a SQLAlchemy query from a string parameter.
     """
     if sort_by in model.__table__.columns.keys():
         sort_field = model.__table__.columns[sort_by]
@@ -242,17 +248,23 @@ def apply_sort_by(model, query, sort_by):
 
 
 def cast_value(value, field_key):
-    # A hybrid expression built from functions SQLAlchemy does not know
-    # carries NullType: Person.full_name is a concat_ws inside a trim.
-    # CAST(... AS NULL) cannot even be compiled, and the CompileError is
-    # not a StatementError, so it escaped as a 500 instead of a filter.
-    # Comparing the bare value is what the cast stood in for anyway.
+    """
+    Return the value, ready for comparison with the given column: the bare
+    value for a NullType expression, a bool for a boolean column, else a
+    SQL cast to the column type. If a boolean or a UUID is not valid,
+    raise WrongParameterException.
+    """
+    # A hybrid expression built from functions that SQLAlchemy does not
+    # know has the NullType: Person.full_name is a concat_ws inside a trim.
+    # CAST(... AS NULL) cannot compile, and the CompileError is not a
+    # StatementError, so it escaped as a 500 instead of a filter. The cast
+    # only had to compare the bare value, and the code now does that.
     if isinstance(field_key.type, sa_types.NullType):
         return value
 
-    # Some column types (ChoiceType, LocaleType, TimezoneType, ...) do not
-    # implement python_type and raise NotImplementedError; they just fall
-    # through to the generic cast below instead of crashing the request.
+    # Some column types (LocaleType, for example) do not implement
+    # python_type and raise NotImplementedError. They go to the
+    # generic cast below, and the request does not crash.
     try:
         python_type = field_key.type.python_type
     except NotImplementedError:

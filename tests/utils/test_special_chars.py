@@ -7,11 +7,6 @@ class SpecialCharTestCase(ApiDBTestCase):
         super().setUp()
         self.generate_fixture_project()
 
-    def test_repr(self):
-        self.project.name = "Battle 360°"
-        self.project.save()
-        self.assertEqual(self.project.name, "Battle 360°")
-
     def test_get_special_char(self):
         self.project.name = "Battle 360°"
         self.project.save()

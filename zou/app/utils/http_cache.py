@@ -1,15 +1,16 @@
 """
-Conditional GET support for permissioned JSON endpoints.
+Conditional GET support for the JSON endpoints that check permissions.
 
-The response copy lives in each client's browser cache. The ETag must
-capture every input that shapes the response: a cheap data freshness
-signal, and the caller identity and effective role, so that a role
-change or an account switch on the same browser fails revalidation
-instead of validating a payload shaped for someone else.
+The copy of the response is in the browser cache of each client. The
+ETag must include every input that changes the response: a cheap signal
+of data freshness, the identity of the caller and the effective role.
+Thus, if the role or the account changes on the same browser, the
+revalidation fails. It does not validate a payload made for a different
+person.
 
-Responses are marked "private, no-cache": the browser keeps the copy
-but revalidates on every request, so nothing is ever served without the
-server deciding with the current authentication in hand.
+The responses have the "private, no-cache" policy: the browser keeps the
+copy but revalidates it on each request. Thus, the server always decides
+with the current authentication before it serves a response.
 """
 
 import hashlib
@@ -21,7 +22,7 @@ from zou.app.utils.flask_utils import dumps_bytes
 
 def build_etag(*parts):
     """
-    Hash the given response-shaping inputs into an ETag value.
+    Hash the given inputs that change the response into an ETag value.
     """
     raw = "|".join(str(part) for part in parts)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -29,21 +30,22 @@ def build_etag(*parts):
 
 def is_fresh(etag):
     """
-    Return True when the client's If-None-Match carries given ETag.
+    Tell whether the If-None-Match header of the client has the given
+    ETag.
     """
     return request.if_none_match.contains(etag)
 
 
 def not_modified(etag):
     """
-    Build an empty 304 response carrying given ETag.
+    Build an empty 304 response with the given ETag.
     """
     return mark(current_app.response_class(status=304), etag)
 
 
 def json_response(body, etag):
     """
-    Build a JSON response carrying given ETag.
+    Build a JSON response with the given ETag.
     """
     response = current_app.response_class(
         dumps_bytes(body), mimetype="application/json"
@@ -53,8 +55,8 @@ def json_response(body, etag):
 
 def mark(response, etag):
     """
-    Stamp an existing response with given ETag and the revalidation
-    cache policy.
+    Add the given ETag and the revalidation cache policy to an existing
+    response.
     """
     response.set_etag(etag)
     response.cache_control.private = True

@@ -1,21 +1,23 @@
 """
-Translations for email notifications. Strings are keyed by locale (e.g. en_US, fr_FR).
-Emails are sent in the recipient's preferred locale when available.
+Translations for email notifications. The key of each string set is a
+locale (e.g. en_US, fr_FR). If the preferred locale of the recipient is
+available, the email uses it.
 
 Supported locales: en_US, fr_FR, es_ES, ja_JP, de_DE, nl_NL, zh_CN, pt_BR.
-To add a language: copy the en_US block, change the key (e.g. de_DE) and translate
-all values. Then add the language code to LANGUAGE_LOCALES if desired.
+To add a language, copy the en_US block, change the key (e.g. de_DE) and
+translate all values. Then add the language code to LANGUAGE_LOCALES, so
+that a bare language code or a region that is not supported gets to it.
 """
 
 import html
 
 from zou.app import config
 
-# Default locale used when user locale is missing or unsupported
+# Default locale, for a user locale that is missing or not supported
 DEFAULT_EMAIL_LOCALE = "en_US"
 
-# Locale used for a given language when the region is missing or unsupported:
-# "zh", "zh_Hant_TW" and "zh_SG" all end up on the zh_CN strings.
+# Locale to use for a language if the region is missing or not supported:
+# "zh", "zh_Hant_TW" and "zh_SG" all get the zh_CN strings.
 LANGUAGE_LOCALES = {
     "en": "en_US",
     "fr": "fr_FR",
@@ -27,7 +29,7 @@ LANGUAGE_LOCALES = {
     "pt": "pt_BR",
 }
 
-# Email translation strings per locale.
+# Email translation strings for each locale.
 # Use {name} placeholders for interpolation.
 EMAIL_TRANSLATIONS = {
     "en_US": {
@@ -809,30 +811,30 @@ O IP de quem solicitou é: {person_IP}.</p>
 }
 
 
-#  Keys whose template is plain text rather than HTML. Everything else is
-#  escaped, so a key that stops following the convention loses its ampersands
-#  in a subject line instead of letting markup into a body.
+#  Keys whose template is plain text and not HTML. The code escapes all
+#  the other keys. Thus, if a key does not obey the convention, it loses its
+#  ampersands in a subject line, and no markup gets into a body.
 PLAIN_TEXT_KEY_SUFFIXES = ("_subject", "_title")
 
-#  Keys whose result its caller hands to another template, or to a chat
-#  channel, rather than to a mail body. Escaping here would reach the
-#  recipient twice over, or push &amp; into Slack: whoever interpolates the
-#  fragment is the one that escapes it. Named one by one on purpose, since
-#  share_invitation_message_segment is concatenated straight into the html
-#  and has to keep being escaped right here.
+#  Keys whose result the caller gives to another template, or to a chat
+#  channel, and not to a mail body. An escape here would get to the
+#  recipient two times, or put &amp; into Slack: the code that interpolates
+#  the fragment escapes it. The list names each key on purpose: the code
+#  concatenates share_invitation_message_segment directly into the html,
+#  so this module must continue to escape it.
 PRE_RENDERED_KEYS = ("playlist_episode_segment",)
 
 
 def _normalize_locale(locale):
     """
-    Return a locale string suitable for lookup (e.g. en_US, fr_FR).
+    Return a locale string for the lookup (e.g. en_US, fr_FR).
 
-    Accepts the forms Babel, browsers and SSO providers emit: dash
-    separators (fr-FR), any casing (fr_fr), bare language codes (fr) and
-    script subtags (zh_Hans_CN, which is Babel's canonical form of zh_CN).
-    An unsupported region falls back to the language default (fr_CA gives
-    fr_FR); an unsupported language is returned as-is so that
-    get_email_translation falls back to en_US.
+    Accept the forms that Babel, browsers and SSO providers send: dash
+    separators (fr-FR), any letter case (fr_fr), bare language codes (fr)
+    and script subtags (zh_Hans_CN, the canonical Babel form of zh_CN).
+    If the region is not supported, return the default of the language
+    (fr_CA gives fr_FR). If the language is not supported, return it as
+    it is, so that get_email_translation falls back to en_US.
     """
     if not locale or not isinstance(locale, str):
         return DEFAULT_EMAIL_LOCALE
@@ -843,8 +845,8 @@ def _normalize_locale(locale):
         return DEFAULT_EMAIL_LOCALE
 
     language = parts[0].lower()
-    # A 4-letter subtag is a script (Hans in zh_Hans_CN); translation keys
-    # are language_REGION only, so scripts are dropped.
+    # A 4-letter subtag is a script (Hans in zh_Hans_CN). Translation keys
+    # are language_REGION only, so the code drops the scripts.
     regions = [part for part in parts[1:] if len(part) != 4]
     if regions:
         candidate = f"{language}_{regions[-1].upper()}"
@@ -855,11 +857,13 @@ def _normalize_locale(locale):
 
 def _escape_params(key, params):
     """
-    Escape the values interpolated into an HTML template. Several of them
-    are request data — the X-Forwarded-For header on the password reset,
-    a comment body on the notifications — and str.format does not escape
-    anything, so they used to reach the recipient as markup in a mail the
-    studio genuinely sends, SPF and DKIM included.
+    Return params with their string values HTML-escaped. For a plain
+    text key (PLAIN_TEXT_KEY_SUFFIXES) or a pre-rendered key
+    (PRE_RENDERED_KEYS), return params as they are. Some values are
+    request data (the X-Forwarded-For header on the password reset, a
+    comment body on the notifications), and str.format escapes nothing.
+    Without an escape, they would get to the recipient as markup in a
+    mail that the studio really sends, with its SPF and DKIM.
     """
     if key.endswith(PLAIN_TEXT_KEY_SUFFIXES) or key in PRE_RENDERED_KEYS:
         return params
@@ -872,19 +876,23 @@ def _escape_params(key, params):
 def get_email_translation(locale, key, **params):
     """
     Return the translated string for the given locale and key.
-    Interpolates params with {name} placeholders, escaping them unless the
-    key names a plain text template (see PLAIN_TEXT_KEY_SUFFIXES).
+    Interpolate params into the {name} placeholders. Escape them, unless
+    the key names a plain text template (see PLAIN_TEXT_KEY_SUFFIXES).
 
-    Fallback order if the locale is missing or not supported:
-    1. User's locale (e.g. fr_FR, ja_JP)
+    If the locale is missing or not supported, the fallback order is:
+    1. The locale of the user, normalized (e.g. fr_FR, ja_JP)
     2. en_US (default English)
     3. config.DEFAULT_LOCALE (usually en_US)
+
+    If the placeholders of a template do not match params, return the
+    template without interpolation. If no locale has the key, return the
+    key itself.
     """
     normalized = _normalize_locale(locale)
     params = _escape_params(key, params)
     fallback_chain = (
         normalized,
-        "en_US",  # Always fall back to US English if locale unsupported
+        "en_US",  # Always fall back to US English for a locale not supported
         config.DEFAULT_LOCALE,
     )
     for candidate in fallback_chain:
@@ -896,5 +904,5 @@ def get_email_translation(locale, key, **params):
                 return trans[key].format(**params)
             except (KeyError, TypeError):
                 return trans[key]
-    # Last resort: use key as string (should not happen if en_US is complete)
+    # Last resort: use the key as the string (if en_US is complete, never)
     return key

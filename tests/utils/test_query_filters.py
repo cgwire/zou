@@ -2,24 +2,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.project import Project
 
 
-class QueryTestCase(ApiDBTestCase):
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
-
-        self.project_id = self.project.id
-        project = Project.create(
-            name="Kitchen", project_status_id=self.open_status.id
-        )
-        self.project2_id = project.id
-
-        self.generate_fixture_asset("Asset 1")
-        self.generate_fixture_asset("Asset 2")
-        self.generate_fixture_asset("Asset 3")
-        self.generate_fixture_asset_character("Asset char 1")
-        self.generate_fixture_asset_character("Asset char 2")
-
+class QueryFiltersValidationTestCase(ApiDBTestCase):
     def test_malformed_filters_return_400(self):
         self.get('data/projects?id=["broken', 400)
         self.get("data/projects?is_clients_isolated=notabool", 400)
@@ -42,6 +25,25 @@ class QueryTestCase(ApiDBTestCase):
     def test_pagination_needs_a_positive_limit(self):
         self.get("data/projects?page=1&limit=-1", 400)
         self.get("data/projects?page=1&limit=0")
+
+
+class QueryTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+
+        self.project_id = self.project.id
+        project = Project.create(
+            name="Kitchen", project_status_id=self.open_status.id
+        )
+        self.project2_id = project.id
+
+        self.generate_fixture_asset("Asset 1")
+        self.generate_fixture_asset("Asset 2")
+        self.generate_fixture_asset("Asset 3")
+        self.generate_fixture_asset_character("Asset char 1")
+        self.generate_fixture_asset_character("Asset char 2")
 
     def test_get_by_name(self):
         entities = self.get("data/entities")

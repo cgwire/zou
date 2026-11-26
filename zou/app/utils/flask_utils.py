@@ -14,10 +14,10 @@ def dumps_bytes(obj):
     """
     Serialize a response payload to JSON bytes.
 
-    orjson refuses integers outside the 64-bit range, which JSONB columns
-    can legitimately hold (a metadata value written as a huge number reads
-    back from PostgreSQL as an arbitrary-precision int). Fall back to the
-    stdlib for those payloads instead of turning them into a 500.
+    orjson refuses integers outside the 64-bit range, but JSONB columns
+    can contain them (if a metadata value is a very large number,
+    PostgreSQL gives it back as an int with arbitrary precision). For these
+    payloads, use the stdlib instead, so that they do not cause a 500.
     """
     try:
         return orjson.dumps(obj, option=orjson_options)
@@ -60,6 +60,9 @@ class ParsedUserAgent(UserAgent):
 
 
 def is_from_browser(user_agent):
+    """
+    Tell whether the parsed user agent is one of the listed web browsers.
+    """
     return user_agent.browser in [
         "Brave",
         "Chrome",
@@ -76,13 +79,13 @@ def is_from_browser(user_agent):
 
 def rows_response(header, rows, stream=False):
     """
-    Answer a listing described by a header, either as a single JSON object
-    carrying every row, or as NDJSON: the header on the first line, then one
-    row per line.
+    Answer a listing that a header describes. The answer is a single JSON
+    object that contains all the rows, or NDJSON: the header on the first
+    line, then one row on each line.
 
-    Streaming exists so that a full production never sits in memory at once,
-    so rows stays a generator until the last moment: the non streamed branch
-    is the only one that spends it.
+    The stream exists so that a full production is never in memory at one
+    time. Thus, rows stays a generator until the last moment: only the
+    branch without a stream consumes it.
     """
     if not stream:
         return {**header, "rows": list(rows)}
@@ -96,6 +99,10 @@ def rows_response(header, rows, stream=False):
 
 
 def wrong_auth_handler(identity_user=None):
+    """
+    Abort with a 401, except on the login and logout routes: there,
+    return identity_user.
+    """
     if request.path not in ["/auth/login", "/auth/logout"]:
         abort(401)
     else:

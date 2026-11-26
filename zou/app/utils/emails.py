@@ -12,10 +12,10 @@ from zou.app import mail
 logger = logging.getLogger(__name__)
 
 
-# Force quoted-printable encoding for utf-8 message bodies so that the
+# Force quoted-printable encoding for utf-8 message bodies, so that the
 # Python email module wraps lines at 76 chars. Without this, long HTML
-# lines (e.g. inline styles, long URLs) can exceed RFC 5322's 998-char
-# hard limit and SMTP servers reject the message with
+# lines (e.g. inline styles, long URLs) can go above the 998-char hard
+# limit of RFC 5322, and SMTP servers reject the message with
 # "Maximum line length exceeded (see RFC 5322)".
 email_charset.add_charset(
     "utf-8",
@@ -27,9 +27,11 @@ email_charset.add_charset(
 
 def send_email(subject, html, recipient_email, body=None, locale=None):
     """
-    Send an email with given subject and body to given recipient.
-    If locale is provided (e.g. "en_US", "fr_FR"), the Content-Language
-    header is set so the recipient's client can use the correct language.
+    If MAIL_ENABLED is set, send an email with the given subject and HTML
+    to the given recipient. By default, the plain text body is the HTML
+    without its tags. If locale is given (e.g. "en_US", "fr_FR"), set the
+    Content-Language header, so that the client of the recipient can use
+    the correct language. Log a send failure, never raise it.
     """
     from zou.app import app
 
@@ -41,36 +43,35 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
         with app.app_context():
             try:
                 mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
+                extra_headers = {}
+                if locale:
+                    extra_headers["Content-Language"] = locale.replace(
+                        "_", "-"
+                    )
                 message = Message(
                     sender=f"Kitsu Bot <{mail_default_sender}>",
                     body=body,
                     html=html,
                     subject=subject,
                     recipients=[recipient_email],
+                    extra_headers=extra_headers,
                 )
-                if locale:
-                    # Set Content-Language so the recipient's client knows the language
-                    try:
-                        lang_tag = locale.replace("_", "-")
-                        if hasattr(message, "msg"):
-                            message.msg["Content-Language"] = lang_tag
-                    except Exception:
-                        pass
                 mail.send(message)
             except Exception as exception:
                 if is_recipient_refusal(exception):
                     # A dead address is a data problem, not a failure of
-                    # the application: keep it out of the error level so
+                    # the application: keep it out of the error level, so
                     # that it does not page anyone.
                     app.logger.warning(
                         f"Email to {recipient_email} refused by the SMTP "
                         f"server (subject: {subject}): {exception}"
                     )
                 else:
-                    # Log at error level so failures show up in production
-                    # and RQ worker logs: the default Flask logger drops
-                    # info messages, which made SMTP errors invisible while
-                    # the email job was still reported as successful.
+                    # Log at error level, so that failures show in the
+                    # production and RQ worker logs. The default Flask
+                    # logger drops info messages: SMTP errors were not
+                    # visible while RQ still showed the email job as a
+                    # success.
                     app.logger.error(
                         f"Failed to send email to {recipient_email} "
                         f"(subject: {subject})",
@@ -80,8 +81,8 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
 
 def is_recipient_refusal(exception):
     """
-    Return True when the SMTP server permanently rejected the message
-    because of its recipient (unknown user, dead domain, full mailbox).
+    Tell whether the SMTP server permanently rejected the message because
+    of its recipient (unknown user, dead domain, full mailbox).
     """
     if isinstance(exception, smtplib.SMTPRecipientsRefused):
         return True
@@ -129,12 +130,12 @@ class HTMLStripper(HTMLParser):
 
 def strip_html_tags(html):
     """
-    Convert HTML email to plain text, preserving URLs from links
-    and maintaining basic formatting with line breaks.
+    Convert an HTML email to plain text. Keep the URLs of the links and a
+    basic format with line breaks.
     """
     stripper = HTMLStripper()
     stripper.feed(html)
     text = stripper.get_data()
-    # Clean up multiple consecutive newlines
+    # Reduce 3 or more consecutive newlines to 2.
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()

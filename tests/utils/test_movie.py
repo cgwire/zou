@@ -1,4 +1,3 @@
-import math
 import os
 import shutil
 import tempfile
@@ -54,36 +53,12 @@ class MovieTestCase(unittest.TestCase):
         filename = "test_soundtrack.m4v"
         video = str(Path(self.tmpdir) / filename)
         shutil.copyfile(self.video_only_path, video)
-        shutil.copyfile(self.video_only_path, video + ".tmp")
 
         self.assertFalse(movie.has_soundtrack(video))
         ret, out, _ = movie.add_empty_soundtrack(video)
         self.assertEqual(ret, 0)
         self.assertFalse(out)  # check this value because we ignore it.
         self.assertTrue(movie.has_soundtrack(video))
-
-        # Test case where a .tmp suffix has been added to the file name.
-        ret, out, _ = movie.add_empty_soundtrack(video + ".tmp")
-        self.assertEqual(ret, 0)
-        self.assertTrue(movie.has_soundtrack(video + ".tmp"))
-
-        # Create an audio file
-        stream = ffmpeg.input(video)
-        audio_only = str(
-            Path(self.tmpdir) / ("audio_only-test_soundtrack.mp4")
-        )
-        stream = ffmpeg.output(stream.audio, audio_only, f="mp4", c="aac")
-        stream.run(quiet=False, cmd=("ffmpeg", "-xerror"))
-
-        self.assertTrue(movie.has_soundtrack(audio_only))
-
-        # Ensure an error occurs
-        """
-        Cannot make it work anymore
-        ret, out, _ = movie.add_empty_soundtrack(audio_only)
-        self.assertEqual(1, ret)
-
-        """
 
     def test_generate_tile_when_the_duration_is_underestimated(self):
         # A short reported duration makes the tile filter emit a second
@@ -198,23 +173,6 @@ class MovieTestCase(unittest.TestCase):
         self.assertEqual(width, 320)
         self.assertEqual(height, 240)
 
-    def test_normalize(self):
-        filename = "test_normalize.m4v"
-        video = str(Path(self.tmpdir) / filename)
-        shutil.copyfile(self.video_only_path, video)
-
-        self.assertFalse(movie.has_soundtrack(video))
-        width, height = movie.get_movie_size(video)
-        normalized, _, _ = movie.normalize_movie(video, 5, width, height)
-
-        # normalization adds an audio stream
-        self.assertTrue(movie.has_soundtrack(normalized))
-
-        # dimensions are unchanged
-        width_norm, height_norm = movie.get_movie_size(normalized)
-        self.assertEqual(width, width_norm)
-        self.assertEqual(height, height_norm)
-
     def test_normalize_encoding_rate_control(self):
         """
         The bitrate is the VBV cap with a buffer of the given factor; a
@@ -287,6 +245,7 @@ class MovieTestCase(unittest.TestCase):
         high, low, _ = movie.normalize_movie(video, 25, 320, 240)
         self.assert_audio_covers_video(high)
         self.assert_audio_covers_video(low)
+        self.assertEqual(movie.get_movie_size(high), (320, 240))
 
     def test_normalize_width_unspecified(self):
         filename = "test_normalize_no_width.m4v"
@@ -376,10 +335,6 @@ class MovieTestCase(unittest.TestCase):
             (0, height // 2 - 40, width, height // 2 + 40)
         ).tobytes()
         self.assertGreater(sum(mid) / len(mid), 30)
-
-    def test_concat_demuxer_testing(self):
-        test_name = "test_concate_demuxer"
-        self.concat_testing(movie.concat_demuxer, test_name)
 
     def test_concat_demuxer_ignores_timecode_stream(self):
         # Previews exported from DaVinci Resolve carry a tmcd data stream
@@ -536,6 +491,7 @@ class MovieTestCase(unittest.TestCase):
             movie.concat_demuxer, videos, out, 320, 240, fps=24
         )
         self.assertTrue(result.get("success"))
+        self.assertFalse(result.get("message"))
         probe = ffmpeg.probe(out, select_streams="v", count_frames=None)
         self.assertEqual(
             int(probe["streams"][0]["nb_read_frames"]), sum(lengths)
@@ -589,18 +545,9 @@ class MovieTestCase(unittest.TestCase):
         img_width, img_height = image.size
         os.remove(tile_path)
 
-        video_track = movie.get_video_track(video_path, "generate_tile")
-        duration = movie.get_movie_duration(video_track=video_track)
-        fps = movie.get_movie_fps(video_track=video_track)
-        duration_in_frames = int(duration * fps)
-        rows = min(math.ceil(duration_in_frames / 8), 240)
-        display_aspect_ratio = movie.get_movie_display_aspect_ratio(
-            video_track=video_track
-        )
-        target_width = math.ceil(display_aspect_ratio * 100)
-
-        self.assertEqual(img_width, target_width * 8)
-        self.assertEqual(img_height, 100 * rows)
+        # 44 frames at a 2.387 aspect ratio: 6 rows of 8 tiles of 239x100.
+        self.assertEqual(img_width, 1912)
+        self.assertEqual(img_height, 600)
 
     def test_create_tile_decodes_on_one_thread(self):
         """

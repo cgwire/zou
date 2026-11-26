@@ -61,6 +61,16 @@ class PaginationTestCase(ApiDBTestCase):
         persons = self.get_by_cursor("data/persons?last_name=Cursor", 2)
         self.assertEqual(len(persons), 3)
 
+    def test_metadata(self):
+        pagination_infos = self.get("data/persons?page=2")
+        self.assertEqual(pagination_infos["total"], 251)
+        self.assertEqual(pagination_infos["nb_pages"], 3)
+        self.assertEqual(pagination_infos["page"], 2)
+        self.assertEqual(pagination_infos["offset"], 100)
+        self.assertEqual(pagination_infos["limit"], 100)
+
+
+class PaginationValidationTestCase(ApiDBTestCase):
     def test_malformed_cursor_returns_400(self):
         self.get("data/persons?cursor_id=foo", 400)
         self.get(f"data/persons?cursor_id={fields.gen_uuid()}", 400)
@@ -69,11 +79,3 @@ class PaginationTestCase(ApiDBTestCase):
     def test_malformed_page_returns_400(self):
         self.get("data/persons?page=foo", 400)
         self.get("data/persons?page=1&limit=bar", 400)
-
-    def test_metadata(self):
-        pagination_infos = self.get("data/persons?page=2")
-        self.assertEqual(pagination_infos["total"], 251)
-        self.assertEqual(pagination_infos["nb_pages"], 3)
-        self.assertEqual(pagination_infos["page"], 2)
-        self.assertEqual(pagination_infos["offset"], 100)
-        self.assertEqual(pagination_infos["limit"], 100)
