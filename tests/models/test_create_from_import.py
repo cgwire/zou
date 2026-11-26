@@ -3,6 +3,7 @@ from unittest import mock
 from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
+from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.news import News
 from zou.app.models.person import Person
@@ -214,6 +215,27 @@ class CreateFromImportTestCase(ApiDBTestCase):
         PreviewFile.create_from_import(preview_file_dict)
         preview_file = PreviewFile.get(preview_file_dict["id"])
         self.assertEqual(preview_file.name, preview_file_dict["name"])
+
+    def test_comment_keeps_its_person_mentions(self):
+        comment_id = "5d3f6a2e-8b1c-4f0e-9a7d-2c4b6e8f0a1b"
+        Comment.create_from_import(
+            {
+                "id": comment_id,
+                "object_id": str(self.task.id),
+                "object_type": "Task",
+                "person_id": str(self.person.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "hello",
+                "mentions": [str(self.person.id)],
+                "department_mentions": [],
+                "type": "Comment",
+            }
+        )
+        comment = Comment.get(comment_id)
+        self.assertEqual(
+            [str(person.id) for person in comment.mentions],
+            [str(self.person.id)],
+        )
 
     def test_task(self):
         task_dict = {
