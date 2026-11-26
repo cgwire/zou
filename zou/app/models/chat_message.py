@@ -34,4 +34,4 @@ class ChatMessage(db.Model, BaseMixin, SerializerMixin):
     # * task links ?
 
     def __repr__(self):
-        return f"<Message of {self.object_id}>"
+        return f"<Message of {self.chat_id}>"
