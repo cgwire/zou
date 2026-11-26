@@ -6,7 +6,8 @@ def strtobool(val):
     """
     Convert a string (val) to a boolean value.
     If val is already a boolean, return val. If it is an int, return
-    bool(val). Else, raise ValueError.
+    bool(val). If it is a string that is not a known boolean word, raise
+    ValueError.
     """
     if isinstance(val, bool):
         return val
@@ -24,8 +25,9 @@ def mask_secret(value):
     """
     Mask a secret (token, webhook URL), so that a log can show it. Only
     the first and last four characters stay readable. For a URL, only the
-    scheme and the host stay readable. Under 16 characters, nothing stays
-    readable. The first eight hex digits of its SHA-256 come after the
+    scheme, the host and the port stay readable, whatever the length.
+    For another value under 16 characters, nothing stays readable.
+    The first eight hex digits of its SHA-256 come after the
     mask. An admin compares the configured value with them through
     `printf %s "$SECRET" | sha256sum | cut -c1-8`. The number of mask
     characters is fixed, so that the length does not leak either.

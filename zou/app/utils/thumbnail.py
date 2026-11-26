@@ -38,7 +38,7 @@ def to_srgb(im, mode="RGB"):
     a browser reads their pixels as sRGB.
 
     Return the picture in `mode`, or in RGBA if it has an alpha channel.
-    Greyscale pictures deeper than 8 bits come back as L. Other modes
+    Greyscale pictures in I or I;16 mode come back as L. Other modes
     than CMYK, RGB and RGBA (L, LA, P...) come back without conversion.
     """
     if im.mode in HIGH_DEPTH_GREY_MODES:

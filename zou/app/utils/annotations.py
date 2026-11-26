@@ -365,8 +365,8 @@ def _bbox_centre(points):
 
 def _with_default_bbox(obj, anchor_points):
     """
-    Return `obj` itself if `left`/`top`/`width`/`height` are all set.
-    Else return a copy that gets the missing keys from the bbox of the
+    Return `obj` itself if there are no anchor points, or if
+    `left`/`top`/`width`/`height` are all set. Else return a copy that gets the missing keys from the bbox of the
     anchor points: fabric computes these keys from `calcDim` on
     deserialisation. If a key is present with a None value, the function
     does not set it. This step is necessary to align the centre and the
@@ -411,8 +411,7 @@ def _stroke_outline_width(obj, scale_x):
 
 def _stroke_polygon(draw, points, color, width):
     """
-    Draw each edge of the polygon as a thick line, because draw.polygon
-    of Pillow does not accept an outline-width kwarg. This also keeps the
+    Draw each edge of the polygon as a thick line. This keeps the
     outline of rotated rects and ellipses intact under transforms.
     """
     if color is None or width <= 0 or len(points) < 2:
