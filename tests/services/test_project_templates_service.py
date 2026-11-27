@@ -8,6 +8,8 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import (
     Project,
     ProjectAssetTypeLink,
+    ProjectPreviewBackgroundFileLink,
+    ProjectStatusAutomationLink,
     ProjectTaskStatusLink,
     ProjectTaskTypeLink,
 )
@@ -22,6 +24,7 @@ from zou.app.services import (
     project_templates_service,
     projects_service,
 )
+from zou.app.utils import fields
 
 
 class ProjectTemplateServiceTestCase(ApiDBTestCase):
@@ -80,6 +83,42 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         )
         project_templates_service.delete_project_template(template["id"])
         self.assertIsNone(ProjectTemplate.get(template["id"]))
+
+    def test_get_project_template_with_a_malformed_id_is_not_found(self):
+        self.assertRaises(
+            ProjectTemplateNotFoundException,
+            project_templates_service.get_project_template,
+            "not-an-id",
+        )
+
+    def test_create_project_template_requires_a_name(self):
+        self.assertRaises(
+            WrongParameterException,
+            project_templates_service.create_project_template,
+            name="",
+        )
+
+    def test_create_project_template_ignores_the_other_fields(self):
+        self.generate_fixture_preview_background_file()
+        template = project_templates_service.create_project_template(
+            name="Setup",
+            default_preview_background_file_id=str(
+                self.preview_background_file.id
+            ),
+        )
+        self.assertIsNone(template["default_preview_background_file_id"])
+
+    def test_update_project_template_to_a_taken_name_raises(self):
+        project_templates_service.create_project_template(name="Taken")
+        template = project_templates_service.create_project_template(
+            name="Setup"
+        )
+        self.assertRaises(
+            WrongParameterException,
+            project_templates_service.update_project_template,
+            template["id"],
+            {"name": "Taken"},
+        )
 
     # ----- Link management ------------------------------------------------
 
@@ -208,6 +247,162 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(snapshot[0]["field_name"], "difficulty")
         self.assertEqual(snapshot[1]["field_name"], "approval_status")
         self.assertEqual(snapshot[1]["departments"], [str(self.department.id)])
+
+    def test_add_task_type_refuses_a_wrong_id(self):
+        template = project_templates_service.create_project_template(
+            name="Setup"
+        )
+        for task_type_id in ["not-an-id", str(fields.gen_uuid())]:
+            with self.subTest(task_type_id=task_type_id):
+                self.assertRaises(
+                    WrongParameterException,
+                    project_templates_service.add_task_type_to_template,
+                    template["id"],
+                    task_type_id,
+                )
+
+    def test_add_task_status_again_updates_the_board_roles(self):
+        template = project_templates_service.create_project_template(
+            name="Setup"
+        )
+        project_templates_service.add_task_status_to_template(
+            template["id"], str(self.task_status.id), roles_for_board=["admin"]
+        )
+
+        project_templates_service.add_task_status_to_template(
+            template["id"],
+            str(self.task_status.id),
+            roles_for_board=["manager"],
+        )
+
+        link = project_templates_service.get_template_task_statuses(
+            template["id"]
+        )[0]
+        self.assertEqual(link["roles_for_board"], ["manager"])
+
+    def test_adding_an_item_twice_links_it_once(self):
+        template = project_templates_service.create_project_template(
+            name="Setup"
+        )
+        background = self.generate_fixture_preview_background_file()
+        for _ in range(2):
+            project_templates_service.add_asset_type_to_template(
+                template["id"], str(self.asset_type.id)
+            )
+            project_templates_service.add_status_automation_to_template(
+                template["id"], str(self.status_automation_to_status.id)
+            )
+            project_templates_service.add_preview_background_file_to_template(
+                template["id"], str(background.id)
+            )
+
+        self.assertEqual(
+            len(
+                project_templates_service.get_template_asset_types(
+                    template["id"]
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                project_templates_service.get_template_status_automations(
+                    template["id"]
+                )
+            ),
+            1,
+        )
+        self.assertEqual(
+            len(
+                project_templates_service.get_template_preview_background_files(
+                    template["id"]
+                )
+            ),
+            1,
+        )
+
+    def test_removing_an_item_the_template_does_not_hold_keeps_the_rest(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_status_automation_to_ready_for()
+        template = project_templates_service.create_project_template(
+            name="Setup"
+        )
+        background = self.generate_fixture_preview_background_file()
+        other_background = self.generate_fixture_preview_background_file(
+            name="other"
+        )
+        project_templates_service.add_asset_type_to_template(
+            template["id"], str(self.asset_type.id)
+        )
+        project_templates_service.add_status_automation_to_template(
+            template["id"], str(self.status_automation_to_status.id)
+        )
+        project_templates_service.add_preview_background_file_to_template(
+            template["id"], str(background.id)
+        )
+
+        project_templates_service.remove_asset_type_from_template(
+            template["id"], str(self.asset_type_character.id)
+        )
+        project_templates_service.remove_status_automation_from_template(
+            template["id"], str(self.status_automation_to_ready_for.id)
+        )
+        project_templates_service.remove_preview_background_file_from_template(
+            template["id"], str(other_background.id)
+        )
+
+        self.assertEqual(
+            [
+                held["id"]
+                for held in project_templates_service.get_template_asset_types(
+                    template["id"]
+                )
+            ],
+            [str(self.asset_type.id)],
+        )
+        self.assertEqual(
+            [
+                held["id"]
+                for held in project_templates_service.get_template_status_automations(
+                    template["id"]
+                )
+            ],
+            [str(self.status_automation_to_status.id)],
+        )
+        self.assertEqual(
+            [
+                held["id"]
+                for held in project_templates_service.get_template_preview_background_files(
+                    template["id"]
+                )
+            ],
+            [str(background.id)],
+        )
+
+    def test_set_metadata_descriptors_to_none_clears_them(self):
+        template = project_templates_service.create_project_template(
+            name="Setup",
+            metadata_descriptors=[{"name": "Difficulty"}],
+        )
+
+        updated = project_templates_service.set_template_metadata_descriptors(
+            template["id"], None
+        )
+
+        self.assertEqual(updated["metadata_descriptors"], [])
+
+    def test_set_metadata_descriptors_refuses_a_wrong_shape(self):
+        template = project_templates_service.create_project_template(
+            name="Setup"
+        )
+        for descriptors in [{"name": "Difficulty"}, ["Difficulty"]]:
+            with self.subTest(descriptors=descriptors):
+                self.assertRaises(
+                    WrongParameterException,
+                    project_templates_service.set_template_metadata_descriptors,
+                    template["id"],
+                    descriptors,
+                )
 
     # ----- Snapshot from project ------------------------------------------
 
@@ -582,6 +777,41 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
             "From missing",
         )
 
+    def test_create_template_from_project_copies_the_backgrounds(self):
+        background = self.generate_fixture_preview_background_file()
+        projects_service.add_preview_background_file_setting(
+            self.project_id, background.id
+        )
+        self.project.update(
+            {"default_preview_background_file_id": background.id}
+        )
+
+        template = project_templates_service.create_template_from_project(
+            str(self.project_id), name="With backgrounds"
+        )
+
+        self.assertEqual(
+            [
+                held["id"]
+                for held in project_templates_service.get_template_preview_background_files(
+                    template["id"]
+                )
+            ],
+            [str(background.id)],
+        )
+        self.assertEqual(
+            template["default_preview_background_file_id"], str(background.id)
+        )
+
+    def test_create_template_from_project_to_a_taken_name_raises(self):
+        project_templates_service.create_project_template(name="Taken")
+        self.assertRaises(
+            WrongParameterException,
+            project_templates_service.create_template_from_project,
+            str(self.project_id),
+            "Taken",
+        )
+
     # ----- Apply template to project --------------------------------------
 
     def _build_full_template(self):
@@ -726,4 +956,167 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
             project_templates_service.apply_template_to_project,
             str(self.project_id),
             "00000000-0000-0000-0000-000000000000",
+        )
+
+    def a_template_with_backgrounds(self):
+        """
+        A template that holds two backgrounds, the first one as default.
+        """
+        template = project_templates_service.create_project_template(
+            name="Backgrounds"
+        )
+        self.default_background = (
+            self.generate_fixture_preview_background_file()
+        )
+        self.other_background = self.generate_fixture_preview_background_file(
+            name="other"
+        )
+        for background in [self.default_background, self.other_background]:
+            project_templates_service.add_preview_background_file_to_template(
+                template["id"], str(background.id)
+            )
+        project_templates_service.set_template_default_preview_background_file(
+            template["id"], str(self.default_background.id)
+        )
+        return template
+
+    def test_apply_template_adds_its_backgrounds_once(self):
+        template = self.a_template_with_backgrounds()
+        projects_service.add_preview_background_file_setting(
+            self.project_id, self.default_background.id
+        )
+
+        project_templates_service.apply_template_to_project(
+            str(self.project_id), template["id"]
+        )
+
+        links = ProjectPreviewBackgroundFileLink.query.filter_by(
+            project_id=self.project_id
+        ).all()
+        self.assertEqual(
+            sorted(str(link.preview_background_file_id) for link in links),
+            sorted(
+                [
+                    str(self.default_background.id),
+                    str(self.other_background.id),
+                ]
+            ),
+        )
+        self.assertEqual(
+            Project.get(self.project_id).default_preview_background_file_id,
+            self.default_background.id,
+        )
+
+    def test_apply_template_keeps_the_default_background_of_the_project(self):
+        template = self.a_template_with_backgrounds()
+        self.project.update(
+            {"default_preview_background_file_id": self.other_background.id}
+        )
+
+        project_templates_service.apply_template_to_project(
+            str(self.project_id), template["id"]
+        )
+
+        self.assertEqual(
+            Project.get(self.project_id).default_preview_background_file_id,
+            self.other_background.id,
+        )
+
+    def test_apply_template_with_a_file_tree_or_data_override(self):
+        """
+        An override wins over the template, and the template gives the
+        value that the override leaves out.
+        """
+        template = project_templates_service.create_project_template(
+            name="Trees", data={"from": "template"}
+        )
+        file_tree = {"working": {"mountpoint": "/mnt/work"}}
+        with_tree = Project.create(
+            name="With tree", project_status_id=self.open_status.id
+        )
+        with_data = Project.create(
+            name="With data", project_status_id=self.open_status.id
+        )
+
+        project_templates_service.apply_template_to_project(
+            str(with_tree.id),
+            template["id"],
+            override_settings={"file_tree": file_tree},
+        )
+        project_templates_service.apply_template_to_project(
+            str(with_data.id),
+            template["id"],
+            override_settings={"data": {"from": "override"}},
+        )
+
+        with_tree = Project.get(with_tree.id)
+        self.assertEqual(with_tree.file_tree, file_tree)
+        self.assertEqual(with_tree.data, {"from": "template"})
+        self.assertEqual(Project.get(with_data.id).data, {"from": "override"})
+
+    def test_apply_template_keeps_the_status_and_automation_links(self):
+        template = project_templates_service.create_project_template(
+            name="Links"
+        )
+        project_templates_service.add_task_status_to_template(
+            template["id"], str(self.task_status.id), priority=1
+        )
+        project_templates_service.add_status_automation_to_template(
+            template["id"], str(self.status_automation_to_status.id)
+        )
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+        ProjectTaskStatusLink.create(
+            project_id=target.id,
+            task_status_id=self.task_status.id,
+            priority=99,
+        )
+        projects_service.add_status_automation_setting(
+            target.id, self.status_automation_to_status.id
+        )
+
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+
+        status_links = ProjectTaskStatusLink.get_all_by(project_id=target.id)
+        self.assertEqual([link.priority for link in status_links], [99])
+        self.assertEqual(
+            ProjectStatusAutomationLink.query.filter_by(
+                project_id=target.id
+            ).count(),
+            1,
+        )
+
+    def test_apply_template_skips_an_incomplete_descriptor(self):
+        """
+        A descriptor without name, or a task descriptor without task type,
+        is not created on the project.
+        """
+        template = project_templates_service.create_project_template(
+            name="Incomplete"
+        )
+        project_templates_service.set_template_metadata_descriptors(
+            template["id"],
+            [
+                {"name": "", "entity_type": "Asset", "data_type": "string"},
+                {
+                    "name": "Layer",
+                    "entity_type": "Task",
+                    "data_type": "string",
+                },
+            ],
+        )
+        target = Project.create(
+            name="Target", project_status_id=self.open_status.id
+        )
+
+        project_templates_service.apply_template_to_project(
+            str(target.id), template["id"]
+        )
+
+        self.assertEqual(
+            MetadataDescriptor.query.filter_by(project_id=target.id).count(),
+            0,
         )

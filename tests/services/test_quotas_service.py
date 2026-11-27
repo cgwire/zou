@@ -4,6 +4,7 @@ from freezegun import freeze_time
 
 from tests.services.cases import ShotsTestCase
 from zou.app.models.person import Person
+from zou.app.models.studio import Studio
 from zou.app.models.task import Task
 from zou.app.services import (
     quotas_service,
@@ -1051,3 +1052,115 @@ class QuotaTestCase(ShotsTestCase):
         self.assertEqual(entry["month"]["frames"], {"2025-12": 100})
         self.assertEqual(entry["month"]["entries"], {"2025": 1})
         self.assertEqual(entry["year"]["frames"], {"2025": 100})
+
+    def test_the_quotas_of_a_studio_hold_its_members_only(self):
+        """
+        Both the logged task and the task without time spent go to the
+        studio of their assignee. A studio without members gets nothing.
+        """
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": 100})
+        task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+        time_spents_service.create_or_update_time_spent(
+            str(task.id), str(self.person.id), "2024-06-04", 120
+        )
+        layout_task = self.generate_fixture_shot_task(
+            name="layout",
+            shot_id=self.shot.id,
+            task_type_id=self.task_type_layout.id,
+        )
+        layout_task.update(
+            {
+                "real_start_date": datetime.datetime(2024, 6, 3, 10, 0),
+                "end_date": datetime.datetime(2024, 6, 3, 18, 0),
+            }
+        )
+        studio = Studio.create(name="Main", color="#000000")
+        empty_studio = Studio.create(name="Empty", color="#FFFFFF")
+        self.person.update({"studio_id": studio.id})
+
+        quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), studio_id=str(studio.id)
+        )
+        empty_quotas = quotas_service.get_weighted_quotas(
+            str(self.project.id), studio_id=str(empty_studio.id)
+        )
+
+        self.assertEqual(
+            quotas["total"]["day"]["frames"],
+            {"2024-06-03": 100, "2024-06-04": 100},
+        )
+        self.assertEqual(empty_quotas, {})
+
+    def test_a_raw_quota_counts_a_shot_without_frames(self):
+        task = self.generate_shot_task()
+        self.shot.update({"nb_frames": None})
+        task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+
+        quotas = quotas_service.get_raw_quotas(str(self.project.id))
+
+        day = quotas["total"]["day"]
+        self.assertEqual(day["frames"], {"2024-06-05": 0})
+        self.assertEqual(day["count"], {"2024-06-05": 1})
+
+    def test_the_raw_week_list_counts_a_shot_whole(self):
+        """
+        Worked from 3 to 14 June 2024, the shot weighs half in the week of
+        the 10th, but the raw list counts it whole on its end day.
+        """
+        self.a_shot_without_time_spent(
+            datetime.datetime(2024, 6, 3, 10, 0),
+            datetime.datetime(2024, 6, 14, 10, 0),
+        )
+
+        quota_shots = quotas_service.get_week_quota_shots(
+            str(self.person.id),
+            2024,
+            24,
+            project_id=str(self.project.id),
+            weighted=False,
+            timezone="Europe/Paris",
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 1)],
+        )
+
+    def test_a_weekend_day_holds_no_share_of_a_task_run_over_it(self):
+        """
+        Worked from Friday 7 to Monday 10 June 2024: the Saturday is in the
+        task dates but is not one of its working days.
+        """
+        self.a_shot_without_time_spent(
+            datetime.datetime(2024, 6, 7, 10, 0),
+            datetime.datetime(2024, 6, 10, 10, 0),
+        )
+
+        quota_shots = quotas_service.get_day_quota_shots(
+            str(self.person.id),
+            2024,
+            6,
+            8,
+            project_id=str(self.project.id),
+            timezone="Europe/Paris",
+        )
+
+        self.assertEqual(quota_shots, [])
+
+    def test_the_raw_list_takes_its_bounds_as_strings(self):
+        task = self.generate_shot_task()
+        task.update({"end_date": datetime.datetime(2024, 6, 5, 10, 0)})
+
+        quota_shots = quotas_service.get_raw_quota_shots_between(
+            str(self.person.id),
+            "2024-06-01T00:00:00",
+            "2024-07-01T00:00:00",
+            project_id=str(self.project.id),
+            timezone="Europe/Paris",
+        )
+
+        self.assertEqual(
+            [(shot["name"], shot["weight"]) for shot in quota_shots],
+            [("P01", 1)],
+        )

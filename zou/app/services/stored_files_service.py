@@ -284,14 +284,3 @@ def get_files_to_purge(limit=100, grace_delay=0):
         .limit(limit)
         .all()
     ]
-
-
-def get_stored_file(bucket, prefix, file_id):
-    """
-    Return the registry row of the given object as a dict. If the object
-    is not recorded, return None.
-    """
-    stored_file = StoredFile.get_by(
-        bucket=bucket, key=make_key(prefix, file_id)
-    )
-    return stored_file.serialize() if stored_file is not None else None

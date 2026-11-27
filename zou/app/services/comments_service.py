@@ -3,7 +3,7 @@ import uuid
 
 from flask import current_app
 from sqlalchemy import and_
-from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import func
 
@@ -1225,18 +1225,11 @@ def add_attachments_to_comment(comment, files, reply_id=None):
         comment["attachment_files"] = []
     new_attachment_files = []
     for uploaded_file in files.values():
-        try:
-            attachment_file = attachment_files_service.create_attachment(
-                comment, uploaded_file, reply_id=reply_id
-            )
-            comment["attachment_files"].append(attachment_file)
-            new_attachment_files.append(attachment_file)
-        except IntegrityError:
-            attachment_file = attachment_files_service.create_attachment(
-                comment, uploaded_file, randomize=True, reply_id=reply_id
-            )
-            comment["attachment_files"].append(attachment_file)
-            new_attachment_files.append(attachment_file)
+        attachment_file = attachment_files_service.create_attachment(
+            comment, uploaded_file, reply_id=reply_id
+        )
+        comment["attachment_files"].append(attachment_file)
+        new_attachment_files.append(attachment_file)
     if new_attachment_files:
         # The given dict is a serialization that the caller read from a
         # different location. An append to it does not change the stored

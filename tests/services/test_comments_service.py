@@ -20,6 +20,7 @@ from zou.app.services import (
     concepts_service,
     entities_service,
     exception,
+    files_service,
     news_service,
     persons_service,
     preview_file_states_service as states_service,
@@ -89,12 +90,6 @@ class NewCommentTestCase(CommentsTestCase):
         )
 
     def test_the_files_a_comment_is_posted_with_land_on_it(self):
-        """
-        Two of the same name are kept as they are: attachment_file has no
-        unique constraint, so the IntegrityError branch that would add a
-        random suffix never fires. chats_service randomizes up front rather
-        than relying on it.
-        """
         comment = self.comment(
             "with a file",
             files={
@@ -831,6 +826,57 @@ class ReplyTestCase(CommentsTestCase):
             Notification.query.filter_by(reply_id=reply["id"]).count(), 0
         )
 
+    def test_a_reply_starts_the_thread_of_a_comment_without_one(self):
+        # An imported comment can carry no reply list at all.
+        comment = self.comment()
+        Comment.get(comment["id"]).update({"replies": None})
+
+        comments_service.reply_comment(
+            comment["id"], "the reply", person_id=self.user["id"]
+        )
+
+        self.assertEqual(
+            [
+                reply["text"]
+                for reply in comments_service.get_comment(comment["id"])[
+                    "replies"
+                ]
+            ],
+            ["the reply"],
+        )
+
+    def test_the_files_of_a_reply_are_tied_to_it(self):
+        comment = self.comment()
+
+        reply = comments_service.reply_comment(
+            comment["id"],
+            "the reply",
+            person_id=self.user["id"],
+            files={"file": self.uploaded_file("notes.txt")},
+        )
+
+        (attachment,) = AttachmentFile.get_all_by(comment_id=comment["id"])
+        self.assertEqual(str(attachment.reply_id), reply["id"])
+        self.assertEqual(
+            [
+                (attached["id"], attached["reply_id"])
+                for attached in reply["attachment_files"]
+            ],
+            [(str(attachment.id), reply["id"])],
+        )
+
+    def test_a_reply_deleted_from_a_comment_without_one_leaves_it_empty(
+        self,
+    ):
+        comment = self.comment()
+        Comment.get(comment["id"]).update({"replies": None})
+
+        result = comments_service.delete_reply(
+            comment["id"], str(fields.gen_uuid())
+        )
+
+        self.assertEqual(result["replies"], [])
+
 
 class AcknowledgeTestCase(CommentsTestCase):
     """
@@ -1022,6 +1068,25 @@ class MoveCommentTestCase(CommentsTestCase):
             str(self.target_task.id),
         )
 
+    def test_a_comment_moved_on_a_concept_stays_out_of_the_news_stream(self):
+        concept = concepts_service.create_concept(self.project_id, "a concept")
+        concept_task = self.generate_fixture_task(
+            name="concept task", entity_id=concept["id"]
+        )
+        target_task = self.generate_fixture_task(
+            name="concept target", entity_id=concept["id"]
+        )
+        comment = self.comment("wrong task", task_id=concept_task.id)
+
+        moved = comments_service.move_comment_to_task(
+            comment["id"], str(target_task.id)
+        )
+
+        self.assertEqual(moved["object_id"], str(target_task.id))
+        self.assertEqual(
+            News.query.filter_by(comment_id=comment["id"]).count(), 0
+        )
+
 
 class PreviewFileServiceTestCase(PreviewFileTestCase):
     def _write_temp_movie(self, size=1024):
@@ -1094,6 +1159,59 @@ class PreviewFileServiceTestCase(PreviewFileTestCase):
                 for entry in single_news["data"][0]["preview_files"]
             ],
             ["ready"],
+        )
+
+    def store(self, get_local_path, prefix, preview_file_id):
+        file_path = get_local_path(prefix, preview_file_id)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb") as stored_file:
+            stored_file.write(b"\x00" * 512)
+
+    def an_original_and_a_target(self, extension):
+        original = self.generate_fixture_preview_file(name="original")
+        original.update({"extension": extension})
+        target = self.generate_fixture_preview_file(name="target")
+        return str(original.id), str(target.id)
+
+    def test_copying_a_picture_preview_copies_its_pictures_only(self):
+        """
+        A picture has no movie and no tiles: what the storage holds under
+        these prefixes for the same id stays behind.
+        """
+        original_id, target_id = self.an_original_and_a_target("png")
+        self.store(file_store.get_local_picture_path, "original", original_id)
+        self.store(file_store.get_local_picture_path, "tiles", original_id)
+        self.store(file_store.get_local_movie_path, "source", original_id)
+
+        comments_service.copy_preview_file_in_another_one(
+            original_id, target_id
+        )
+
+        self.assertEqual(
+            list(states_service.get_file_states(target_id)),
+            ["pictures/original"],
+        )
+        self.assertNotIn(
+            files_service.MOVIE_PREFIXES_KEY,
+            PreviewFile.get(target_id).data or {},
+        )
+
+    def test_copying_a_document_preview_copies_its_file(self):
+        original_id, target_id = self.an_original_and_a_target("pdf")
+        self.store(file_store.get_local_file_path, "previews", original_id)
+
+        comments_service.copy_preview_file_in_another_one(
+            original_id, target_id
+        )
+
+        self.assertTrue(
+            os.path.exists(
+                file_store.get_local_file_path("previews", target_id)
+            )
+        )
+        self.assertEqual(
+            list(states_service.get_file_states(target_id)),
+            ["files/previews"],
         )
 
 
@@ -1373,4 +1491,11 @@ class CommentReaderTestCase(TaskTestCase):
         self.assertEqual(
             [(event["person_id"], event["for_client"]) for event in updates],
             [(self.user["id"], True)],
+        )
+
+    def test_a_malformed_comment_id_is_not_found(self):
+        self.assertRaises(
+            exception.CommentNotFoundException,
+            comments_service.get_comment_raw,
+            "not-a-uuid",
         )
