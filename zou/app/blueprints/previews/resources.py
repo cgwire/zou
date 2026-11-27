@@ -1541,8 +1541,7 @@ class ProjectThumbnailResource(BaseThumbnailResource):
 
     def check_allowed_to_get(self, instance_id):
         super().check_allowed_to_get(instance_id)
-        if not permissions.has_manager_permissions():
-            permissions_service.check_project_access(instance_id)
+        permissions_service.check_project_access(instance_id)
 
     def check_allowed_to_post(self, instance_id):
         return permissions_service.check_manager_project_access(instance_id)
