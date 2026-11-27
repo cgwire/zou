@@ -272,6 +272,320 @@ def get_asset_type_casting(project_id, asset_type_id):
     return castings
 
 
+def get_shot_casting_export_rows(
+    project_id, is_tv_show=False, episode_id=None
+):
+    """
+    Return the casting rows of the shots of the given project, as tuples
+    sorted by name. For a TV show, the rows start with the episode name and
+    the given episode filters them.
+    """
+    results = []
+    Shot = aliased(Entity, name="shot")
+    Asset = aliased(Entity, name="asset")
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    AssetType = aliased(EntityType, name="asset_type")
+
+    query = (
+        EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
+        .join(Sequence, Shot.parent_id == Sequence.id)
+        .join(Asset, EntityLink.entity_out_id == Asset.id)
+        .join(AssetType, Asset.entity_type_id == AssetType.id)
+        .filter(Shot.project_id == project_id)
+    )
+    if is_tv_show:
+        query = query.join(Episode, Sequence.parent_id == Episode.id)
+        if episode_id is not None:
+            query = query.filter(Episode.id == episode_id)
+        query = query.add_columns(
+            Episode.name,
+            Sequence.name,
+            Shot.name,
+            AssetType.name,
+            Asset.name,
+        ).order_by(
+            Episode.name,
+            Sequence.name,
+            Shot.name,
+            AssetType.name,
+            Asset.name,
+        )
+        for (
+            entity_link,
+            episode_name,
+            sequence_name,
+            shot_name,
+            asset_type_name,
+            asset_name,
+        ) in query.all():
+            results.append(
+                (
+                    episode_name,
+                    sequence_name,
+                    "Shot",
+                    shot_name,
+                    asset_type_name,
+                    asset_name,
+                    entity_link.nb_occurences,
+                    entity_link.label,
+                )
+            )
+    else:
+        query = query.add_columns(
+            Sequence.name,
+            Shot.name,
+            AssetType.name,
+            Asset.name,
+        ).order_by(
+            Sequence.name,
+            Shot.name,
+            AssetType.name,
+            Asset.name,
+        )
+
+        for (
+            entity_link,
+            sequence_name,
+            shot_name,
+            asset_type_name,
+            asset_name,
+        ) in query.all():
+            results.append(
+                (
+                    sequence_name,
+                    "Shot",
+                    shot_name,
+                    asset_type_name,
+                    asset_name,
+                    entity_link.nb_occurences,
+                    entity_link.label,
+                )
+            )
+
+    return results
+
+
+def get_asset_casting_export_rows(
+    project_id, is_tv_show=False, episode_id=None
+):
+    """
+    Return the casting rows of the assets of the given project, as tuples
+    sorted by name. For a TV show, the rows start with the episode name, the
+    given episode filters them and the main pack rows come at the end.
+    """
+    results = []
+    ParentAsset = aliased(Entity, name="parent_asset")
+    ParentAssetType = aliased(EntityType, name="parent_asset_type")
+    Asset = aliased(Entity, name="asset")
+    AssetType = aliased(EntityType, name="asset_type")
+    Episode = aliased(Entity, name="episode")
+    shot_type = entity_types_service.get_shot_type()
+
+    query = (
+        EntityLink.query.join(
+            ParentAsset, EntityLink.entity_in_id == ParentAsset.id
+        )
+        .join(
+            ParentAssetType,
+            ParentAsset.entity_type_id == ParentAssetType.id,
+        )
+        .join(Asset, EntityLink.entity_out_id == Asset.id)
+        .join(AssetType, Asset.entity_type_id == AssetType.id)
+        .filter(ParentAsset.project_id == project_id)
+        .filter(ParentAssetType.id != shot_type["id"])
+    )
+    if is_tv_show:
+        query = query.join(Episode, ParentAsset.source_id == Episode.id)
+        if episode_id is not None:
+            query = query.filter(Episode.id == episode_id)
+        query = query.add_columns(
+            Episode.name,
+            ParentAssetType.name,
+            ParentAsset.name,
+            AssetType.name,
+            Asset.name,
+        ).order_by(
+            Episode.name,
+            ParentAssetType.name,
+            ParentAsset.name,
+            AssetType.name,
+            Asset.name,
+        )
+        for (
+            entity_link,
+            episode_name,
+            parent_asset_type_name,
+            parent_name,
+            asset_type_name,
+            asset_name,
+        ) in query.all():
+            results.append(
+                (
+                    episode_name,
+                    "",
+                    parent_asset_type_name,
+                    parent_name,
+                    asset_type_name,
+                    asset_name,
+                    entity_link.nb_occurences,
+                    entity_link.label,
+                )
+            )
+        results += get_main_pack_casting_export_rows(project_id)
+    else:
+        query = query.add_columns(
+            ParentAssetType.name,
+            ParentAsset.name,
+            AssetType.name,
+            Asset.name,
+        ).order_by(
+            ParentAssetType.name,
+            ParentAsset.name,
+            AssetType.name,
+            Asset.name,
+        )
+        for (
+            entity_link,
+            parent_asset_type_name,
+            parent_name,
+            asset_type_name,
+            asset_name,
+        ) in query.all():
+            results.append(
+                (
+                    parent_asset_type_name,
+                    "",
+                    parent_name,
+                    asset_type_name,
+                    asset_name,
+                    entity_link.nb_occurences,
+                    entity_link.label,
+                )
+            )
+
+    return results
+
+
+def get_main_pack_casting_export_rows(project_id):
+    """
+    Return the casting rows of the assets of the main pack of the given
+    project, as tuples sorted by name. The rows start with "MP".
+    """
+    results = []
+    ParentAsset = aliased(Entity, name="parent_asset")
+    ParentAssetType = aliased(EntityType, name="parent_asset_type")
+    Asset = aliased(Entity, name="asset")
+    AssetType = aliased(EntityType, name="asset_type")
+    shot_type = entity_types_service.get_shot_type()
+    episode_type = entity_types_service.get_episode_type()
+
+    query = (
+        EntityLink.query.join(
+            ParentAsset, EntityLink.entity_in_id == ParentAsset.id
+        )
+        .join(
+            ParentAssetType,
+            ParentAsset.entity_type_id == ParentAssetType.id,
+        )
+        .join(Asset, EntityLink.entity_out_id == Asset.id)
+        .join(AssetType, Asset.entity_type_id == AssetType.id)
+        .filter(ParentAsset.project_id == project_id)
+        .filter(ParentAsset.source_id == None)
+        .filter(ParentAssetType.id != shot_type["id"])
+        .filter(ParentAssetType.id != episode_type["id"])
+    )
+    query = query.add_columns(
+        ParentAssetType.name,
+        ParentAsset.name,
+        AssetType.name,
+        Asset.name,
+    ).order_by(
+        ParentAssetType.name,
+        ParentAsset.name,
+        AssetType.name,
+        Asset.name,
+    )
+    for (
+        entity_link,
+        parent_asset_type_name,
+        parent_name,
+        asset_type_name,
+        asset_name,
+    ) in query.all():
+        results.append(
+            (
+                "MP",
+                "",
+                parent_asset_type_name,
+                parent_name,
+                asset_type_name,
+                asset_name,
+                entity_link.nb_occurences,
+                entity_link.label,
+            )
+        )
+    return results
+
+
+def get_episodes_casting_export_rows(project_id):
+    """
+    Return the casting rows of the episodes of the given project, as tuples
+    sorted by name.
+    """
+    results = []
+    ParentAsset = aliased(Entity, name="parent_asset")
+    ParentAssetType = aliased(EntityType, name="parent_asset_type")
+    Asset = aliased(Entity, name="asset")
+    AssetType = aliased(EntityType, name="asset_type")
+    episode_type = entity_types_service.get_episode_type()
+
+    query = (
+        EntityLink.query.join(
+            ParentAsset, EntityLink.entity_in_id == ParentAsset.id
+        )
+        .join(
+            ParentAssetType,
+            ParentAsset.entity_type_id == ParentAssetType.id,
+        )
+        .join(Asset, EntityLink.entity_out_id == Asset.id)
+        .join(AssetType, Asset.entity_type_id == AssetType.id)
+        .filter(ParentAsset.project_id == project_id)
+        .filter(ParentAsset.source_id == None)
+        .filter(ParentAssetType.id == episode_type["id"])
+    )
+    query = query.add_columns(
+        ParentAssetType.name,
+        ParentAsset.name,
+        AssetType.name,
+        Asset.name,
+    ).order_by(
+        ParentAssetType.name,
+        ParentAsset.name,
+        AssetType.name,
+        Asset.name,
+    )
+    for (
+        entity_link,
+        parent_asset_type_name,
+        parent_name,
+        asset_type_name,
+        asset_name,
+    ) in query.all():
+        results.append(
+            (
+                "",
+                parent_asset_type_name,
+                parent_name,
+                asset_type_name,
+                asset_name,
+                entity_link.nb_occurences,
+                entity_link.label,
+            )
+        )
+    return results
+
+
 def update_casting(entity_id, casting):
     """
     Replace the casting of the given entity. The casting is a list of dicts
