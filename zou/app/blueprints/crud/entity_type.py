@@ -1,5 +1,4 @@
 from flask_jwt_extended import jwt_required
-from sqlalchemy import func
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
@@ -53,9 +52,9 @@ class EntityTypesResource(BaseModelsResource):
         return instance.serialize(relations=True)
 
     def check_creation_integrity(self, data):
-        entity_type = EntityType.query.filter(
-            func.lower(EntityType.name) == str(data.get("name", "")).lower()
-        ).first()
+        entity_type = entity_types_service.find_entity_type_by_name(
+            str(data.get("name", ""))
+        )
         if entity_type is not None:
             raise WrongParameterException(
                 "Entity type with this name already exists"

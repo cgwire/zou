@@ -249,6 +249,16 @@ def get_asset_type(asset_type_id):
     )
 
 
+def find_entity_type_by_name(name):
+    """
+    Return the entity type that has the given name as an active record, or
+    None. The match is case insensitive.
+    """
+    return EntityType.query.filter(
+        func.lower(EntityType.name) == name.lower()
+    ).first()
+
+
 def find_asset_type_by_name(name):
     """
     Return the asset type that has the given name as an active record. If
@@ -260,9 +270,7 @@ def find_asset_type_by_name(name):
     Thus a name like Shot is a temporal type, not an asset type.
     """
     temporal_type_ids = get_temporal_type_ids()
-    asset_type = EntityType.query.filter(
-        func.lower(EntityType.name) == name.lower()
-    ).first()
+    asset_type = find_entity_type_by_name(name)
     if asset_type is not None and str(asset_type.id) in temporal_type_ids:
         raise WrongParameterException(f"{name} is not an asset type")
     return asset_type
