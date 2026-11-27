@@ -1,7 +1,9 @@
+import json
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import config
+from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.services import (
     metadata_descriptors_service,
@@ -230,6 +232,26 @@ class ProjectTestCase(ApiDBTestCase):
         self.generate_fixture_project_closed()
         self.delete(f"data/projects/{self.project_closed.id}")
         self.assertIsNone(Project.get(self.project_closed.id))
+
+    def test_delete_closed_project_with_data_without_force(self):
+        """
+        Without force, the delete removed the preview account, then failed
+        on the foreign keys of the entities with a 500.
+        """
+        self.generate_fixture_project_closed()
+        project_id = str(self.project_closed.id)
+        self.generate_fixture_asset(project_id=project_id)
+        preview_account = Person.create(
+            first_name="Preview",
+            last_name="Project",
+            email="preview-0@preview.kitsu.invalid",
+            preview_project_id=project_id,
+        )
+        preview_account_id = str(preview_account.id)
+        result = json.loads(self.delete(f"data/projects/{project_id}", 400))
+        self.assertIn("use the force parameter", result["message"])
+        self.assertIsNotNone(Project.get(project_id))
+        self.assertIsNotNone(Person.get(preview_account_id))
 
     def test_project_status(self):
         data = {"name": "stalled", "color": "#FFFFFF"}

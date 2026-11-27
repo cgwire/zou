@@ -296,6 +296,16 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             }, 400
         else:
             self.check_delete_permissions(project_dict)
+            # Without force, the delete fails on the foreign keys of the
+            # tasks and entities: refuse it before anything is removed.
+            if not force and projects_service.has_tasks_or_entities(
+                instance_id
+            ):
+                return {
+                    "error": True,
+                    "message": "The project has tasks or entities, use the "
+                    "force parameter to delete them with the project.",
+                }, 400
             if force:
                 cascade_deletion_service.remove_project(instance_id)
             else:
