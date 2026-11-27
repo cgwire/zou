@@ -1,9 +1,10 @@
 import logging
 
 import redis
-from rq import Queue
+from rq import Queue, Worker
 
 from zou.app import config
+from zou.app.stores import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -35,3 +36,25 @@ if config.ENABLE_JOB_QUEUE:
         else:
             raise
     job_queue = Queue(connection=queue_store)
+
+
+def count_workers():
+    """
+    Return the number of rq workers that listen to the job queue database.
+    """
+    # Count the workers in-process rather than shelling out to `rq info
+    # --url redis://:<password>@...`: that put the Redis password in the
+    # argv of a subprocess any local user can read in ps, and the status
+    # probe is reachable without authentication, so its timing was the
+    # attacker's to choose.
+    connection = redis_client.get_client(
+        config.KV_JOB_DB_INDEX, decode_responses=False
+    )
+    return Worker.count(connection=connection)
+
+
+def count_started_jobs():
+    """
+    Return the number of jobs that run now in the job queue.
+    """
+    return job_queue.started_job_registry.count
