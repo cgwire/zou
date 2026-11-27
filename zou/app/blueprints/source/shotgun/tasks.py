@@ -85,11 +85,11 @@ class ImportShotgunTasksResource(BaseImportShotgunResource):
 
     def extract_assignees(self, sg_task, person_ids):
         assignees = []
-        if len(sg_task["task_assignees"]) > 0:
-            for sg_person in sg_task["task_assignees"]:
-                person_id = person_ids[sg_person["id"]]
-                person = Person.get(person_id)
-                assignees.append(person)
+        for sg_person in sg_task["task_assignees"]:
+            # A Group ID can match the Shotgun ID of a person.
+            person_id = person_ids.get(sg_person["id"])
+            if person_id is not None and sg_person.get("type") != "Group":
+                assignees.append(Person.get(person_id))
         return assignees
 
     def import_entry(self, data):

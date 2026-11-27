@@ -159,3 +159,31 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         self.assertEqual(response["removed_instance_id"], task["id"])
         self.tasks = self.get(f"data/tasks?shotgun_id={self.sg_task['id']}")
         self.assertEqual(self.tasks, [])
+
+    def test_import_task_skips_unknown_assignees(self):
+        sg_task = {
+            "cached_display_name": "Shading",
+            "created_by": {"id": 1, "name": "John Doe", "type": "HumanUser"},
+            "due_date": None,
+            "duration": 7200,
+            "entity": {"id": 1, "name": "Sheep", "type": "Asset"},
+            "id": 20,
+            "project": {"id": 1, "name": "Agent327", "type": "Project"},
+            "sg_description": "test description",
+            "sg_sort_order": None,
+            "sg_status_list": "wip",
+            "start_date": None,
+            "step": {"id": 1, "name": "Modeling Shading", "type": "Step"},
+            "task_assignees": [
+                {"id": 99, "name": "Unknown", "type": "HumanUser"},
+                {"id": 1, "name": "Animators", "type": "Group"},
+                {"id": 2, "name": "Ema Peel", "type": "HumanUser"},
+            ],
+            "type": "Task",
+        }
+        tasks = self.post("/import/shotgun/tasks", [sg_task], 200)
+        self.assertEqual(len(tasks), 1)
+
+        task = tasks_service.get_task(tasks[0]["id"], relations=True)
+        assignee = Person.get_by(shotgun_id=2)
+        self.assertEqual(task["assignees"], [str(assignee.id)])
