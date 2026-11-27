@@ -59,6 +59,69 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         person_filter = ldap_service.build_person_filter(settings)
         self.assertIn("cn=Kitsu \\28prod\\29,dc=x", person_filter)
 
+    def test_build_person_filter_default(self):
+        settings = self.directory([])
+        self.assertEqual(
+            ldap_service.build_person_filter(settings),
+            "(&(objectClass=person)(!(objectClass=computer)))",
+        )
+        settings = self.directory([], LDAP_IS_AD_SIMPLE=False)
+        self.assertEqual(
+            ldap_service.build_person_filter(settings),
+            "(&(objectClass=person))",
+        )
+
+    def test_build_person_filter_custom_user_filter(self):
+        group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
+        settings = self.directory(
+            [],
+            LDAP_GROUP=group,
+            LDAP_USER_FILTER="(&(objectClass=user)(department=Anim))",
+        )
+        self.assertEqual(
+            ldap_service.build_person_filter(settings, "(cn=jdoe)"),
+            "(&(&(objectClass=user)(department=Anim))"
+            f"(memberOf={group})(cn=jdoe))",
+        )
+
+    def test_build_person_filter_wraps_bare_user_filter(self):
+        settings = self.directory([], LDAP_USER_FILTER="department=Anim")
+        self.assertEqual(
+            ldap_service.build_person_filter(settings),
+            "(&(department=Anim))",
+        )
+
+    def test_search_users_custom_user_filter(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=alice,cn=Users,{BASE_DN}",
+                    ad_user("alice", department="Anim"),
+                ),
+                (
+                    f"cn=bob,cn=Users,{BASE_DN}",
+                    ad_user("bob", department="Compta"),
+                ),
+            ],
+            LDAP_USER_FILTER="(&(objectClass=person)(department=Anim))",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
+    def test_find_user_entry_custom_user_filter(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=bob,cn=Users,{BASE_DN}",
+                    ad_user("bob", department="Compta"),
+                ),
+            ],
+            LDAP_USER_FILTER="(&(objectClass=person)(department=Anim))",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        self.assertIsNone(ldap_service.find_user_entry(conn, settings, "bob"))
+
     def test_search_users_excluded_account(self):
         settings = self.directory(
             [

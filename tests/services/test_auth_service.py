@@ -466,6 +466,12 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.use_directory([self.jdoe()], LDAP_USER="")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
 
+    def test_invalid_user_filter(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()], LDAP_USER_FILTER="(objectClass=")
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
     def lock(self, person_id):
         auth_service.update_login_failed_attempts(
             person_id,

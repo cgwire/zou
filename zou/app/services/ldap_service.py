@@ -45,6 +45,7 @@ def get_settings():
         "LDAP_IS_AD",
         "LDAP_IS_AD_SIMPLE",
         "LDAP_SEARCH_BIND",
+        "LDAP_USER_FILTER",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -124,11 +125,19 @@ def open_service_connection(settings):
 def build_person_filter(settings, identity_filter=""):
     """
     Filter matching the person entries (restricted to the configured group on
-    Active Directory), optionally narrowed by an identity filter.
+    Active Directory), optionally narrowed by an identity filter. A
+    configured user filter replaces the default object class filter.
     """
-    parts = ["(objectClass=person)"]
+    user_filter = settings["LDAP_USER_FILTER"].strip()
+    if user_filter:
+        if not user_filter.startswith("("):
+            user_filter = f"({user_filter})"
+        parts = [user_filter]
+    elif is_ad(settings):
+        parts = ["(objectClass=person)", "(!(objectClass=computer))"]
+    else:
+        parts = ["(objectClass=person)"]
     if is_ad(settings):
-        parts.append("(!(objectClass=computer))")
         if len(settings["LDAP_GROUP"]) > 0:
             group = escape_filter_chars(settings["LDAP_GROUP"])
             parts.append(f"(memberOf={group})")

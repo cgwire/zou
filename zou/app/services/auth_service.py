@@ -23,6 +23,7 @@ from flask_jwt_extended import (
 from ldap3.core.exceptions import (
     LDAPBindError,
     LDAPInvalidCredentialsResult,
+    LDAPInvalidFilterError,
     LDAPSocketOpenError,
 )
 from sqlalchemy import func
@@ -383,6 +384,9 @@ def find_search_bind_user(person, identifier, password, app):
         app.logger.error(f"LDAP login refused: {exception}")
         _spend_password_check_time(password)
         raise WrongUserException()
+    except LDAPInvalidFilterError:
+        app.logger.error("LDAP login impossible: check LDAP_USER_FILTER.")
+        raise NoAuthStrategyConfigured()
     finally:
         conn.unbind()
 
