@@ -408,6 +408,18 @@ class TaskAssignationTestCase(TaskTestCase):
         notifications = notifications_service.get_recent_notifications()
         self.assertEqual(len(notifications), 2)
 
+    def test_multiple_task_assign_adds_person_to_each_team(self):
+        self.generate_fixture_task()
+        self.generate_fixture_task_standard()
+        person_id = str(self.person.id)
+        data = {"task_ids": [str(self.task.id), str(self.task_standard.id)]}
+        self.put(f"/actions/persons/{person_id}/assign", data)
+        for project in [self.project, self.project_standard]:
+            team = projects_service.get_project(
+                str(project.id), relations=True
+            )["team"]
+            self.assertIn(person_id, team)
+
     def test_multiple_task_assign_artist(self):
         self.generate_fixture_task()
         self.generate_fixture_shot_task()

@@ -520,8 +520,8 @@ class TasksAssignResource(MethodView, ArgsMixin):
                 pass
             except PersonNotFoundException:
                 return {"error": "Assignee doesn't exist in database."}, 400
-        if len(tasks) > 0:
-            projects_service.add_team_member(tasks[0]["project_id"], person_id)
+        for project_id in {task["project_id"] for task in tasks}:
+            projects_service.add_team_member(project_id, person_id)
 
         return tasks
 
