@@ -326,7 +326,7 @@ class EntityOutputFilePathResource(MethodView, ArgsMixin):
                 name=args["name"],
                 representation=args["representation"],
                 sep=args["separator"],
-                revision=args["revision"],
+                revision=revision,
             )
             file_name = file_tree_service.get_output_file_name(
                 entity,

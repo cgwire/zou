@@ -1,3 +1,5 @@
+import copy
+
 from tests.base import ApiDBTestCase
 from zou.app.models.software import Software
 from zou.app.services import files_service
@@ -300,4 +302,25 @@ class FolderPathTestCase(ApiDBTestCase):
         )
         self.assertTrue(
             result["file_name"].endswith("_v001"), result["file_name"]
+        )
+
+    def test_entity_output_folder_path_takes_the_next_revision(self):
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["output"]["folder_path"][
+            "asset"
+        ] = "<Project>/assets/<Asset>/<OutputType>/v<Revision>"
+        self.project.update({"file_tree": tree})
+        output_type = files_service.get_or_create_output_type("Cache")
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-file-path",
+            {
+                "name": "main",
+                "output_type_id": output_type["id"],
+                "task_type_id": str(self.task_type.id),
+                "revision": 0,
+            },
+            200,
+        )
+        self.assertTrue(
+            result["folder_path"].endswith("/v001"), result["folder_path"]
         )
