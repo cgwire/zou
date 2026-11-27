@@ -208,7 +208,7 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
             }
         ]
         self._post_kitsu("/import/kitsu/news", payload)
-        self.assertIsNotNone(News.get(new_id))
+        self.assertEqual(str(News.get(new_id).comment_id), self.comment["id"])
         self._post_kitsu("/import/kitsu/news", payload)
 
     def test_import_preview_files_flags_imported_only(self):
