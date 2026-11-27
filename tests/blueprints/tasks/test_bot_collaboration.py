@@ -84,3 +84,17 @@ class RouteBotCollaborationTestCase(ApiDBTestCase):
             data,
             403,
         )
+
+    def test_delete_time_spent_for_bot_allowed_when_enabled(self):
+        self.enable_bot_collaboration()
+        self.put(
+            f"/actions/tasks/{self.task_id}/assign",
+            {"person_id": self.bot_id},
+            200,
+        )
+        path = (
+            f"/actions/tasks/{self.task_id}"
+            f"/time-spents/2026-05-31/persons/{self.bot_id}"
+        )
+        self.post(path, {"duration": 60}, 201)
+        self.delete(path, 200)

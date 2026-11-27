@@ -625,7 +625,8 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
         """
         Delete time spent
         """
-        permissions_service.check_person_is_not_bot(person_id)
+        project_id = tasks_service.get_task(task_id)["project_id"]
+        permissions_service.check_person_is_not_bot(person_id, project_id)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
             time_spent = time_spents_service.delete_time_spent(
