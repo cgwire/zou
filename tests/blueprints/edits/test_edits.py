@@ -77,6 +77,16 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(edit["description"], new_edit_data["description"])
         self.assertDictEqual(edit["data"], new_edit_data["data"])
 
+    def test_create_edit_refuses_a_parent_that_is_no_episode_here(self):
+        path = f"data/projects/{self.project.id}/edits"
+        other_project = self.generate_fixture_project_standard()
+        other_episode = self.generate_fixture_episode(
+            "E02", project_id=other_project.id
+        )
+        for parent_id in (self.asset.id, other_episode.id):
+            self.post(path, {"name": "Cut", "episode_id": str(parent_id)}, 400)
+        self.assertEqual(len(edits_service.get_edits()), 1)
+
     def test_remove_edit(self):
         edit = self.generate_fixture_edit()
         edits = edits_service.get_edits()

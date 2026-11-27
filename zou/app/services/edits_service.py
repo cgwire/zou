@@ -5,7 +5,9 @@ from sqlalchemy.orm import aliased
 from zou.app import db
 from zou.app.exceptions import (
     EditNotFoundException,
+    EpisodeNotFoundException,
     WrongIdFormatException,
+    WrongParameterException,
 )
 from zou.app.models.entity import (
     Entity,
@@ -19,6 +21,7 @@ from zou.app.services import (
     entity_types_service,
     metadata_descriptors_service,
     persons_service,
+    shots_service,
     subscriptions_service,
 )
 from zou.app.utils import (
@@ -284,7 +287,8 @@ def create_edit(
     """
     Create an edit for the given project and episode and emit an edit:new
     event. If an edit with the same name already exists there, return it
-    with no change.
+    with no change. If the parent is not an episode of the project, raise
+    WrongParameterException.
     """
     if data is None:
         data = {}
@@ -294,6 +298,15 @@ def create_edit(
     # value from the client, so the edit belongs to no episode.
     if parent_id is not None and len(parent_id) < 36:
         parent_id = None
+    if parent_id is not None:
+        try:
+            episode = shots_service.get_episode(parent_id)
+        except EpisodeNotFoundException:
+            episode = None
+        if episode is None or episode["project_id"] != str(project_id):
+            raise WrongParameterException(
+                f"{parent_id} is not an episode of this project."
+            )
 
     edit = Entity.get_by(
         entity_type_id=edit_type["id"],
