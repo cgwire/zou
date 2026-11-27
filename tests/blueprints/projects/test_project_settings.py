@@ -823,6 +823,16 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(fetched[0]["daily_salary"], 700)
 
+        # A partial body leaves the other fields untouched.
+        result = self.put(
+            f"/data/projects/{self.project_id}"
+            f"/budgets/{budget['id']}/entries/{entry['id']}",
+            {"daily_salary": 800},
+        )
+        self.assertEqual(result["daily_salary"], 800)
+        self.assertEqual(result["months_duration"], 6)
+        self.assertEqual(result["department_id"], str(self.department.id))
+
     def test_delete_budget_entry(self):
         self.generate_fixture_department()
         budget = self._create_budget("Delete Entry Budget")

@@ -1164,7 +1164,9 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         budget_service.get_budget(budget_id, project_id)
         budget_service.get_budget_entry(entry_id, budget_id)
         body = validation.validate_request_body(BudgetEntryUpdateSchema)
-        return budget_service.update_budget_entry(entry_id, body.model_dump())
+        return budget_service.update_budget_entry(
+            entry_id, body.model_dump(exclude_unset=True)
+        )
 
     @jwt_required()
     @swag_from(SPECS["ProductionBudgetEntryResource_delete"])
