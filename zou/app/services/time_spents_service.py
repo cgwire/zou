@@ -19,6 +19,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
@@ -102,6 +103,37 @@ def get_time_spents_for_entity(entity_id):
         .order_by(TimeSpent.date.desc())
     )
     return TimeSpent.serialize_list(query.all())
+
+
+def get_open_projects_time_spents_query():
+    """
+    Return a query on the time spents of the open projects, joined with
+    the names of their project, entity type, entity, task type and person.
+    """
+    return (
+        TimeSpent.query.order_by(
+            TimeSpent.date,
+            Person.last_name,
+            Project.name,
+            EntityType.name,
+            Entity.name,
+        )
+        .join(Task, TimeSpent.task_id == Task.id)
+        .join(Entity, Task.entity_id == Entity.id)
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
+        .join(Project, Task.project_id == Project.id)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(Person, TimeSpent.person_id == Person.id)
+        .add_columns(Project.name)
+        .add_columns(EntityType.name)
+        .add_columns(Entity.id)
+        .add_columns(Entity.name)
+        .add_columns(TaskType.name)
+        .add_columns(Person.first_name)
+        .add_columns(Person.last_name)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+    )
 
 
 def get_year_table(
