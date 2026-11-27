@@ -1,9 +1,11 @@
 import datetime
+import json
 from unittest.mock import patch
 
 import pytest
 
 from tests.base import ApiDBTestCase
+from tests.blueprints.shared.base import BaseSharedRevisionTestCase
 from zou.app.exceptions import (
     PlaylistShareLinkNotFoundException,
     WrongParameterException,
@@ -869,3 +871,21 @@ class GuestCommentTestCase(SharedPlaylistTestCase):
 
         self.assertRaises(GuestCommentForbidden, self.update, {"text": "x"})
         self.assertEqual(Comment.get(self.comment["id"]).text, "look")
+
+
+class SharedPlaylistRevisionsTestCase(BaseSharedRevisionTestCase):
+    def test_the_other_guest_routes_read_the_same_revisions(self):
+        """
+        The guest routes that check a comment or an attachment against the
+        playlist of the link read it through get_shared_playlist, which
+        still returned every revision.
+        """
+        link = self.post(self.share_path(), {}, 201)
+        payload = json.dumps(
+            playlist_sharing_service.get_shared_playlist(link["token"]),
+            default=str,
+        )
+
+        for row in (self.revision_2, self.layout_preview):
+            self.assertNotIn(str(row.id), payload)
+        self.assertNotIn("hidden-stroke", payload)
