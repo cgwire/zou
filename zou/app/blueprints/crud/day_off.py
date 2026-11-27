@@ -7,7 +7,6 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
     permissions_service,
     time_spents_service,
-    user_service,
 )
 from zou.app.utils import permissions
 from zou.app.utils.openapi import load_specs, swag_from

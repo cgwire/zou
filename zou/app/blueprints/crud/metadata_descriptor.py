@@ -22,9 +22,6 @@ class MetadataDescriptorsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, MetadataDescriptor)
 
-    def get_relations_eager_load(self):
-        return [MetadataDescriptor.departments]
-
     def check_read_permissions(self, options=None):
         # Every member of a production reads its descriptors, narrowed on
         # the role held there by add_project_permission_filter.

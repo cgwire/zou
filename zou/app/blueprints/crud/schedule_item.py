@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.services import permissions_service, user_service
+from zou.app.services import permissions_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/schedule_item.yml")
@@ -89,8 +89,4 @@ class ScheduleItemResource(BaseModelResource):
         data = super().update_data(data, instance_id)
         if isinstance(data.get("man_days", None), str):
             data.pop("man_days", None)
-
-        for field in self.protected_fields:
-            data.pop(field, None)
-
         return data

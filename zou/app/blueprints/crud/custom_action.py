@@ -6,7 +6,6 @@ from zou.app.models.custom_action import CustomAction
 from zou.app.services import (
     custom_actions_service,
     permissions_service,
-    user_service,
 )
 from zou.app.utils.openapi import load_specs, swag_from
 

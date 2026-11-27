@@ -110,7 +110,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         episode_id = options.get("episode_id", None)
         if episode_id is not None:
             # Bound as a raw value into the join below: the driver would
-            # reject a malformed id on execution, as a 500.
+            # reject a malformed id on execution with a generic message.
             if not fields.is_valid_id(episode_id):
                 raise WrongParameterException(
                     f"Invalid UUID format for episode_id: {episode_id}"

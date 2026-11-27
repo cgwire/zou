@@ -10,7 +10,6 @@ from zou.app.services import (
     permissions_service,
     schedule_service,
     tasks_service,
-    user_service,
 )
 from zou.app.utils import fields, permissions
 from zou.app.utils.openapi import load_specs, swag_from

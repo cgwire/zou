@@ -1,6 +1,4 @@
-from flask import current_app
 from flask_jwt_extended import jwt_required
-from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
@@ -85,13 +83,11 @@ class WorkingFileResource(BaseModelResource):
         self.protected_fields += ["task_id", "entity_id", "outputs"]
 
     def check_read_permissions(self, instance):
-        working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_access(working_file["task_id"])
+        permissions_service.check_task_access(instance["task_id"])
         return True
 
     def check_update_permissions(self, instance, data):
-        working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_work_access(working_file["task_id"])
+        permissions_service.check_task_work_access(instance["task_id"])
         return True
 
     @jwt_required()
@@ -120,10 +116,6 @@ class WorkingFileResource(BaseModelResource):
             working_file = files_service.get_working_file(instance_id)
             self.check_read_permissions(working_file)
             return self.clean_get_result(working_file)
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
 
         except ValueError:
             raise WrongParameterException("Invalid value.")

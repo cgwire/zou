@@ -8,7 +8,7 @@ from zou.app.models.milestone import (
     MILESTONE_TYPES,
     Milestone,
 )
-from zou.app.services import permissions_service, user_service
+from zou.app.services import permissions_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/milestone.yml")
