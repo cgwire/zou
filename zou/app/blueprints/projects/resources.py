@@ -32,7 +32,6 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.mixin import ArgsMixin
-from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 from zou.app.services import (
     budget_service,
     metadata_descriptors_service,
@@ -624,9 +623,9 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                 "task_type_id only applies to Task metadata descriptors."
             )
 
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_data_type(
+            body.data_type
+        )
 
         return (
             metadata_descriptors_service.add_metadata_descriptor(
@@ -692,9 +691,9 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         if body.name is not None and len(body.name) == 0:
             raise WrongParameterException("Name cannot be empty.")
 
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_data_type(
+            body.data_type
+        )
 
         return metadata_descriptors_service.update_metadata_descriptor(
             metadata_descriptor_id, args
@@ -793,9 +792,9 @@ class AllProjectsMetadataDescriptorsResource(MethodView):
         permissions.check_manager_permissions()
         body = validation.validate_request_body(MetadataDescriptorSchema)
         _check_metadata_entity_type(body.entity_type)
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_data_type(
+            body.data_type
+        )
         return (
             metadata_descriptors_service.add_metadata_descriptor_to_projects(
                 _accessible_open_project_ids(),
@@ -824,9 +823,10 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
         )
         _check_metadata_entity_type(body.entity_type)
         changes = body.model_dump(exclude_unset=True, exclude={"entity_type"})
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if "data_type" in changes and changes["data_type"] not in types:
-            raise WrongParameterException("Invalid data_type")
+        if "data_type" in changes:
+            metadata_descriptors_service.check_metadata_descriptor_data_type(
+                changes["data_type"]
+            )
         return metadata_descriptors_service.update_metadata_descriptor_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
