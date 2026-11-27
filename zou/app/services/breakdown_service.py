@@ -20,6 +20,7 @@ from zou.app.exceptions import (
     AssetInstanceNotFoundException,
     AssetNotFoundException,
     EntityLinkNotFoundException,
+    WrongParameterException,
 )
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity, EntityLink
@@ -811,10 +812,21 @@ def add_asset_instance_to_scene(scene_id, asset_id, description=""):
 
 def add_asset_instance_to_shot(shot_id, asset_instance_id):
     """
-    Add the asset instance to the instance casting of the given shot.
+    Add the asset instance to the instance casting of the given shot. If
+    the scene or the target asset of the instance is in another project,
+    raise a WrongParameterException.
     """
     shot = shots_service.get_shot_raw(shot_id)
     asset_instance = get_asset_instance_raw(asset_instance_id)
+    for parent_id in (asset_instance.scene_id, asset_instance.target_asset_id):
+        if (
+            parent_id is not None
+            and Entity.get(parent_id).project_id != shot.project_id
+        ):
+            raise WrongParameterException(
+                f"Asset instance {asset_instance_id} is not in the project "
+                "of the shot."
+            )
     shot.instance_casting.append(asset_instance)
     shot.save()
 

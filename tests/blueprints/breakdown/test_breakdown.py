@@ -277,6 +277,22 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
         self.assertGreater(len(instances), 0)
 
+    def test_an_instance_of_another_project_is_not_added_to_a_shot(self):
+        other_project = self.generate_fixture_project_standard()
+        scene = self.generate_fixture_scene(
+            "SC02", project_id=other_project.id
+        )
+        instance = self.generate_fixture_scene_asset_instance(scene=scene)
+
+        self.post(
+            f"/data/shots/{self.shot_id}/asset-instances",
+            {"asset_instance_id": str(instance.id)},
+            400,
+        )
+        self.assertEqual(
+            self.get(f"/data/shots/{self.shot_id}/asset-instances"), {}
+        )
+
     def test_a_client_edits_no_asset_instance(self):
         self.generate_fixture_scene_asset_instance()
         self.generate_fixture_user_client()
