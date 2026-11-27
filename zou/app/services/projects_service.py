@@ -383,6 +383,14 @@ def get_project_statuses():
     return fields.serialize_models(ProjectStatus.get_all())
 
 
+def get_project_status_raw(project_status_id):
+    """
+    Return the project status that has the given ID as an active record, or
+    None.
+    """
+    return ProjectStatus.get(project_status_id)
+
+
 def get_or_create_open_status():
     """
     Return the open status. If it does not exist, create it.

@@ -6,7 +6,6 @@ from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
 from zou.app.models.project import PROJECT_STYLES, Project
-from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
     cascade_deletion_service,
     files_service,
@@ -256,7 +255,9 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return project_dict
 
     def clean_get_result(self, data):
-        project_status = ProjectStatus.get(data["project_status_id"])
+        project_status = projects_service.get_project_status_raw(
+            data["project_status_id"]
+        )
         data["project_status_name"] = project_status.name
         return data
 
