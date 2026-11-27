@@ -6,8 +6,10 @@ AddTaskBatchCommentResource_post:
     also send a JSON body with a comments list. Each comment sets the status
     of its task. To attach files to the comment at index i, name the form
     fields attachment_file-i for attachments and preview_file-i for previews.
-    Only a manager can set person_id and created_at. You must be able to do
-    actions on each task.
+    A picture that cannot be read, an empty or incomplete movie, or a file
+    whose format is not valid is left out of its comment. Only a manager
+    can set person_id and created_at. You must be able to do actions on
+    each task.
   tags:
     - Comments
   parameters:
@@ -67,9 +69,11 @@ AddTasksBatchCommentResource_post:
     task_status_id and text, and optional checklist, links, person_id and
     created_at. You can also send a JSON body with a comments list. Each
     comment sets the status of its task. To attach files to the comment at
-    index i, name the form fields attachment_file-i and preview_file-i. Only
-    a manager can set person_id and created_at. You must be able to do
-    actions on each task.
+    index i, name the form fields attachment_file-i and preview_file-i. A
+    picture that cannot be read, an empty or incomplete movie, or a file
+    whose format is not valid is left out of its comment. Only a manager
+    can set person_id and created_at. You must be able to do actions on
+    each task.
   tags:
     - Comments
   requestBody:
@@ -336,8 +340,10 @@ CreatePreviewFilePictureResource_post:
     form. For a picture, the route makes a square thumbnail, a rectangle
     thumbnail and a preview picture. For a movie, the route normalizes the
     movie and makes the thumbnails. Use normalize=false to keep the movie as
-    it is. You cannot upload a file again for a preview that already has a
-    file. You must be able to do actions on the task. A client of the project
+    it is. If a picture cannot be read, a movie upload is empty or
+    incomplete, or the format is not valid, the route deletes the preview.
+    You cannot upload a file again for a preview that already has a file.
+    You must be able to do actions on the task. A client of the project
     cannot use this route.
   tags:
     - Previews
@@ -386,8 +392,9 @@ CreatePreviewFilePictureResource_post:
                 description: File size in bytes
                 example: 1024000
     400:
-      description: The file is missing, its format is not valid, or the
-        preview already has a file
+      description: The file is missing, a picture cannot be read, a movie
+        upload is empty, the format is not valid, or the preview already
+        has a file
     403:
       description: You cannot do actions on this task
     404:

@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -5,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
 from zou.app.models.news import News
+from zou.app.models.preview_file import PreviewFile
 from zou.app.services import (
     files_service,
     news_service,
@@ -248,6 +250,65 @@ class PictureUploadDispatchTestCase(BasePreviewDispatchTestCase):
         preview_file = files_service.get_preview_file(preview_file_id)
         self.assertEqual(preview_file["status"], "broken")
         self.assertFalse(os.path.exists(tmp_path))
+
+
+class UnreadablePictureUploadTestCase(BasePreviewDispatchTestCase):
+    """
+    A file named as a picture that Pillow cannot read, such as an empty
+    export or another format under a .png name. Left in place, its preview
+    file would show as processing for good.
+    """
+
+    def setUp(self):
+        super().setUp()
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        self.unreadable_path = os.path.join(folder, "broken.png")
+        with open(self.unreadable_path, "w") as unreadable:
+            unreadable.write("<svg xmlns='http://www.w3.org/2000/svg'/>")
+
+    def test_an_unreadable_picture_takes_its_preview_file_away(self):
+        preview_file_id = self.create_preview_file()
+
+        response = self.upload_file(
+            f"/pictures/preview-files/{preview_file_id}",
+            self.unreadable_path,
+            code=400,
+        )
+
+        self.assertEqual(
+            response["message"], "Uploaded file is not a readable picture."
+        )
+        self.assertIsNone(PreviewFile.get(preview_file_id))
+
+    def test_a_batch_keeps_the_comment_of_an_unreadable_picture(self):
+        # Like a movie that cannot be read: the comment goes on without
+        # the file, and the next comments of the batch too.
+        comments = [
+            {"task_status_id": self.wip_status_id, "text": text}
+            for text in ["a", "b"]
+        ]
+        with open(self.unreadable_path, "rb") as unreadable:
+            response = self.app.post(
+                f"/actions/tasks/{self.task_id}/batch-comment",
+                data={
+                    "comments": json.dumps(comments),
+                    "preview_file-0": (unreadable, "broken.png"),
+                },
+                headers=self.base_headers,
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            [
+                (comment["text"], comment["preview_files"])
+                for comment in response.json
+            ],
+            [("a", []), ("b", [])],
+        )
+        self.assertEqual(
+            files_service.get_preview_files_for_task(self.task_id), []
+        )
 
 
 class FrameExtractionDispatchTestCase(BasePreviewDispatchTestCase):

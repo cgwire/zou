@@ -739,7 +739,19 @@ class BaseNewPreviewFilePicture:
         original_file_name = ".".join(file_name_parts)
         preview_file = None
         if extension in ALLOWED_PICTURE_EXTENSION:
-            metadata = self.save_picture_preview(instance_id, uploaded_file)
+            try:
+                metadata = self.save_picture_preview(
+                    instance_id, uploaded_file
+                )
+            except WrongParameterException:
+                # Pillow cannot read the file. Without it, the preview file
+                # would show as processing for good.
+                deletion_service.remove_preview_file_by_id(
+                    instance_id, force=True
+                )
+                if abort_on_failed:
+                    raise
+                return None
             data = {
                 "extension": "png",
                 "original_name": original_file_name,
