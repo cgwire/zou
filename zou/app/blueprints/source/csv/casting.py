@@ -98,15 +98,9 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
 
         if asset_id is not None and target_id is not None:
             entity = entities_service.get_entity_raw(target_id)
-            link = breakdown_service.get_entity_link_raw(target_id, asset_id)
-            if link is None:
-                breakdown_service.create_casting_link(
-                    target_id, asset_id, occurences, label
-                )
-                entity.update({"nb_entities_out": entity.nb_entities_out + 1})
-                entities_service.clear_entity_cache(str(entity.id))
-            else:
-                link.update({"nb_occurences": occurences, "label": label})
+            breakdown_service.import_casting_link(
+                entity, asset_id, occurences, label
+            )
             entity_id = str(entity.id)
             if entity_types_service.is_shot(entity.serialize()):
                 breakdown_service.refresh_shot_casting_stats(

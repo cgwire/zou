@@ -480,6 +480,22 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     return link
 
 
+def import_casting_link(entity, asset_id, nb_occurences, label):
+    """
+    Create the link between the given entity active record and the given
+    asset, and add one to the link count of the entity. If the link exists,
+    update its occurences and label, without event.
+    """
+    entity_id = str(entity.id)
+    link = get_entity_link_raw(entity_id, asset_id)
+    if link is None:
+        create_casting_link(entity_id, asset_id, nb_occurences, label)
+        entity.update({"nb_entities_out": entity.nb_entities_out + 1})
+        entities_service.clear_entity_cache(entity_id)
+    else:
+        link.update({"nb_occurences": nb_occurences, "label": label})
+
+
 def _extract_removal(entity, casting):
     """
     Return the assets removed from the casting of an entity: the assets that
