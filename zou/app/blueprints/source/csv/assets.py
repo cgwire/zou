@@ -2,10 +2,8 @@ from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     assets_service,
-    comments_service,
     entities_service,
     entity_types_service,
     index_service,
@@ -73,48 +71,6 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
         }
 
-    def get_tasks_update(self, row):
-        """
-        Return the task changes of the row: one entry per task type whose
-        status, comment or assignation cell is filled. Raise RowException
-        on an unknown status.
-        """
-        tasks_update = []
-        for task_type in self.task_types_in_project_for_assets:
-            task_status_name = row.get(task_type["name"], None)
-            task_status_id = None
-            if task_status_name not in [None, ""]:
-                for status_id, status_names in self.task_statuses.items():
-                    if task_status_name.lower() in status_names:
-                        task_status_id = status_id
-                        break
-                if task_status_id is None:
-                    raise RowException(
-                        f"Task status not found for {task_status_name}"
-                    )
-
-            # An empty cell holds no comment, as a missing column does.
-            task_comment_text = (
-                row.get(f"{task_type['name']} comment", None) or None
-            )
-            task_assignees = self.get_assignation_ids(row, task_type["name"])
-
-            if (
-                task_status_id is not None
-                or task_comment_text is not None
-                or task_assignees
-            ):
-                tasks_update.append(
-                    {
-                        "task_type_id": task_type["id"],
-                        "task_status_id": task_status_id,
-                        "comment": task_comment_text,
-                        "assignees": task_assignees,
-                    }
-                )
-
-        return tasks_update
-
     def create_missing_tasks(self, entity, tasks_map=None):
         """
         Create the workflow tasks the entity does not have yet, each at the
@@ -163,32 +119,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     continue
                 tasks_map[task_type_id] = task
             task = tasks_map[task_type_id]
-            already_assigned = set(task.get("assignees") or [])
-            for person_id in task_update["assignees"]:
-                if person_id not in already_assigned:
-                    tasks_service.assign_task(
-                        task["id"], person_id, self.current_user_id
-                    )
-            # The status guard needs the explicit None check: an entry
-            # created for its assignations alone must not post an empty
-            # comment at the default status.
-            if task_update["comment"] is not None or (
-                task_update["task_status_id"] is not None
-                and task_update["task_status_id"] != task["task_status_id"]
-            ):
-                try:
-                    comments_service.create_comment(
-                        self.current_user_id,
-                        task["id"],
-                        task_update["task_status_id"]
-                        or task["task_status_id"],
-                        task_update["comment"] or "",
-                        [],
-                        {},
-                        "",
-                    )
-                except WrongParameterException:
-                    pass
+            self.apply_task_update(task, task_update)
 
     def import_row(self, row, project_id):
         asset_name = row["Name"]
@@ -292,7 +223,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 except KeyError:
                     raise RowException(f"Task type not found for {ready_for}")
 
-        tasks_update = self.get_tasks_update(row)
+        tasks_update = self.get_tasks_update(
+            row, self.task_types_in_project_for_assets
+        )
 
         if entity is None:
             asset = assets_service.create_asset(

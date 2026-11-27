@@ -16,7 +16,6 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
-    user_service,
 )
 from zou.app.services.tasks_service import (
     create_tasks,
@@ -145,13 +144,20 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         self.match_case = match_case
 
         if self.is_tv_show:
-            self.episode_id = episode_id
             self.episode = shots_service.get_episode(episode_id)
             sequences = shots_service.get_sequences_for_episode(episode_id)
             shots = shots_service.get_shots_for_episode(episode_id)
         else:
             sequences = shots_service.get_sequences({"project_id": project_id})
             shots = shots_service.get_shots({"project_id": project_id})
+        # Same lookup as the one of create_sequence, so that a sequence
+        # found here is the one create_sequence would return.
+        self.sequence_ids_by_name = {
+            sequence["name"]: sequence["id"]
+            for sequence in sequences
+            if sequence["parent_id"] == episode_id
+            and sequence["project_id"] == project_id
+        }
         for sequence in sequences:
             self.sequence_map[sequence["id"]] = sequence["name"]
 
@@ -277,7 +283,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 "No shot name found while extracting shot informations."
                             )
 
-                        sequence_id = self.sequence_map.get(
+                        sequence_id = self.sequence_ids_by_name.get(
                             shot_infos_extracted["sequence_name"]
                         )
                         if sequence_id is None:
@@ -287,7 +293,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 shot_infos_extracted["sequence_name"],
                                 created_by=self.current_user_id,
                             )["id"]
-                            self.sequence_map[
+                            self.sequence_ids_by_name[
                                 shot_infos_extracted["sequence_name"]
                             ] = sequence_id
 
