@@ -75,6 +75,19 @@ def _apply_time_spent_filters(
     return query
 
 
+def filter_time_spents_between(query, start_date, end_date):
+    """
+    Return the given time spent query limited to the dates between the
+    given start date and end date, both included.
+    """
+    return query.filter(
+        TimeSpent.date.between(
+            func.cast(start_date, TimeSpent.date.type),
+            func.cast(end_date, TimeSpent.date.type),
+        )
+    )
+
+
 def _get_interval_time_spents(
     person_id, start, end, project_id=None, department_ids=None, scope=None
 ):
@@ -852,6 +865,23 @@ def _apply_time_spent_duration(time_spent, duration, add, project_id):
     )
 
 
+def update_task_duration(task_id):
+    """
+    Set the duration of the given task to the sum of the durations of its
+    time spents. Then clear the task cache and emit task:update.
+    """
+    task = tasks_service.get_task_raw(task_id)
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
+    task.save()
+    tasks_service.clear_task_cache(task_id)
+    events.emit(
+        "task:update", {"task_id": task_id}, project_id=str(task.project_id)
+    )
+
+
 def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
     Create a time spent if it does not exist. If it exists, set its duration,
@@ -904,13 +934,7 @@ def _create_or_update_time_spent(task_id, person_id, date, duration, add):
                 raise
             _apply_time_spent_duration(time_spent, duration, add, project_id)
 
-    task.duration = sum(
-        time_spent.duration
-        for time_spent in TimeSpent.get_all_by(task_id=task_id)
-    )
-    task.save()
-    tasks_service.clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+    update_task_duration(task_id)
 
     return time_spent.serialize()
 
@@ -935,13 +959,7 @@ def delete_time_spent(task_id, person_id, date):
         project_id=project_id,
     )
 
-    task.duration = sum(
-        time_spent.duration
-        for time_spent in TimeSpent.get_all_by(task_id=task_id)
-    )
-    task.save()
-    tasks_service.clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+    update_task_duration(task_id)
 
     return time_spent.serialize()
 
