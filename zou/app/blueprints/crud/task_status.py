@@ -35,14 +35,18 @@ class TaskStatusesResource(BaseModelsResource):
         return super().post()
 
     def post_creation(self, instance):
-        task_types_service.clear_task_status_cache(str(instance.id))
+        for task_status_id in self.unset_default_ids + [str(instance.id)]:
+            task_types_service.clear_task_status_cache(task_status_id)
         return instance.serialize(relations=True)
 
     def check_creation_integrity(self, data):
+        self.unset_default_ids = []
         if data.get("is_default", False):
-            status = TaskStatus.get_by(is_default=True)
-            if status:
-                status.update({"is_default": False})
+            self.unset_default_ids = (
+                task_types_service.unset_default_task_status_no_commit(
+                    data.get("for_concept", False)
+                )
+            )
         return data
 
 
@@ -78,14 +82,19 @@ class TaskStatusResource(BaseModelResource):
         return super().delete(instance_id)
 
     def pre_update(self, instance_dict, data):
+        self.unset_default_ids = []
         if data.get("is_default", False):
-            status = TaskStatus.get_by(is_default=True)
-            if status:
-                status.update({"is_default": False})
+            self.unset_default_ids = (
+                task_types_service.unset_default_task_status_no_commit(
+                    data.get("for_concept", instance_dict["for_concept"]),
+                    instance_dict["id"],
+                )
+            )
         return instance_dict
 
     def post_update(self, instance_dict, data):
-        task_types_service.clear_task_status_cache(instance_dict["id"])
+        for task_status_id in self.unset_default_ids + [instance_dict["id"]]:
+            task_types_service.clear_task_status_cache(task_status_id)
         return instance_dict
 
     def pre_delete(self, instance_dict):

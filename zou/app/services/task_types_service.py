@@ -101,6 +101,25 @@ def get_default_task_status(for_concept=False):
         )
 
 
+def unset_default_task_status_no_commit(for_concept, task_status_id=None):
+    """
+    Set is_default=False on the default task status of the given kind
+    (concept or task), except the status that has the given ID. This
+    function does not commit: the caller commits it with the write that
+    sets the new default, so a failed write keeps the old default. Return
+    the IDs of the statuses that are not the default anymore.
+    """
+    query = TaskStatus.query.filter(
+        TaskStatus.is_default == True,
+        TaskStatus.for_concept == bool(for_concept),
+    )
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id != task_status_id)
+    unset_ids = [str(row[0]) for row in query.with_entities(TaskStatus.id)]
+    query.update({"is_default": False})
+    return unset_ids
+
+
 def get_task_status_raw(task_status_id):
     """
     Return the task status that has the given ID, as an active record.

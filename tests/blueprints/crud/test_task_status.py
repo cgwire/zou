@@ -92,3 +92,55 @@ class TaskStatusTestCase(ApiDBTestCase):
         self.assertEqual(
             task_types_service.get_default_task_status()["id"], str(new.id)
         )
+
+    def test_new_default_task_status_keeps_the_concept_default(self):
+        """
+        The task default and the concept default are independent. A new
+        task default used to unset the concept default.
+        """
+        TaskStatus.query.update({"is_default": False})
+        neutral = TaskStatus.create(
+            name="Neutral",
+            short_name="neutral",
+            color="#CCCCCC",
+            is_default=True,
+            for_concept=True,
+        )
+        new = self.post(
+            "data/task-status",
+            {
+                "name": "Todo",
+                "short_name": "todo",
+                "color": "#000000",
+                "is_default": True,
+            },
+        )
+        ready = TaskStatus.create(
+            name="Ready", short_name="rdy", color="#000000"
+        )
+        self.put(f"data/task-status/{ready.id}", {"is_default": True})
+        self.assertTrue(TaskStatus.get(neutral.id).is_default)
+        self.assertFalse(TaskStatus.get(new["id"]).is_default)
+        self.assertTrue(TaskStatus.get(ready.id).is_default)
+
+    def test_failed_default_update_keeps_the_old_default(self):
+        """
+        The old default used to be unset in its own commit, before the
+        write of the new default. A failed write left no default.
+        """
+        TaskStatus.query.update({"is_default": False})
+        old = TaskStatus.create(
+            name="Todo", short_name="todo", color="#000000", is_default=True
+        )
+        new = TaskStatus.create(
+            name="Ready", short_name="rdy", color="#000000"
+        )
+        old_id, new_id = str(old.id), str(new.id)
+        self.spare_fixtures_from_rollbacks()
+        self.put(
+            f"data/task-status/{new_id}",
+            {"is_default": True, "short_name": "todo"},
+            400,
+        )
+        self.assertTrue(TaskStatus.get(old_id).is_default)
+        self.assertFalse(TaskStatus.get(new_id).is_default)
