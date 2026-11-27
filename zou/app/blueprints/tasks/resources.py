@@ -44,7 +44,6 @@ from zou.app.services import (
 )
 from zou.app.utils import (
     date_helpers,
-    events,
     fields,
     http_cache,
     permissions,
@@ -181,25 +180,6 @@ class TaskCommentResource(MethodView):
         )
         return comment
 
-    def pre_delete(self, comment):
-        task = tasks_service.get_task(comment["object_id"])
-        self.previous_task_status_id = task["task_status_id"]
-
-    def post_delete(self, comment):
-        task = tasks_service.get_task(comment["object_id"])
-        new_task_status_id = task["task_status_id"]
-        if self.previous_task_status_id != new_task_status_id:
-            events.emit(
-                "task:status-changed",
-                {
-                    "task_id": task["id"],
-                    "new_task_status_id": new_task_status_id,
-                    "previous_task_status_id": self.previous_task_status_id,
-                    "person_id": comment["person_id"],
-                },
-                project_id=task["project_id"],
-            )
-
     @jwt_required()
     @swag_from(SPECS["TaskCommentResource_delete"])
     def delete(self, task_id, comment_id):
@@ -215,11 +195,9 @@ class TaskCommentResource(MethodView):
             permissions_service.check_project_access(task["project_id"])
         else:
             permissions_service.check_person_access(comment["person_id"])
-        self.pre_delete(comment)
-        deletion_service.remove_comment(comment_id)
-        tasks_service.reset_task_data(comment["object_id"])
-        comments_service.clear_comment_cache(comment_id)
-        self.post_delete(comment)
+        comments_service.remove_task_comment(
+            comment_id, comment["object_id"], comment["person_id"]
+        )
         return "", 204
 
 
@@ -707,11 +685,9 @@ class DeleteAllTasksForTaskTypeResource(MethodView):
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
-        task_ids = deletion_service.remove_tasks_for_project_and_task_type(
+        deletion_service.remove_tasks_for_project_and_task_type(
             project_id, task_type_id
         )
-        for task_id in task_ids:
-            tasks_service.clear_task_cache(task_id)
         return "", 204
 
 
@@ -726,8 +702,6 @@ class DeleteTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_ids = validation.validate_id_list()
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
-        for task_id in task_ids:
-            tasks_service.clear_task_cache(task_id)
         return task_ids, 200
 
 

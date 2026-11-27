@@ -517,6 +517,8 @@ def remove_tasks(project_id, task_ids):
     _remove_task_batch(
         get_task_ids(Task.project_id == project_id, Task.id.in_(task_ids))
     )
+    for task_id in task_ids:
+        tasks_service.clear_task_cache(task_id)
     return task_ids
 
 
@@ -536,6 +538,8 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
     """
     task_ids = get_task_ids(project_id=project_id, task_type_id=task_type_id)
     _remove_task_batch(task_ids)
+    for task_id in task_ids:
+        tasks_service.clear_task_cache(task_id)
     return task_ids
 
 
