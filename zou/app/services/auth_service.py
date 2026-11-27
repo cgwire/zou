@@ -632,8 +632,10 @@ def check_email_otp(person, email_otp, consume=True):
 def check_recovery_code(person, recovery_code):
     """
     Check the recovery code of a person. Remove a matching code from the
-    person: it works one time only.
+    person: it works one time only. Codes are made of capital letters and
+    digits, so a code typed in lowercase or between spaces matches too.
     """
+    recovery_code = recovery_code.strip().upper()
     for recovery_hash in person["otp_recovery_codes"]:
         if auth.check_password(recovery_hash, recovery_code):
             remove_otp_revovery_code(person["id"], recovery_hash)

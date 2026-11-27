@@ -1065,7 +1065,7 @@ class EmailOTPTestCase(ApiDBTestCase):
                 "totp_secret": totp_secret,
                 "preferred_two_factor_authentication": "totp",
                 "otp_recovery_codes": auth_service.hash_recovery_codes(
-                    ["recovery"]
+                    ["K7PZ2QW9AB"]
                 ),
             }
         )
@@ -1078,7 +1078,7 @@ class EmailOTPTestCase(ApiDBTestCase):
             )
             return response.status_code, json.loads(response.data)
 
-        status, refused = enable(email_otp="wrong", recovery_code="recovery")
+        status, refused = enable(email_otp="wrong", recovery_code="K7PZ2QW9AB")
         self.assertEqual(status, 400)
         self.assertTrue(refused["wrong_OTP"])
         self.assertNotIn("wrong_existing_OTP", refused)
@@ -1598,7 +1598,7 @@ class TOTPTestCase(ApiDBTestCase):
         import flask_bcrypt
 
         person = self.get_person()
-        recovery_code = "testrecovery123"
+        recovery_code = "K7PZ2QW9AB"
         hashed = flask_bcrypt.generate_password_hash(recovery_code)
         person.update({"otp_recovery_codes": [hashed]})
         person.save()

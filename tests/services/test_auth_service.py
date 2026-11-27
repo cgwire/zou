@@ -974,6 +974,24 @@ class TwoFactorCheckTestCase(AuthTestCase):
             )
         )
 
+    def test_a_recovery_code_typed_in_lowercase_is_accepted(self):
+        # A phone keyboard capitalizes only the first letter typed.
+        self.person.update(
+            {
+                "totp_enabled": True,
+                "otp_recovery_codes": auth_service.hash_recovery_codes(
+                    ["K7PZ2QW9AB"]
+                ),
+            }
+        )
+
+        self.assertTrue(
+            auth_service.check_recovery_code(
+                self.person.serialize(), " K7pz2qw9ab "
+            )
+        )
+        self.assertEqual(Person.get(self.person_id).otp_recovery_codes, [])
+
     def test_a_wrong_recovery_code_consumes_nothing(self):
         codes = auth_service.generate_recovery_codes()
         self.person.update(
