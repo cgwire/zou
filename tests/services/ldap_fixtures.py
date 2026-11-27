@@ -61,6 +61,10 @@ class LdapDirectoryMixin:
             "LDAP_NESTED_GROUPS": False,
             "LDAP_START_TLS": False,
             "LDAP_LOGIN_ATTRIBUTE": "",
+            "LDAP_FIRST_NAME_ATTRIBUTE": "",
+            "LDAP_LAST_NAME_ATTRIBUTE": "",
+            "LDAP_EMAIL_ATTRIBUTE": "",
+            "LDAP_THUMBNAIL_ATTRIBUTE": "",
         }
         settings.update(settings_overrides)
         return settings

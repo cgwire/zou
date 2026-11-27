@@ -61,6 +61,10 @@ def get_settings():
         "LDAP_NESTED_GROUPS",
         "LDAP_START_TLS",
         "LDAP_LOGIN_ATTRIBUTE",
+        "LDAP_FIRST_NAME_ATTRIBUTE",
+        "LDAP_LAST_NAME_ATTRIBUTE",
+        "LDAP_EMAIL_ATTRIBUTE",
+        "LDAP_THUMBNAIL_ATTRIBUTE",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -72,24 +76,55 @@ def is_ad(settings):
     return bool(settings["LDAP_IS_AD"] or settings["LDAP_IS_AD_SIMPLE"])
 
 
+def get_attribute_name(settings, key, default):
+    """
+    Name of the entry attribute set by the given setting, else the default.
+    The names go into the search filters, so anything but an attribute name
+    or an OID is refused.
+    """
+    attribute = settings[key].strip()
+    if not attribute:
+        return default
+    if not ATTRIBUTE_NAME.fullmatch(attribute):
+        raise ldap3.core.exceptions.LDAPInvalidFilterError(
+            f"Invalid {key}: {attribute}"
+        )
+    return attribute
+
+
 def get_login_attribute(settings):
     """
     Name of the entry attribute holding the desktop login: the configured
-    one, else the usual one of the directory type. The configured name goes
-    into the search filters, so anything but an attribute name is refused.
+    one, else the usual one of the directory type.
     """
-    attribute = settings["LDAP_LOGIN_ATTRIBUTE"].strip()
-    if attribute:
-        if not ATTRIBUTE_NAME.fullmatch(attribute):
-            raise ldap3.core.exceptions.LDAPInvalidFilterError(
-                f"Invalid LDAP_LOGIN_ATTRIBUTE: {attribute}"
-            )
-        return attribute
     if settings["LDAP_IS_AD_SIMPLE"]:
-        return "cn"
+        default = "cn"
     elif settings["LDAP_IS_AD"]:
-        return "sAMAccountName"
-    return "uid"
+        default = "sAMAccountName"
+    else:
+        default = "uid"
+    return get_attribute_name(settings, "LDAP_LOGIN_ATTRIBUTE", default)
+
+
+def get_mapped_attributes(settings):
+    """
+    Names of the entry attributes holding the first name, the last name, the
+    emails and the photo of a user.
+    """
+    return {
+        "first_name": get_attribute_name(
+            settings, "LDAP_FIRST_NAME_ATTRIBUTE", "givenName"
+        ),
+        "last_name": get_attribute_name(
+            settings, "LDAP_LAST_NAME_ATTRIBUTE", "sn"
+        ),
+        "email": get_attribute_name(settings, "LDAP_EMAIL_ATTRIBUTE", "mail"),
+        "thumbnail": get_attribute_name(
+            settings,
+            "LDAP_THUMBNAIL_ATTRIBUTE",
+            "thumbnailPhoto" if is_ad(settings) else "jpegPhoto",
+        ),
+    }
 
 
 def get_tls(settings):
@@ -208,27 +243,19 @@ def get_user_attributes(settings):
     """
     Attributes to read on the user entries.
     """
-    attributes = ["givenName", "sn", "mail", "cn"]
+    attributes = ["cn"]
     if is_ad(settings):
-        if settings["LDAP_IS_AD_SIMPLE"]:
-            attributes += ["cn"]
-        else:
+        if not settings["LDAP_IS_AD_SIMPLE"]:
             attributes += ["sAMAccountName"]
-        attributes += [
-            "thumbnailPhoto",
-            "userAccountControl",
-            "objectGUID",
-        ]
+        attributes += ["userAccountControl", "objectGUID"]
     else:
-        attributes += [
-            "uid",
-            "jpegPhoto",
-            "uniqueIdentifier",
-            "organizationalStatus",
-        ]
-    login_attribute = get_login_attribute(settings)
-    if login_attribute not in attributes:
-        attributes.append(login_attribute)
+        attributes += ["uid", "uniqueIdentifier", "organizationalStatus"]
+    for attribute in [
+        get_login_attribute(settings),
+        *get_mapped_attributes(settings).values(),
+    ]:
+        if attribute not in attributes:
+            attributes.append(attribute)
     return attributes
 
 
@@ -273,6 +300,7 @@ def entry_to_user(entry, settings):
     Convert a directory entry into a dict the person sync understands.
     """
     ad = is_ad(settings)
+    mapped = get_mapped_attributes(settings)
     desktop_login = get_desktop_login(entry, settings)
     if ad:
         ldap_uid = clean_value(entry.objectGUID)
@@ -280,13 +308,13 @@ def entry_to_user(entry, settings):
         ldap_uid = clean_value(entry.uniqueIdentifier)
     else:
         ldap_uid = None
-    thumbnails = (entry.thumbnailPhoto if ad else entry.jpegPhoto).raw_values
+    thumbnails = getattr(entry, mapped["thumbnail"]).raw_values
     if len(thumbnails) > 0 and len(thumbnails[0]) > 0:
         thumbnail = thumbnails[0]
     else:
         thumbnail = None
 
-    emails = entry.mail.values
+    emails = getattr(entry, mapped["email"]).values
     if len(emails) == 0:
         emails = [f"{desktop_login}@{settings['EMAIL_DOMAIN']}"]
     else:
@@ -309,8 +337,10 @@ def entry_to_user(entry, settings):
         active = False
 
     return {
-        "first_name": clean_value(entry.givenName or entry.cn),
-        "last_name": clean_value(entry.sn),
+        "first_name": clean_value(
+            getattr(entry, mapped["first_name"]) or entry.cn
+        ),
+        "last_name": clean_value(getattr(entry, mapped["last_name"])),
         "email": emails[0].lower(),
         "emails": emails,
         "desktop_login": desktop_login,
@@ -481,9 +511,10 @@ def build_identity_filter(settings, identifier, ldap_uid=None):
             return f"(objectGUID={escaped_uid})"
         return f"(uniqueIdentifier={escaped_uid})"
     if "@" in identifier:
+        email = get_mapped_attributes(settings)["email"]
         if is_ad(settings):
-            return f"(|(mail={escaped})(userPrincipalName={escaped}))"
-        return f"(mail={escaped})"
+            return f"(|({email}={escaped})(userPrincipalName={escaped}))"
+        return f"({email}={escaped})"
     return f"({get_login_attribute(settings)}={escaped})"
 
 

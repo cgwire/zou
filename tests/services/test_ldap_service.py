@@ -369,6 +369,79 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             ldap_service.find_user_entry(conn, settings, "John Doe")
         )
 
+    def mapped_directory(self):
+        return self.directory(
+            [
+                (
+                    f"cn=jdoe,cn=Users,{BASE_DN}",
+                    ad_user(
+                        "jdoe",
+                        displayName="Johnny",
+                        department="Doe",
+                        otherMailbox="john.doe@studio.com",
+                        jpegPhoto=b"photo",
+                    ),
+                )
+            ],
+            LDAP_FIRST_NAME_ATTRIBUTE="displayName",
+            LDAP_LAST_NAME_ATTRIBUTE="department",
+            LDAP_EMAIL_ATTRIBUTE="otherMailbox",
+            LDAP_THUMBNAIL_ATTRIBUTE="jpegPhoto",
+        )
+
+    def test_search_users_attribute_mapping(self):
+        settings = self.mapped_directory()
+        self.assertTrue(
+            {"displayName", "department", "otherMailbox", "jpegPhoto"}
+            <= set(ldap_service.get_user_attributes(settings))
+        )
+        conn = ldap_service.open_service_connection(settings)
+        (user,) = ldap_service.search_users(conn, settings)
+        self.assertEqual(user["first_name"], "Johnny")
+        self.assertEqual(user["last_name"], "Doe")
+        self.assertEqual(user["email"], "john.doe@studio.com")
+        self.assertEqual(user["thumbnail"], b"photo")
+
+    def test_search_users_default_attribute_mapping(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=jdoe,cn=Users,{BASE_DN}",
+                    ad_user("jdoe", thumbnailPhoto=b"photo"),
+                )
+            ]
+        )
+        conn = ldap_service.open_service_connection(settings)
+        (user,) = ldap_service.search_users(conn, settings)
+        self.assertEqual(user["first_name"], "Given")
+        self.assertEqual(user["last_name"], "Jdoe")
+        self.assertEqual(user["email"], "jdoe@studio.local")
+        self.assertEqual(user["thumbnail"], b"photo")
+
+    def test_find_user_entry_by_mapped_email(self):
+        settings = self.mapped_directory()
+        conn = ldap_service.open_service_connection(settings)
+        entry = ldap_service.find_user_entry(
+            conn, settings, "john.doe@studio.com"
+        )
+        self.assertEqual(entry.entry_dn, f"cn=jdoe,cn=Users,{BASE_DN}")
+        self.assertIsNone(
+            ldap_service.find_user_entry(conn, settings, "jdoe@studio.local")
+        )
+
+    def test_invalid_mapped_attribute(self):
+        for key in [
+            "LDAP_FIRST_NAME_ATTRIBUTE",
+            "LDAP_LAST_NAME_ATTRIBUTE",
+            "LDAP_EMAIL_ATTRIBUTE",
+            "LDAP_THUMBNAIL_ATTRIBUTE",
+        ]:
+            settings = self.directory([], **{key: "mail)(cn=*"})
+            with self.assertRaises(
+                ldap3.core.exceptions.LDAPInvalidFilterError
+            ):
+                ldap_service.get_user_attributes(settings)
+
     def test_search_users_excluded_account(self):
         settings = self.directory(
             [

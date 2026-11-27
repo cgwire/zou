@@ -481,6 +481,12 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         person = self.login("jdoe")
         self.assertEqual(person["desktop_login"], "jdoe")
 
+    def test_unknown_mapped_attribute(self):
+        self.use_directory(
+            [self.jdoe()], LDAP_FIRST_NAME_ATTRIBUTE="notAnAttribute"
+        )
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
     def test_invalid_login_attribute(self):
         self.use_directory([self.jdoe()], LDAP_LOGIN_ATTRIBUTE="a b")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")

@@ -21,6 +21,7 @@ from flask_jwt_extended import (
     get_jti,
 )
 from ldap3.core.exceptions import (
+    LDAPAttributeError,
     LDAPBindError,
     LDAPInvalidCredentialsResult,
     LDAPInvalidFilterError,
@@ -401,10 +402,10 @@ def find_search_bind_user(person, identifier, password, app):
         app.logger.error(f"LDAP login refused: {exception}")
         _spend_password_check_time(password)
         raise WrongUserException()
-    except LDAPInvalidFilterError:
+    except (LDAPAttributeError, LDAPInvalidFilterError) as exception:
         app.logger.error(
-            "LDAP login impossible: check LDAP_USER_FILTER and "
-            "LDAP_LOGIN_ATTRIBUTE."
+            "LDAP login impossible, check LDAP_USER_FILTER and the "
+            f"LDAP_*_ATTRIBUTE settings: {exception}"
         )
         raise NoAuthStrategyConfigured()
     finally:
