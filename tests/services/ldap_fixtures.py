@@ -72,6 +72,7 @@ class LdapDirectoryMixin:
             "LDAP_VENDOR_GROUP": "",
             "LDAP_CONNECT_TIMEOUT": 5,
             "LDAP_TIMEOUT": 10,
+            "LDAP_FOLLOW_REFERRALS": True,
         }
         settings.update(settings_overrides)
         return settings

@@ -80,6 +80,7 @@ def get_settings():
         "LDAP_VENDOR_GROUP",
         "LDAP_CONNECT_TIMEOUT",
         "LDAP_TIMEOUT",
+        "LDAP_FOLLOW_REFERRALS",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -192,6 +193,7 @@ def connect(settings, user, password, authentication, get_info=ldap3.ALL):
         raise_exceptions=True,
         auto_bind=auto_bind,
         receive_timeout=settings["LDAP_TIMEOUT"],
+        auto_referrals=settings["LDAP_FOLLOW_REFERRALS"],
         client_strategy=CLIENT_STRATEGY,
     )
     if not conn.bound:

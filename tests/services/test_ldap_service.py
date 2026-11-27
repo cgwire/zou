@@ -163,6 +163,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             "LDAP_CA_FILE": "",
             "LDAP_CONNECT_TIMEOUT": 5,
             "LDAP_TIMEOUT": 10,
+            "LDAP_FOLLOW_REFERRALS": True,
         }
         settings.update(overrides)
         return settings
@@ -920,6 +921,40 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertEqual(
             self.connection_kwargs(settings)["receive_timeout"], 7
         )
+
+    def test_connect_follows_referrals_by_default(self):
+        settings = self.tls_settings(LDAP_SSL=False)
+        self.assertIs(self.connection_kwargs(settings)["auto_referrals"], True)
+
+    def test_connect_without_referrals(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False, LDAP_FOLLOW_REFERRALS=False
+        )
+        self.assertIs(
+            self.connection_kwargs(settings)["auto_referrals"], False
+        )
+
+    def test_paged_search_skips_referrals(self):
+        settings = self.directory(
+            [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],
+            LDAP_FOLLOW_REFERRALS=False,
+        )
+        conn = ldap_service.open_service_connection(settings)
+        referral = {
+            "type": "searchResRef",
+            "uri": [f"ldap://other.studio.local/{BASE_DN}"],
+        }
+        search = conn.search
+
+        def search_with_referral(*args, **kwargs):
+            result = search(*args, **kwargs)
+            conn.response.append(referral)
+            conn._entries = None
+            return result
+
+        with mock.patch.object(conn, "search", search_with_referral):
+            users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["jdoe"])
 
     def test_connect_to_a_silent_server(self):
         """
