@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.services import permissions_service
+from zou.app.services import permissions_service, schedule_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/schedule_item.yml")
@@ -35,10 +35,10 @@ class ScheduleItemsResource(BaseModelsResource):
         )
 
     def check_creation_integrity(self, data):
-        schedule_item = ScheduleItem.get_by(
-            project_id=data.get("project_id", None),
-            task_type_id=data.get("task_type_id", None),
-            object_id=data.get("object_id", None),
+        schedule_item = schedule_service.find_schedule_item_raw(
+            data.get("project_id", None),
+            data.get("task_type_id", None),
+            data.get("object_id", None),
         )
         if schedule_item is not None:
             raise WrongParameterException(
