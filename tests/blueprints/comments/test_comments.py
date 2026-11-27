@@ -1076,6 +1076,33 @@ class CommentAttachmentTestCase(CommentTestCase):
         )
         self.assertIsNotNone(AttachmentFile.get(attachment.id))
 
+    def test_an_author_out_of_the_team_attaches_no_more(self):
+        self.generate_fixture_user_cg_artist()
+        comment = comments_service.new_comment(
+            self.task.id,
+            self.task_status.id,
+            self.user_cg_artist["id"],
+            "mine",
+        )
+        attachment = AttachmentFile.create(
+            name="brief.pdf",
+            size=0,
+            extension="pdf",
+            mimetype="application/pdf",
+            comment_id=comment["id"],
+        )
+        path = f"/tasks/{self.task.id}/comments/{comment['id']}"
+        self.log_in_cg_artist()
+        self.upload_file(
+            f"/actions{path}/add-attachment",
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            code=403,
+        )
+        self.delete(f"/data{path}/attachments/{attachment.id}", 403)
+        self.assertEqual(
+            len(AttachmentFile.get_all_by(comment_id=comment["id"])), 1
+        )
+
 
 class TaskCommentRouteTestCase(CommentTestCase):
     """
