@@ -741,6 +741,11 @@ FilterGroupResource_get:
                 type: boolean
                 description: Whether filter group is shared
                 example: false
+              position:
+                type: integer
+                nullable: true
+                description: Rank of the group among the ordered groups
+                example: 2
               created_at:
                 type: string
                 format: date-time
@@ -808,6 +813,14 @@ FilterGroupResource_put:
               nullable: true
               description: Department identifier
               example: c46c80c6-e097-6887-c292-79675204e470
+            position:
+              type: integer
+              nullable: true
+              minimum: 0
+              maximum: 2147483647
+              description: Rank of the group among the ordered groups. An
+                empty value takes the group out of the order.
+              example: 2
   responses:
     200:
       description: The updated filter group
@@ -846,6 +859,11 @@ FilterGroupResource_put:
                 type: boolean
                 description: Whether filter group is shared
                 example: true
+              position:
+                type: integer
+                nullable: true
+                description: Rank of the group among the ordered groups
+                example: 2
               created_at:
                 type: string
                 format: date-time
@@ -922,6 +940,11 @@ FilterGroupsResource_get:
                       type: boolean
                       description: Whether filter group is shared
                       example: false
+                    position:
+                      type: integer
+                      nullable: true
+                      description: Rank of the group among the ordered groups
+                      example: 2
                     created_at:
                       type: string
                       format: date-time
@@ -1027,6 +1050,11 @@ FilterGroupsResource_post:
                 type: boolean
                 description: Whether filter group is shared
                 example: false
+              position:
+                type: integer
+                nullable: true
+                description: Rank of the group among the ordered groups
+                example: 2
               created_at:
                 type: string
                 format: date-time
@@ -1129,6 +1157,14 @@ FilterResource_put:
               nullable: true
               description: Department identifier
               example: d57d91d7-f108-7998-d403-80786315f580
+            position:
+              type: integer
+              nullable: true
+              minimum: 0
+              maximum: 2147483647
+              description: Rank of the filter among the ordered filters. An
+                empty value takes the filter out of the order.
+              example: 2
   responses:
     200:
       description: The updated filter
@@ -1167,6 +1203,11 @@ FilterResource_put:
                 type: boolean
                 description: Whether filter is shared
                 example: true
+              position:
+                type: integer
+                nullable: true
+                description: Rank of the filter among the ordered filters
+                example: 2
               created_at:
                 type: string
                 format: date-time
@@ -1244,6 +1285,11 @@ FiltersResource_get:
                       type: boolean
                       description: Whether filter is shared
                       example: false
+                    position:
+                      type: integer
+                      nullable: true
+                      description: Rank of the filter among the ordered filters
+                      example: 2
                     created_at:
                       type: string
                       format: date-time
@@ -1359,6 +1405,11 @@ FiltersResource_post:
                 type: boolean
                 description: Whether filter is shared
                 example: false
+              position:
+                type: integer
+                nullable: true
+                description: Rank of the filter among the ordered filters
+                example: 2
               created_at:
                 type: string
                 format: date-time
