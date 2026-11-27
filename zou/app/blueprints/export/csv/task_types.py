@@ -12,7 +12,7 @@ class TaskTypesCsvExport(BaseCsvExport):
     def __init__(self):
         BaseCsvExport.__init__(self)
 
-        self.name = "task_types_export"
+        self.file_name = "task_types_export"
 
     @jwt_required()
     @swag_from(SPECS["TaskTypesCsvExport_get"])

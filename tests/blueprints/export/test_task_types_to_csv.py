@@ -17,3 +17,13 @@ Modeling;Modeling\r
 Modeling;Shaders\r
 """
         self.assertEqual(csv_task_types, expected_result)
+
+    def test_export_file_name(self):
+        response = self.app.get(
+            "export/csv/task-types.csv", headers=self.base_headers
+        )
+        response.get_data()
+        self.assertEqual(
+            response.headers["Content-Disposition"],
+            "attachment; filename=kitsu_task_types_export.csv",
+        )
