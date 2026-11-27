@@ -122,6 +122,27 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         conn = ldap_service.open_service_connection(settings)
         self.assertIsNone(ldap_service.find_user_entry(conn, settings, "bob"))
 
+    def test_search_users_reads_every_page(self):
+        logins = ["alice", "bob", "carol", "dave", "eve"]
+        settings = self.directory(
+            [
+                (f"cn={login},cn=Users,{BASE_DN}", ad_user(login))
+                for login in logins
+            ]
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with mock.patch.object(ldap_service, "SEARCH_PAGE_SIZE", 2):
+            with mock.patch.object(
+                conn, "search", wraps=conn.search
+            ) as search:
+                users = ldap_service.search_users(conn, settings)
+        self.assertEqual(
+            sorted(user["desktop_login"] for user in users), logins
+        )
+        self.assertEqual(search.call_count, 3)
+        for call in search.call_args_list:
+            self.assertEqual(call.kwargs["paged_size"], 2)
+
     def test_search_users_excluded_account(self):
         settings = self.directory(
             [

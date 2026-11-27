@@ -25,6 +25,10 @@ CLIENT_STRATEGY = ldap3.SYNC
 
 # Seconds to wait for the directory to accept the connection.
 CONNECT_TIMEOUT = 5
+# Active Directory returns at most 1000 entries for each search: read the
+# entries page by page, below that limit.
+SEARCH_PAGE_SIZE = 500
+PAGED_RESULTS_CONTROL = "1.2.840.113556.1.4.319"
 
 
 def get_settings():
@@ -279,6 +283,33 @@ def get_group_member_dns(conn, settings):
     return {normalize_dn(dn) for dn in conn.entries[0].uniqueMember.values}
 
 
+def paged_search(conn, base_dn, search_filter, attributes):
+    """
+    Entries of a search read page by page, so that the server size limit
+    does not cut the result. A server without paging support returns
+    everything in the first page.
+    """
+    entries = []
+    cookie = None
+    while True:
+        conn.search(
+            base_dn,
+            search_filter,
+            attributes=attributes,
+            paged_size=SEARCH_PAGE_SIZE,
+            paged_cookie=cookie,
+        )
+        entries.extend(conn.entries)
+        cookie = (
+            conn.result.get("controls", {})
+            .get(PAGED_RESULTS_CONTROL, {})
+            .get("value", {})
+            .get("cookie")
+        )
+        if not cookie:
+            return entries
+
+
 def search_users(conn, settings):
     """
     Read the user entries of the directory (or of the configured group) and
@@ -291,13 +322,13 @@ def search_users(conn, settings):
         check_group_exists(conn, settings)
     else:
         group_members = get_group_member_dns(conn, settings)
-    conn.search(
+    users = []
+    for entry in paged_search(
+        conn,
         settings["LDAP_BASE_DN"],
         build_person_filter(settings),
-        attributes=get_user_attributes(settings),
-    )
-    users = []
-    for entry in conn.entries:
+        get_user_attributes(settings),
+    ):
         if is_excluded(settings, get_desktop_login(entry, settings)):
             continue
         if (
