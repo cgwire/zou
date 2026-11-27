@@ -491,6 +491,37 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.use_directory([self.jdoe()], LDAP_LOGIN_ATTRIBUTE="a b")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
 
+    def role_settings(self):
+        admins = f"cn=Admins,ou=Groups,{BASE_DN}"
+        return admins, {"LDAP_ADMIN_GROUP": admins}
+
+    def test_first_login_takes_role_from_group(self):
+        admins, settings = self.role_settings()
+        self.use_directory(
+            [(admins, {"objectClass": "group"}), self.jdoe(memberOf=admins)],
+            **settings,
+        )
+        person = self.login("jdoe")
+        self.assertEqual(person["role"], "admin")
+
+    def test_login_demotes_person_out_of_role_group(self):
+        admins, settings = self.role_settings()
+        person = self.ldap_person(role="admin")
+        self.use_directory(
+            [(admins, {"objectClass": "group"}), self.jdoe()], **settings
+        )
+        self.login("jdoe")
+        self.assertEqual(Person.get(person["id"]).role.code, "user")
+
+    def test_login_role_group_missing(self):
+        person = self.ldap_person(role="admin")
+        self.use_directory(
+            [self.jdoe()],
+            LDAP_ADMIN_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}",
+        )
+        self.assertRaises(LdapGroupNotFoundException, self.login, "jdoe")
+        self.assertEqual(Person.get(person["id"]).role.code, "admin")
+
     def test_no_service_password(self):
         person = self.ldap_person()
         self.use_directory([self.jdoe()], LDAP_PASSWORD="")

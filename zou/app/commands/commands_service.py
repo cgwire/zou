@@ -334,26 +334,20 @@ def _ldap_update_persons(users):
             ):
                 raise IsUserLimitReachedException
 
-            if any(
-                user[key] != person[key]
-                for key in [
-                    key
-                    for key in user.keys()
-                    if key not in ["thumbnail", "emails"]
-                ]
-            ):
+            fields = {
+                "email": user["email"],
+                "first_name": user["first_name"],
+                "last_name": user["last_name"],
+                "active": user["active"],
+                "is_generated_from_ldap": True,
+                "desktop_login": user["desktop_login"],
+                "ldap_uid": user["ldap_uid"],
+            }
+            if ldap_service.is_role_managed(user, person):
+                fields["role"] = user["role"]
+            if any(person[key] != value for key, value in fields.items()):
                 persons_service.update_person(
-                    person["id"],
-                    {
-                        "email": user["email"],
-                        "first_name": user["first_name"],
-                        "last_name": user["last_name"],
-                        "active": user["active"],
-                        "is_generated_from_ldap": True,
-                        "desktop_login": user["desktop_login"],
-                        "ldap_uid": user["ldap_uid"],
-                    },
-                    bypass_protected_accounts=True,
+                    person["id"], fields, bypass_protected_accounts=True
                 )
                 print(f"User {user['desktop_login']} updated.")
         except IsUserLimitReachedException:
@@ -381,6 +375,7 @@ def _ldap_update_persons(users):
                     "default".encode("utf-8"),
                     user["first_name"],
                     user["last_name"],
+                    role=user.get("role", "user"),
                     desktop_login=user["desktop_login"],
                     is_generated_from_ldap=True,
                     ldap_uid=user["ldap_uid"],

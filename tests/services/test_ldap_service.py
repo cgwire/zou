@@ -13,7 +13,7 @@ from tests.services.ldap_fixtures import (
     openldap_group,
     openldap_person,
 )
-from zou.app import app
+from zou.app import app, config
 from zou.app.commands import commands_service
 from zou.app.exceptions import (
     InactiveUserException,
@@ -441,6 +441,193 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
                 ldap3.core.exceptions.LDAPInvalidFilterError
             ):
                 ldap_service.get_user_attributes(settings)
+
+    def role_directory(self, **overrides):
+        groups = f"ou=Groups,{BASE_DN}"
+        admins = f"cn=Admins,{groups}"
+        managers = f"cn=Managers,{groups}"
+        clients = f"cn=Clients,{groups}"
+        return self.directory(
+            [
+                (admins, {"objectClass": "group"}),
+                (managers, {"objectClass": "group"}),
+                (clients, {"objectClass": "group"}),
+                (
+                    f"cn=alice,cn=Users,{BASE_DN}",
+                    ad_user("alice", memberOf=[managers, admins]),
+                ),
+                (
+                    f"cn=bob,cn=Users,{BASE_DN}",
+                    ad_user("bob", memberOf=[managers]),
+                ),
+                (
+                    f"cn=carol,cn=Users,{BASE_DN}",
+                    ad_user("carol", memberOf=[clients]),
+                ),
+                (f"cn=dave,cn=Users,{BASE_DN}", ad_user("dave")),
+            ],
+            **{
+                "LDAP_ADMIN_GROUP": admins,
+                "LDAP_MANAGER_GROUP": managers,
+                "LDAP_CLIENT_GROUP": clients,
+                **overrides,
+            },
+        )
+
+    def test_search_users_role_groups(self):
+        settings = self.role_directory()
+        conn = ldap_service.open_service_connection(settings)
+        roles = {
+            user["desktop_login"]: user["role"]
+            for user in ldap_service.search_users(conn, settings)
+        }
+        self.assertEqual(
+            roles,
+            {
+                "alice": "admin",
+                "bob": "manager",
+                "carol": "client",
+                "dave": "user",
+            },
+        )
+
+    def test_search_users_without_role_group(self):
+        settings = self.role_directory(
+            LDAP_ADMIN_GROUP="", LDAP_MANAGER_GROUP="", LDAP_CLIENT_GROUP=""
+        )
+        conn = ldap_service.open_service_connection(settings)
+        for user in ldap_service.search_users(conn, settings):
+            self.assertNotIn("role", user)
+
+    def test_search_users_role_group_missing(self):
+        settings = self.role_directory(
+            LDAP_ADMIN_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}"
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with self.assertRaises(LdapGroupNotFoundException):
+            ldap_service.search_users(conn, settings)
+
+    def test_get_entry_role(self):
+        settings = self.role_directory()
+        conn = ldap_service.open_service_connection(settings)
+        for login, role in [
+            ("alice", "admin"),
+            ("bob", "manager"),
+            ("carol", "client"),
+            ("dave", "user"),
+        ]:
+            entry = ldap_service.find_user_entry(conn, settings, login)
+            self.assertEqual(
+                ldap_service.get_entry_role(conn, settings, entry), role
+            )
+        settings["LDAP_ADMIN_GROUP"] = ""
+        settings["LDAP_MANAGER_GROUP"] = ""
+        settings["LDAP_CLIENT_GROUP"] = ""
+        self.assertIsNone(ldap_service.get_entry_role(conn, settings, entry))
+
+    def test_openldap_role_groups(self):
+        people = f"ou=People,{BASE_DN}"
+        settings = self.directory(
+            [
+                (f"uid={login},{people}", openldap_person(login))
+                for login in ["alice", "bob"]
+            ]
+            + [
+                (
+                    f"cn=Supervisors,ou=Groups,{BASE_DN}",
+                    openldap_group("Supervisors", [f"uid=alice,{people}"]),
+                )
+            ],
+            LDAP_IS_AD_SIMPLE=False,
+            LDAP_SUPERVISOR_GROUP="Supervisors",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        roles = {
+            user["desktop_login"]: user["role"]
+            for user in ldap_service.search_users(conn, settings)
+        }
+        self.assertEqual(roles, {"alice": "supervisor", "bob": "user"})
+        entry = ldap_service.find_user_entry(conn, settings, "alice")
+        self.assertEqual(
+            ldap_service.get_entry_role(conn, settings, entry), "supervisor"
+        )
+
+    def ldap_person_with_role(self, login, role, email=None):
+        return persons_service.create_person(
+            email or f"{login}@studio.local",
+            b"",
+            login.title(),
+            "Doe",
+            role=role,
+            desktop_login=login,
+            is_generated_from_ldap=True,
+        )
+
+    def test_sync_applies_role_groups(self):
+        settings = self.role_directory()
+        alice = self.ldap_person_with_role("alice", "user")
+        bob = self.ldap_person_with_role("bob", "admin")
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(alice["id"]).role.code, "admin")
+        self.assertEqual(Person.get(bob["id"]).role.code, "manager")
+        self.assertEqual(
+            Person.get_by(desktop_login="carol").role.code, "client"
+        )
+
+    def test_sync_keeps_role_without_role_group(self):
+        settings = self.role_directory(
+            LDAP_ADMIN_GROUP="", LDAP_MANAGER_GROUP="", LDAP_CLIENT_GROUP=""
+        )
+        bob = self.ldap_person_with_role("bob", "supervisor")
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(bob["id"]).role.code, "supervisor")
+
+    def test_sync_keeps_role_of_protected_account(self):
+        settings = self.role_directory()
+        dave = self.ldap_person_with_role("dave", "admin")
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["dave@studio.local"]
+        ):
+            with mock.patch.object(
+                ldap_service, "get_settings", return_value=settings
+            ):
+                commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(dave["id"]).role.code, "admin")
+
+    def test_provision_person_role(self):
+        person = self.ldap_person_with_role("dave", "admin")
+        user = {
+            "email": "dave@studio.local",
+            "first_name": "Dave",
+            "last_name": "Doe",
+            "active": True,
+            "desktop_login": "dave",
+            "ldap_uid": None,
+            "role": "user",
+        }
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["dave@studio.local"]
+        ):
+            ldap_service.provision_person(
+                user, persons_service.get_person(person["id"])
+            )
+        self.assertEqual(Person.get(person["id"]).role.code, "admin")
+        ldap_service.provision_person(
+            user, persons_service.get_person(person["id"])
+        )
+        self.assertEqual(Person.get(person["id"]).role.code, "user")
+        del user["role"]
+        persons_service.update_person(person["id"], {"role": "manager"})
+        ldap_service.provision_person(
+            user, persons_service.get_person(person["id"])
+        )
+        self.assertEqual(Person.get(person["id"]).role.code, "manager")
 
     def test_search_users_excluded_account(self):
         settings = self.directory(

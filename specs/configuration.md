@@ -78,6 +78,11 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_BASE_DN` | cn=Users,dc=zou,dc=local | Base of the user search |
 | `LDAP_DOMAIN` | zou.local | NTLM domain (Active Directory) |
 | `LDAP_GROUP` | (none) | Restrict the sync to the members of this group. A group missing from the directory, or a search that returns no user, stops the sync before any account is deactivated. With `LDAP_SEARCH_BIND`, it also gates the login: a non-member is refused and their account deactivated |
+| `LDAP_ADMIN_GROUP` | (none) | Members of this group get the admin role. Same form as `LDAP_GROUP`: a DN on Active Directory, a `groupOfUniqueNames` name on OpenLDAP |
+| `LDAP_MANAGER_GROUP` | (none) | Members get the manager role |
+| `LDAP_SUPERVISOR_GROUP` | (none) | Members get the supervisor role |
+| `LDAP_CLIENT_GROUP` | (none) | Members get the client role |
+| `LDAP_VENDOR_GROUP` | (none) | Members get the vendor role |
 | `LDAP_NESTED_GROUPS` | false | Also accept the members of the subgroups of `LDAP_GROUP`, at any depth. On Active Directory it uses the `LDAP_MATCHING_RULE_IN_CHAIN` rule. On OpenLDAP the subgroups must be `groupOfUniqueNames` entries under `LDAP_BASE_DN` |
 | `LDAP_IS_AD` | false | The directory is an Active Directory (NTLM bind, `sAMAccountName`) |
 | `LDAP_IS_AD_SIMPLE` | false | Active Directory with a simple bind and `cn` as login |
@@ -97,6 +102,8 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_PASSWORD` | (none) | Password of the service account. Required by the sync and the search-bind login |
 | `LDAP_EXCLUDED_ACCOUNTS` | (none) | Comma-separated logins left out by the sync and refused by the search-bind login |
 | `EMAIL_DOMAIN` | studio.local | Domain of the email built for a directory user without `mail`, and preferred among several addresses |
+
+When at least one role group is set, the directory owns the role of the LDAP persons: the sync and the search-bind login set it at each run, and a role changed in Kitsu is overwritten. A user in several role groups gets the highest role (admin > manager > supervisor > client > vendor), a user in none gets the user role. A role group missing from the directory stops the sync and the login before any role changes. `LDAP_NESTED_GROUPS` applies to the role groups too. With no role group set, roles are left as they are. The roles of local persons and of `PROTECTED_ACCOUNTS` never change. The legacy login (without `LDAP_SEARCH_BIND`) does not read the role groups.
 
 Accounts listed in `PROTECTED_ACCOUNTS` always keep the legacy bind (the DN is rebuilt from `LDAP_BASE_DN`), even with `LDAP_SEARCH_BIND`. They must sit directly under `LDAP_BASE_DN` (or use NTLM / `LDAP_FALLBACK`).
 

@@ -65,6 +65,11 @@ class LdapDirectoryMixin:
             "LDAP_LAST_NAME_ATTRIBUTE": "",
             "LDAP_EMAIL_ATTRIBUTE": "",
             "LDAP_THUMBNAIL_ATTRIBUTE": "",
+            "LDAP_ADMIN_GROUP": "",
+            "LDAP_MANAGER_GROUP": "",
+            "LDAP_SUPERVISOR_GROUP": "",
+            "LDAP_CLIENT_GROUP": "",
+            "LDAP_VENDOR_GROUP": "",
         }
         settings.update(settings_overrides)
         return settings

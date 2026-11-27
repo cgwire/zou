@@ -387,6 +387,7 @@ def find_search_bind_user(person, identifier, password, app):
             f"certificate: {exception}"
         )
         raise NoAuthStrategyConfigured()
+    role = None
     try:
         if person is None:
             entry = ldap_service.find_user_entry(conn, settings, identifier)
@@ -398,6 +399,8 @@ def find_search_bind_user(person, identifier, password, app):
                 ldap_uid=person["ldap_uid"],
                 desktop_login=person["desktop_login"],
             )
+        if entry is not None:
+            role = ldap_service.get_entry_role(conn, settings, entry)
     except LdapAmbiguousUserException as exception:
         app.logger.error(f"LDAP login refused: {exception}")
         _spend_password_check_time(password)
@@ -414,6 +417,8 @@ def find_search_bind_user(person, identifier, password, app):
     user = None
     if entry is not None:
         user = ldap_service.entry_to_user(entry, settings)
+        if role is not None:
+            user["role"] = role
         if person is None:
             try:
                 person = ldap_service.find_ldap_person(user)

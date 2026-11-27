@@ -33,6 +33,15 @@ CONNECT_TIMEOUT = 5
 SEARCH_PAGE_SIZE = 500
 PAGED_RESULTS_CONTROL = "1.2.840.113556.1.4.319"
 IN_CHAIN_RULE = "1.2.840.113556.1.4.1941"
+# Role given by each role group setting, the highest role first: a user in
+# several role groups gets the first one. A user in none gets "user".
+ROLE_GROUPS = [
+    ("admin", "LDAP_ADMIN_GROUP"),
+    ("manager", "LDAP_MANAGER_GROUP"),
+    ("supervisor", "LDAP_SUPERVISOR_GROUP"),
+    ("client", "LDAP_CLIENT_GROUP"),
+    ("vendor", "LDAP_VENDOR_GROUP"),
+]
 # An attribute name (letters, digits, hyphens) or an OID.
 ATTRIBUTE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9-]*|[0-9]+(\.[0-9]+)+")
 
@@ -65,6 +74,11 @@ def get_settings():
         "LDAP_LAST_NAME_ATTRIBUTE",
         "LDAP_EMAIL_ATTRIBUTE",
         "LDAP_THUMBNAIL_ATTRIBUTE",
+        "LDAP_ADMIN_GROUP",
+        "LDAP_MANAGER_GROUP",
+        "LDAP_SUPERVISOR_GROUP",
+        "LDAP_CLIENT_GROUP",
+        "LDAP_VENDOR_GROUP",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -211,6 +225,18 @@ def open_service_connection(settings):
     return connect(settings, user, settings["LDAP_PASSWORD"], authentication)
 
 
+def build_member_of_filter(settings, group):
+    """
+    Active Directory filter matching the members of the given group DN, and
+    of its subgroups with LDAP_NESTED_GROUPS.
+    """
+    group = escape_filter_chars(group)
+    if settings["LDAP_NESTED_GROUPS"]:
+        # LDAP_MATCHING_RULE_IN_CHAIN: members of the subgroups too.
+        return f"(memberOf:{IN_CHAIN_RULE}:={group})"
+    return f"(memberOf={group})"
+
+
 def build_person_filter(settings, identity_filter=""):
     """
     Filter matching the person entries (restricted to the configured group on
@@ -228,12 +254,9 @@ def build_person_filter(settings, identity_filter=""):
         parts = ["(objectClass=person)"]
     if is_ad(settings):
         if len(settings["LDAP_GROUP"]) > 0:
-            group = escape_filter_chars(settings["LDAP_GROUP"])
-            if settings["LDAP_NESTED_GROUPS"]:
-                # LDAP_MATCHING_RULE_IN_CHAIN: members of the subgroups too.
-                parts.append(f"(memberOf:{IN_CHAIN_RULE}:={group})")
-            else:
-                parts.append(f"(memberOf={group})")
+            parts.append(
+                build_member_of_filter(settings, settings["LDAP_GROUP"])
+            )
     if identity_filter:
         parts.append(identity_filter)
     return f"(&{''.join(parts)})"
@@ -350,31 +373,31 @@ def entry_to_user(entry, settings):
     }
 
 
-def get_group_member_dns(conn, settings):
+def get_group_member_dns(conn, settings, group=None):
     """
-    Normalized DNs of the members of the configured group (OpenLDAP only).
-    None when no group is configured.
+    Normalized DNs of the members of the given group name, by default the
+    configured group (OpenLDAP only). None when no group is configured.
     """
-    if len(settings["LDAP_GROUP"]) == 0:
+    if group is None:
+        group = settings["LDAP_GROUP"]
+    if len(group) == 0:
         return None
     if settings["LDAP_NESTED_GROUPS"]:
-        return get_nested_group_member_dns(conn, settings)
-    group = escape_filter_chars(settings["LDAP_GROUP"])
+        return get_nested_group_member_dns(conn, settings, group)
+    escaped = escape_filter_chars(group)
     conn.search(
         settings["LDAP_BASE_DN"],
-        f"(&(objectClass=groupOfUniqueNames)(cn={group}))",
+        f"(&(objectClass=groupOfUniqueNames)(cn={escaped}))",
         attributes=["uniqueMember"],
     )
     if len(conn.entries) == 0:
-        raise LdapGroupNotFoundException(
-            f"LDAP group not found: {settings['LDAP_GROUP']}"
-        )
+        raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
     return {normalize_dn(dn) for dn in conn.entries[0].uniqueMember.values}
 
 
-def get_nested_group_member_dns(conn, settings):
+def get_nested_group_member_dns(conn, settings, group):
     """
-    Normalized DNs of the members of the configured group and of its
+    Normalized DNs of the members of the given group name and of its
     subgroups, at any depth (OpenLDAP only). The groups are read in one
     search under the base DN, then expanded in memory.
     """
@@ -390,14 +413,12 @@ def get_nested_group_member_dns(conn, settings):
         groups[dn] = [
             normalize_dn(member) for member in entry.uniqueMember.values
         ]
-        if root is None and settings["LDAP_GROUP"].lower() in [
+        if root is None and group.lower() in [
             name.lower() for name in entry.cn.values
         ]:
             root = dn
     if root is None:
-        raise LdapGroupNotFoundException(
-            f"LDAP group not found: {settings['LDAP_GROUP']}"
-        )
+        raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
     members = set()
     seen_groups = {root}
     to_expand = [root]
@@ -451,6 +472,7 @@ def search_users(conn, settings):
         check_group_exists(conn, settings)
     else:
         group_members = get_group_member_dns(conn, settings)
+    role_members = get_role_member_dns(conn, settings)
     users = []
     for entry in paged_search(
         conn,
@@ -465,38 +487,113 @@ def search_users(conn, settings):
             and normalize_dn(entry.entry_dn) not in group_members
         ):
             continue
-        users.append(entry_to_user(entry, settings))
+        user = entry_to_user(entry, settings)
+        if role_members is not None:
+            user["role"] = get_role(entry.entry_dn, role_members)
+        users.append(user)
     return users
 
 
-def check_group_exists(conn, settings):
+def check_group_exists(conn, settings, group=None):
     """
-    Raise when the configured group is not in the directory. Nothing to check
-    when no group is configured.
+    Raise when the given group, by default the configured group, is not in
+    the directory. Nothing to check when no group is configured.
     """
-    if len(settings["LDAP_GROUP"]) == 0:
+    if group is None:
+        group = settings["LDAP_GROUP"]
+    if len(group) == 0:
         return
     if is_ad(settings):
         try:
-            conn.search(
-                settings["LDAP_GROUP"],
-                "(objectClass=group)",
-                search_scope=ldap3.BASE,
-            )
+            conn.search(group, "(objectClass=group)", search_scope=ldap3.BASE)
         except (
             ldap3.core.exceptions.LDAPNoSuchObjectResult,
             ldap3.core.exceptions.LDAPInvalidDNSyntaxResult,
             ldap3.core.exceptions.LDAPInvalidDnError,
         ):
-            raise LdapGroupNotFoundException(
-                f"LDAP group not found: {settings['LDAP_GROUP']}"
-            )
+            raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
         if len(conn.entries) == 0:
-            raise LdapGroupNotFoundException(
-                f"LDAP group not found: {settings['LDAP_GROUP']}"
-            )
+            raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
     else:
-        get_group_member_dns(conn, settings)
+        get_group_member_dns(conn, settings, group)
+
+
+def get_role_groups(settings):
+    """
+    Configured role groups, as (role, group) pairs, the highest role first.
+    """
+    return [
+        (role, settings[key].strip())
+        for role, key in ROLE_GROUPS
+        if settings[key].strip()
+    ]
+
+
+def get_role_member_dns(conn, settings):
+    """
+    Normalized DNs of the members of each configured role group, as
+    (role, DNs) pairs, the highest role first. None when no role group is
+    configured. Raise when a role group is missing: its members would lose
+    their role.
+    """
+    role_groups = get_role_groups(settings)
+    if len(role_groups) == 0:
+        return None
+    role_members = []
+    for role, group in role_groups:
+        if is_ad(settings):
+            check_group_exists(conn, settings, group)
+            members = {
+                normalize_dn(entry.entry_dn)
+                for entry in paged_search(
+                    conn,
+                    settings["LDAP_BASE_DN"],
+                    build_member_of_filter(settings, group),
+                    ldap3.NO_ATTRIBUTES,
+                )
+            }
+        else:
+            members = get_group_member_dns(conn, settings, group)
+        role_members.append((role, members))
+    return role_members
+
+
+def get_role(entry_dn, role_members):
+    """
+    Role of the entry with given DN: the one of its highest role group, else
+    "user".
+    """
+    dn = normalize_dn(entry_dn)
+    for role, members in role_members:
+        if dn in members:
+            return role
+    return "user"
+
+
+def get_entry_role(conn, settings, entry):
+    """
+    Role of a single directory entry, read from the role groups. None when
+    no role group is configured. Raise when a role group is missing.
+    """
+    role_groups = get_role_groups(settings)
+    if len(role_groups) == 0:
+        return None
+    for role, group in role_groups:
+        if is_ad(settings):
+            check_group_exists(conn, settings, group)
+            conn.search(
+                entry.entry_dn,
+                build_member_of_filter(settings, group),
+                search_scope=ldap3.BASE,
+                attributes=ldap3.NO_ATTRIBUTES,
+            )
+            if len(conn.entries) > 0:
+                return role
+        elif normalize_dn(entry.entry_dn) in get_group_member_dns(
+            conn, settings, group
+        ):
+            return role
+    return "user"
 
 
 def build_identity_filter(settings, identifier, ldap_uid=None):
@@ -631,6 +728,14 @@ def find_ldap_person(user):
     return person
 
 
+def is_role_managed(user, person):
+    """
+    Whether the directory sets the role of the person: a role group is
+    configured and the person is not a protected account.
+    """
+    return "role" in user and person["email"] not in config.PROTECTED_ACCOUNTS
+
+
 def provision_person(user, person=None):
     """
     Create the person of a directory user, or update the existing one.
@@ -646,6 +751,7 @@ def provision_person(user, person=None):
             "default".encode("utf-8"),
             user["first_name"],
             user["last_name"],
+            role=user.get("role", "user"),
             desktop_login=user["desktop_login"],
             is_generated_from_ldap=True,
             ldap_uid=user["ldap_uid"],
@@ -685,6 +791,8 @@ def provision_person(user, person=None):
         "desktop_login": user["desktop_login"],
         "ldap_uid": user["ldap_uid"],
     }
+    if is_role_managed(user, person):
+        fields["role"] = user["role"]
     if any(person[key] != value for key, value in fields.items()):
         persons_service.update_person(
             person["id"], fields, bypass_protected_accounts=False
