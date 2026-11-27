@@ -1,5 +1,3 @@
-import datetime
-
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -186,23 +184,21 @@ class TaskCommentResource(MethodView):
     def pre_delete(self, comment):
         task = tasks_service.get_task(comment["object_id"])
         self.previous_task_status_id = task["task_status_id"]
-        return comment
 
     def post_delete(self, comment):
         task = tasks_service.get_task(comment["object_id"])
-        self.new_task_status_id = task["task_status_id"]
-        if self.previous_task_status_id != self.new_task_status_id:
+        new_task_status_id = task["task_status_id"]
+        if self.previous_task_status_id != new_task_status_id:
             events.emit(
                 "task:status-changed",
                 {
                     "task_id": task["id"],
-                    "new_task_status_id": self.new_task_status_id,
+                    "new_task_status_id": new_task_status_id,
                     "previous_task_status_id": self.previous_task_status_id,
                     "person_id": comment["person_id"],
                 },
                 project_id=task["project_id"],
             )
-        return comment
 
     @jwt_required()
     @swag_from(SPECS["TaskCommentResource_delete"])
@@ -294,6 +290,24 @@ class PersonDoneTasksResource(MethodView):
         return todos_service.get_person_done_tasks(person_id, projects)
 
 
+def get_entities_from_request(project_id, get_entity, get_entities):
+    """
+    Return the entities of the project listed by the ID list of the request
+    body. Silently skip the IDs of other projects. If the body gives no
+    ID, return the result of `get_entities` for the query criterions of
+    the request, restricted to the project.
+    """
+    entity_ids = validation.validate_id_list(required=False)
+    if isinstance(entity_ids, list) and len(entity_ids) > 0:
+        entities = [get_entity(entity_id) for entity_id in entity_ids]
+        return [
+            entity for entity in entities if entity["project_id"] == project_id
+        ]
+    criterions = query.get_query_criterions_from_request(request)
+    criterions["project_id"] = project_id
+    return get_entities(criterions)
+
+
 class CreateShotTasksResource(MethodView):
 
     @jwt_required()
@@ -305,17 +319,9 @@ class CreateShotTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_type = task_types_service.get_task_type(task_type_id)
 
-        shot_ids = validation.validate_id_list(required=False)
-        shots = []
-        if isinstance(shot_ids, list) and len(shot_ids) > 0:
-            for shot_id in shot_ids:
-                shot = shots_service.get_shot(shot_id)
-                if shot["project_id"] == project_id:
-                    shots.append(shot)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            shots = shots_service.get_shots(criterions)
+        shots = get_entities_from_request(
+            project_id, shots_service.get_shot, shots_service.get_shots
+        )
 
         tasks = tasks_service.create_tasks(task_type, shots)
         return tasks, 201
@@ -337,17 +343,11 @@ class CreateConceptTasksResource(MethodView):
             raise permissions.PermissionDenied
         task_type = task_types_service.get_task_type(task_type_id)
 
-        concept_ids = validation.validate_id_list(required=False)
-        concepts = []
-        if isinstance(concept_ids, list) and len(concept_ids) > 0:
-            for concept_id in concept_ids:
-                concept = concepts_service.get_concept(concept_id)
-                if concept["project_id"] == project_id:
-                    concepts.append(concept)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            concepts = concepts_service.get_concepts(criterions)
+        concepts = get_entities_from_request(
+            project_id,
+            concepts_service.get_concept,
+            concepts_service.get_concepts,
+        )
 
         for concept in concepts:
             permissions_service.check_entity_access(concept["id"])
@@ -372,19 +372,15 @@ class CreateEntityTasksResource(MethodView):
             )
         )
 
-        entity_ids = validation.validate_id_list(required=False)
-        entities = []
-        if isinstance(entity_ids, list) and len(entity_ids) > 0:
-            for entity_id in entity_ids:
-                entity = entities_service.get_entity(entity_id)
-                if entity["project_id"] == project_id:
-                    entities.append(entity)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            episode_id = criterions.get("episode_id", None)
-            entities = entities_service.get_entities_for_project(
-                project_id, entity_type_dict["id"], episode_id=episode_id
-            )
+        entities = get_entities_from_request(
+            project_id,
+            entities_service.get_entity,
+            lambda criterions: entities_service.get_entities_for_project(
+                project_id,
+                entity_type_dict["id"],
+                episode_id=criterions.get("episode_id", None),
+            ),
+        )
 
         if entity_types_service.is_asset_type(entity_type_dict):
             entities = projects_service.filter_assets_in_workflow(
@@ -405,17 +401,9 @@ class CreateAssetTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_type = task_types_service.get_task_type(task_type_id)
 
-        asset_ids = validation.validate_id_list(required=False)
-        assets = []
-        if isinstance(asset_ids, list) and len(asset_ids) > 0:
-            for asset_id in asset_ids:
-                asset = assets_service.get_asset(asset_id)
-                if asset["project_id"] == project_id:
-                    assets.append(asset)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            assets = assets_service.get_assets(criterions)
+        assets = get_entities_from_request(
+            project_id, assets_service.get_asset, assets_service.get_assets
+        )
 
         assets = projects_service.filter_assets_in_workflow(
             project_id, task_type_id, assets
@@ -435,17 +423,9 @@ class CreateEditTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_type = task_types_service.get_task_type(task_type_id)
 
-        edit_ids = validation.validate_id_list(required=False)
-        edits = []
-        if isinstance(edit_ids, list) and len(edit_ids) > 0:
-            for edit_id in edit_ids:
-                edit = edits_service.get_edit(edit_id)
-                if edit["project_id"] == project_id:
-                    edits.append(edit)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            edits = edits_service.get_edits(criterions)
+        edits = get_entities_from_request(
+            project_id, edits_service.get_edit, edits_service.get_edits
+        )
 
         tasks = tasks_service.create_tasks(task_type, edits)
         return tasks, 201
@@ -649,7 +629,7 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
             time_spent = time_spents_service.delete_time_spent(
                 task_id,
                 person_id,
-                datetime.datetime.strptime(date, "%Y-%m-%d"),
+                date_helpers.get_date_from_string(date),
             )
             return time_spent, 200
         except ValueError:

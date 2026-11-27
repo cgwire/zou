@@ -238,7 +238,6 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
             name,
             mode,
             software_id,
-            comment,
             revision,
             separator,
         ) = self.get_arguments()
@@ -288,7 +287,6 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
             body.name,
             body.mode,
             software_id,
-            body.comment,
             body.revision,
             body.sep,
         )
@@ -413,7 +411,6 @@ class LastWorkingFilesResource(MethodView):
         """
         Get last working files
         """
-        result = {}
         permissions_service.check_task_access(task_id)
         result = files_service.get_last_working_files_for_task(task_id)
 
@@ -428,7 +425,6 @@ class TaskWorkingFilesResource(MethodView):
         """
         Get task working files
         """
-        result = {}
         permissions_service.check_task_access(task_id)
         result = files_service.get_working_files_for_task(task_id)
 
@@ -550,14 +546,9 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
 
         working_file = files_service.get_working_file(working_file_id)
         permissions_service.check_task_work_access(working_file["task_id"])
-        working_file = self.update_comment(working_file_id, body.comment)
-        return working_file
-
-    def update_comment(self, working_file_id, comment):
-        working_file = files_service.update_working_file(
-            working_file_id, {"comment": comment}
+        return files_service.update_working_file(
+            working_file_id, {"comment": body.comment}
         )
-        return working_file
 
 
 class NewEntityOutputFileResource(MethodView, ArgsMixin):

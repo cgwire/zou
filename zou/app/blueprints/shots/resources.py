@@ -925,6 +925,38 @@ class ShotVersionsResource(MethodView):
         return shots_service.get_shot_versions(shot_id)
 
 
+def get_quotas(resource, project_id, task_type_id=None, person_id=None):
+    """
+    Read the `count_mode` and `studio_id` query parameters of the request
+    and return the matching quotas: weighted or raw, from the feedback
+    dates or from the done dates.
+    """
+    args = resource.get_args(
+        [
+            ("count_mode", "weighted", False, str),
+            ("studio_id", None, False, str),
+        ]
+    )
+    count_mode = args["count_mode"]
+    if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
+        raise WrongParameterException(
+            "count_mode must be equal to weighted, weigtheddone, feedback"
+            ", or done"
+        )
+
+    if "weighted" in count_mode:
+        get_quotas_for_mode = quotas_service.get_weighted_quotas
+    else:
+        get_quotas_for_mode = quotas_service.get_raw_quotas
+    return get_quotas_for_mode(
+        project_id,
+        task_type_id=task_type_id,
+        person_id=person_id,
+        studio_id=args["studio_id"],
+        feedback="done" not in count_mode,
+    )
+
+
 class ProjectQuotasResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -936,38 +968,7 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_client()
-        args = self.get_args(
-            [
-                ("count_mode", "weighted", False, str),
-                ("studio_id", None, False, str),
-            ]
-        )
-        count_mode = args["count_mode"]
-        studio_id = args["studio_id"]
-
-        if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
-            raise WrongParameterException(
-                "count_mode must be equal to weighted, weigtheddone, feedback"
-                ", or done"
-            )
-
-        feedback = "done" not in count_mode
-        weighted = "weighted" in count_mode
-
-        if weighted:
-            return quotas_service.get_weighted_quotas(
-                project_id,
-                task_type_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
-        else:
-            return quotas_service.get_raw_quotas(
-                project_id,
-                task_type_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
+        return get_quotas(self, project_id, task_type_id=task_type_id)
 
 
 class ProjectPersonQuotasResource(MethodView, ArgsMixin):
@@ -988,38 +989,7 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(project_id)
         else:
             permissions_service.check_person_access(person_id)
-        args = self.get_args(
-            [
-                ("count_mode", "weighted", False, str),
-                ("studio_id", None, False, str),
-            ]
-        )
-        count_mode = args["count_mode"]
-        studio_id = args["studio_id"]
-
-        if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
-            raise WrongParameterException(
-                "count_mode must be equal to weighted, weigtheddone, feedback"
-                ", or done"
-            )
-
-        feedback = "done" not in count_mode
-        weighted = "weighted" in count_mode
-
-        if weighted:
-            return quotas_service.get_weighted_quotas(
-                project_id,
-                person_id=person_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
-        else:
-            return quotas_service.get_raw_quotas(
-                project_id,
-                person_id=person_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
+        return get_quotas(self, project_id, person_id=person_id)
 
 
 class SetShotsFramesResource(MethodView, ArgsMixin):
