@@ -111,11 +111,8 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
             current_app.logger.info(f"Shot created: {shot}")
 
         else:
-            if shot.data is None:
-                shot.data = {}
+            data["data"] = {**(shot.data or {}), **data["data"]}
             shot.update(data)
-            shot.data.update(data["data"])
-            shot.save()
             shots_service.clear_shot_cache(str(shot.id))
             current_app.logger.info(f"Shot updated: {shot}")
 

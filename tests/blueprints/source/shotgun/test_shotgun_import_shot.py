@@ -86,6 +86,25 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.assertEqual(shot["data"]["sg_custom_field"], "test")
         self.assertEqual(shot["data"]["sg_custom_field_2"], "test 2")
 
+    def test_import_shot_update_keeps_kitsu_data(self):
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("assets")
+
+        api_path = "/import/shotgun/shots"
+        self.post(api_path, [self.sg_shot], 200)
+        # The sequence and the asset fixtures also use the Shotgun ID 1.
+        shot = Entity.get_by(
+            shotgun_id=self.sg_shot["id"],
+            entity_type_id=entity_types_service.get_shot_type()["id"],
+        )
+        shot.update({"data": {**shot.data, "fps": "25"}})
+
+        self.post(api_path, [self.sg_shot], 200)
+        shot = self.get("data/shots/all")[0]
+        self.assertEqual(shot["data"]["fps"], "25")
+        self.assertEqual(shot["data"]["sg_custom_field"], "test")
+
     def test_remove_shots(self):
         self.load_fixture("projects")
         self.load_fixture("sequences")
