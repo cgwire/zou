@@ -1422,6 +1422,20 @@ class TaskRoutesTestCase(TaskTestCase):
         self.get(f"/data/tasks/{task_3_id}")
         self.get(f"/data/tasks/{task_4_id}")
 
+    def test_delete_tasks_ignores_a_task_of_another_project(self):
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        task_id = str(self.generate_fixture_task().id)
+        other_task_id = str(self.generate_fixture_task_standard().id)
+        result = self.post(
+            f"/actions/projects/{self.project.id}/delete-tasks",
+            [task_id, other_task_id],
+            code=200,
+        )
+        self.assertEqual(result, [task_id])
+        self.get(f"/data/tasks/{task_id}", 404)
+        self.get(f"/data/tasks/{other_task_id}")
+
     def test_reorder_task_type_links(self):
         project_id = str(self.project.id)
         tt1 = str(self.task_type.id)
