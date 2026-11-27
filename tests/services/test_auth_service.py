@@ -1,6 +1,7 @@
 import datetime
 from unittest import mock
 
+import pyotp
 import pytest
 from ldap3.core.exceptions import (
     LDAPInvalidCredentialsResult,
@@ -971,6 +972,68 @@ class TwoFactorCheckTestCase(AuthTestCase):
         self.assertFalse(
             auth_service.check_recovery_code(
                 Person.get(self.person_id).serialize(), codes[0]
+            )
+        )
+
+    def test_a_recovery_code_typed_in_lowercase_is_accepted(self):
+        # A phone keyboard capitalizes only the first letter typed.
+        self.person.update(
+            {
+                "totp_enabled": True,
+                "otp_recovery_codes": auth_service.hash_recovery_codes(
+                    ["K7PZ2QW9AB"]
+                ),
+            }
+        )
+
+        self.assertTrue(
+            auth_service.check_recovery_code(
+                self.person.serialize(), " K7pz2qw9ab "
+            )
+        )
+        self.assertEqual(Person.get(self.person_id).otp_recovery_codes, [])
+
+    def test_a_totp_typed_with_spaces_is_accepted(self):
+        # Authenticator apps show the code in two groups of digits.
+        secret = pyotp.random_base32()
+        self.person.update({"totp_enabled": True, "totp_secret": secret})
+        code = pyotp.TOTP(secret).now()
+
+        for typed in (f"{code[:3]} {code[3:]}", f" {code}\t"):
+            self.assertTrue(
+                auth_service.check_totp(self.person.serialize(), typed)
+            )
+        self.assertFalse(
+            auth_service.check_totp(self.person.serialize(), "  ")
+        )
+
+    def test_a_recovery_code_typed_with_spaces_is_accepted(self):
+        self.person.update(
+            {
+                "totp_enabled": True,
+                "otp_recovery_codes": auth_service.hash_recovery_codes(
+                    ["K7PZ2QW9AB"]
+                ),
+            }
+        )
+
+        self.assertTrue(
+            auth_service.check_recovery_code(
+                self.person.serialize(), "K7PZ2 QW9AB"
+            )
+        )
+
+    def test_an_email_otp_typed_with_spaces_is_accepted(self):
+        secret = pyotp.random_base32()
+        self.person.update(
+            {"email_otp_enabled": True, "email_otp_secret": secret}
+        )
+        auth_tokens_store.add(f"email-otp-count-{self.email}", 42, ttl=60)
+        code = pyotp.HOTP(secret).at(42)
+
+        self.assertTrue(
+            auth_service.check_email_otp(
+                self.person.serialize(), f" {code[:3]} {code[3:]} "
             )
         )
 
