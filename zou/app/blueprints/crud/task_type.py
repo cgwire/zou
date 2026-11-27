@@ -4,8 +4,6 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     status_automations_service,
@@ -92,18 +90,13 @@ class TaskTypeResource(BaseModelResource):
         status_automations_service.guard_task_type_deletion(instance_dict)
         task_type_id = instance_dict["id"]
         if self.get_force():
-            ScheduleItem.query.filter_by(task_type_id=task_type_id).delete()
-            ProjectTaskTypeLink.query.filter_by(
-                task_type_id=task_type_id
-            ).delete()
+            task_types_service.detach_task_type_no_commit(task_type_id)
             return instance_dict
 
         blockers = []
-        if ScheduleItem.query.filter_by(task_type_id=task_type_id).count():
+        if task_types_service.is_task_type_scheduled(task_type_id):
             blockers.append("schedule items")
-        if ProjectTaskTypeLink.query.filter_by(
-            task_type_id=task_type_id
-        ).count():
+        if task_types_service.is_task_type_in_projects(task_type_id):
             blockers.append("projects")
         if blockers:
             raise WrongParameterException(
@@ -151,13 +144,4 @@ class TaskTypesReorderResource(MethodView):
                 "Request body must be a JSON object with a "
                 "'task_type_ids' list of task type IDs."
             )
-        updated = []
-        for priority, task_type_id in enumerate(
-            body["task_type_ids"], start=1
-        ):
-            task_type = TaskType.get(task_type_id)
-            if task_type is not None:
-                task_type.update({"priority": priority})
-                task_types_service.clear_task_type_cache(str(task_type.id))
-                updated.append(task_type.serialize())
-        return updated
+        return task_types_service.reorder_task_types(body["task_type_ids"])
