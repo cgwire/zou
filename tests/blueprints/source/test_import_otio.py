@@ -297,6 +297,40 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
             {str(episode.id)},
         )
 
+    def test_import_edl_refuses_an_episode_of_another_project(self):
+        """
+        The episode route must not import into the episode of another
+        production: the import would change the frames of its shots.
+        """
+        self.project.update({"production_type": "tvshow"})
+        project_id = str(self.project.id)
+        # generate_fixture_episode creates and selects another project.
+        other_episode = self.generate_fixture_episode("E01")
+        sequence = self.generate_fixture_sequence(
+            "SQ010", episode_id=other_episode.id
+        )
+        shot = self.generate_fixture_shot("sc010", sequence_id=sequence.id)
+        path = (
+            f"/import/otio/projects/{project_id}/episodes/{other_episode.id}"
+        )
+        self.upload_file(
+            path,
+            self.get_fixture_file_path(os.path.join("edl", "no_offset.edl")),
+            code=400,
+            extra_fields={
+                "naming_convention": (
+                    "${project_name}_${sequence_name}-${shot_name}"
+                )
+            },
+        )
+
+        other_shot = shots_service.get_shot(str(shot.id))
+        self.assertEqual(other_shot["nb_frames"], 0)
+        self.assertEqual(other_shot["data"]["frame_out"], 100)
+        self.assertEqual(
+            len(shots_service.get_sequences_for_episode(other_episode.id)), 1
+        )
+
     def test_import_edl_indexes_the_shots_in_one_call(self):
         # Waiting on the indexer for every clip made a long timeline last
         # longer than Kitsu waited for its answer.

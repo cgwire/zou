@@ -82,6 +82,14 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         """
         args = self.post_args()
         permissions_service.check_manager_project_access(project_id)
+        if (
+            episode_id is not None
+            and shots_service.get_episode(episode_id)["project_id"]
+            != project_id
+        ):
+            raise WrongParameterException(
+                "The episode is not an episode of the project."
+            )
         uploaded_file = request.files["file"]
         # run_import selects the OTIO adapter from the extension.
         extension = os.path.splitext(uploaded_file.filename or "")[1]
