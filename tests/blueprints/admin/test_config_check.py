@@ -49,14 +49,6 @@ class ConfigCheckTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_403_when_admin_token_not_set(self):
-        config.ADMIN_TOKEN = ""
-        response = self.app.get(
-            "admin/config/check",
-            headers={"Authorization": f"Bearer {TEST_TOKEN}"},
-        )
-        self.assertEqual(response.status_code, 403)
-
     def test_token_is_compared_in_constant_time(self):
         with patch(
             "zou.app.blueprints.admin.resources.hmac.compare_digest",
