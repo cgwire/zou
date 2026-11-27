@@ -38,13 +38,10 @@ class RouteTileTestCase(ApiDBTestCase):
         )
         self.upload_file(path, file_path_fixture)
 
-        path = f"/actions/preview-files/{self.preview_file_id}/extract-tile"
-        try:
-            self.get(path)
-        except Exception:
-            pass
-        path = f"/movies/tiles/preview-files/{self.preview_file_id}.png"
         result_file_path = self.get_file_path("tile01.png")
+        path = f"/actions/preview-files/{self.preview_file_id}/extract-tile"
+        self.download_file(path, result_file_path)
+        path = f"/movies/tiles/preview-files/{self.preview_file_id}.png"
         self.download_file(path, result_file_path)
 
         result_image = Image.open(result_file_path)

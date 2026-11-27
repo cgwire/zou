@@ -17,6 +17,7 @@ def get_file_md5hash(file_path):
         file_hash = hashlib.md5()
         while chunk := f.read(8192):
             file_hash.update(chunk)
+    return file_hash.hexdigest()
 
 
 class RouteThumbnailTestCase(ApiDBTestCase):
