@@ -252,7 +252,7 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         template = project_templates_service.create_project_template(
             name="Setup"
         )
-        for task_type_id in ["not-an-id", fields.gen_uuid()]:
+        for task_type_id in ["not-an-id", str(fields.gen_uuid())]:
             with self.subTest(task_type_id=task_type_id):
                 self.assertRaises(
                     WrongParameterException,
