@@ -98,7 +98,9 @@ class FolderPathTestCase(ApiDBTestCase):
             "shaders/3ds_max",
         )
 
-    def instance_output_file_path(self, entity, output_type, task_type):
+    def instance_output_file_path(
+        self, entity, output_type, task_type, code=200
+    ):
         """
         Ask for the path of an output published on an asset instance seen
         through given entity.
@@ -114,7 +116,7 @@ class FolderPathTestCase(ApiDBTestCase):
                 "representation": "abc",
                 "revision": 3,
             },
-            200,
+            code,
         )
 
     def test_get_path_shot_asset_instance(self):
@@ -136,6 +138,20 @@ class FolderPathTestCase(ApiDBTestCase):
         self.assertEqual(
             result["file_name"],
             "cosmos_landromat_s01_p01_animation_cache_main_tree_0001_v003",
+        )
+
+    def test_instance_output_file_path_stays_in_the_project(self):
+        """
+        A temporal entity of another project does not leak its file tree.
+        """
+        output_type = files_service.get_or_create_output_type("Cache")
+        self.generate_fixture_scene_asset_instance()
+
+        self.instance_output_file_path(
+            self.generate_fixture_shot_standard(),
+            output_type,
+            self.task_type_animation,
+            403,
         )
 
     def test_get_path_scene_asset_instance(self):

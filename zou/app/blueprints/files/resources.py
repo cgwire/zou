@@ -368,6 +368,9 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
             permissions_service.check_project_access(asset["project_id"])
+            permissions_service.check_entities_belong_to_project(
+                [entity["id"]], asset["project_id"]
+            )
             permissions_service.check_entity_access(asset["id"])
 
             folder_path = file_tree_service.get_instance_folder_path(
@@ -847,6 +850,9 @@ class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
         output_type = files_service.get_output_type(body.output_type_id)
         task_type = task_types_service.get_task_type(body.task_type_id)
         permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entities_belong_to_project(
+            [temporal_entity_id], asset["project_id"]
+        )
 
         next_revision_number = files_service.get_next_output_file_revision(
             asset["id"],

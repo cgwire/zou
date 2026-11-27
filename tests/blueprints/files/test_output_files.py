@@ -372,6 +372,21 @@ class AssetInstanceOutputFileTestCase(OutputFileTestCase):
         )
         self.assertEqual(result["next_revision"], 2)
 
+    def test_get_next_instance_revision_stays_in_the_project(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        other_shot = self.generate_fixture_shot_standard()
+        self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/"
+            f"{other_shot.id}/output-files/next-revision",
+            {
+                "output_type_id": self.cache_type_id,
+                "task_type_id": str(self.task_type_animation.id),
+                "name": "main",
+            },
+            403,
+        )
+
     def test_get_last_instance_outputs(self):
         self.generate_fixture_scene()
         self.generate_fixture_scene_asset_instance()
