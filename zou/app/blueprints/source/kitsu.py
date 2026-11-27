@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.blueprints.crud.base import build_db_error_message
 from zou.app.blueprints.crud.milestone import check_milestone_fields
-from zou.app.exceptions import WrongParameterException
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PlaylistNotFoundException,
+    TaskNotFoundException,
+    WrongParameterException,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
@@ -23,8 +28,10 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
+    comments_service,
     entities_service,
     entity_types_service,
+    playlists_service,
     tasks_service,
 )
 from zou.app.utils import events, fields, permissions
@@ -35,25 +42,27 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 def _project_id_from_task(entry):
     task_id = entry.get("task_id")
-    task = Task.get(task_id) if task_id else None
-    return str(task.project_id) if task is not None else None
+    try:
+        return str(tasks_service.get_task_raw(task_id).project_id)
+    except TaskNotFoundException:
+        return None
 
 
 def _project_id_from_playlist(entry):
     playlist_id = entry.get("playlist_id")
-    playlist = Playlist.get(playlist_id) if playlist_id else None
-    return str(playlist.project_id) if playlist is not None else None
+    try:
+        return str(playlists_service.get_playlist_raw(playlist_id).project_id)
+    except PlaylistNotFoundException:
+        return None
 
 
 def _project_id_from_attachment(entry):
     comment_id = entry.get("comment_id")
-    if comment_id:
-        comment = Comment.get(comment_id)
-        if comment is not None and comment.object_id is not None:
-            task = Task.get(comment.object_id)
-            if task is not None:
-                return str(task.project_id)
-    return None
+    try:
+        comment = comments_service.get_comment_raw(comment_id)
+        return _project_id_from_task({"task_id": comment.object_id})
+    except CommentNotFoundException:
+        return None
 
 
 class BaseImportKitsuResource(MethodView, ArgsMixin):
@@ -116,7 +125,7 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
     def emit_event(self, event_type, entry):
         task = tasks_service.get_task(str(entry["object_id"]))
         # As stored: an imported update may leave the client flag out.
-        comment = Comment.get(entry["id"]).serialize()
+        comment = comments_service.get_comment_raw(entry["id"]).serialize()
         events.emit(
             f"comment:{event_type}",
             {
