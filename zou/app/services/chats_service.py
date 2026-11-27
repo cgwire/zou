@@ -1,8 +1,4 @@
-import random
-import string
-
 from flask import current_app
-from sqlalchemy.exc import IntegrityError
 
 from zou.app.exceptions import ChatNotFoundException
 from zou.app.models.attachment_file import AttachmentFile
@@ -238,19 +234,12 @@ def _add_attachments_to_message(message, files):
     """
     message["attachment_files"] = []
     for uploaded_file in files.values():
-        try:
-            attachment_file = _create_attachment(message, uploaded_file)
-        except IntegrityError:
-            # This message already has an attachment with this name. Try again
-            # with a random suffix.
-            attachment_file = _create_attachment(
-                message, uploaded_file, randomize=True
-            )
+        attachment_file = _create_attachment(message, uploaded_file)
         message["attachment_files"].append(attachment_file)
     return message
 
 
-def _create_attachment(message, uploaded_file, randomize=False):
+def _create_attachment(message, uploaded_file):
     """
     Store an uploaded file, and its thumbnail if it is a picture. Link the
     related attachment entry to the given message.
@@ -261,10 +250,6 @@ def _create_attachment(message, uploaded_file, randomize=False):
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)
-    if randomize:
-        random_str = "".join(random.choices(string.ascii_lowercase, k=8))
-        stem = filename[: len(filename) - len(extension) - 1]
-        filename = f"{stem}-{random_str}.{extension}"
     attachment_file = AttachmentFile.create(
         name=filename,
         size=0,

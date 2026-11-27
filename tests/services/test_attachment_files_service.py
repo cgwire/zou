@@ -55,14 +55,6 @@ class AttachmentTestCase(CommentsTestCase):
         self.assertEqual(AttachmentFile.query.count(), 0)
         self.assertEqual(set(os.listdir(config.TMP_DIR)), tmp_files_before)
 
-    def test_a_randomized_name_keeps_its_extension(self):
-        attachment = attachment_files_service.create_attachment(
-            self.comment(), self.uploaded_file("notes.txt"), randomize=True
-        )
-        self.assertTrue(attachment["name"].startswith("notes-"))
-        self.assertTrue(attachment["name"].endswith(".txt"))
-        self.assertEqual(attachment["extension"], "txt")
-
     def test_an_attachment_named_after_an_unknown_reply_stays_on_the_comment(
         self,
     ):

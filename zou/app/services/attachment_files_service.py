@@ -1,6 +1,3 @@
-import random
-import string
-
 from flask import current_app
 
 from zou.app import config
@@ -54,23 +51,17 @@ def get_attachment_file_path(attachment_file):
     )
 
 
-def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
+def create_attachment(comment, uploaded_file, reply_id=None):
     """
     Store an uploaded file and link a new attachment file entry to the
-    given comment. If randomize is True, add a random suffix to the file
-    name. This prevents a name collision on the same comment. If reply_id
-    is not a reply of the comment, ignore it. If the storage fails, delete
-    the attachment entry and raise the error again.
+    given comment. If reply_id is not a reply of the comment, ignore it.
+    If the storage fails, delete the attachment entry and raise the error
+    again.
     """
     tmp_folder = current_app.config["TMP_DIR"]
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)
-    if randomize:
-        letters = string.ascii_lowercase
-        random_str = "".join(random.choice(letters) for i in range(8))
-        filename = f"{filename[:len(filename) - len(extension) - 1]}"
-        filename += f"-{random_str}.{extension}"
 
     if reply_id is not None:
         is_reply_present = any(
