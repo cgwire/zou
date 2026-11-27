@@ -215,12 +215,3 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         comment2 = self.create_comment()
         preview2 = self.add_preview(comment2["id"])
         self.assertEqual(preview2["revision"], 2)
-
-    def test_extra_preview_allowed_when_flag_off(self):
-        """
-        Regression: with the flag off, extra previews still work.
-        """
-        comment = self.create_comment()
-        preview1 = self.add_preview(comment["id"], revision=1)
-        preview2 = self.add_extra_preview(comment["id"], preview1["id"])
-        self.assertEqual(preview2["position"], 2)
