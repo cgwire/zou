@@ -13,11 +13,10 @@ from zou.app.indexer import indexing
 from zou.app.services import (
     organisation_service,
     preview_accounts_service,
-    projects_service,
     stats_service,
 )
 from zou.app.stores import redis_client
-from zou.app.utils import date_helpers, permissions
+from zou.app.utils import date_helpers, dbhelpers, permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -53,7 +52,7 @@ class BaseStatusResource(MethodView):
 
     def _check_database(self):
         try:
-            projects_service.get_or_create_project_status("Open")
+            dbhelpers.ping()
             return True
         except Exception:
             app.logger.warning("Database probe failed.", exc_info=1)
