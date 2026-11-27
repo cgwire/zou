@@ -467,6 +467,12 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.use_directory([self.jdoe()], LDAP_USER="")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
 
+    def test_no_service_password(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()], LDAP_PASSWORD="")
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
     def test_missing_ca_file(self):
         self.use_directory(
             [self.jdoe()],

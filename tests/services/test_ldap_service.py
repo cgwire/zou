@@ -274,6 +274,18 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         with self.assertRaises(LdapGroupNotFoundException):
             ldap_service.get_group_member_dns(conn, settings)
 
+    def test_open_service_connection_without_password(self):
+        for mode in [
+            {"LDAP_IS_AD_SIMPLE": True},
+            {"LDAP_IS_AD_SIMPLE": False, "LDAP_IS_AD": True},
+            {"LDAP_IS_AD_SIMPLE": False},
+        ]:
+            settings = self.directory([], LDAP_PASSWORD="", **mode)
+            with self.assertRaises(
+                ldap3.core.exceptions.LDAPPasswordIsMandatoryError
+            ):
+                ldap_service.open_service_connection(settings)
+
     def test_search_users_excluded_account(self):
         settings = self.directory(
             [

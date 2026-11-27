@@ -128,8 +128,13 @@ def connect(settings, user, password, authentication, get_info=ldap3.ALL):
 
 def open_service_connection(settings):
     """
-    Bind to the directory with the configured service account.
+    Bind to the directory with the configured service account. Refuse an
+    empty password: some directories take it as an anonymous bind.
     """
+    if not settings["LDAP_PASSWORD"]:
+        raise ldap3.core.exceptions.LDAPPasswordIsMandatoryError(
+            "LDAP_PASSWORD is not set"
+        )
     if settings["LDAP_IS_AD_SIMPLE"]:
         user = settings["LDAP_USER"]
         authentication = ldap3.SIMPLE

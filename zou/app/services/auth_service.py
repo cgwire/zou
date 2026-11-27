@@ -24,6 +24,7 @@ from ldap3.core.exceptions import (
     LDAPBindError,
     LDAPInvalidCredentialsResult,
     LDAPInvalidFilterError,
+    LDAPPasswordIsMandatoryError,
     LDAPSocketOpenError,
     LDAPSSLConfigurationError,
 )
@@ -368,6 +369,11 @@ def find_search_bind_user(person, identifier, password, app):
         app.logger.error(
             "LDAP service account bind failed: check LDAP_USER and "
             "LDAP_PASSWORD."
+        )
+        raise NoAuthStrategyConfigured()
+    except LDAPPasswordIsMandatoryError:
+        app.logger.error(
+            "LDAP_SEARCH_BIND is enabled but LDAP_PASSWORD is not set."
         )
         raise NoAuthStrategyConfigured()
     except LDAPSSLConfigurationError as exception:

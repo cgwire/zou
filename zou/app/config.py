@@ -233,7 +233,7 @@ LDAP_CA_FILE = os.getenv("LDAP_CA_FILE", "")
 LDAP_SEARCH_BIND = envtobool("LDAP_SEARCH_BIND", False)
 LDAP_USER_FILTER = os.getenv("LDAP_USER_FILTER", "")
 LDAP_USER = os.getenv("LDAP_USER", "")
-LDAP_PASSWORD = os.getenv("LDAP_PASSWORD", "password")
+LDAP_PASSWORD = os.getenv("LDAP_PASSWORD", "")
 LDAP_EXCLUDED_ACCOUNTS = os.getenv("LDAP_EXCLUDED_ACCOUNTS", "")
 EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "studio.local")
 

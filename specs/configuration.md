@@ -88,7 +88,7 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_SEARCH_BIND` | false | Log users in by search then bind: find the entry anywhere under `LDAP_BASE_DN` with the service account, then bind with its DN. Unknown users of the directory get their account created on first login; accounts gone from the directory (or the group), disabled or excluded are refused before the password is tried, and deactivated. Deactivation happens at a login attempt only, so keep the sync scheduled. Requires `LDAP_USER` |
 | `LDAP_USER_FILTER` | (none) | LDAP filter selecting the user entries, for the sync and the search-bind login, e.g. `(&(objectClass=user)(department=Animation))`. It replaces the default `(&(objectClass=person)(!(objectClass=computer)))` on Active Directory and `(objectClass=person)` elsewhere. The `LDAP_GROUP` and login filters are still added to it |
 | `LDAP_USER` | (none) | Service account used by the sync and the search-bind login: a login, or a full bind DN on OpenLDAP |
-| `LDAP_PASSWORD` | password | Password of the service account |
+| `LDAP_PASSWORD` | (none) | Password of the service account. Required by the sync and the search-bind login |
 | `LDAP_EXCLUDED_ACCOUNTS` | (none) | Comma-separated logins left out by the sync and refused by the search-bind login |
 | `EMAIL_DOMAIN` | studio.local | Domain of the email built for a directory user without `mail`, and preferred among several addresses |
 
