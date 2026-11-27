@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from slugify import slugify
 from sqlalchemy.orm import aliased
 
+from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
@@ -32,6 +33,10 @@ class CastingCsvExport(MethodView, ArgsMixin):
         is_shot_casting = self.get_bool_parameter("is_shot_casting")
 
         is_tv_show = projects_service.is_tv_show(project)
+        if episode_id == "main" and not is_tv_show:
+            raise WrongParameterException(
+                "The main pack exists only in a TV show."
+            )
 
         results = self.build_results(
             project_id,
