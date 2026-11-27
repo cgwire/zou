@@ -1,4 +1,5 @@
 from tests.base import ApiDBTestCase
+from zou.app.models.software import Software
 from zou.app.services import files_service
 
 
@@ -243,6 +244,12 @@ class FolderPathTestCase(ApiDBTestCase):
             result["name"], "cosmos_landromat_props_tree_shaders_main_v001"
         )
         self.assertNotIn("\\", result["name"])
+
+    def test_an_outsider_creates_no_default_software(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(f"/data/tasks/{self.task.id}/working-file-path", {}, 403)
+        self.assertIsNone(Software.get_by(name="3ds Max"))
 
     def test_get_path_wrong_task_id(self):
         data = {}

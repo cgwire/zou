@@ -248,6 +248,10 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
 
+            if not software_id:
+                software_id = files_service.get_or_create_software(
+                    "3ds Max", "max", ".max"
+                )["id"]
             software = files_service.get_software(software_id)
             is_revision_set_by_user = revision != 0
             if not is_revision_set_by_user:
@@ -278,16 +282,11 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
         return {"path": file_path, "name": file_name}, 200
 
     def get_arguments(self):
-        maxsoft = files_service.get_or_create_software(
-            "3ds Max", "max", ".max"
-        )
         body = validation.validate_request_body(WorkingFilePathSchema)
-        software_id = body.software_id if body.software_id else maxsoft["id"]
-
         return (
             body.name,
             body.mode,
-            software_id,
+            body.software_id,
             body.revision,
             body.sep,
         )
@@ -462,6 +461,10 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             # Only a manager of the project files on behalf of someone else.
             if not permissions.has_manager_permissions():
                 person_id = persons_service.get_current_user()["id"]
+            if software_id is None:
+                software_id = files_service.get_or_create_software(
+                    "Blender", "blender", ".blend"
+                )["id"]
             software = files_service.get_software(software_id)
             tasks_service.assign_task(
                 task_id, persons_service.get_current_user()["id"]
@@ -502,12 +505,6 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(NewWorkingFileSchema)
 
         person_id = body.person_id if body.person_id else person["id"]
-        software_id = body.software_id
-        if software_id is None:
-            default_soft = files_service.get_or_create_software(
-                "Blender", "blender", ".blend"
-            )
-            software_id = default_soft["id"]
 
         return (
             body.name,
@@ -515,7 +512,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             body.description,
             body.comment,
             person_id,
-            software_id,
+            body.software_id,
             body.revision,
             body.sep,
         )
