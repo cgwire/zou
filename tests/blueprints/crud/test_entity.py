@@ -1,11 +1,11 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-from zou.app.models.entity import Entity, EntityConceptLink
 from zou.app.exceptions import (
     AssetNotFoundException,
     SequenceNotFoundException,
 )
+from zou.app.models.entity import Entity, EntityConceptLink
 from zou.app.services import (
     assets_service,
     concepts_service,

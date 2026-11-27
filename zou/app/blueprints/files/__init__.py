@@ -22,9 +22,9 @@ from zou.app.blueprints.files.resources import (
     NewEntityOutputFileResource,
     NewInstanceOutputFileResource,
     NewWorkingFileResource,
+    OutputFileFileResource,
     ProjectOutputFilesResource,
     TaskWorkingFilesResource,
-    OutputFileFileResource,
     WorkingFileFileResource,
     WorkingFilePathResource,
 )
