@@ -21,6 +21,7 @@ from zou.app.exceptions import (
     OutputTypeNotFoundException,
     PersonNotFoundException,
     WorkingFileNotFoundException,
+    WrongParameterException,
 )
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -579,6 +580,13 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(entity["project_id"])
             permissions_service.block_access_to_client()
             permissions_service.check_entity_access(entity_id)
+            if (
+                working_file_id is not None
+                and working_file["entity_id"] != entity["id"]
+            ):
+                raise WrongParameterException(
+                    "The working file does not belong to this entity."
+                )
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
 
@@ -711,6 +719,17 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             permissions_service.check_vendor_asset_instance_access(
                 asset_instance, temporal_entity["id"]
             )
+            # The source is a file of the asset or of the shot, scene or
+            # asset the instance is placed in.
+            source_entity_ids = (entity["id"], temporal_entity["id"])
+            if (
+                working_file_id is not None
+                and working_file["entity_id"] not in source_entity_ids
+            ):
+                raise WrongParameterException(
+                    "The working file does not belong to this asset "
+                    "instance."
+                )
 
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
