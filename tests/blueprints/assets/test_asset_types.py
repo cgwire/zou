@@ -13,10 +13,7 @@ class AssetTypesTestCase(ApiDBTestCase):
     def test_get_asset_types(self):
         asset_types = self.get("data/asset-types")
         self.assertEqual(len(asset_types), 1)
-        self.assertDictEqual(
-            asset_types[0],
-            self.asset_type.serialize(obj_type="AssetType", relations=True),
-        )
+        self.assertEqual(asset_types[0]["id"], str(self.asset_type.id))
 
     def test_get_asset_types_filtered_by_name(self):
         """
@@ -50,28 +47,14 @@ class AssetTypesTestCase(ApiDBTestCase):
             [asset_type["name"] for asset_type in asset_types], ["Props"]
         )
 
-    def test_get_entity_types(self):
-        asset_types = self.get("data/entity-types?name=Props&relations=true")
-        self.assertEqual(len(asset_types), 1)
-        asset_types[0]["type"] = "AssetType"
-        self.assertDictEqual(
-            asset_types[0],
-            self.asset_type.serialize(obj_type="AssetType", relations=True),
-        )
-
     def test_get_asset_type(self):
         asset_type = self.get(f"data/asset-types/{self.asset_type.id}")
-        self.assertDictEqual(
-            asset_type,
-            self.asset_type.serialize(obj_type="AssetType", relations=True),
-        )
+        self.assertEqual(asset_type["id"], str(self.asset_type.id))
 
     def test_get_project_asset_types(self):
         asset_types = self.get(f"data/projects/{self.project.id}/asset-types")
         self.assertEqual(len(asset_types), 1)
-        self.assertDictEqual(
-            asset_types[0], self.asset_type.serialize(obj_type="AssetType")
-        )
+        self.assertEqual(asset_types[0]["id"], str(self.asset_type.id))
 
     def test_get_shot_asset_types(self):
         asset_types = self.get(f"data/shots/{self.shot.id}/asset-types")

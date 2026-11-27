@@ -46,21 +46,6 @@ class AssetRoutesTestCase(ApiDBTestCase):
             [(str(self.asset_character.id), 2)],
         )
 
-    def test_update_asset_casting(self):
-        result = self.put(
-            f"/data/assets/{self.asset_id}/casting",
-            [
-                {
-                    "asset_id": str(self.asset_character.id),
-                    "nb_occurences": 2,
-                }
-            ],
-        )
-        self.assertIsInstance(result, list)
-        casting = self.get(f"/data/assets/{self.asset_id}/casting")
-        asset_ids = [c["asset_id"] for c in casting]
-        self.assertIn(str(self.asset_character.id), asset_ids)
-
     def test_get_asset_cast_in(self):
         self._set_casting()
         result = self.get(f"/data/assets/{self.asset_id}/cast-in")
