@@ -57,6 +57,18 @@ class ConfigCheckTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_token_is_compared_in_constant_time(self):
+        with patch(
+            "zou.app.blueprints.admin.resources.hmac.compare_digest",
+            return_value=False,
+        ) as compare_digest:
+            response = self.app.get(
+                "admin/config/check",
+                headers={"Authorization": f"Bearer {TEST_TOKEN}"},
+            )
+        self.assertEqual(response.status_code, 403)
+        compare_digest.assert_called_once()
+
     def test_200_with_correct_token(self):
         response = self.app.get(
             "admin/config/check",
