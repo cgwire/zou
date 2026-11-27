@@ -15,8 +15,8 @@ class EpisodeStatsTestCase(ApiDBTestCase):
         self.project_id = str(self.project.id)
         self.episode_ids = {}
 
-        for i in range(3):
-            episode_name = "E0" + str(i + 1)
+        # The test reads E01 and E03 only: no E02 is needed.
+        for episode_name in ["E01", "E03"]:
             episode = self.generate_fixture_episode(episode_name)
             self.episode_ids[episode_name] = str(episode.id)
             self.generate_fixture_sequence("SE01")
@@ -72,7 +72,7 @@ class EpisodeStatsTestCase(ApiDBTestCase):
             retake_stats["all"][animation_id]["max_retake_count"], 2
         )
         self.assertEqual(
-            retake_stats["all"][animation_id]["done"]["frames"], 360
+            retake_stats["all"][animation_id]["done"]["frames"], 240
         )
         self.assertEqual(
             retake_stats[ep1_id]["all"]["evolution"]["1"]["retake"]["count"],

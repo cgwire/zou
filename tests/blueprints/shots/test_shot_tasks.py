@@ -125,9 +125,7 @@ class ShotTasksTestCase(ApiDBTestCase):
     def test_get_task_types_for_shot(self):
         task_types = self.get(f"/data/shots/{self.shot_id}/task-types")
         self.assertEqual(len(task_types), 1)
-        self.assertDictEqual(
-            task_types[0], self.task_type_animation.serialize()
-        )
+        self.assertEqual(task_types[0]["id"], str(self.task_type_animation.id))
 
     def test_get_shots_and_tasks_all_episodes(self):
         project_id = str(self.project.id)

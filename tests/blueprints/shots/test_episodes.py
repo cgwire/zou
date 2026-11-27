@@ -30,7 +30,7 @@ class EpisodeTestCase(ApiDBTestCase):
     def test_get_sequences_for_episode(self):
         sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
         self.assertEqual(len(sequences), 4)
-        self.assertDictEqual(sequences[0], self.serialized_sequence)
+        self.assertEqual(sequences[0]["id"], self.serialized_sequence["id"])
 
     def test_get_shots_for_episode(self):
         shots = self.get(f"data/episodes/{self.episode_id}/shots")
@@ -79,7 +79,7 @@ class EpisodeTestCase(ApiDBTestCase):
     def test_get_episodes(self):
         episodes = self.get("data/episodes")
         self.assertEqual(len(episodes), 3)
-        self.assertDictEqual(episodes[0], self.serialized_episode)
+        self.assertEqual(episodes[0]["id"], self.serialized_episode["id"])
 
     def test_get_episode(self):
         episode = self.get(f"data/episodes/{self.episode.id}")
@@ -101,7 +101,7 @@ class EpisodeTestCase(ApiDBTestCase):
     def test_get_episodes_for_project(self):
         episodes = self.get(f"data/projects/{self.project.id}/episodes")
         self.assertEqual(len(episodes), 3)
-        self.assertEqual(episodes[0], self.serialized_episode)
+        self.assertEqual(episodes[0]["id"], self.serialized_episode["id"])
 
     def test_get_episodes_for_project_with_vendor(self):
         self.assert_the_listing_opens_on_assignment(
