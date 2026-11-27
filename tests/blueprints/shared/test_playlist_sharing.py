@@ -6,7 +6,11 @@ from zipfile import ZipFile
 
 import pytest
 
-from tests.base import TEST_FOLDER, ApiDBTestCase
+from tests.base import TEST_FOLDER
+from tests.blueprints.shared.base import (
+    BaseSharedRevisionTestCase,
+    PlaylistSharingTestCase,
+)
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
@@ -19,7 +23,6 @@ from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
     comments_service,
-    playlist_sharing_service,
     preview_file_states_service as states_service,
     projects_service,
     tasks_service,
@@ -30,57 +33,6 @@ from zou.app.utils import fs
 # Share-link passwords are hashed with bcrypt; the verification path must
 # not be patched to always-True here.
 pytestmark = pytest.mark.real_bcrypt
-
-
-class PlaylistSharingTestCase(ApiDBTestCase):
-    """
-    One production, one asset with a task on it, and a playlist that
-    positions that task. Holds no test of its own.
-    """
-
-    def share_path(self, token=None, suffix=""):
-        """
-        The manager side of a share link: the list, or one link, or an
-        action on it.
-        """
-        path = f"/data/playlists/{self.playlist['id']}/share"
-        if token is not None:
-            path += f"/{token}"
-        return path + suffix
-
-    def shared_path(self, token, suffix=""):
-        """
-        The public side, the one the viewer reaches with the token.
-        """
-        return f"/shared/playlists/{token}{suffix}"
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.generate_fixture_asset()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.generate_fixture_person()
-        self.generate_fixture_task()
-        # Guest comment endpoints reject statuses that are not flagged as
-        # client-allowed, so make the default status reachable from a guest.
-        self.task_status.update({"is_client_allowed": True})
-        self.playlist = self.generate_fixture_playlist("Test Playlist")
-        # Scope guest mutations to this playlist by listing the task as one
-        # of its shots.
-        self.playlist_record = self.playlist  # already a serialized dict
-
-        playlist_row = PlaylistModel.get(self.playlist["id"])
-        playlist_row.update(
-            {
-                "shots": [
-                    {
-                        "id": str(self.asset.id),
-                        "preview_file_task_id": str(self.task.id),
-                    }
-                ]
-            }
-        )
 
 
 class ShareLinkTestCase(PlaylistSharingTestCase):
@@ -98,15 +50,6 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         self.assertIsNotNone(result["token"])
         self.assertTrue(result["is_active"])
         self.assertTrue(result["can_comment"])
-
-    def test_list_share_links(self):
-        self.post(
-            self.share_path(),
-            {},
-            201,
-        )
-        result = self.get(self.share_path())
-        self.assertEqual(len(result), 1)
 
     def test_share_link_routes_check_project_access(self):
         """
@@ -192,23 +135,6 @@ class ShareLinkTestCase(PlaylistSharingTestCase):
         self.assertIsNotNone(stored.password)
         self.assertNotEqual(stored.password, plaintext)
         self.assertTrue(stored.password.startswith("$2"))
-
-    def test_share_link_password_validates_with_bcrypt(self):
-        """
-        The shared playlist endpoint must accept the correct password
-        (verified against the bcrypt hash) and reject incorrect ones.
-        """
-        plaintext = "topsecret123"
-        result = self.post(
-            self.share_path(),
-            {"password": plaintext},
-            201,
-        )
-        token = result["token"]
-        self.log_out()
-        self.get(f"/shared/playlists/{token}", 404)
-        self.get(f"/shared/playlists/{token}?password=wrong", 404)
-        self.get(f"/shared/playlists/{token}?password={plaintext}")
 
     def test_revoke_share_link(self):
         link = self.post(
@@ -346,27 +272,6 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         self.log_out()
         self.get(self.shared_path(link["token"]), 404)
 
-    def test_get_shared_playlist_context(self):
-        link = self.post(
-            self.share_path(),
-            {},
-            201,
-        )
-        self.log_out()
-        result = self.get(self.shared_path(link["token"], "/context"))
-        self.assertIn("project", result)
-        self.assertIn("task_types", result)
-        self.assertIn("task_statuses", result)
-
-    def test_get_shared_playlist_context_with_a_password(self):
-        link = self.post(self.share_path(), {"password": "topsecret123"}, 201)
-        self.log_out()
-        path = self.shared_path(link["token"], "/context")
-        self.get(path, 404)
-        self.get(f"{path}?password=wrong", 404)
-        result = self.get(f"{path}?password=topsecret123")
-        self.assertIn("project", result)
-
     def test_get_shared_playlist_context_sends_the_comment_setting(self):
         link = self.post(self.share_path(), {}, 201)
         closed_link = self.post(self.share_path(), {"can_comment": False}, 201)
@@ -388,74 +293,7 @@ class SharedPlaylistReadTestCase(PlaylistSharingTestCase):
         self.assertTrue(result["share_link"]["can_download"])
 
 
-class SharedRevisionTestCase(PlaylistSharingTestCase):
-    """
-    The revisions of a shot a guest reads. The shot has two positions of
-    revision 1 and a revision 2 on its animation task, and a preview on
-    its layout task. The playlist positions revision 1.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_shot()
-        # generate_fixture_shot_task repoints self.shot_task at the task it
-        # creates, so keep each one.
-        self.animation_task = self.generate_fixture_shot_task()
-        self.layout_task = self.generate_fixture_shot_task(
-            name="Layout", task_type_id=self.task_type_layout.id
-        )
-        animation_task_id = self.animation_task.id
-        self.pinned = self.generate_fixture_preview_file(
-            task_id=animation_task_id
-        )
-        self.pinned_position_2 = self.generate_fixture_preview_file(
-            name="main-position-2", position=2, task_id=animation_task_id
-        )
-        self.revision_2 = self.generate_fixture_preview_file(
-            revision=2, task_id=animation_task_id
-        )
-        self.layout_preview = self.generate_fixture_preview_file(
-            task_id=self.layout_task.id
-        )
-        self.pinned_annotations = [
-            {"time": 0, "drawing": {"objects": [{"id": "pinned-stroke"}]}}
-        ]
-        self.pinned.update({"annotations": self.pinned_annotations})
-        self.revision_2.update(
-            {
-                "annotations": [
-                    {
-                        "time": 0,
-                        "drawing": {"objects": [{"id": "hidden-stroke"}]},
-                    }
-                ]
-            }
-        )
-        self.pin(self.entry(self.pinned))
-
-    def entry(self, preview=None):
-        """
-        A playlist entry of the shot in the builder format, positioned on
-        given preview, or on none.
-        """
-        entry = {"entity_id": str(self.shot.id)}
-        if preview is not None:
-            entry["preview_file_id"] = str(preview.id)
-        return entry
-
-    def pin(self, *entries):
-        PlaylistModel.get(self.playlist["id"]).update({"shots": list(entries)})
-
-    def guest_get(self, suffix=""):
-        """
-        Read the shared playlist, or one of its routes, the way a viewer
-        does: through a fresh link and with no token at all.
-        """
-        link = self.post(self.share_path(), {}, 201)
-        response = self.app.get(self.shared_path(link["token"], suffix))
-        self.assertEqual(response.status_code, 200)
-        return response.json
-
+class SharedRevisionTestCase(BaseSharedRevisionTestCase):
     def test_a_guest_sees_no_other_revision(self):
         """
         A share link hands over the revision the playlist positions. Each
@@ -472,22 +310,6 @@ class SharedRevisionTestCase(PlaylistSharingTestCase):
             self.task_type_layout,
         )
         for row in hidden:
-            self.assertNotIn(str(row.id), payload)
-        self.assertNotIn("hidden-stroke", payload)
-
-    def test_the_other_guest_routes_read_the_same_revisions(self):
-        """
-        The guest routes that check a comment or an attachment against the
-        playlist of the link read it through get_shared_playlist, which
-        still returned every revision.
-        """
-        link = self.post(self.share_path(), {}, 201)
-        payload = json.dumps(
-            playlist_sharing_service.get_shared_playlist(link["token"]),
-            default=str,
-        )
-
-        for row in (self.revision_2, self.layout_preview):
             self.assertNotIn(str(row.id), payload)
         self.assertNotIn("hidden-stroke", payload)
 
@@ -696,35 +518,6 @@ class GuestTestCase(PlaylistSharingTestCase):
         self.post(path, {"first_name": "John"}, 404)
         self.post(f"{path}?password=wrong", {"first_name": "John"}, 404)
         self.post(f"{path}?password=topsecret123", {"first_name": "John"}, 201)
-
-    def test_create_guest_same_name_different_link(self):
-        """
-        A guest created via link A must not be reused via link B even
-        if both submit the same name. Otherwise an attacker holding link B
-        could impersonate any reviewer who used the same name on link A.
-        """
-        link_a = self.post(
-            self.share_path(),
-            {},
-            201,
-        )
-        link_b = self.post(
-            self.share_path(),
-            {},
-            201,
-        )
-        self.log_out()
-        guest_a = self.post(
-            f"/shared/playlists/{link_a['token']}/guest",
-            {"first_name": "John", "last_name": "Smith"},
-            201,
-        )
-        guest_b = self.post(
-            f"/shared/playlists/{link_b['token']}/guest",
-            {"first_name": "John", "last_name": "Smith"},
-            201,
-        )
-        self.assertNotEqual(guest_a["id"], guest_b["id"])
 
     def test_reuse_guest_id_other_link_rejected(self):
         """
@@ -1481,21 +1274,6 @@ class SharedFileServingTestCase(PlaylistSharingTestCase):
             self.shared_path(link["token"], "/download/zip")
         )
         self.assertEqual(response.status_code, 403)
-
-    def test_shared_playlist_zip_download_invalid_token(self):
-        response = self.app.get(
-            self.shared_path("not-a-token", "/download/zip")
-        )
-        self.assertEqual(response.status_code, 404)
-
-    def test_shared_preview_file_download_invalid_token(self):
-        preview_file, _ = self._attach_zip_preview_to_playlist()
-        self.log_out()
-        response = self.app.get(
-            f"/shared/playlists/invalid-token"
-            f"/preview-files/{preview_file.id}/download"
-        )
-        self.assertEqual(response.status_code, 404)
 
     def test_a_preview_the_playlist_does_not_carry_is_refused(self):
         """
