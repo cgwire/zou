@@ -442,10 +442,12 @@ class MoveCommentResource(MethodView):
         """
         Move a comment to another task of the same entity
         """
-        permissions.check_manager_permissions()
         body = validation.validate_request_body(MoveCommentSchema)
         permissions_service.check_task_access(task_id)
         permissions_service.check_task_access(body.target_task_id)
+        permissions_service.check_manager_project_access(
+            tasks_service.get_task(task_id)["project_id"]
+        )
         comment = comments_service.get_comment(comment_id)
         if str(comment["object_id"]) != str(task_id):
             raise WrongParameterException(

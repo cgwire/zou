@@ -927,6 +927,26 @@ class MoveCommentTestCase(CommentTestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_move_comment_rejects_a_manager_demoted_on_the_project(self):
+        # The global role check ran before the project role was resolved.
+        manager = self.generate_fixture_user_manager()
+        projects_service.add_team_member(self.project.id, manager["id"])
+        projects_service.update_team_member_role(
+            str(self.project.id), manager["id"], "user"
+        )
+        sibling = self._make_sibling_task()
+        self.log_in_manager()
+        self.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/move",
+            {"target_task_id": str(sibling.id)},
+            403,
+        )
+        self.assertEqual(
+            comments_service.get_comment(self.comment["id"])["object_id"],
+            str(self.task.id),
+        )
+
 
 class CommentAttachmentTestCase(CommentTestCase):
     """
