@@ -1,6 +1,9 @@
+from unittest.mock import patch
+
 from flask import g
 
 from tests.base import ApiDBTestCase
+from zou.app import config
 from zou.app.models.build_job import BuildJob
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
@@ -680,6 +683,18 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         path = f"/data/playlists/{self.playlist.id}/jobs/{build_job['id']}"
         self.get(path)
         self.delete(path, 403)
+
+    def test_a_refused_remote_build_leaves_no_build_job(self):
+        """
+        The remote queue check ran after the build job was created, so a
+        refused build left a job running forever.
+        """
+        self.generate_fixture_playlist("Playlist")
+        with patch.object(config, "ENABLE_JOB_QUEUE", True), patch.object(
+            config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(config, "FS_BACKEND", "local"):
+            self.get(f"/data/playlists/{self.playlist.id}/build/mp4", 400)
+        self.assertEqual(BuildJob.query.count(), 0)
 
     def test_notify_clients(self):
         self.generate_fixture_playlist("Playlist")

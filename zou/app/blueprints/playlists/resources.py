@@ -293,16 +293,16 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
             for x in playlist["shots"]
         ]
 
+        remote = config.ENABLE_JOB_QUEUE and config.ENABLE_JOB_QUEUE_REMOTE
+        # remote worker can not access files local to the web app
+        if remote and config.FS_BACKEND not in ["s3", "swift"]:
+            return {
+                "error": True,
+                "message": "Remote job queue requires s3 or swift backend",
+            }, 400
+
         job = playlist_builds_service.start_build_job(playlist)
         if config.ENABLE_JOB_QUEUE:
-            remote = config.ENABLE_JOB_QUEUE_REMOTE
-            # remote worker can not access files local to the web app
-            if remote and config.FS_BACKEND not in ["s3", "swift"]:
-                return {
-                    "error": True,
-                    "message": "Remote job queue requires s3 or swift backend",
-                }, 400
-
             current_user = persons_service.get_current_user()
             try:
                 queue_store.job_queue.enqueue(
