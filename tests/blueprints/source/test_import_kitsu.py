@@ -1,7 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
-from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.milestone import Milestone
@@ -110,7 +109,9 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
                 }
             ]
             self._post_kitsu("/import/kitsu/milestones", payload, 400)
-        self.get(f"data/projects/{self.project_id}/milestones")
+        self.assertEqual(
+            self.get(f"data/projects/{self.project_id}/milestones"), []
+        )
 
     def test_import_schedule_items(self):
         new_id = str(fields.gen_uuid())
@@ -233,23 +234,6 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         stored = PreviewFile.get(new_id)
         self.assertIsNotNone(stored)
         self.assertTrue((stored.data or {}).get("imported_only"))
-
-    def test_import_preview_files(self):
-        new_id = str(fields.gen_uuid())
-        payload = [
-            {
-                "id": new_id,
-                "task_id": self.task_id,
-                "name": "v001",
-                "revision": 1,
-                "position": 1,
-                "extension": "mp4",
-                "status": "ready",
-                "validation_status": "neutral",
-            }
-        ]
-        self._post_kitsu("/import/kitsu/preview-files", payload)
-        self.assertIsNotNone(PreviewFile.get(new_id))
         self._post_kitsu("/import/kitsu/preview-files", payload)
 
     def test_import_build_jobs(self):
@@ -287,26 +271,6 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         self._post_kitsu("/import/kitsu/attachment-files", payload)
         self.assertIsNotNone(AttachmentFile.get(new_id))
         self._post_kitsu("/import/kitsu/attachment-files", payload)
-
-    def test_import_comments_fixed_model(self):
-        """
-        Regression: ImportKitsuCommentsResource used to be wired to Entity
-        instead of Comment. POSTing a comment payload now actually creates
-        a Comment row.
-        """
-        new_id = str(fields.gen_uuid())
-        payload = [
-            {
-                "id": new_id,
-                "object_id": self.task_id,
-                "object_type": "Task",
-                "text": "Imported comment",
-                "person_id": str(self.person.id),
-                "task_status_id": str(self.task_status.id),
-            }
-        ]
-        self._post_kitsu("/import/kitsu/comments", payload)
-        self.assertIsNotNone(Comment.get(new_id))
 
     def test_import_comments_names_the_task_the_author_and_the_flag(self):
         # Kitsu reloads an imported comment from its task, and a client

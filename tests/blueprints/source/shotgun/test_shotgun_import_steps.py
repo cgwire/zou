@@ -41,12 +41,12 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
         task_types = self.get("data/task-types")
         self.assertEqual(len(task_types), 2)
 
-        department = departments[0]
-        self.assertEqual(department["name"], sg_step_animation["code"])
+        department = next(
+            d for d in departments if d["name"] == sg_step_animation["code"]
+        )
         self.assertEqual(department["color"], "#3295fd")
 
-        task_type = task_types[0]
-        self.assertEqual(task_type["name"], "Animation")
+        task_type = next(t for t in task_types if t["name"] == "Animation")
         self.assertEqual(task_type["color"], "#3295fd")
         self.assertEqual(task_type["shotgun_id"], sg_step_animation["id"])
 
@@ -68,12 +68,13 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
         task_types = self.get("data/task-types")
         self.assertEqual(len(task_types), 1)
 
-        department = departments[0]
-        self.assertEqual(department["name"], "Modeling")
+        department = next(d for d in departments if d["name"] == "Modeling")
         self.assertEqual(department["color"], "#3295fd")
 
-        task_type = task_types[0]
-        self.assertEqual(task_type["name"], "Modeling Shaders")
+        self.assertEqual(
+            [task_type["name"] for task_type in task_types],
+            ["Modeling Shaders"],
+        )
 
     def test_import_step_with_a_name_differing_only_by_case(self):
         """

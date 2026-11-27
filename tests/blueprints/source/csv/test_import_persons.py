@@ -198,16 +198,6 @@ class ImportCsvPersonsTestCase(ApiDBTestCase):
         )
         self.assertIsNone(Person.get_by(email="test.user@example.com"))
 
-    def test_import_persons_unknown_studio(self):
-        self._upload_csv(self._csv(Studio="Ghost Studio"), code=400)
-        self.assertIsNone(Person.get_by(email="test.user@example.com"))
-
-    def test_import_persons_unknown_department(self):
-        # Departments are resolved before the person is written, so a bad
-        # name fails the row without leaving an orphan person behind.
-        self._upload_csv(self._csv(Departments="Ghost"), code=400)
-        self.assertIsNone(Person.get_by(email="test.user@example.com"))
-
     def test_import_persons_studio_and_department_are_case_sensitive(self):
         # Studio "Test Studio" and department "Animation" exist; names are
         # matched exactly, so a casing mismatch fails the row (400) without

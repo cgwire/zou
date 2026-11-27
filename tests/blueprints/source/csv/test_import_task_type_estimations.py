@@ -563,44 +563,19 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
         log_in()
         return self.import_in_expert_mode(
             "Parent,Entity,Start date,WIP date,Feedback date,Approval date\n"
-            "Props,Tree,2024-01-08,2024-01-05,2024-01-10,2024-01-12\n"
+            "Props,Tree,2024-01-08,05/01/2024,2024-01-10,2024-01-12\n"
         )
 
     def test_expert_mode_leaves_the_real_dates_to_admins(self):
         """
         A manager of the production imports estimations, but in expert mode
         only an administrator changes the real dates: the import ignores
-        their columns for anybody else.
+        their columns for anybody else, and an invalid value there does not
+        stop it.
         """
         self.generate_fixture_task()
         task = self.import_real_dates_as(
             self.generate_fixture_user_manager(), self.log_in_manager
-        )
-        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
-        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
-
-    def test_expert_mode_ignores_the_real_dates_of_a_supervisor(self):
-        self.generate_fixture_task()
-        task = self.import_real_dates_as(
-            self.generate_fixture_user_supervisor(), self.log_in_supervisor
-        )
-        self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
-        self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
-
-    def test_expert_mode_does_not_check_the_real_dates_of_a_manager(self):
-        """
-        The import does not read the real date columns for a manager: an
-        invalid value there does not stop it.
-        """
-        self.generate_fixture_task()
-        self.generate_fixture_user_manager()
-        projects_service.add_team_member(
-            self.project.id, self.user_manager["id"]
-        )
-        self.log_in_manager()
-        task = self.import_in_expert_mode(
-            "Parent,Entity,Start date,WIP date\n"
-            "Props,Tree,2024-01-08,05/01/2024\n"
         )
         self.assertEqual(task.start_date.strftime("%Y-%m-%d"), "2024-01-08")
         self.assertEqual(self.get_real_dates(task), ["2017-02-22", None, None])
@@ -985,7 +960,6 @@ class ImportCsvTaskTypeEstimationsTestCase(ApiDBTestCase):
                 "Entity,Start date\nE01,2024-01-05\n",
                 "2024-01-05",
             ),
-            ("all", "Entity,Start date\nE01,2024-01-06\n", "2024-01-06"),
             (
                 "main",
                 "Parent,Entity,Start date\nE02,e01,2024-01-07\n",

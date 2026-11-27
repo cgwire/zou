@@ -38,29 +38,6 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.assertEqual(project["name"], "Agent327")
         self.assertEqual(len(project["team"]), 2)
 
-    def test_import_project_connection(self):
-        self.load_fixture("persons")
-        self.load_fixture("projects")
-        sg_project_persons = {
-            "id": 1,
-            "project": {"type": "Project", "id": 1, "name": "Agent327"},
-            "user": {"type": "HumanUser", "id": 1, "name": "Jhon Doe"},
-            "type": "ProjectUserConnection",
-        }
-
-        api_path = "/import/shotgun/project-connections"
-        self.projects = self.post(api_path, [sg_project_persons], 200)
-        self.assertEqual(len(self.projects), 1)
-
-        projects = self.get("data/projects")
-        projects = sorted(projects, key=lambda x: x["name"])
-        project = projects_service.get_project(
-            projects[0]["id"],
-            relations=True,
-        )
-        self.assertEqual(project["name"], "Agent327")
-        self.assertEqual(len(project["team"]), 1)
-
     def test_import_project_connection_refreshes_the_team(self):
         self.load_fixture("persons")
         self.load_fixture("projects")
@@ -76,9 +53,10 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
             "user": {"type": "HumanUser", "id": 1, "name": "Jhon Doe"},
             "type": "ProjectUserConnection",
         }
-        self.post(
+        result = self.post(
             "/import/shotgun/project-connections", [sg_project_persons], 200
         )
+        self.assertEqual(len(result), 1)
         project = projects_service.get_project(project_id, relations=True)
         self.assertEqual(len(project["team"]), 1)
 
