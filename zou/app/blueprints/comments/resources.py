@@ -253,15 +253,20 @@ class CommentManyTasksResource(MethodView):
             (str(comment["object_id"]), comment["comment"])
             for comment in comments
         }
+        # Check every comment before the first write, so a refused one
+        # leaves no part of the batch posted.
+        for comment in comments:
+            task = tasks_service.get_task(comment["object_id"])
+            if str(task["project_id"]) != str(project_id):
+                raise WrongParameterException(
+                    f"Task {comment['object_id']} is not in this project."
+                )
+            permissions_service.check_task_action_access(task["id"])
+            permissions_service.check_task_status_access(
+                comment["task_status_id"], project_id
+            )
         result = []
         for comment in comments:
-            task_project_id = tasks_service.get_task(comment["object_id"])[
-                "project_id"
-            ]
-            permissions_service.resolve_project_role(task_project_id)
-            permissions_service.check_task_status_access(
-                comment["task_status_id"], task_project_id
-            )
             comment = comments_service.create_comment(
                 person["id"],
                 comment["object_id"],

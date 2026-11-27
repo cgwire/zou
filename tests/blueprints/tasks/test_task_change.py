@@ -201,6 +201,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         ]
         path = f"/actions/projects/{project_id}/tasks/comment-many"
         self.assign_task_to_artist(task_id)
+        projects_service.add_team_member(project_id, self.user_cg_artist["id"])
         self.post(path, new_comments)
         self.log_in_admin()
         self.get(f"data/tasks/{task_id}")

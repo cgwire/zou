@@ -232,6 +232,31 @@ class CommentRoutesTestCase(CommentTestCase):
         texts = [c["text"] for c in comments]
         self.assertIn("Batch comment", texts)
 
+    def test_comment_many_refuses_a_task_of_another_project(self):
+        # Managing the production of the URL gave no right on the task of
+        # another production the body names.
+        other_project = self.generate_fixture_project_standard()
+        manager = self.generate_fixture_user_manager()
+        projects_service.add_team_member(other_project.id, manager["id"])
+        self.log_in_manager()
+        self.post(
+            f"/actions/projects/{other_project.id}/tasks/comment-many",
+            [self._batch_entry(self.task, "refused")],
+            400,
+        )
+        self.assertNotIn("refused", self._texts(self.task))
+
+    def test_comment_many_refuses_an_assignee_out_of_the_team(self):
+        artist = self.generate_fixture_user_cg_artist()
+        tasks_service.assign_task(str(self.task.id), artist["id"])
+        self.log_in_cg_artist()
+        self.post(
+            f"/actions/projects/{self.project.id}/tasks/comment-many",
+            [self._batch_entry(self.task, "refused")],
+            403,
+        )
+        self.assertNotIn("refused", self._texts(self.task))
+
     def _batch_entry(self, task, text):
         return {
             "object_id": str(task.id),
