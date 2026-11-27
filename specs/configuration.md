@@ -78,6 +78,7 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_BASE_DN` | cn=Users,dc=zou,dc=local | Base of the user search |
 | `LDAP_DOMAIN` | zou.local | NTLM domain (Active Directory) |
 | `LDAP_GROUP` | (none) | Restrict the sync to the members of this group. A group missing from the directory, or a search that returns no user, stops the sync before any account is deactivated. With `LDAP_SEARCH_BIND`, it also gates the login: a non-member is refused and their account deactivated |
+| `LDAP_NESTED_GROUPS` | false | Also accept the members of the subgroups of `LDAP_GROUP`, at any depth. On Active Directory it uses the `LDAP_MATCHING_RULE_IN_CHAIN` rule. On OpenLDAP the subgroups must be `groupOfUniqueNames` entries under `LDAP_BASE_DN` |
 | `LDAP_IS_AD` | false | The directory is an Active Directory (NTLM bind, `sAMAccountName`) |
 | `LDAP_IS_AD_SIMPLE` | false | Active Directory with a simple bind and `cn` as login |
 | `LDAP_SSL` | false | Connect with LDAPS |

@@ -6,7 +6,13 @@ from unittest import mock
 import ldap3
 
 from tests.base import ApiDBTestCase
-from tests.services.ldap_fixtures import BASE_DN, LdapDirectoryMixin, ad_user
+from tests.services.ldap_fixtures import (
+    BASE_DN,
+    LdapDirectoryMixin,
+    ad_user,
+    openldap_group,
+    openldap_person,
+)
 from zou.app import app
 from zou.app.commands import commands_service
 from zou.app.exceptions import (
@@ -189,6 +195,84 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
                     LDAP_CA_FILE="/nonexistent/ca.pem",
                 )
             )
+
+    def test_build_person_filter_nested_groups(self):
+        group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
+        settings = self.directory(
+            [], LDAP_GROUP=group, LDAP_NESTED_GROUPS=True
+        )
+        self.assertIn(
+            f"(memberOf:1.2.840.113556.1.4.1941:={group})",
+            ldap_service.build_person_filter(settings),
+        )
+        settings["LDAP_NESTED_GROUPS"] = False
+        self.assertIn(
+            f"(memberOf={group})", ldap_service.build_person_filter(settings)
+        )
+
+    def nested_openldap_directory(self, **overrides):
+        people = f"ou=People,{BASE_DN}"
+        groups = f"ou=Groups,{BASE_DN}"
+        return self.directory(
+            [
+                (f"uid={login},{people}", openldap_person(login))
+                for login in ["alice", "bob", "carol", "dave"]
+            ]
+            + [
+                (
+                    f"cn=Kitsu,{groups}",
+                    openldap_group(
+                        "Kitsu",
+                        [f"uid=alice,{people}", f"cn=Anim,{groups}"],
+                    ),
+                ),
+                (
+                    f"cn=Anim,{groups}",
+                    openldap_group(
+                        "Anim", [f"uid=bob,{people}", f"cn=Layout,{groups}"]
+                    ),
+                ),
+                (
+                    f"cn=Layout,{groups}",
+                    openldap_group(
+                        "Layout",
+                        [f"uid=carol,{people}", f"cn=Kitsu,{groups}"],
+                    ),
+                ),
+                (
+                    f"cn=Compta,{groups}",
+                    openldap_group("Compta", [f"uid=dave,{people}"]),
+                ),
+            ],
+            **{
+                "LDAP_IS_AD_SIMPLE": False,
+                "LDAP_GROUP": "Kitsu",
+                **overrides,
+            },
+        )
+
+    def test_search_users_openldap_direct_members_only(self):
+        settings = self.nested_openldap_directory()
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
+    def test_search_users_openldap_nested_groups(self):
+        settings = self.nested_openldap_directory(LDAP_NESTED_GROUPS=True)
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual(
+            sorted(user["desktop_login"] for user in users),
+            ["alice", "bob", "carol"],
+        )
+
+    def test_get_group_member_dns_nested_missing_group(self):
+        settings = self.nested_openldap_directory(
+            LDAP_NESTED_GROUPS=True, LDAP_GROUP="Missing"
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with self.assertRaises(LdapGroupNotFoundException):
+            ldap_service.get_group_member_dns(conn, settings)
 
     def test_search_users_excluded_account(self):
         settings = self.directory(

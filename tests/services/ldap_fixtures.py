@@ -58,6 +58,7 @@ class LdapDirectoryMixin:
             "LDAP_USER_FILTER": "",
             "LDAP_VERIFY_CERTIFICATES": False,
             "LDAP_CA_FILE": "",
+            "LDAP_NESTED_GROUPS": False,
         }
         settings.update(settings_overrides)
         return settings
@@ -78,3 +79,29 @@ def ad_user(login, **attributes):
     }
     entry.update(attributes)
     return entry
+
+
+def openldap_person(login):
+    """
+    Attributes of an active OpenLDAP person entry.
+    """
+    return {
+        "objectClass": ["person", "inetOrgPerson"],
+        "uid": login,
+        "cn": login,
+        "sn": login.title(),
+        "givenName": "Given",
+        "mail": f"{login}@studio.local",
+        "organizationalStatus": "active",
+    }
+
+
+def openldap_group(name, members):
+    """
+    Attributes of an OpenLDAP group with the given member DNs.
+    """
+    return {
+        "objectClass": "groupOfUniqueNames",
+        "cn": name,
+        "uniqueMember": members,
+    }

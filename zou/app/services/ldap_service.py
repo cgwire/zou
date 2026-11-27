@@ -31,6 +31,7 @@ CONNECT_TIMEOUT = 5
 # entries page by page, below that limit.
 SEARCH_PAGE_SIZE = 500
 PAGED_RESULTS_CONTROL = "1.2.840.113556.1.4.319"
+IN_CHAIN_RULE = "1.2.840.113556.1.4.1941"
 
 
 def get_settings():
@@ -54,6 +55,7 @@ def get_settings():
         "LDAP_USER_FILTER",
         "LDAP_VERIFY_CERTIFICATES",
         "LDAP_CA_FILE",
+        "LDAP_NESTED_GROUPS",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -164,7 +166,11 @@ def build_person_filter(settings, identity_filter=""):
     if is_ad(settings):
         if len(settings["LDAP_GROUP"]) > 0:
             group = escape_filter_chars(settings["LDAP_GROUP"])
-            parts.append(f"(memberOf={group})")
+            if settings["LDAP_NESTED_GROUPS"]:
+                # LDAP_MATCHING_RULE_IN_CHAIN: members of the subgroups too.
+                parts.append(f"(memberOf:{IN_CHAIN_RULE}:={group})")
+            else:
+                parts.append(f"(memberOf={group})")
     if identity_filter:
         parts.append(identity_filter)
     return f"(&{''.join(parts)})"
@@ -290,6 +296,8 @@ def get_group_member_dns(conn, settings):
     """
     if len(settings["LDAP_GROUP"]) == 0:
         return None
+    if settings["LDAP_NESTED_GROUPS"]:
+        return get_nested_group_member_dns(conn, settings)
     group = escape_filter_chars(settings["LDAP_GROUP"])
     conn.search(
         settings["LDAP_BASE_DN"],
@@ -301,6 +309,46 @@ def get_group_member_dns(conn, settings):
             f"LDAP group not found: {settings['LDAP_GROUP']}"
         )
     return {normalize_dn(dn) for dn in conn.entries[0].uniqueMember.values}
+
+
+def get_nested_group_member_dns(conn, settings):
+    """
+    Normalized DNs of the members of the configured group and of its
+    subgroups, at any depth (OpenLDAP only). The groups are read in one
+    search under the base DN, then expanded in memory.
+    """
+    groups = {}
+    root = None
+    for entry in paged_search(
+        conn,
+        settings["LDAP_BASE_DN"],
+        "(objectClass=groupOfUniqueNames)",
+        ["cn", "uniqueMember"],
+    ):
+        dn = normalize_dn(entry.entry_dn)
+        groups[dn] = [
+            normalize_dn(member) for member in entry.uniqueMember.values
+        ]
+        if root is None and settings["LDAP_GROUP"].lower() in [
+            name.lower() for name in entry.cn.values
+        ]:
+            root = dn
+    if root is None:
+        raise LdapGroupNotFoundException(
+            f"LDAP group not found: {settings['LDAP_GROUP']}"
+        )
+    members = set()
+    seen_groups = {root}
+    to_expand = [root]
+    while to_expand:
+        for member in groups[to_expand.pop()]:
+            if member in groups:
+                if member not in seen_groups:
+                    seen_groups.add(member)
+                    to_expand.append(member)
+            else:
+                members.add(member)
+    return members
 
 
 def paged_search(conn, base_dn, search_filter, attributes):
