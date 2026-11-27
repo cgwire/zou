@@ -132,6 +132,17 @@ def get_all_attachment_files_for_task(task_id):
     return fields.serialize_models(attachment_files)
 
 
+def get_attachment_files_by_ids(attachment_file_ids):
+    """
+    Return the attachment files that have the given IDs, as a list of
+    presented dicts.
+    """
+    attachment_files = AttachmentFile.query.filter(
+        AttachmentFile.id.in_(attachment_file_ids)
+    ).all()
+    return [attachment_file.present() for attachment_file in attachment_files]
+
+
 def build_attachment_map_for_comments(comment_ids):
     """
     Return the attachment files of each comment.

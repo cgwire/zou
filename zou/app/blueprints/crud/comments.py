@@ -1,9 +1,9 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.services import (
+    attachment_files_service,
     comments_service,
     deletion_service,
     news_service,
@@ -104,12 +104,11 @@ class CommentResource(BaseModelResource):
             "attachment_files" in result
             and len(result["attachment_files"]) > 0
         ):
-            attachment_file_objs = AttachmentFile.query.filter(
-                AttachmentFile.id.in_(result["attachment_files"])
-            ).all()
-            result["attachment_files"] = [
-                af.present() for af in attachment_file_objs
-            ]
+            result["attachment_files"] = (
+                attachment_files_service.get_attachment_files_by_ids(
+                    result["attachment_files"]
+                )
+            )
 
         with_previews = self.get_bool_parameter("with_previews", "false")
         if (
