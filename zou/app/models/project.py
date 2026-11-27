@@ -40,7 +40,7 @@ class ProjectPersonLink(db.Model):
         index=True,
     )
     shotgun_id = db.Column(db.Integer)
-    # NULL means the person inherits their global Person.role.
+    # If NULL, the person inherits their global Person.role.
     role = db.Column(ChoiceType(ROLE_TYPES), nullable=True)
 
 
@@ -59,7 +59,8 @@ class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
     priority = db.Column(db.Integer, default=None)
-    # Movie encoding bitrates in Mbit/s, null inherits from the project.
+    # The bitrates to encode movies, in Mbit/s. If null, use the value of the
+    # project.
     hd_bitrate_compression = db.Column(db.Integer, nullable=True)
     ld_bitrate_compression = db.Column(db.Integer, nullable=True)
     is_client_visible = db.Column(db.Boolean(), default=True)
@@ -125,7 +126,7 @@ class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         db.ARRAY(ChoiceType(ROLE_TYPES)),
         default=["user", "admin", "supervisor", "manager", "vendor"],
     )
-    # Null inherits the studio value, TaskStatus.is_client_allowed.
+    # If null, use the studio value, TaskStatus.is_client_allowed.
     is_client_allowed = db.Column(db.Boolean(), nullable=True, default=None)
 
     __table_args__ = (
@@ -153,8 +154,8 @@ class ProjectAssetTypeLink(db.Model):
 
 class ProjectAssetTypeTaskTypeLink(db.Model):
     """
-    Workflow of an asset type specific to a project. Without rows for a
-    project and asset type pair, the studio workflow applies.
+    The workflow of an asset type, specific to a project. If no rows exist for
+    the pair of a project and an asset type, the studio workflow applies.
     """
 
     __tablename__ = "project_asset_type_task_type_link"
@@ -212,7 +213,7 @@ class ProjectPreviewBackgroundFileLink(db.Model):
 
 class Project(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a production the studio works on.
+    This model describes a production that the studio works on.
     """
 
     name = db.Column(db.String(80), nullable=False, unique=True, index=True)
@@ -222,7 +223,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     file_tree = db.Column(JSONB)
     data = db.Column(JSONB)
     has_avatar = db.Column(db.Boolean(), default=False)
-    fps = db.Column(db.String(10), default=25)
+    fps = db.Column(db.String(10), default="25")
     ratio = db.Column(db.String(10), default="16:9")
     resolution = db.Column(db.String(12), default="1920x1080")
     production_type = db.Column(db.String(20), default="short")
@@ -247,7 +248,8 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     is_single_preview_per_revision = db.Column(db.Boolean(), default=False)
     is_frame_in_numbering = db.Column(db.Boolean(), default=False)
     revision_padding = db.Column(db.Integer, default=0, nullable=False)
-    # Movie encoding bitrates in Mbit/s, null inherits from the config.
+    # The bitrates to encode movies, in Mbit/s. If null, use the value of the
+    # config.
     hd_bitrate_compression = db.Column(db.Integer, nullable=True)
     ld_bitrate_compression = db.Column(db.Integer, nullable=True)
 

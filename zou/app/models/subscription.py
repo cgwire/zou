@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class Subscription(db.Model, BaseMixin, SerializerMixin):
     """
-    Allow to subscribe to an entity
+    Lets a person subscribe to a task, or to a task type of a sequence.
     """
 
     person_id = db.Column(
@@ -22,10 +22,10 @@ class Subscription(db.Model, BaseMixin, SerializerMixin):
 
     entity_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
-    )  # Deprecated
+    )  # Sequence subscriptions only, with task_type_id.
     task_type_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_type.id"), index=True
-    )  # Deprecated
+    )  # Sequence subscriptions only, with entity_id.
 
     __table_args__ = (
         db.UniqueConstraint(

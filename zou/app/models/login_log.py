@@ -9,8 +9,8 @@ ORIGINS = [("web", "Web"), ("script", "Script")]
 
 class LoginLog(db.Model, BaseMixin, SerializerMixin):
     """
-    Table to log all web session logins. The aim is to build a table that
-    helps finding suspicious behaviours.
+    This table logs all the logins of web sessions. Its aim is to make a table
+    that helps to find suspicious behaviours.
     """
 
     person_id = db.Column(

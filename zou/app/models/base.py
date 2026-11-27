@@ -12,25 +12,26 @@ logger = logging.getLogger(__name__)
 
 class BaseMixin(object):
     """
-    Primary key, audit timestamps and the CRUD shorthands shared by every
-    model. Models declare it as ``class Thing(db.Model, BaseMixin,
+    This mixin gives every model its primary key, its audit timestamps and its
+    CRUD shorthands. Models declare it as ``class Thing(db.Model, BaseMixin,
     SerializerMixin)``.
 
-    Two conventions run through the class:
+    The class follows two conventions:
 
-    - Methods come in pairs. ``create``/``update``/``delete`` commit and roll
-      back on failure; their ``*_no_commit`` counterparts only stage the
-      change, so a caller can group several writes into one transaction and
-      commit once.
-    - ``update`` and ``create`` accept relationship fields as lists of ids,
-      dicts holding an id, or loaded instances. ``_resolve_relations`` turns
-      them into ORM instances and silently drops the ids that match nothing.
+    - Methods come in pairs. ``create``, ``update`` and ``delete`` commit,
+      and roll back if an error occurs. Their ``*_no_commit`` counterparts
+      only add the change to the session. Thus a caller can put many writes
+      in one transaction and commit one time.
+    - ``update`` and ``create`` accept relationship fields as lists of IDs,
+      of dicts that hold an ID, or of loaded instances.
+      ``_resolve_relations`` changes them into active records. It ignores,
+      without an error, the IDs that match no row.
 
-    Note that ``db.Model`` sits before this class in the MRO, so anything it
-    already defines wins. That is why there is no ``query`` and no
-    ``__repr__`` here: Flask-SQLAlchemy provides both, and a definition on
-    this mixin would never be reached. Models that want a friendlier repr
-    define ``__repr__`` on themselves, as a dozen of them do.
+    ``db.Model`` comes before this class in the MRO, thus its definitions have
+    priority. For this reason, this mixin does not define ``query`` or
+    ``__repr__``. Flask-SQLAlchemy gives both, and Python never uses a
+    definition on this mixin. If a model needs a better repr, it defines its
+    own ``__repr__``, as about twelve models do.
     """
 
     id = db.Column(
@@ -56,27 +57,26 @@ class BaseMixin(object):
     @classmethod
     def get(cls, id):
         """
-        Shorthand to retrieve data by id.
+        Return the active record with the given ID, or None if no row matches.
         """
         return db.session.get(cls, id)
 
     @classmethod
     def get_by(cls, *criterions, **kw):
         """
-        Shorthand to retrieve data by using filters. It returns the first
-        element of the returned data.
+        Return the first active record that matches the given filters.
         """
         return cls.query.filter(*criterions).filter_by(**kw).first()
 
     @classmethod
     def get_by_case_insensitive(cls, *criterions, **kw):
         """
-        Shorthand to retrieve data by using filters, without checking case
-        for any String type value. Extra criterions narrow the lookup, as
-        in get_by. It returns one of the matching rows with no ordering
-        guarantee, so it only tells whether a match exists. A caller
-        needing the row itself must disambiguate, for instance by
-        excluding in the query the rows it already knows about.
+        Return an active record that matches the given filters. The comparison
+        ignores the case of String values. The positional criterions add
+        conditions, as in get_by. The query has no order, thus the result is
+        any one of the matches. It only tells whether a match exists. If a
+        caller needs the row itself, it must make the match unique. For
+        example, it can exclude from the query the rows that it already knows.
         """
         filters = []
         for key, value in kw.items():
@@ -91,22 +91,22 @@ class BaseMixin(object):
     @classmethod
     def get_all(cls):
         """
-        Shorthand to retrieve all data for a model.
+        Return all the active records of the model.
         """
         return cls.query.all()
 
     @classmethod
     def get_all_by(cls, **kw):
         """
-        Shorthand to retrieve data by using filters.
+        Return all the active records that match the given filters.
         """
         return cls.query.filter_by(**kw).all()
 
     @classmethod
     def get_id_map(cls, field="shotgun_id"):
         """
-        Build a map to easily match a field value with an id. It's useful during
-        mass import to build foreign keys.
+        Return a dict that maps each value of the given field to the ID of its
+        row. Mass imports use this dict to set foreign keys.
         """
         entry_map = {}
         entries = cls.query.all()
@@ -121,7 +121,7 @@ class BaseMixin(object):
     @classmethod
     def create(cls, **kw):
         """
-        Shorthand to create an entry via the database session.
+        Create an active record through the database session, then commit.
         """
 
         try:
@@ -135,8 +135,8 @@ class BaseMixin(object):
     @classmethod
     def create_no_commit(cls, **kw):
         """
-        Shorthand to create an entry via the database session without commiting
-        the request.
+        Create an active record through the database session. This method does
+        not commit.
         """
         kw.update(cls._resolve_relations(kw))
         instance = cls(**kw)
@@ -146,7 +146,8 @@ class BaseMixin(object):
     @classmethod
     def get_or_create(cls, **kw):
         """
-        Shorthand to retrieve data by using filters.
+        Return the first active record that matches the given filters. If no
+        record matches, create one with these filters as values, then commit.
         """
         instance = cls.get_by(**kw)
         if instance is None:
@@ -159,8 +160,8 @@ class BaseMixin(object):
 
     def save(self):
         """
-        Shorthand to create an entry via the database session based on current
-        instance fields.
+        Set updated_at, add this instance to the session and commit. If an
+        error occurs, roll back.
         """
         try:
             self.updated_at = date_helpers.get_utc_now_datetime()
@@ -172,8 +173,8 @@ class BaseMixin(object):
 
     def update(self, data):
         """
-        Shorthand to update an entry via the database session based on current
-        instance fields.
+        Update the instance with the given data and commit. If an error occurs,
+        roll back.
         """
         try:
             self.update_no_commit(data)
@@ -184,8 +185,8 @@ class BaseMixin(object):
 
     def update_no_commit(self, data):
         """
-        Shorthand to update an entry via the database session based on current
-        instance fields. It doesn't generate a commit.
+        Set the given data and updated_at on the instance. Ignore the keys that
+        are not model attributes. This method does not commit.
         """
         self.updated_at = date_helpers.get_utc_now_datetime()
         resolved = self._resolve_relations(data)
@@ -198,8 +199,8 @@ class BaseMixin(object):
 
     def delete(self):
         """
-        Shorthand to delete an entry via the database session based on current
-        instance id.
+        Delete the row of this instance through the database session, then
+        commit.
         """
         try:
             self.delete_no_commit()
@@ -210,8 +211,8 @@ class BaseMixin(object):
 
     def delete_no_commit(self):
         """
-        Shorthand to delete an entry via the database session based on current
-        instance id. The change is not commited.
+        Delete the row of this instance through the database session. This
+        method does not commit.
         """
         db.session.delete(self)
         return True
@@ -219,7 +220,8 @@ class BaseMixin(object):
     @classmethod
     def delete_all_by(cls, *criterions, **kw):
         """
-        Shorthand to delete data by using filters.
+        Delete the rows that match the given filters, then commit. Return the
+        number of deleted rows.
         """
         result = cls.query.filter(*criterions).filter_by(**kw).delete()
         db.session.commit()
@@ -228,11 +230,12 @@ class BaseMixin(object):
     @classmethod
     def delete_all_by_no_commit(cls, *criterions, **kw):
         """
-        Shorthand to delete data by using filters, without committing. The
-        loaded instances are expired, as the commit of delete_all_by does:
-        a many-to-many collection loaded earlier would still hold the
-        objects linked by the deleted rows, and the flush deleting its owner
-        would delete those rows again, find none and raise a StaleDataError.
+        Delete the rows that match the given filters. This method does not
+        commit. It expires the loaded instances, as the commit of delete_all_by
+        does. Without this, a many-to-many collection loaded before still holds
+        the objects that the deleted rows link. Then the flush that deletes the
+        owner of this collection deletes those rows again. It finds no rows and
+        raises a StaleDataError.
         """
         result = cls.query.filter(*criterions).filter_by(**kw).delete()
         db.session.expire_all()
@@ -241,8 +244,8 @@ class BaseMixin(object):
     @classmethod
     def commit(cls):
         """
-        Commit the pending changes, rolling back the session on failure so
-        it stays usable for the next request.
+        Commit the pending changes. If the commit fails, roll back the session,
+        so that the next request can use it.
         """
         try:
             db.session.commit()
@@ -257,9 +260,10 @@ class BaseMixin(object):
     @classmethod
     def _resolve_relations(cls, data):
         """
-        Map relationship fields of data to lists of ORM instances. Values
-        can be ids, dicts holding an id or already-loaded instances;
-        unknown ids are dropped. Non-relationship fields are left out.
+        Map each relationship field of the data to a list of active records. A
+        value can be an ID, a dict that holds an ID, or a loaded instance.
+        Ignore the IDs that match no row. Leave out the fields that are not
+        relationships.
         """
         resolved = {}
         for key, value in data.items():
@@ -285,9 +289,10 @@ class BaseMixin(object):
 
     def set_links(self, ids, LinkTable, field_left, field_right):
         """
-        Point this instance at the given ids through a link table, adding
-        the rows that are missing. Existing links are left untouched and
-        none are removed, so this adds to the set, it does not replace it.
+        Link this instance to the given IDs through a link table, and add the
+        rows that are missing. Do not change or remove the links that exist.
+        Thus this method adds to the set, it does not replace it. Commit at the
+        end.
         """
         for id in ids:
             link = LinkTable.query.filter_by(
@@ -305,9 +310,9 @@ class BaseMixin(object):
     @classmethod
     def create_from_import(cls, data):
         """
-        Create a new instance of the model based on data that comes from the Zou
-        API. Returns ``(instance, is_update)`` where ``is_update`` is True when
-        an existing row was updated and False when a new row was created.
+        Create or update an instance of the model from data that comes from the
+        Zou API. Return ``(instance, is_update)``. ``is_update`` is True if the
+        method updated a row that exists, and False if it created a row.
         """
         if "type" in data:
             del data["type"]
@@ -321,8 +326,8 @@ class BaseMixin(object):
     @classmethod
     def create_from_import_list(cls, data_list):
         """
-        Create a list of instances of the model based on data that comes from
-        the Zou API.
+        Create a list of instances of the model from data that comes from the
+        Zou API.
         """
         if "data" in data_list:
             data_list = data_list["data"]
@@ -330,8 +335,8 @@ class BaseMixin(object):
             try:
                 cls.create_from_import(data)
             except IntegrityError:
-                # One broken row must not lose the rest of the list. The
-                # session was already rolled back by create/save.
+                # One broken row must not stop the import of the other rows.
+                # create or update already rolled back the session.
                 logger.error(
                     f"Failed to import {cls.__name__} {data.get('id')}",
                     exc_info=1,
@@ -340,7 +345,8 @@ class BaseMixin(object):
     @classmethod
     def delete_from_import(cls, instance_id):
         """
-        Delete an entry and its related base on the entry id.
+        If the entry with the given ID exists, delete it and commit. Return the
+        ID.
         """
         instance = cls.get(instance_id)
         if instance is not None:

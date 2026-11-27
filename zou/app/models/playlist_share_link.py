@@ -7,12 +7,12 @@ from zou.app.models.serializer import SerializerMixin
 
 class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
     """
-    Map a random token to a playlist, allowing external users to access
-    and comment on it without a Kitsu account.
+    Map a random token to a playlist. With this token, external users can
+    access the playlist and comment on it without a Kitsu account.
 
-    The `password` column stores a bcrypt hash, never plaintext. It is
-    stripped from `serialize()` output so manager-facing endpoints
-    never reflect the credential back to callers.
+    The `password` column stores a bcrypt hash, never plaintext. `serialize()`
+    removes it from its output. Thus the endpoints for managers never send the
+    credential back to callers.
     """
 
     token = db.Column(db.String(64), unique=True, nullable=False, index=True)
@@ -47,7 +47,7 @@ class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
         if "password" not in ignored:
             ignored.append("password")
         data = super().serialize(*args, ignored_attrs=ignored, **kwargs)
-        # Surface a boolean so consumers can render "🔒 password protected"
-        # without ever seeing the credential itself.
+        # Give a boolean, so that consumers can show "🔒 password protected" and
+        # never see the credential itself.
         data["has_password"] = bool(self.password)
         return data

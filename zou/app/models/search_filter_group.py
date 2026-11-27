@@ -8,7 +8,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class SearchFilterGroup(db.Model, BaseMixin, SerializerMixin):
     """
-    Groups are used to store search filters into sections.
+    A group puts search filters into a section.
     """
 
     list_type = db.Column(db.String(80), nullable=False, index=True)

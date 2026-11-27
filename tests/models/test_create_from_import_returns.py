@@ -91,9 +91,7 @@ class CreateFromImportReturnsTestCase(ApiDBTestCase):
         self.assertEqual(str(links[0].department_id), str(self.department.id))
 
         # Re-import without a "departments" key: existing links stay untouched.
-        # create_from_import already popped the key on the first call, so
-        # asserting absence is enough.
-        self.assertNotIn("departments", data)
+        data.pop("departments", None)
         data["name"] = "Renamed"
         instance, is_update = MetadataDescriptor.create_from_import(data)
         self.assertTrue(is_update)

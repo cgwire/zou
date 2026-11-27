@@ -5,7 +5,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class HardwareItem(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes hardware items available in the studio.
+    This model describes a hardware item that is available in the studio.
     """
 
     name = db.Column(db.String(40), unique=True, nullable=False)

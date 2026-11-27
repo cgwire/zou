@@ -7,7 +7,7 @@ from zou.app.models.serializer import SerializerMixin
 
 class TimeSpent(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes the time spent by someone on a task.
+    This model describes the time that a person spent on a task.
     """
 
     duration = db.Column(db.Float, nullable=False)

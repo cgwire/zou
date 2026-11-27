@@ -45,8 +45,8 @@ class DepartmentMetadataDescriptorLink(db.Model):
 
 class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     """
-    This models allow to identify which metadata are available for a given
-    project and a given entity type.
+    This model tells which metadata are available for the given project and the
+    given entity type.
     """
 
     project_id = db.Column(
@@ -56,7 +56,7 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
     entity_type = db.Column(db.String(60), nullable=False, index=True)
-    # Only set for "Task" descriptors: scopes the field to one task type.
+    # Only set for "Task" descriptors: it limits the field to one task type.
     task_type_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("task_type.id"),
@@ -74,10 +74,9 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
         secondary=DepartmentMetadataDescriptorLink.__table__,
     )
 
-    # Partial indexes instead of plain unique constraints: NULLs are
-    # distinct in Postgres unique constraints, so task_type_id could not
-    # be part of a single constraint without weakening uniqueness for
-    # non-Task descriptors.
+    # Use partial indexes, not plain unique constraints. In a Postgres unique
+    # constraint, all NULL values are distinct. Thus if one constraint has
+    # task_type_id, uniqueness becomes weaker for non-Task descriptors.
     __table_args__ = (
         db.Index(
             "metadata_descriptor_uc",

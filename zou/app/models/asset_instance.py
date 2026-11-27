@@ -8,11 +8,10 @@ from zou.app.models.serializer import SerializerMixin
 
 class AssetInstance(db.Model, BaseMixin, SerializerMixin):
     """
-    An asset instance is the representation of an asset in a given shot or
-    layout scene. It is useful for complex scenes where an asset needs extra
-    treatments only related to the given shot or layout scene.
-    An asset can have multiple instances in a scene or in a shot (ex: a sword in
-    a battle field).
+    An asset instance represents an asset in the given shot or layout scene.
+    Use it for complex scenes where an asset needs extra treatments that apply
+    only to this shot or layout scene. An asset can have many instances in a
+    scene or in a shot (for example, a sword on a battlefield).
     """
 
     asset_id = db.Column(
@@ -44,8 +43,8 @@ class AssetInstance(db.Model, BaseMixin, SerializerMixin):
         ),
     )
 
-    # Do not use these column. They are deprecated and will be dropped in
-    # upcoming version
+    # Do not use these columns. They are deprecated and a future version will
+    # drop them.
     entity_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
     )

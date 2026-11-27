@@ -15,9 +15,9 @@ QUALITIES = [
 
 class OutputFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe a file generated from a CG artist scene. It's the result of a
-    publication.
-    It is linked to a working file, an entity and a task type.
+    An output file is a file made from the scene of a CG artist. It is the
+    result of a publication. It links to a working file, an entity and a task
+    type.
     """
 
     shotgun_id = db.Column(db.Integer())
@@ -35,8 +35,8 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
     source = db.Column(db.String(40))
     path = db.Column(db.String(400))
     data = db.Column(JSONB)
-    # The date of the last upload of the content: None when the file store
-    # has no content for this file.
+    # The date of the last upload of the content. If the file store has no
+    # content for this file, the value is None.
     uploaded_at = db.Column(db.DateTime())
     quality = db.Column(ChoiceType(QUALITIES), nullable=True)
 

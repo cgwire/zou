@@ -16,7 +16,7 @@ MILESTONE_TYPES = [
 
 class Milestone(db.Model, BaseMixin, SerializerMixin):
     """
-    Allow to set a milestone date to the production schedule.
+    Lets a user set a milestone date on the production schedule.
     """
 
     date = db.Column(db.Date())

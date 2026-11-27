@@ -10,8 +10,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes the file related to the work done on a given task. It is
-    used as source of output files published for a given entity.
+    This model describes the file of the work on the given task. The output
+    files published for an entity use it as their source.
     """
 
     shotgun_id = db.Column(db.Integer(), index=True)
@@ -24,8 +24,8 @@ class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     checksum = db.Column(db.Integer())
     path = db.Column(db.String(400))
     data = db.Column(JSONB)
-    # The date of the last upload of the content: None when the file store
-    # has no content for this file.
+    # The date of the last upload of the content. If the file store has no
+    # content for this file, the value is None.
     uploaded_at = db.Column(db.DateTime())
     validation_status = db.Column(
         ChoiceType(VALIDATION_STATUSES), default="neutral", nullable=False

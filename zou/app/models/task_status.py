@@ -7,8 +7,8 @@ from zou.app.models.serializer import SerializerMixin
 
 class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe the state of a task. A status marked as reviewable expects a
-    preview file linked to relate comment.
+    This model describes the state of a task. The flags tell what a status
+    means (done, retake, feedback request, WIP) and who can set it.
     """
 
     name = db.Column(db.String(40), nullable=False)

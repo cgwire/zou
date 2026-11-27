@@ -24,9 +24,9 @@ class TaskPersonLink(db.Model):
 
 class Task(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a task done by a CG artist on an entity of the CG production.
-    The task has a state and assigned to people. It handles notion of time like
-    duration, start date and end date.
+    This model describes a task that a CG artist does on an entity of the CG
+    production. The task has a state and people assigned to it. It records time
+    data such as the duration, the start date and the end date.
     """
 
     name = db.Column(db.String(80), nullable=False)

@@ -8,8 +8,8 @@ from zou.app.utils import fields
 
 class ScheduleItem(db.Model, BaseMixin, SerializerMixin):
     """
-    Allow to set a start date and an end date for a task type and a project.
-    This information allows to build a schedule for the project.
+    Lets a user set a start date and an end date for a task type and a project.
+    With this data, Zou can make a schedule for the project.
     """
 
     start_date = db.Column(db.Date())

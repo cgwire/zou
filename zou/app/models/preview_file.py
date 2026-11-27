@@ -22,8 +22,8 @@ VALIDATION_STATUSES = [
 
 class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a file which is aimed at being reviewed. It is not a publication
-    neither a working file.
+    This model describes a file for review. It is not a publication and not a
+    working file.
     """
 
     name = db.Column(db.String(250))
@@ -47,8 +47,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     duration = db.Column(db.Float, default=0)
     data = db.Column(JSONB)
 
-    # Token cost of generating this preview file (when produced by an AI
-    # pipeline). Nullable: only set when relevant.
+    # The token cost to make this preview file, if an AI pipeline made it.
+    # Nullable: only set when it applies.
     token_in = db.Column(db.Integer(), nullable=True)
     token_out = db.Column(db.Integer(), nullable=True)
 
@@ -69,7 +69,6 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
 
     shotgun_id = db.Column(db.Integer, unique=True)
 
-    is_movie = db.Column(db.Boolean, default=False)  # deprecated
     url = db.Column(db.String(600))  # deprecated
     uploaded_movie_url = db.Column(db.String(600))  # deprecated
     uploaded_movie_name = db.Column(db.String(150))  # deprecated
@@ -81,6 +80,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     def create_from_import(cls, data):
         data.pop("type", None)
         data.pop("comments", None)
+        # Older Zou instances still send the dropped is_movie column.
+        data.pop("is_movie", None)
         previous_data = cls.get(data["id"])
         if "status" not in data or data["status"] is None:
             data["status"] = "ready"
