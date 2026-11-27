@@ -402,7 +402,10 @@ def find_search_bind_user(person, identifier, password, app):
         _spend_password_check_time(password)
         raise WrongUserException()
     except LDAPInvalidFilterError:
-        app.logger.error("LDAP login impossible: check LDAP_USER_FILTER.")
+        app.logger.error(
+            "LDAP login impossible: check LDAP_USER_FILTER and "
+            "LDAP_LOGIN_ATTRIBUTE."
+        )
         raise NoAuthStrategyConfigured()
     finally:
         conn.unbind()

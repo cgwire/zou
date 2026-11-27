@@ -3,6 +3,7 @@ Access to the LDAP directory: connection, user search and the conversion of
 directory entries into the dicts the person sync understands.
 """
 
+import re
 import ssl
 
 import ldap3
@@ -32,6 +33,8 @@ CONNECT_TIMEOUT = 5
 SEARCH_PAGE_SIZE = 500
 PAGED_RESULTS_CONTROL = "1.2.840.113556.1.4.319"
 IN_CHAIN_RULE = "1.2.840.113556.1.4.1941"
+# An attribute name (letters, digits, hyphens) or an OID.
+ATTRIBUTE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9-]*|[0-9]+(\.[0-9]+)+")
 
 
 def get_settings():
@@ -57,6 +60,7 @@ def get_settings():
         "LDAP_CA_FILE",
         "LDAP_NESTED_GROUPS",
         "LDAP_START_TLS",
+        "LDAP_LOGIN_ATTRIBUTE",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -70,8 +74,17 @@ def is_ad(settings):
 
 def get_login_attribute(settings):
     """
-    Name of the entry attribute holding the desktop login.
+    Name of the entry attribute holding the desktop login: the configured
+    one, else the usual one of the directory type. The configured name goes
+    into the search filters, so anything but an attribute name is refused.
     """
+    attribute = settings["LDAP_LOGIN_ATTRIBUTE"].strip()
+    if attribute:
+        if not ATTRIBUTE_NAME.fullmatch(attribute):
+            raise ldap3.core.exceptions.LDAPInvalidFilterError(
+                f"Invalid LDAP_LOGIN_ATTRIBUTE: {attribute}"
+            )
+        return attribute
     if settings["LDAP_IS_AD_SIMPLE"]:
         return "cn"
     elif settings["LDAP_IS_AD"]:
@@ -213,6 +226,9 @@ def get_user_attributes(settings):
             "uniqueIdentifier",
             "organizationalStatus",
         ]
+    login_attribute = get_login_attribute(settings)
+    if login_attribute not in attributes:
+        attributes.append(login_attribute)
     return attributes
 
 

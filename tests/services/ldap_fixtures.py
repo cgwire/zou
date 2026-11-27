@@ -60,6 +60,7 @@ class LdapDirectoryMixin:
             "LDAP_CA_FILE": "",
             "LDAP_NESTED_GROUPS": False,
             "LDAP_START_TLS": False,
+            "LDAP_LOGIN_ATTRIBUTE": "",
         }
         settings.update(settings_overrides)
         return settings

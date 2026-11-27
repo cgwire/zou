@@ -467,6 +467,24 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.use_directory([self.jdoe()], LDAP_USER="")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
 
+    def test_first_login_with_custom_login_attribute(self):
+        self.use_directory(
+            [
+                self.jdoe(
+                    dn=f"cn=John Doe,cn=Users,{BASE_DN}",
+                    cn="John Doe",
+                    sAMAccountName="jdoe",
+                )
+            ],
+            LDAP_LOGIN_ATTRIBUTE="sAMAccountName",
+        )
+        person = self.login("jdoe")
+        self.assertEqual(person["desktop_login"], "jdoe")
+
+    def test_invalid_login_attribute(self):
+        self.use_directory([self.jdoe()], LDAP_LOGIN_ATTRIBUTE="a b")
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
     def test_no_service_password(self):
         person = self.ldap_person()
         self.use_directory([self.jdoe()], LDAP_PASSWORD="")

@@ -323,6 +323,52 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         ):
             ldap_service.connect(settings, "user", "secret", ldap3.SIMPLE)
 
+    def test_get_login_attribute_default(self):
+        settings = self.directory([])
+        self.assertEqual(ldap_service.get_login_attribute(settings), "cn")
+        settings.update(LDAP_IS_AD_SIMPLE=False, LDAP_IS_AD=True)
+        self.assertEqual(
+            ldap_service.get_login_attribute(settings), "sAMAccountName"
+        )
+        settings.update(LDAP_IS_AD=False)
+        self.assertEqual(ldap_service.get_login_attribute(settings), "uid")
+
+    def test_get_login_attribute_custom(self):
+        settings = self.directory([], LDAP_LOGIN_ATTRIBUTE=" sAMAccountName ")
+        self.assertEqual(
+            ldap_service.get_login_attribute(settings), "sAMAccountName"
+        )
+        self.assertIn(
+            "sAMAccountName", ldap_service.get_user_attributes(settings)
+        )
+
+    def test_get_login_attribute_invalid(self):
+        for attribute in ["uid)(objectClass=*", "a b", "-uid"]:
+            settings = self.directory([], LDAP_LOGIN_ATTRIBUTE=attribute)
+            with self.assertRaises(
+                ldap3.core.exceptions.LDAPInvalidFilterError
+            ):
+                ldap_service.get_login_attribute(settings)
+
+    def test_search_users_custom_login_attribute(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=John Doe,cn=Users,{BASE_DN}",
+                    ad_user("John Doe", sAMAccountName="jdoe"),
+                )
+            ],
+            LDAP_LOGIN_ATTRIBUTE="sAMAccountName",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["jdoe"])
+        entry = ldap_service.find_user_entry(conn, settings, "jdoe")
+        self.assertEqual(entry.entry_dn, f"cn=John Doe,cn=Users,{BASE_DN}")
+        self.assertIsNone(
+            ldap_service.find_user_entry(conn, settings, "John Doe")
+        )
+
     def test_search_users_excluded_account(self):
         settings = self.directory(
             [
