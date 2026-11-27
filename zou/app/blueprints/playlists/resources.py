@@ -227,7 +227,6 @@ class PlaylistDownloadResource(MethodView):
         """
         Download playlist build
         """
-        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_access(
             playlist, supervisor_access=True
@@ -344,7 +343,6 @@ class PlaylistZipDownloadResource(MethodView):
         """
         Download playlist zip
         """
-        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_access(
             playlist, supervisor_access=True
@@ -360,7 +358,6 @@ class BuildJobResource(MethodView):
         """
         Get build job
         """
-        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         permissions_service.check_playlist_access(playlist)
         build_job = playlist_builds_service.get_build_job(build_job_id)

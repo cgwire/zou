@@ -696,6 +696,29 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             self.get(f"/data/playlists/{self.playlist.id}/build/mp4", 400)
         self.assertEqual(BuildJob.query.count(), 0)
 
+    def test_a_vendor_made_supervisor_downloads_the_builds(self):
+        """
+        The vendor gate read the global role before the project was
+        resolved, so a vendor made supervisor of the production was
+        refused the downloads its supervisors get.
+        """
+        self.generate_fixture_playlist("Playlist")
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+        BuildJob.get(build_job["id"]).update({"status": "running"})
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"], role="supervisor"
+        )
+        self.log_in_vendor()
+        g.pop("project_role", None)
+
+        # The 400 of the unfinished build comes after the access check.
+        self.get(
+            f"/data/playlists/{self.playlist.id}/jobs/{build_job['id']}"
+            "/build/mp4",
+            400,
+        )
+
     def test_notify_clients(self):
         self.generate_fixture_playlist("Playlist")
         playlist_id = str(self.playlist.id)
