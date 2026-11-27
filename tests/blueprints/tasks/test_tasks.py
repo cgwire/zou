@@ -1451,6 +1451,20 @@ class TaskRoutesTestCase(TaskTestCase):
         self.assertEqual(by_type[tt2], 1)
         self.assertEqual(by_type[tt1], 2)
 
+    def test_reorder_task_types_with_a_bad_id(self):
+        """
+        A bad ID used to give a 500 after the update of the task types
+        that came before it.
+        """
+        tt1 = str(self.task_type.id)
+        self.task_type.update({"priority": 5})
+        self.post(
+            "/actions/task-types/reorder",
+            {"task_type_ids": [tt1, "abc"]},
+            400,
+        )
+        self.assertEqual(TaskType.get(tt1).priority, 5)
+
     def test_reorder_task_status_links_preserves_roles(self):
         from zou.app.models.project import ProjectTaskStatusLink
 

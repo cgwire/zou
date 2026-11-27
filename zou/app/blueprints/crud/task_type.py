@@ -11,7 +11,7 @@ from zou.app.services import (
     status_automations_service,
     task_types_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import fields, permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/task_type.yml")
@@ -142,12 +142,14 @@ class TaskTypesReorderResource(MethodView):
         """
         permissions.check_admin_permissions()
         body = request.json
-        if not isinstance(body, dict) or not isinstance(
-            body.get("task_type_ids"), list
+        if (
+            not isinstance(body, dict)
+            or not isinstance(body.get("task_type_ids"), list)
+            or not all(map(fields.is_valid_id, body["task_type_ids"]))
         ):
             raise WrongParameterException(
                 "Request body must be a JSON object with a "
-                "'task_type_ids' list."
+                "'task_type_ids' list of task type IDs."
             )
         updated = []
         for priority, task_type_id in enumerate(
