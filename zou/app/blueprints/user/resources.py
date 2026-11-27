@@ -274,7 +274,7 @@ class DoneResource(MethodView):
         return todos_service.get_done_tasks()
 
 
-class FiltersResource(MethodView, ArgsMixin):
+class FiltersResource(MethodView):
 
     @swag_from(SPECS["FiltersResource_get"])
     def get(self):
@@ -305,7 +305,7 @@ class FiltersResource(MethodView, ArgsMixin):
         )
 
 
-class FilterResource(MethodView, ArgsMixin):
+class FilterResource(MethodView):
 
     @swag_from(SPECS["FilterResource_put"])
     def put(self, filter_id):
@@ -332,7 +332,7 @@ class FilterResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class FilterGroupsResource(MethodView, ArgsMixin):
+class FilterGroupsResource(MethodView):
 
     @swag_from(SPECS["FilterGroupsResource_get"])
     def get(self):
@@ -361,7 +361,7 @@ class FilterGroupsResource(MethodView, ArgsMixin):
         )
 
 
-class FilterGroupResource(MethodView, ArgsMixin):
+class FilterGroupResource(MethodView):
 
     @swag_from(SPECS["FilterGroupResource_get"])
     def get(self, filter_group_id):
@@ -468,7 +468,7 @@ class NotificationsResource(MethodView, ArgsMixin):
         )
 
 
-class NotificationResource(MethodView, ArgsMixin):
+class NotificationResource(MethodView):
 
     @swag_from(SPECS["NotificationResource_get"])
     def get(self, notification_id):

@@ -20,7 +20,7 @@ from zou.app.utils.openapi import load_specs, swag_from
 SPECS = load_specs(__file__, "openapi.yml")
 
 
-class AllDepartmentSoftwareResource(MethodView, ArgsMixin):
+class AllDepartmentSoftwareResource(MethodView):
 
     @jwt_required()
     @permissions.require_admin
@@ -83,7 +83,7 @@ class SoftwareDepartmentResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class AllDepartmentHardwareItemsResource(MethodView, ArgsMixin):
+class AllDepartmentHardwareItemsResource(MethodView):
 
     @jwt_required()
     @permissions.require_admin

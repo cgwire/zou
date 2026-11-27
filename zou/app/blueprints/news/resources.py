@@ -86,7 +86,7 @@ class NewsMixin(ArgsMixin):
         )
 
 
-class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
+class ProjectNewsResource(MethodView, NewsMixin):
 
     @jwt_required()
     @swag_from(SPECS["ProjectNewsResource_get"])
@@ -100,7 +100,7 @@ class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
         return self.get_news([project_id])
 
 
-class NewsResource(MethodView, NewsMixin, ArgsMixin):
+class NewsResource(MethodView, NewsMixin):
 
     @jwt_required()
     @swag_from(SPECS["NewsResource_get"])

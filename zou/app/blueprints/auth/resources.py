@@ -179,11 +179,8 @@ class LogoutResource(MethodView):
         """
         Logout user
         """
-        try:
-            payload = get_jwt()
-            auth_service.logout(payload["jti"], payload.get("refresh_jti"))
-        except KeyError:
-            return {"Access token not found."}, 500
+        payload = get_jwt()
+        auth_service.logout(payload["jti"], payload.get("refresh_jti"))
 
         logout_data = {"logout": True}
 
@@ -254,7 +251,7 @@ def _build_login_response(user, email):
     return response
 
 
-class LoginResource(MethodView, ArgsMixin):
+class LoginResource(MethodView):
 
     @swag_from(SPECS["LoginResource_post"])
     def post(self):
@@ -390,17 +387,6 @@ class LoginResource(MethodView, ArgsMixin):
                 "message": "A server error occurred. Please contact your administrator.",
             }, 500
 
-    def get_arguments(self):
-        body = validation.validate_request_body(LoginSchema)
-        return (
-            body.email,
-            body.password,
-            body.totp,
-            body.email_otp,
-            body.fido_authentication_response,
-            body.recovery_code,
-        )
-
 
 class RefreshTokenResource(MethodView):
     @jwt_required(refresh=True)
@@ -495,7 +481,7 @@ class AppLoginTokenResource(MethodView):
         }
 
 
-class ChangePasswordResource(MethodView, ArgsMixin):
+class ChangePasswordResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
@@ -579,12 +565,8 @@ class ChangePasswordResource(MethodView, ArgsMixin):
                 400,
             )
 
-    def get_arguments(self):
-        body = validation.validate_request_body(ChangePasswordSchema)
-        return (body.old_password, body.password, body.password_2)
 
-
-class ResetPasswordResource(MethodView, ArgsMixin):
+class ResetPasswordResource(MethodView):
 
     @swag_from(SPECS["ResetPasswordResource_put"])
     def put(self):
@@ -697,7 +679,7 @@ class ResetPasswordCheckResource(MethodView):
         }
 
 
-class TOTPResource(MethodView, ArgsMixin):
+class TOTPResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
@@ -1062,7 +1044,7 @@ class FIDOResource(MethodView, ArgsMixin):
             )
 
 
-class RecoveryCodesResource(MethodView, ArgsMixin):
+class RecoveryCodesResource(MethodView):
 
     @jwt_required()
     @permissions.require_person
@@ -1144,7 +1126,7 @@ def is_saml_person_info_new(person, person_info):
     )
 
 
-class SAMLSSOResource(MethodView, ArgsMixin):
+class SAMLSSOResource(MethodView):
     @swag_from(SPECS["SAMLSSOResource_post"])
     def post(self):
         """
@@ -1294,7 +1276,7 @@ class SAMLSSOResource(MethodView, ArgsMixin):
             return link_sso_person("saml", issuer, subject, email, person_info)
 
 
-class SAMLLoginResource(MethodView, ArgsMixin):
+class SAMLLoginResource(MethodView):
 
     @swag_from(SPECS["SAMLLoginResource_get"])
     def get(self):
@@ -1327,7 +1309,7 @@ class SAMLLoginResource(MethodView, ArgsMixin):
         return redirect(redirect_url, code=302)
 
 
-class OIDCLoginResource(MethodView, ArgsMixin):
+class OIDCLoginResource(MethodView):
     @swag_from(SPECS["OIDCLoginResource_get"])
     def get(self):
         """
@@ -1343,7 +1325,7 @@ class OIDCLoginResource(MethodView, ArgsMixin):
         return oidc.get_oidc_client().authorize_redirect(redirect_uri)
 
 
-class OIDCCallbackResource(MethodView, ArgsMixin):
+class OIDCCallbackResource(MethodView):
     @swag_from(SPECS["OIDCCallbackResource_get"])
     def get(self):
         """

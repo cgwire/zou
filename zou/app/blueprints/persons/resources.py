@@ -90,6 +90,21 @@ def _check_day_off_read_access(person_id):
     return permissions_service.check_day_off_read_access(person_id)
 
 
+def _get_forwarded_ip():
+    """
+    Return the first address of the X-Forwarded-For header, or None if it
+    is not a valid IP address.
+    """
+    person_IP = request.headers.get("X-Forwarded-For", None)
+    if person_IP:
+        person_IP = person_IP.split(",")[0].strip()
+        try:
+            ipaddress.ip_address(person_IP)
+        except ValueError:
+            return None
+    return person_IP
+
+
 def _dates_only(day_off):
     """
     Given serialized day off without its description, what a supervisor
@@ -109,7 +124,7 @@ def _shape_day_offs(day_offs, with_description):
     return [_dates_only(day_off) for day_off in day_offs]
 
 
-class DesktopLoginsResource(MethodView, ArgsMixin):
+class DesktopLoginsResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["DesktopLoginsResource_get"])
@@ -393,10 +408,6 @@ class PersonQuotaMixin(ArgsMixin):
         else:
             permissions_service.check_person_access(person_id)
 
-    def get_person_quotas(self):
-        pass
-
-    @jwt_required()
     def get(self, person_id, *args, **kwargs):
         permissions_service.check_person_is_not_bot(person_id)
         project_id, task_type_id, feedback, weighted = (
@@ -618,7 +629,7 @@ class ResetPasswordLinkResource(MethodView):
             return {"error": True, "message": exception.description}, 400
 
 
-class DayOffForMonthResource(MethodView, ArgsMixin):
+class DayOffForMonthResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["DayOffForMonthResource_get"])
@@ -631,7 +642,7 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
         )
 
 
-class DayOffForYearResource(MethodView, ArgsMixin):
+class DayOffForYearResource(MethodView):
     @jwt_required()
     @swag_from(SPECS["DayOffForYearResource_get"])
     def get(self, year):
@@ -674,7 +685,7 @@ def _person_day_offs(list_period, person_id, *period):
     return _shape_day_offs(day_offs, with_description)
 
 
-class PersonWeekDayOffResource(MethodView, ArgsMixin):
+class PersonWeekDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonWeekDayOffResource_get"])
@@ -690,7 +701,7 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class PersonMonthDayOffResource(MethodView, ArgsMixin):
+class PersonMonthDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonMonthDayOffResource_get"])
@@ -706,7 +717,7 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class PersonYearDayOffResource(MethodView, ArgsMixin):
+class PersonYearDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonYearDayOffResource_get"])
@@ -719,7 +730,7 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class PersonDayOffResource(MethodView, ArgsMixin):
+class PersonDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonDayOffResource_get"])
@@ -734,7 +745,7 @@ class PersonDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class AddToDepartmentResource(MethodView, ArgsMixin):
+class AddToDepartmentResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["AddToDepartmentResource_post"])
@@ -756,7 +767,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
         return person, 201
 
 
-class RemoveFromDepartmentResource(MethodView, ArgsMixin):
+class RemoveFromDepartmentResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["RemoveFromDepartmentResource_delete"])
@@ -775,7 +786,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class ChangePasswordForPersonResource(MethodView, ArgsMixin):
+class ChangePasswordForPersonResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["ChangePasswordForPersonResource_post"])
@@ -796,26 +807,11 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
             current_app.logger.warning(
                 f'User {current_user["email"]} has changed the password of {person["email"]}'
             )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            if person_IP:
-                try:
-                    ipaddress.ip_address(person_IP.split(",")[0].strip())
-                    person_IP = person_IP.split(",")[0].strip()
-                except ValueError:
-                    person_IP = None
             emails_service.send_password_changed_by_admin_email(
-                person, person_IP=person_IP
+                person, person_IP=_get_forwarded_ip()
             )
             return {"success": True}
 
-        except auth.PasswordsNoMatchException:
-            return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
-                400,
-            )
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
         except InactiveUserException:
@@ -830,7 +826,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
             )
 
 
-class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
+class DisableTwoFactorAuthenticationPersonResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["DisableTwoFactorAuthenticationPersonResource_delete"])
@@ -855,15 +851,8 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
             current_app.logger.warning(
                 f'User {current_user["email"]} has disabled the two factor authentication of {person["email"]}'
             )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            if person_IP:
-                try:
-                    ipaddress.ip_address(person_IP.split(",")[0].strip())
-                    person_IP = person_IP.split(",")[0].strip()
-                except ValueError:
-                    person_IP = None
             emails_service.send_2fa_disabled_by_admin_email(
-                person, person_IP=person_IP
+                person, person_IP=_get_forwarded_ip()
             )
             return {"success": True}
 
