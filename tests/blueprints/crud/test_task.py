@@ -100,6 +100,41 @@ class TaskTestCase(ApiDBTestCase):
         data["assignees"] = str(self.person.id)
         self.post("data/tasks", data, 400)
 
+    def test_create_task_with_bad_references(self):
+        """
+        Assignees that are not IDs used to give a 500, and every database
+        refusal, a missing status included, answered "Task already exists."
+        """
+        data = {
+            "name": "Modeling arbre",
+            "task_type_id": self.task_type.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+            "assignees": ["abc"],
+        }
+        result = self.post("data/tasks", data, 400)
+        self.assertEqual(
+            result["message"], "assignees must be a list of person IDs."
+        )
+        del data["assignees"]
+        data["task_status_id"] = fields.gen_uuid()
+        result = self.post("data/tasks", data, 400)
+        self.assertEqual(
+            result["message"],
+            "The change conflicts with records referencing this one.",
+        )
+
+    def test_create_task_twice(self):
+        data = {
+            "name": "Modeling arbre",
+            "task_type_id": self.task_type.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+        }
+        self.post("data/tasks", data)
+        result = self.post("data/tasks", data, 400)
+        self.assertEqual(result["message"], "Task already exists.")
+
     def test_create_task_requires_a_manager_of_the_entity_project(self):
         data = {
             "task_type_id": self.task_type.id,

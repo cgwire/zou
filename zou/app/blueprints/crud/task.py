@@ -1,10 +1,15 @@
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import aliased
 
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import (
+    UNIQUE_VIOLATION_MESSAGE,
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
 from zou.app.exceptions import (
     WrongParameterException,
     WrongTaskTypeForEntityException,
@@ -144,8 +149,13 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             data["name"] = data.get("name") or "main"
             is_assignees = "assignees" in data
             assignees = None
-            if is_assignees and not isinstance(data["assignees"], list):
-                raise WrongParameterException("assignees must be a list.")
+            if is_assignees and (
+                not isinstance(data["assignees"], list)
+                or not all(map(fields.is_valid_id, data["assignees"]))
+            ):
+                raise WrongParameterException(
+                    "assignees must be a list of person IDs."
+                )
 
             task_type = task_types_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
@@ -190,9 +200,12 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
-        except IntegrityError as exception:
+        except (IntegrityError, StatementError) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": "Task already exists."}, 400
+            message = build_db_error_message(exception)
+            if message == UNIQUE_VIOLATION_MESSAGE:
+                message = "Task already exists."
+            return {"message": message}, 400
 
 
 class TaskResource(BaseModelResource, ArgsMixin):

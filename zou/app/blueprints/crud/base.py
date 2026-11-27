@@ -44,6 +44,10 @@ from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/base.yml")
 
+UNIQUE_VIOLATION_MESSAGE = (
+    "A record with the same unique values already exists."
+)
+
 
 def build_db_error_message(exception):
     """
@@ -54,7 +58,7 @@ def build_db_error_message(exception):
     if isinstance(exception, IntegrityError):
         origin = str(getattr(exception, "orig", exception)).lower()
         if "duplicate key" in origin or "unique constraint" in origin:
-            return "A record with the same unique values already exists."
+            return UNIQUE_VIOLATION_MESSAGE
         if "foreign key" in origin:
             return "The change conflicts with records referencing this one."
         if "not-null" in origin or "null value" in origin:
