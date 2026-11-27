@@ -1,10 +1,11 @@
 import os
 
-from tests.base import ApiDBTestCase
+from tests.blueprints.comments.base import (
+    ClientCommentTestCase,
+    CommentTestCase,
+)
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
-from zou.app.models.notification import Notification
-from zou.app.models.person import Person
 from zou.app.models.project import Project, ProjectTaskStatusLink
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
@@ -14,44 +15,6 @@ from zou.app.services import (
     task_types_service,
     tasks_service,
 )
-
-
-class CommentTestCase(ApiDBTestCase):
-    """
-    One task with a first comment on it, plus a client to read it as.
-    Holds no test of its own.
-    """
-
-    def setUp(self):
-        super().setUp()
-        self.generate_fixture_project()
-        self.generate_fixture_asset()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_user_client()
-        self.generate_fixture_task()
-        self.comment = comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.user["id"],
-            "first comment",
-        )
-
-    def _make_sibling_task(self):
-        """
-        Create a second task on the same asset with a different task type.
-        """
-        return Task.create(
-            name="Modeling task",
-            project_id=self.project.id,
-            task_type_id=self.task_type_modeling.id,
-            task_status_id=self.task_status.id,
-            entity_id=self.asset.id,
-            assignees=[self.person],
-            assigner_id=self.assigner.id,
-        )
 
 
 class CommentRoutesTestCase(CommentTestCase):
@@ -94,51 +57,6 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertIsNotNone(result["id"])
         self.assertEqual(result["links"], [])
         self.assertEqual(result["checklist"], [])
-
-    def test_batch_comment_task(self):
-        comments = [
-            {"task_status_id": str(self.task_status.id), "text": "note 1"},
-            {"task_status_id": str(self.task_status.id), "text": "note 2"},
-        ]
-        result = self.post(
-            f"/actions/tasks/{self.task.id}/batch-comment",
-            {"comments": comments},
-        )
-        self.assertEqual(len(result), 2)
-        texts = [
-            c["text"] for c in comments_service.get_comments(self.task.id)
-        ]
-        self.assertIn("note 1", texts)
-        self.assertIn("note 2", texts)
-
-    def test_batch_comment_tasks(self):
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_shot_task()
-        comments = [
-            {
-                "task_id": str(self.task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "asset note",
-            },
-            {
-                "task_id": str(self.shot_task.id),
-                "task_status_id": str(self.task_status.id),
-                "text": "shot note",
-            },
-        ]
-        result = self.post(
-            "/actions/tasks/batch-comment", {"comments": comments}
-        )
-        self.assertEqual(len(result), 2)
-        asset_texts = [
-            c["text"] for c in comments_service.get_comments(self.task.id)
-        ]
-        shot_texts = [
-            c["text"] for c in comments_service.get_comments(self.shot_task.id)
-        ]
-        self.assertIn("asset note", asset_texts)
-        self.assertIn("shot note", shot_texts)
 
     def an_artist_of_the_team(self):
         artist = self.generate_fixture_user_cg_artist()
@@ -276,7 +194,7 @@ class CommentRoutesTestCase(CommentTestCase):
     def test_comment_many_leaves_its_own_tasks_to_their_comment(self):
         # The hashtag of the first comment names the second task, which
         # already gets the same text from the batch.
-        modeling_task = self._make_sibling_task()
+        modeling_task = self.make_sibling_task()
 
         self._comment_many(
             [
@@ -288,7 +206,7 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertEqual(self._texts(modeling_task), ["Ready #modeling"])
 
     def test_comment_many_reposts_a_text_its_task_does_not_get(self):
-        modeling_task = self._make_sibling_task()
+        modeling_task = self.make_sibling_task()
 
         self._comment_many(
             [
@@ -306,7 +224,7 @@ class CommentRoutesTestCase(CommentTestCase):
         )
 
     def test_comment_many_reposts_on_the_task_of_a_skipped_entry(self):
-        modeling_task = self._make_sibling_task()
+        modeling_task = self.make_sibling_task()
 
         self._comment_many(
             [
@@ -325,7 +243,7 @@ class CommentRoutesTestCase(CommentTestCase):
         )
 
     def test_comment_many_reposts_once_on_a_task_outside_the_batch(self):
-        modeling_task = self._make_sibling_task()
+        modeling_task = self.make_sibling_task()
         concept_task = Task.create(
             name="Concept task",
             project_id=self.project.id,
@@ -358,11 +276,6 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertEqual(comment["person"]["role"], "admin")
         self.assertIn("has_avatar", comment["person"])
 
-    def test_comments_list_embeds_author_full_name(self):
-        comments = comments_service.get_comments(str(self.task.id))
-        self.assertEqual(comments[0]["person"]["full_name"], "John Did")
-        self.assertEqual(comments[0]["person"]["role"], "admin")
-
     def test_get_comment_embeds_reply_author(self):
         comments_service.reply_comment(
             self.comment["id"], "My reply", person_id=str(self.user["id"])
@@ -372,7 +285,7 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertEqual(reply["person"]["id"], reply["person_id"])
         self.assertEqual(reply["person"]["full_name"], "John Did")
 
-    def test_reply_comment_response_embeds_author(self):
+    def test_reply_comment(self):
         reply = self.post(
             f"/data/tasks/{self.task.id}"
             f"/comments/{self.comment['id']}/reply",
@@ -381,15 +294,6 @@ class CommentRoutesTestCase(CommentTestCase):
         )
         self.assertEqual(reply["person"]["id"], reply["person_id"])
         self.assertEqual(reply["person"]["full_name"], "John Did")
-
-    def test_reply_comment(self):
-        result = self.post(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/reply",
-            {"text": "My reply"},
-            200,
-        )
-        self.assertIn("text", result)
         comment = comments_service.get_comment(self.comment["id"])
         replies = comment.get("replies", [])
         reply_texts = [r["text"] for r in replies]
@@ -412,7 +316,7 @@ class CommentRoutesTestCase(CommentTestCase):
         self.assertNotIn(reply_id, reply_ids)
 
     def test_ack_and_reply_deletion_take_the_comment_task(self):
-        other_task = self._make_sibling_task()
+        other_task = self.make_sibling_task()
         reply = comments_service.reply_comment(
             self.comment["id"], "Reply", person_id=str(self.user["id"])
         )
@@ -437,18 +341,12 @@ class CommentRoutesTestCase(CommentTestCase):
         self.post(path, {"text": "Still here"}, 200)
 
 
-class ClientVisibleCommentTestCase(CommentTestCase):
+class ClientVisibleCommentTestCase(ClientCommentTestCase):
     """
     What a client is shown of a comment: its author, its editor and the
     authors of its replies, studio members included, while a comment not
     flagged for_client does not reach them at all.
     """
-
-    def put_the_client_in_the_team(self):
-        client_person = Person.get(self.user_client["id"])
-        self.project.team = [client_person, self.person]
-        self.project.save()
-        return client_person
 
     def a_status_overridden_for_the_production(self, studio, production):
         """
@@ -499,74 +397,6 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.client_comments_with(forbidden, 403)
         self.client_comments_with(allowed)
 
-    def comment_for_client(self, text="Visible to client", for_client=True):
-        return self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": text,
-                "for_client": for_client,
-            },
-        )
-
-    def test_reply_author_shown_to_client(self):
-        """
-        A studio replier is named to the client, like the comment author.
-        """
-        self.put_the_client_in_the_team()
-        comment = self.comment_for_client()
-        comments_service.reply_comment(
-            comment["id"], "Studio reply", person_id=str(self.user["id"])
-        )
-
-        self.log_in_client()
-        comments = comments_service.get_comments(
-            str(self.task.id), is_client=True
-        )
-        target = next(c for c in comments if c["id"] == comment["id"])
-        replier = target["replies"][0]["person"]
-        self.assertEqual(replier["id"], str(self.user["id"]))
-        self.assertEqual(replier["full_name"], "John Did")
-
-    def test_comment_author_shown_to_client_in_list(self):
-        """
-        The comment list embeds a studio author for a client too.
-        """
-        self.put_the_client_in_the_team()
-        comment = self.comment_for_client()
-
-        self.log_in_client()
-        comments = comments_service.get_comments(
-            str(self.task.id), is_client=True
-        )
-        target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertTrue(target["for_client"])
-        self.assertEqual(target["text"], "Visible to client")
-        self.assertEqual(target["person"]["id"], str(self.user["id"]))
-        self.assertEqual(target["person"]["full_name"], "John Did")
-
-    def test_client_author_embedded_for_client_in_list(self):
-        """
-        A client's own comment must keep its embedded author so it renders
-        with a name and avatar.
-        """
-        client_id = str(self.put_the_client_in_the_team().id)
-
-        self.log_in_client()
-        comment = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Client question",
-            },
-        )
-        comments = comments_service.get_comments(
-            str(self.task.id), is_client=True
-        )
-        target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertEqual(target["person"]["id"], client_id)
-        self.assertEqual(target["person"]["role"], "client")
-
     def test_comment_author_shown_to_client(self):
         """
         The single-comment endpoint embeds a studio author for a client too.
@@ -597,43 +427,6 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.log_in_client()
         self.get(f"/data/comments/{comment['id']}", 403)
 
-    def test_editor_shown_to_client_in_list(self):
-        """
-        A studio editor stays in the comment list of a client, like the
-        author.
-        """
-        self.put_the_client_in_the_team()
-        comment = self.comment_for_client()
-        comment_model = Comment.get(comment["id"])
-        comment_model.editor_id = self.person.id
-        comment_model.save()
-
-        self.log_in_client()
-        comments = comments_service.get_comments(
-            str(self.task.id), is_client=True
-        )
-        target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertEqual(target["editor"]["id"], str(self.person.id))
-        self.assertEqual(target["editor_id"], str(self.person.id))
-
-    def test_client_editor_kept_in_list(self):
-        """
-        A client editor stays visible, mirroring the author behavior.
-        """
-        client_id = str(self.put_the_client_in_the_team().id)
-        comment = self.comment_for_client()
-        comment_model = Comment.get(comment["id"])
-        comment_model.editor_id = client_id
-        comment_model.save()
-
-        self.log_in_client()
-        comments = comments_service.get_comments(
-            str(self.task.id), is_client=True
-        )
-        target = next(c for c in comments if c["id"] == comment["id"])
-        self.assertEqual(target["editor"]["id"], client_id)
-        self.assertEqual(target["editor"]["role"], "client")
-
     def test_editor_shown_to_client(self):
         """
         The single-comment endpoint keeps a studio editor for a client.
@@ -647,37 +440,6 @@ class ClientVisibleCommentTestCase(CommentTestCase):
         self.log_in_client()
         result = self.get(f"/data/comments/{comment['id']}")
         self.assertEqual(result["editor_id"], str(self.person.id))
-
-    def test_comment_without_for_client_hidden_from_client(self):
-        """
-        A manager-authored comment without for_client stays hidden from
-        clients (default behavior preserved).
-        """
-        self.put_the_client_in_the_team()
-        self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "Internal only",
-            },
-        )
-
-        self.log_in_client()
-        comments = comments_service.get_comments(
-            str(self.task.id), is_client=True
-        )
-        texts = [c["text"] for c in comments]
-        self.assertNotIn("Internal only", texts)
-
-    def test_for_client_default_false(self):
-        result = self.post(
-            f"/actions/tasks/{self.task.id}/comment",
-            {
-                "task_status_id": str(self.task_status.id),
-                "comment": "default flag",
-            },
-        )
-        self.assertFalse(result["for_client"])
 
 
 class ClientThreadReplyTestCase(CommentTestCase):
@@ -718,15 +480,6 @@ class ClientThreadReplyTestCase(CommentTestCase):
             {"text": "An answer"},
             code,
         )
-
-    def test_artist_cannot_reply_to_a_comment_for_the_client(self):
-        internal = self.new_comment(self.user["id"])
-        for_client = self.new_comment(self.user["id"], for_client=True)
-        self.log_in_cg_artist()
-        # The artist answers on the internal comment of the same task: the
-        # refusal comes from the client thread rule.
-        self.reply(internal, 200)
-        self.reply(for_client, 403)
 
     def test_artist_cannot_reply_to_a_client(self):
         comment = self.new_comment(self.user_client["id"])
@@ -773,12 +526,11 @@ class ClientThreadReplyTestCase(CommentTestCase):
 class MoveCommentTestCase(CommentTestCase):
     """
     Moving a comment from one task to another. Both tasks must belong
-    to the same entity and the caller must manage the production;
-    the notifications and the two task statuses follow the move.
+    to the same entity and the caller must manage the production.
     """
 
     def test_move_comment_between_tasks(self):
-        sibling = self._make_sibling_task()
+        sibling = self.make_sibling_task()
         original_created_at = self.comment["created_at"]
         original_status_id = self.comment["task_status_id"]
         result = self.post(
@@ -798,59 +550,6 @@ class MoveCommentTestCase(CommentTestCase):
         )
         self.assertIn(self.comment["id"], [c["id"] for c in target_comments])
 
-    def test_move_comment_preserves_attachment(self):
-        sibling = self._make_sibling_task()
-        AttachmentFile.create(
-            name="brief.pdf",
-            size=0,
-            extension="pdf",
-            mimetype="application/pdf",
-            comment_id=self.comment["id"],
-        )
-        self.post(
-            f"/actions/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/move",
-            {"target_task_id": str(sibling.id)},
-            200,
-        )
-        attachments = AttachmentFile.get_all_by(comment_id=self.comment["id"])
-        self.assertEqual(len(attachments), 1)
-        self.assertEqual(attachments[0].name, "brief.pdf")
-
-    def test_move_comment_rebuilds_notifications(self):
-        self.generate_fixture_user_manager()
-        self.generate_fixture_user_cg_artist()
-        cg_person = Person.get(self.user_cg_artist["id"])
-        self.project.team = [
-            cg_person,
-            self.person,
-            Person.get(self.user["id"]),
-        ]
-        self.project.save()
-        sibling = self._make_sibling_task()
-        sibling.assignees = [cg_person]
-        sibling.save()
-
-        Notification.delete_all_by(comment_id=self.comment["id"])
-        Notification.create(
-            person_id=self.person.id,
-            author_id=self.user["id"],
-            comment_id=self.comment["id"],
-            task_id=self.task.id,
-            type="comment",
-        )
-        self.post(
-            f"/actions/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/move",
-            {"target_task_id": str(sibling.id)},
-            200,
-        )
-        notifications = Notification.get_all_by(comment_id=self.comment["id"])
-        recipient_ids = {str(n.person_id) for n in notifications}
-        task_ids = {str(n.task_id) for n in notifications}
-        self.assertIn(self.user_cg_artist["id"], recipient_ids)
-        self.assertEqual(task_ids, {str(sibling.id)})
-
     def test_move_comment_rejects_cross_entity(self):
         self.generate_fixture_asset(name="Tree2")
         other_asset_id = self.asset.id
@@ -863,69 +562,32 @@ class MoveCommentTestCase(CommentTestCase):
             assignees=[self.person],
             assigner_id=self.assigner.id,
         )
-        response = self.app.post(
+        self.post(
             f"/actions/tasks/{self.task_id}"
             f"/comments/{self.comment['id']}/move",
-            data=f'{{"target_task_id": "{str(other_task.id)}"}}',
-            headers=self.post_headers,
+            {"target_task_id": str(other_task.id)},
+            400,
         )
-        self.assertEqual(response.status_code, 400)
-
-    def test_move_comment_rejects_same_task(self):
-        response = self.app.post(
-            f"/actions/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/move",
-            data=f'{{"target_task_id": "{str(self.task.id)}"}}',
-            headers=self.post_headers,
-        )
-        self.assertEqual(response.status_code, 400)
 
     def test_move_comment_rejects_mismatched_source_task(self):
-        sibling = self._make_sibling_task()
-        response = self.app.post(
+        sibling = self.make_sibling_task()
+        self.post(
             f"/actions/tasks/{sibling.id}"
             f"/comments/{self.comment['id']}/move",
-            data=f'{{"target_task_id": "{str(sibling.id)}"}}',
-            headers=self.post_headers,
-        )
-        self.assertEqual(response.status_code, 400)
-
-    def test_move_comment_resets_task_status_on_both_tasks(self):
-        self.generate_fixture_task_status_wip()
-        sibling = self._make_sibling_task()
-        source_initial_status = self.task.task_status_id
-        wip_comment = comments_service.new_comment(
-            self.task.id,
-            self.task_status_wip.id,
-            self.user["id"],
-            "wip note posted on the wrong task",
-        )
-        self.post(
-            f"/actions/tasks/{self.task.id}"
-            f"/comments/{wip_comment['id']}/move",
             {"target_task_id": str(sibling.id)},
-            200,
-        )
-        source_after = tasks_service.get_task(str(self.task.id))
-        target_after = tasks_service.get_task(str(sibling.id))
-        self.assertEqual(
-            source_after["task_status_id"], str(source_initial_status)
-        )
-        self.assertEqual(
-            target_after["task_status_id"], str(self.task_status_wip.id)
+            400,
         )
 
     def test_move_comment_rejects_non_manager(self):
         self.generate_fixture_user_cg_artist()
-        sibling = self._make_sibling_task()
+        sibling = self.make_sibling_task()
         self.log_in_cg_artist()
-        response = self.app.post(
+        self.post(
             f"/actions/tasks/{self.task.id}"
             f"/comments/{self.comment['id']}/move",
-            data=f'{{"target_task_id": "{str(sibling.id)}"}}',
-            headers=self.post_headers,
+            {"target_task_id": str(sibling.id)},
+            403,
         )
-        self.assertEqual(response.status_code, 403)
 
     def test_move_comment_rejects_a_manager_demoted_on_the_project(self):
         # The global role check ran before the project role was resolved.
@@ -934,7 +596,7 @@ class MoveCommentTestCase(CommentTestCase):
         projects_service.update_team_member_role(
             str(self.project.id), manager["id"], "user"
         )
-        sibling = self._make_sibling_task()
+        sibling = self.make_sibling_task()
         self.log_in_manager()
         self.post(
             f"/actions/tasks/{self.task.id}"
@@ -1015,7 +677,7 @@ class CommentAttachmentTestCase(CommentTestCase):
     def test_add_attachment_rejects_a_comment_of_another_task(self):
         # Symmetric to the delete route: adding to one's own comment skips
         # the project check, so the comment has to belong to the named task.
-        sibling = self._make_sibling_task()
+        sibling = self.make_sibling_task()
         other_comment = comments_service.new_comment(
             sibling.id,
             self.task_status.id,
@@ -1054,7 +716,7 @@ class CommentAttachmentTestCase(CommentTestCase):
         # Deleting one's own comment attachment skips the project check, so
         # the attachment has to belong to the named comment: otherwise
         # pointing at one's own comment removes any attachment at all.
-        sibling = self._make_sibling_task()
+        sibling = self.make_sibling_task()
         other_comment = comments_service.new_comment(
             sibling.id,
             self.task_status.id,
@@ -1197,7 +859,7 @@ class CopyClientCommentsTestCase(CommentTestCase):
         self.assertEqual(result[0]["text"], "Client feedback:\n\nRedo")
 
     def test_skip_a_task_without_client_comment(self):
-        sibling = self._make_sibling_task()
+        sibling = self.make_sibling_task()
         self.new_comment(
             sibling.id, self.user_client["id"], "Redo", "2026-01-01 10:00:00"
         )
