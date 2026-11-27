@@ -2,9 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.entity import Entity
 from zou.app.models.preview_file import VALIDATION_STATUSES
-from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import files_service, permissions_service, user_service
 from zou.app.utils import permissions
@@ -65,12 +63,9 @@ class WorkingFilesResource(BaseModelsResource):
         if permissions.has_admin_permissions():
             return query
         else:
-            query = (
-                query.join(Entity, WorkingFile.entity_id == Entity.id)
-                .join(Project)
-                .filter(user_service.build_team_filter())
+            return files_service.filter_working_files_by_projects(
+                query, user_service.build_team_filter()
             )
-            return query
 
 
 class WorkingFileResource(BaseModelResource):

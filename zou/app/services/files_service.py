@@ -164,6 +164,18 @@ def get_default_file_status():
     return default_status.serialize()
 
 
+def filter_working_files_by_projects(query, projects_filter):
+    """
+    Return the given working file query limited by the given project filter,
+    applied to the projects of the working file entities.
+    """
+    return (
+        query.join(Entity, WorkingFile.entity_id == Entity.id)
+        .join(Project)
+        .filter(projects_filter)
+    )
+
+
 def get_working_file_raw(working_file_id):
     """
     Return the given working file as an active record.
