@@ -35,7 +35,9 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
     def update_data(self, data):
         data = super().update_data(data)
         name = data.get("name", None)
-        preview_background_file = PreviewBackgroundFile.get_by(name=name)
+        preview_background_file = (
+            files_service.get_preview_background_file_raw_by_name(name)
+        )
         if preview_background_file is not None:
             raise WrongParameterException(
                 "A preview background file with similar name already exists"
@@ -84,7 +86,9 @@ class PreviewBackgroundFileResource(BaseModelResource):
         data = super().update_data(data, instance_id)
         name = data.get("name", None)
         if name is not None:
-            preview_background_file = PreviewBackgroundFile.get_by(name=name)
+            preview_background_file = (
+                files_service.get_preview_background_file_raw_by_name(name)
+            )
             if preview_background_file is not None and instance_id != str(
                 preview_background_file.id
             ):

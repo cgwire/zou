@@ -1287,6 +1287,14 @@ def get_preview_background_file_raw(preview_background_file_id):
     return preview_background
 
 
+def get_preview_background_file_raw_by_name(name):
+    """
+    Return the preview background file that has the given name as an active
+    record, or None.
+    """
+    return PreviewBackgroundFile.get_by(name=name)
+
+
 @cache.memoize_function(1200)
 def get_preview_background_file(preview_background_file_id):
     """
