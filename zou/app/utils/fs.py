@@ -124,7 +124,7 @@ def is_confirmed_missing_error(exception):
 
     Unlike is_missing_file_error, this function does NOT accept a bare
     FileNotFoundError or FileNotFound as a confirmation. download_to_file
-    also raises them for its own local temp file (TMP_DIR missing, or the
+    also returns them for its own local temp file (TMP_DIR missing, or the
     .part that a concurrent _remove_stale_parts removed). These errors
     tell nothing about the remote object. Only an exception that the
     storage backend raised for a missing object confirms the absence:

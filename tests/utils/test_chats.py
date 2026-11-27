@@ -21,7 +21,6 @@ class SendToSlackTestCase(unittest.TestCase):
             chats.send_to_slack("xoxb-token", None, "hello")
         client_class.assert_not_called()
 
-
     def test_a_refusal_of_slack_is_a_warning(self):
         from slack_sdk.errors import SlackApiError
 
@@ -56,6 +55,14 @@ class SendToDiscordTestCase(unittest.TestCase):
         with mock.patch.object(discord.Client, "start", start):
             chats.send_to_discord("token", "john", "hello")
         self.assertEqual(closed, [True])
+
+    def test_a_loop_that_cannot_start_is_logged(self):
+        with mock.patch(
+            "zou.app.utils.chats.asyncio.new_event_loop",
+            side_effect=RuntimeError("no loop"),
+        ), mock.patch.object(chats.logger, "error") as error:
+            chats.send_to_discord("token", "john", "hello")
+        error.assert_called_once()
 
 
 class SendToMattermostTestCase(unittest.TestCase):

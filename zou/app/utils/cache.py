@@ -3,10 +3,9 @@ This module is a wrapper for flask_caching. It configures it and renames
 the memoize function. The aim of this cache is to decrease the number of
 requests to the target database.
 
-With SimpleCache (in memory), the memoized results come back by
-reference. A deepcopy wrapper makes sure that callers cannot corrupt the
-cached objects when they change them. With Redis, the serialization
-round-trip already makes a new copy, so no other work is necessary.
+SimpleCache (in memory) and Redis both pickle the values, so each hit
+is a new copy and callers cannot corrupt the cached objects. With
+SimpleCache, a deepcopy wrapper also copies the results.
 
 SQLAlchemy ORM instances come back as they are, without deepcopy: a copy
 of their internal InstanceState is not safe and makes objects that
@@ -101,9 +100,8 @@ def memoize_function(timeout=120):
             if not _is_simple_cache:
                 return result
             if hasattr(result, "_sa_instance_state"):
-                # ORM instances: it is safe to return the detached cached
-                # object, because callers merge() it into their own session.
-                # This makes a new copy and never changes the cache.
+                # ORM instances: a deepcopy of their InstanceState is not
+                # safe. Callers merge() them into their own session.
                 return result
             return copy.deepcopy(result)
 

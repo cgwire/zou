@@ -47,8 +47,9 @@ def validate_request_body(SchemaClass, *, data=None):
         An instance of SchemaClass with validated/coerced attributes.
 
     Raises:
-        WrongParameterException: If the validation fails. The function
-            validates a missing body as an empty dict.
+        WrongParameterException: If the validation fails. If the JSON
+            body is missing, the function validates the form or query
+            parameters, or an empty dict if there are none.
             The .dict of the exception can contain an "errors" list with
             field/message.
     """

@@ -661,13 +661,66 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         # without rotation). At x=110 should be white.
         self.assertPixelWhite(image.getpixel((110, 100)))
 
-        # And the rotated stroke should NOT appear at stroke A's
-        # translated y (≈263) far from where A is — would indicate
-        # cross-contamination.
-        # Pick (500, 263) checked above, must be from A not B. Test
-        # that 200 px above (i.e. roughly where un-translated A would
-        # have been if A's translation was applied to B too) is white.
-        # (This is the actual user-reported symptom.)
+    def test_real_psstroke_rotate_plus_translate_user_report(self):
+        """
+        Render the annotation of a user report: one PSStroke is moved,
+        the other is rotated by 24.35 degrees and moved. Each stroke
+        must render at its own fabric position.
+        """
+        path = self._temp_image(size=(1080, 605))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#ff3860",
+                        "strokeWidth": 10,
+                        "canvasWidth": 1077.05,
+                        "canvasHeight": 605,
+                        "left": 218.08,
+                        "top": 260.06,
+                        "width": 712.64,
+                        "height": 22.59,
+                        "angle": 0,
+                        "scaleX": 1,
+                        "scaleY": 1,
+                        "strokePoints": [
+                            {"x": 214.28, "y": 460.0, "pressure": 1.0},
+                            {"x": 926.92, "y": 480.0, "pressure": 1.0},
+                        ],
+                    },
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#ff3860",
+                        "strokeWidth": 10,
+                        "canvasWidth": 1077.05,
+                        "canvasHeight": 605,
+                        "left": 220.67,
+                        "top": -44.86,
+                        "width": 771.03,
+                        "height": 31.89,
+                        "angle": 24.35,
+                        "scaleX": 1,
+                        "scaleY": 1,
+                        "strokePoints": [
+                            {"x": 182.28, "y": 119.31, "pressure": 1.0},
+                            {"x": 953.31, "y": 150.50, "pressure": 1.0},
+                        ],
+                    },
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+
+        # Stroke A is moved up: it renders from y=261 to y=281, and
+        # nothing stays at its old position (y=468).
+        self.assertPixelColored(image.getpixel((500, 270)))
+        self.assertPixelWhite(image.getpixel((500, 468)))
+
+        # Stroke B is rotated by 24.35 degrees. If the angle is wrong
+        # (snapped to 0 or 90), this pixel stays white.
+        self.assertPixelColored(image.getpixel((600, 150)))
 
     def test_eraser_punches_hole_in_filled_rect(self):
         """
@@ -1410,10 +1463,6 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         self.assertPixelWhite(image.getpixel((100, 100)))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ParsePathStringTestCase(unittest.TestCase):
     def test_exponents_and_leading_dots_are_one_number_each(self):
         commands = annotations_renderer._parse_path_string(
@@ -1450,3 +1499,7 @@ class ParseColorTestCase(unittest.TestCase):
             annotations_renderer._parse_color("not-a-color", default="d"),
             "d",
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

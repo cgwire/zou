@@ -559,8 +559,6 @@ class SharedSwiftAuthTestCase(unittest.TestCase):
 
 class FileStoreConfirmedFileNotFoundTestCase(unittest.TestCase):
     def test_backend_404_is_confirmed(self):
-        from zou.app.stores import file_store
-
         class SwiftClientException(Exception):
             http_status = 404
 
@@ -570,8 +568,6 @@ class FileStoreConfirmedFileNotFoundTestCase(unittest.TestCase):
             file_store._read_chunks(bucket, "tiles-some-id")
 
     def test_local_file_vanishing_on_read_is_confirmed(self):
-        from zou.app.stores import file_store
-
         def read_stream():
             raise FileNotFoundError("gone")
             yield b""
