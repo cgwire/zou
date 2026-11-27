@@ -53,49 +53,23 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         project = self.get(f"data/projects/{self.project_id}")
         self.assertIsNone((project.get("data") or {}).get("ship_code"))
 
-    def test_add_date_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Due date",
-                "data_type": "date",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "date")
-
-    def test_add_url_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Brief link",
-                "data_type": "url",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "url")
-
-    def test_add_textarea_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Notes",
-                "data_type": "textarea",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "textarea")
-
-    def test_add_person_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Reviewer",
-                "data_type": "person",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "person")
+    def test_add_metadata_descriptor_of_each_data_type(self):
+        for name, data_type in [
+            ("Due date", "date"),
+            ("Brief link", "url"),
+            ("Notes", "textarea"),
+            ("Reviewer", "person"),
+        ]:
+            with self.subTest(data_type=data_type):
+                descriptor = self.post(
+                    self.descriptors_path(),
+                    {
+                        "entity_type": "Asset",
+                        "name": name,
+                        "data_type": data_type,
+                    },
+                )
+                self.assertEqual(descriptor["data_type"], data_type)
 
     def test_all_projects_metadata_descriptor(self):
         first_project_id = str(self.project_id)

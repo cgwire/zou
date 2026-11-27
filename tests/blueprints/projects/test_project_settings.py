@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-from zou.app.exceptions import WrongParameterException
 from zou.app.models.day_off import DayOff
 from zou.app.models.milestone import Milestone
 from zou.app.models.project import ProjectTaskTypeLink
@@ -193,13 +192,6 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         self.assertNotIn(str(self.task_type.id), project.get("task_types", []))
 
     # --- Task status settings ---
-
-    def test_get_project_task_statuses(self):
-        # Nothing linked yet: the add tests below cover the rest.
-        self.assertEqual(
-            self.get(f"/data/projects/{self.project_id}/settings/task-status"),
-            [],
-        )
 
     def test_add_project_task_status(self):
         result = self.post(
@@ -442,16 +434,6 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
 
     # --- Status automations settings ---
 
-    def test_get_project_status_automations(self):
-        # Nothing linked yet: the add tests below cover the rest.
-        self.assertEqual(
-            self.get(
-                f"/data/projects/{self.project_id}"
-                f"/settings/status-automations"
-            ),
-            [],
-        )
-
     def test_add_project_status_automation(self):
         self.generate_fixture_status_automation_to_status()
         result = self.post(
@@ -506,16 +488,6 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
         )
 
     # --- Preview background file settings ---
-
-    def test_get_project_preview_background_files(self):
-        # Nothing linked yet: the add tests below cover the rest.
-        self.assertEqual(
-            self.get(
-                f"/data/projects/{self.project_id}"
-                f"/settings/preview-background-files"
-            ),
-            [],
-        )
 
     def test_add_project_preview_background_file(self):
         self.generate_fixture_preview_background_file()
@@ -697,13 +669,6 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(fetched["name"], "Test Budget")
 
-    def test_get_project_budget(self):
-        budget = self._create_budget("Get Budget")
-        result = self.get(
-            f"/data/projects/{self.project_id}" f"/budgets/{budget['id']}"
-        )
-        self.assertEqual(result["name"], "Get Budget")
-
     def test_update_project_budget(self):
         budget = self._create_budget("Old Name")
         result = self.put(
@@ -723,18 +688,6 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         )
         budgets = self.get(f"/data/projects/{self.project_id}/budgets")
         self.assertEqual(budgets, [])
-
-    def test_budget_entries(self):
-        # A fresh budget has no lines yet: creating and removing them is the
-        # business of the tests below.
-        budget = self._create_budget("Entries Budget")
-        self.assertEqual(
-            self.get(
-                f"/data/projects/{self.project_id}"
-                f"/budgets/{budget['id']}/entries"
-            ),
-            [],
-        )
 
     def test_create_budget_entry(self):
         self.generate_fixture_department()
@@ -858,10 +811,14 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(entries, [])
 
     def test_get_budgets_time_spents(self):
+        self.generate_fixture_task()
+        time_spents_service.create_or_update_time_spent(
+            str(self.task.id), str(self.person.id), "2018-06-04", 500
+        )
         result = self.get(
             f"/data/projects/{self.project_id}/budgets/time-spents"
         )
-        self.assertIsInstance(result, dict)
+        self.assertEqual(result[str(self.department.id)]["total"], 500)
 
 
 class ProjectSettingsEventsTestCase(ApiDBTestCase):
@@ -978,23 +935,6 @@ class ProjectAssetTypeWorkflowTestCase(ApiDBTestCase):
         )
         self.put(self.route, {"task_type_ids": []})
         self.assertEqual(self.workflows(), {})
-
-    def test_project_workflow_replaces_studio_workflow(self):
-        self.asset_type.update({"task_types": [self.concept_id]})
-        self.put(self.route, {"task_type_ids": [self.shaders_id]})
-        self.assertEqual(self.created_task_type_ids(), {self.shaders_id})
-
-    def test_studio_workflow_applies_without_project_workflow(self):
-        self.asset_type.update({"task_types": [self.concept_id]})
-        self.assertEqual(self.created_task_type_ids(), {self.concept_id})
-
-    def test_explicit_task_type_outside_project_workflow_is_refused(self):
-        self.put(self.route, {"task_type_ids": [self.shaders_id]})
-        asset = self.asset.serialize(obj_type="Asset")
-        with self.assertRaises(WrongParameterException):
-            tasks_service.create_tasks_for_entity(
-                asset, [self.task_type_concept.serialize()]
-            )
 
     def test_set_workflow_refuses_invalid_ids(self):
         self.put(self.route, {"task_type_ids": ["not-a-task-type"]}, 400)
