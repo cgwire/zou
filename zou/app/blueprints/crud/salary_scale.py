@@ -2,9 +2,8 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.department import Department
-from zou.app.models.person import POSITION_TYPES, SENIORITY_TYPES
 from zou.app.models.salary_scale import SalaryScale
+from zou.app.services import budget_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/salary_scale.yml")
@@ -26,34 +25,7 @@ class SalaryScalesResource(BaseModelsResource):
         self.check_read_permissions()
         query = self.model.query
 
-        position_types = [position for position, _ in POSITION_TYPES]
-        seniority_types = [seniority for seniority, _ in SENIORITY_TYPES]
-
-        departments = Department.query.all()
-        salary_scales = SalaryScale.query.all()
-        salary_scale_map = {}
-        for salary_scale in salary_scales:
-            key = (
-                f"{salary_scale.department_id}-"
-                + f"{salary_scale.position.value.lower()}-"
-                + f"{salary_scale.seniority.value.lower()}"
-            )
-            salary_scale_map[key] = True
-
-        for department in departments:
-            for position in position_types:
-                for seniority in seniority_types:
-                    key = (
-                        f"{department.id}-"
-                        + f"{position.lower()}-"
-                        + f"{seniority.lower()}"
-                    )
-                    if key not in salary_scale_map:
-                        SalaryScale.create(
-                            department_id=department.id,
-                            position=position,
-                            seniority=seniority,
-                        )
+        budget_service.create_missing_salary_scales()
         return self.all_entries(query)
 
 
