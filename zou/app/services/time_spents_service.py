@@ -702,6 +702,21 @@ def get_day_offs_between(
     return DayOff.serialize_list(query.all())
 
 
+def remove_time_spents_covered_by_day_off(day_off):
+    """
+    Delete the time spents of the person of the given day off, on the days
+    that the day off covers. Both bounds are read from the column: writing
+    them the other way round, as `day_off.date >= TimeSpent.date`, makes
+    Python fall back to the reflected operator and silently inverts the
+    interval, which then matches nothing beyond a one day long day off.
+    """
+    TimeSpent.delete_all_by(
+        TimeSpent.date >= day_off.date,
+        TimeSpent.date <= day_off.end_date,
+        person_id=day_off.person_id,
+    )
+
+
 def get_timezoned_interval(start, end):
     """
     Return the time intervals adapted to the timezone of the user.
