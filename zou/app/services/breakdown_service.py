@@ -840,9 +840,15 @@ def add_asset_instance_to_shot(shot_id, asset_instance_id):
 def remove_asset_instance_for_shot(shot_id, asset_instance_id):
     """
     Remove the asset instance from the instance casting of the given shot.
+    If the instance is not cast in the shot, raise a
+    WrongParameterException.
     """
     shot = shots_service.get_shot_raw(shot_id)
     asset_instance = get_asset_instance_raw(asset_instance_id)
+    if asset_instance not in shot.instance_casting:
+        raise WrongParameterException(
+            f"Asset instance {asset_instance_id} is not cast in the shot."
+        )
     shot.instance_casting.remove(asset_instance)
     shot.save()
     events.emit(

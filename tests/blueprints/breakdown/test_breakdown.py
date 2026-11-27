@@ -293,6 +293,14 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             self.get(f"/data/shots/{self.shot_id}/asset-instances"), {}
         )
 
+    def test_remove_an_instance_not_cast_in_the_shot(self):
+        self.generate_fixture_scene_asset_instance()
+        self.delete(
+            f"/data/shots/{self.shot_id}/asset-instances"
+            f"/{self.asset_instance.id}",
+            400,
+        )
+
     def test_a_client_edits_no_asset_instance(self):
         self.generate_fixture_scene_asset_instance()
         self.generate_fixture_user_client()
