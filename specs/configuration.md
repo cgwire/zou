@@ -87,6 +87,8 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_IS_AD` | false | The directory is an Active Directory (NTLM bind, `sAMAccountName`) |
 | `LDAP_IS_AD_SIMPLE` | false | Active Directory with a simple bind and `cn` as login |
 | `LDAP_SSL` | false | Connect with LDAPS |
+| `LDAP_CONNECT_TIMEOUT` | 5 | Seconds to wait for the connection to the directory |
+| `LDAP_TIMEOUT` | 10 | Seconds to wait for each answer of the directory (a bind, a search page). Past it, the login is refused and the sync stops, before any account changes |
 | `LDAP_START_TLS` | false | Encrypt a plain connection (usually port 389) with StartTLS before the bind. A failed StartTLS stops the connection before any password is sent. Cannot be used with `LDAP_SSL` |
 | `LDAP_VERIFY_CERTIFICATES` | false | With `LDAP_SSL` or `LDAP_START_TLS`, check the server certificate (trusted CA and host name). Off, any certificate is accepted |
 | `LDAP_CA_FILE` | (none) | With `LDAP_VERIFY_CERTIFICATES`, PEM file of the CA that signed the server certificate. Empty, the system CAs are used |

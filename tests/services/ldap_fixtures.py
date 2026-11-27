@@ -70,6 +70,8 @@ class LdapDirectoryMixin:
             "LDAP_SUPERVISOR_GROUP": "",
             "LDAP_CLIENT_GROUP": "",
             "LDAP_VENDOR_GROUP": "",
+            "LDAP_CONNECT_TIMEOUT": 5,
+            "LDAP_TIMEOUT": 10,
         }
         settings.update(settings_overrides)
         return settings

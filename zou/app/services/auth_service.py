@@ -27,6 +27,7 @@ from ldap3.core.exceptions import (
     LDAPInvalidFilterError,
     LDAPPasswordIsMandatoryError,
     LDAPSocketOpenError,
+    LDAPSocketReceiveError,
     LDAPSSLConfigurationError,
     LDAPStartTLSError,
 )
@@ -181,6 +182,13 @@ def check_auth(
                 ldap_auth_strategy(person, password, app)
         else:
             raise NoAuthStrategyConfigured()
+    except LDAPSocketReceiveError as exception:
+        # Not a wrong password: the attempt is not counted.
+        app.logger.error(
+            f"The LDAP directory did not answer within LDAP_TIMEOUT: "
+            f"{exception}"
+        )
+        raise TimeoutError()
     except WrongPasswordException:
         if person is not None:
             add_login_failed_attempt(person["id"])
@@ -298,13 +306,19 @@ def ldap_auth_strategy(person, password, app):
             ldap_server = (
                 f"{app.config['LDAP_HOST']}:{app.config['LDAP_PORT']}"
             )
-            server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
+            server = Server(
+                ldap_server,
+                get_info=ALL,
+                use_ssl=SSL,
+                connect_timeout=app.config["LDAP_CONNECT_TIMEOUT"],
+            )
             conn = Connection(
                 server,
                 user=user,
                 password=password,
                 authentication=authentication,
                 raise_exceptions=True,
+                receive_timeout=app.config["LDAP_TIMEOUT"],
             )
             conn.bind()
             return person

@@ -1,5 +1,7 @@
+import socket
 import ssl
 import tempfile
+import time
 import uuid
 from unittest import mock
 
@@ -159,6 +161,8 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             "LDAP_START_TLS": False,
             "LDAP_VERIFY_CERTIFICATES": False,
             "LDAP_CA_FILE": "",
+            "LDAP_CONNECT_TIMEOUT": 5,
+            "LDAP_TIMEOUT": 10,
         }
         settings.update(overrides)
         return settings
@@ -906,6 +910,40 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertEqual(first.kwargs["get_info"], ldap3.ALL)
         self.assertEqual(second.kwargs["get_info"], ldap3.NONE)
         self.assertEqual(first.kwargs["connect_timeout"], 5)
+
+    def test_get_server_connect_timeout(self):
+        settings = self.tls_settings(LDAP_CONNECT_TIMEOUT=2)
+        self.assertEqual(ldap_service.get_server(settings).connect_timeout, 2)
+
+    def test_connect_receive_timeout(self):
+        settings = self.tls_settings(LDAP_SSL=False, LDAP_TIMEOUT=7)
+        self.assertEqual(
+            self.connection_kwargs(settings)["receive_timeout"], 7
+        )
+
+    def test_connect_to_a_silent_server(self):
+        """
+        A directory that accepts the connection and never answers makes the
+        connection fail after LDAP_TIMEOUT instead of blocking for ever.
+        """
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        self.addCleanup(server.close)
+        settings = self.tls_settings(
+            LDAP_HOST="127.0.0.1",
+            LDAP_PORT=str(server.getsockname()[1]),
+            LDAP_SSL=False,
+            LDAP_TIMEOUT=1,
+        )
+        start = time.monotonic()
+        with self.assertRaises(ldap3.core.exceptions.LDAPSocketReceiveError):
+            ldap_service.connect(
+                settings, "cn=svc", "secret", ldap3.SIMPLE, ldap3.NONE
+            )
+        # Under the 5 s connect timeout, that ldap3 applies to the reads
+        # too when no receive timeout is set.
+        self.assertLess(time.monotonic() - start, 3)
 
     def test_find_user_entry_stale_ldap_uid(self):
         settings = self.directory(

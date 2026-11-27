@@ -7,6 +7,7 @@ from ldap3.core.exceptions import (
     LDAPInvalidCredentialsResult,
     LDAPPasswordIsMandatoryError,
     LDAPSocketOpenError,
+    LDAPSocketReceiveError,
 )
 
 from tests.services.cases import AuthTestCase
@@ -217,6 +218,30 @@ class LdapStrategyTestCase(AuthTestCase):
             )
             self.assertRaises(WrongPasswordException, self.authenticate)
         self.assertEqual(self.failed_attemps(), 1)
+
+    def test_the_bind_has_timeouts(self):
+        self.person.update({"is_generated_from_ldap": True})
+        self.use_timeouts(LDAP_CONNECT_TIMEOUT=3, LDAP_TIMEOUT=7)
+        with mock.patch("ldap3.Server") as server, mock.patch(
+            "ldap3.Connection"
+        ) as connection:
+            self.authenticate()
+        self.assertEqual(server.call_args.kwargs["connect_timeout"], 3)
+        self.assertEqual(connection.call_args.kwargs["receive_timeout"], 7)
+
+    def test_a_directory_that_does_not_answer(self):
+        self.person.update({"is_generated_from_ldap": True})
+        with mock.patch("ldap3.Connection") as connection:
+            connection.return_value.bind.side_effect = LDAPSocketReceiveError(
+                "error receiving data: timed out"
+            )
+            self.assertRaises(TimeoutError, self.authenticate)
+        self.assertEqual(self.failed_attemps(), 0)
+
+    def use_timeouts(self, **settings):
+        for key, value in settings.items():
+            self.addCleanup(app.config.__setitem__, key, app.config[key])
+            app.config[key] = value
 
     def test_an_empty_password_leaves_local_people_to_their_rules(self):
         """
@@ -537,6 +562,19 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
             side_effect=ldap3.core.exceptions.LDAPStartTLSError("refused"),
         ):
             self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_directory_timeout(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()])
+        with mock.patch.object(
+            ldap_service,
+            "find_user_entry",
+            side_effect=LDAPSocketReceiveError(
+                "error receiving data: timed out"
+            ),
+        ):
+            self.assertRaises(TimeoutError, self.login, "jdoe")
         self.assertTrue(Person.get(person["id"]).active)
 
     def test_missing_ca_file(self):

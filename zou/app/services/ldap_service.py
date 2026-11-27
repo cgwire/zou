@@ -27,7 +27,6 @@ from zou.app.services import persons_service
 CLIENT_STRATEGY = ldap3.SYNC
 
 # Seconds to wait for the directory to accept the connection.
-CONNECT_TIMEOUT = 5
 # Active Directory returns at most 1000 entries for each search: read the
 # entries page by page, below that limit.
 SEARCH_PAGE_SIZE = 500
@@ -79,6 +78,8 @@ def get_settings():
         "LDAP_SUPERVISOR_GROUP",
         "LDAP_CLIENT_GROUP",
         "LDAP_VENDOR_GROUP",
+        "LDAP_CONNECT_TIMEOUT",
+        "LDAP_TIMEOUT",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -166,7 +167,7 @@ def get_server(settings, get_info=ldap3.ALL):
         get_info=get_info,
         use_ssl=settings["LDAP_SSL"],
         tls=get_tls(settings),
-        connect_timeout=CONNECT_TIMEOUT,
+        connect_timeout=settings["LDAP_CONNECT_TIMEOUT"],
     )
 
 
@@ -190,6 +191,7 @@ def connect(settings, user, password, authentication, get_info=ldap3.ALL):
         authentication=authentication,
         raise_exceptions=True,
         auto_bind=auto_bind,
+        receive_timeout=settings["LDAP_TIMEOUT"],
         client_strategy=CLIENT_STRATEGY,
     )
     if not conn.bound:
