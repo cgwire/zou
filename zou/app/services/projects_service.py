@@ -363,6 +363,18 @@ def get_projects():
     )
 
 
+def get_projects_with_status_names_query():
+    """
+    Return a query on the projects joined with the name of their status,
+    sorted by project name.
+    """
+    query = Project.query.join(
+        ProjectStatus, Project.project_status_id == ProjectStatus.id
+    )
+    query = query.add_columns(ProjectStatus.name)
+    return query.order_by(Project.name)
+
+
 @cache.memoize_function(480)
 def get_project_statuses():
     """
