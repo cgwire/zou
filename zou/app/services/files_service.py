@@ -25,11 +25,13 @@ from zou.app.models.output_type import OutputType
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import (
     entities_service,
+    projects_service,
 )
 from zou.app.services.base_service import (
     get_instance,
@@ -832,6 +834,51 @@ def get_last_output_files_for_instance(
 
     output_files = query.all()
     return fields.serialize_models(output_files)
+
+
+def filter_preview_files_by_project(query, project_id):
+    """
+    Return the given preview file query limited to the previews of the
+    tasks of the given project. Use a subquery, not a join: the project
+    filter of the preview file list already joins the task table.
+    """
+    return query.filter(
+        PreviewFile.task_id.in_(
+            Task.query.with_entities(Task.id).filter(
+                Task.project_id == project_id
+            )
+        )
+    )
+
+
+def filter_preview_files_by_open_projects(query, access_filter):
+    """
+    Return the given preview file query limited to the previews of the
+    tasks of open projects, then limited by the given access filter.
+    """
+    return (
+        query.join(Task)
+        .join(Project)
+        .join(
+            ProjectStatus,
+            Project.project_status_id == ProjectStatus.id,
+        )
+        .filter(projects_service.build_open_project_filter())
+        .filter(access_filter)
+    )
+
+
+def update_extra_preview_revisions_no_commit(
+    task_id, revision, new_revision, preview_file_id
+):
+    """
+    Set the given new revision on the previews of the given task that have
+    the given revision, except the given preview file. Do not commit: the
+    caller commits.
+    """
+    PreviewFile.query.filter_by(task_id=task_id, revision=revision).filter(
+        PreviewFile.id != preview_file_id
+    ).update({"revision": new_revision})
 
 
 def get_preview_file_raw(preview_file_id):

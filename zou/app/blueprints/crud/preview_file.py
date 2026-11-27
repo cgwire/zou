@@ -9,14 +9,11 @@ from zou.app.blueprints.crud.base import (
 )
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
-from zou.app.models.project_status import ProjectStatus
-from zou.app.models.task import Task
 from zou.app.services import (
     deletion_service,
+    files_service,
     permissions_service,
     persons_service,
-    projects_service,
     tasks_service,
     user_service,
 )
@@ -55,33 +52,20 @@ class PreviewFilesResource(BaseModelsResource):
         if "project_id" in options:
             if not fields.is_valid_id(options["project_id"]):
                 raise WrongParameterException("Invalid project_id.")
-            query = query.filter(
-                PreviewFile.task_id.in_(
-                    Task.query.with_entities(Task.id).filter(
-                        Task.project_id == options["project_id"]
-                    )
-                )
+            query = files_service.filter_preview_files_by_project(
+                query, options["project_id"]
             )
         return query
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            query = (
-                query.join(Task)
-                .join(Project)
-                .join(
-                    ProjectStatus,
-                    Project.project_status_id == ProjectStatus.id,
-                )
-                .filter(projects_service.build_open_project_filter())
-            )
             if permissions.has_vendor_permissions():
-                query = query.filter(persons_service.build_assignee_filter())
+                access_filter = persons_service.build_assignee_filter()
             else:
-                query = query.filter(
-                    user_service.build_related_projects_filter()
-                )
-
+                access_filter = user_service.build_related_projects_filter()
+            query = files_service.filter_preview_files_by_open_projects(
+                query, access_filter
+            )
         return query
 
     def check_read_permissions(self, options=None):
@@ -152,12 +136,11 @@ class PreviewFileResource(BaseModelResource):
                     new_revision,
                     exclude_preview_id=instance_dict["id"],
                 )
-                # Update all extra previews with the same revision
-                PreviewFile.query.filter_by(
-                    task_id=instance_dict["task_id"],
-                    revision=current_revision,
-                ).filter(PreviewFile.id != instance_dict["id"]).update(
-                    {"revision": new_revision}
+                files_service.update_extra_preview_revisions_no_commit(
+                    instance_dict["task_id"],
+                    current_revision,
+                    new_revision,
+                    instance_dict["id"],
                 )
         return instance_dict
 
