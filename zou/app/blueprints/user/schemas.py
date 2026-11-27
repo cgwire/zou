@@ -14,6 +14,8 @@ FilterName = Annotated[str, Field(min_length=1, max_length=200)]
 FilterQuery = Annotated[str, Field(min_length=1, max_length=5000)]
 FilterType = Annotated[str, Field(max_length=80)]
 FilterColor = Annotated[str, Field(max_length=8)]
+# The position column is a 32-bit integer.
+FilterPosition = Annotated[int, Field(ge=0, le=2**31 - 1)]
 
 
 class SubscribeTasksSchema(BaseSchema):
@@ -49,6 +51,7 @@ class UpdateSearchFilterSchema(BaseSchema):
     search_filter_group_id: Optional[str] = None
     is_shared: Optional[bool] = None
     department_id: Optional[str] = None
+    position: Optional[FilterPosition] = None
 
 
 class CreateSearchFilterGroupSchema(BaseSchema):
@@ -74,6 +77,7 @@ class UpdateSearchFilterGroupSchema(BaseSchema):
     color: Optional[FilterColor] = None
     is_shared: Optional[bool] = None
     department_id: Optional[str] = None
+    position: Optional[FilterPosition] = None
 
 
 class NotificationUpdateSchema(BaseSchema):

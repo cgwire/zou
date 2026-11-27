@@ -21,6 +21,9 @@ class SearchFilterGroup(db.Model, BaseMixin, SerializerMixin):
         default=False,
         nullable=False,
     )
+    # The rank of the row among the rows that its owner ordered. A row with
+    # no position comes after them.
+    position = db.Column(db.Integer(), nullable=True)
 
     person_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True

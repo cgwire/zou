@@ -26,7 +26,13 @@ class SharedFilterMixin:
     # Body fields of the create route and the length of their column.
     column_lengths = [("name", 200), ("list_type", 80), ("entity_type", 80)]
     # Body fields and values that the update route refuses.
-    refused_edits = [("name", "n" * 201), ("name", "")]
+    refused_edits = [
+        ("name", "n" * 201),
+        ("name", ""),
+        ("position", -1),
+        ("position", "first"),
+        ("position", 2**31),
+    ]
 
     def clear_cache(self):
         raise NotImplementedError
@@ -99,6 +105,22 @@ class SharedFilterMixin:
         self.put(f"{self.path}{created['id']}", {"name": "after"})
         result = self.get(f"{self.detail_path}{created['id']}")
         self.assertEqual(result["name"], "after")
+
+    def test_a_new_one_has_no_position_until_its_owner_orders_it(self):
+        created = self.create("moved")
+        self.assertIsNone(created["position"])
+        updated = self.put(f"{self.path}{created['id']}", {"position": 2})
+        self.assertEqual(updated["position"], 2)
+        result = self.get(f"{self.detail_path}{created['id']}")
+        self.assertEqual(result["position"], 2)
+
+    def test_an_empty_position_takes_one_out_of_the_order(self):
+        created = self.create("moved")
+        self.put(f"{self.path}{created['id']}", {"position": 2})
+        updated = self.put(f"{self.path}{created['id']}", {"position": None})
+        self.assertIsNone(updated["position"])
+        result = self.get(f"{self.detail_path}{created['id']}")
+        self.assertIsNone(result["position"])
 
     def test_removing_one_empties_the_listing(self):
         created = self.create("gone")
