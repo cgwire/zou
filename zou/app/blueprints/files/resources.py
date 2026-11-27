@@ -485,6 +485,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
                 path=path,
                 comment=comment,
                 revision=revision,
+                description=description,
             )
         except EntryAlreadyExistsException:
             return {"error": "The given working file already exists."}, 400

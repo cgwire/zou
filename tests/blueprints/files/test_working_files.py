@@ -102,6 +102,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
             },
         )
         self.assertEqual(working_file["revision"], 1)
+        self.assertEqual(working_file["description"], "description test")
         task = Task.get(self.task_id)
 
         assignees = [person.serialize() for person in task.assignees]

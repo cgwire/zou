@@ -286,6 +286,7 @@ def create_new_working_revision(
     path="",
     comment="",
     revision=0,
+    description="",
 ):
     """
     Create a new working file revision for the given task. An author
@@ -300,6 +301,7 @@ def create_new_working_revision(
     try:
         working_file = WorkingFile.create(
             comment=comment,
+            description=description,
             name=name,
             revision=revision,
             path=path,
