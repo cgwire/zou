@@ -1,8 +1,6 @@
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
-from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy.orm import aliased
 
 from zou.app.blueprints.crud.base import (
     UNIQUE_VIOLATION_MESSAGE,
@@ -15,9 +13,6 @@ from zou.app.exceptions import (
     WrongTaskTypeForEntityException,
 )
 from zou.app.mixin import ArgsMixin
-from zou.app.models.entity import Entity
-from zou.app.models.person import Person
-from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import (
     deletion_service,
@@ -61,20 +56,12 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            query = query.join(Project).filter(
-                user_service.build_related_projects_filter()
-            )
             # Each task follows the role held on its own project.
-            vendor_project_ids = user_service.get_project_ids_with_roles(
-                "vendor"
+            query = tasks_service.filter_tasks_by_projects(
+                query,
+                user_service.build_related_projects_filter(),
+                user_service.get_project_ids_with_roles("vendor"),
             )
-            if vendor_project_ids:
-                query = query.filter(
-                    or_(
-                        Task.project_id.not_in(vendor_project_ids),
-                        persons_service.build_assignee_filter(),
-                    )
-                )
         return query
 
     def serialize_list(self, entries, relations=False):
@@ -120,12 +107,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
                 raise WrongParameterException(
                     f"Invalid UUID format for episode_id: {episode_id}"
                 )
-            Sequence = aliased(Entity)
-            query = (
-                query.join(Entity, Task.entity_id == Entity.id)
-                .join(Sequence, Entity.parent_id == Sequence.id)
-                .filter(Sequence.parent_id == episode_id)
-            )
+            query = tasks_service.filter_tasks_by_episode(query, episode_id)
 
         return query
 
@@ -182,13 +164,9 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             if is_assignees:
                 assignees = data["assignees"]
                 tasks_service.check_no_preview_assignee(assignees)
-                persons = Person.query.filter(Person.id.in_(assignees)).all()
                 del data["assignees"]
 
-            instance = self.model(**data)
-            if assignees is not None:
-                instance.assignees = persons
-            instance.save()
+            instance = tasks_service.create_task_raw_from_data(data, assignees)
             self.emit_create_event(instance.serialize())
 
             return (
