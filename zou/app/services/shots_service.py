@@ -1107,6 +1107,19 @@ def get_last_shot_version_raw(shot_id):
     )
 
 
+def create_shot_version_raw(shot_id, name, data, person_id):
+    """
+    Create a version of the given shot with the given name, data and author.
+    Return it as an active record.
+    """
+    return EntityVersion.create(
+        entity_id=shot_id,
+        name=name,
+        data=data,
+        person_id=person_id,
+    )
+
+
 def set_frames_from_task_type_preview_files(
     project_id,
     task_type_id,

@@ -3,7 +3,6 @@ import re
 
 from flask import current_app
 from flask_jwt_extended import jwt_required
-from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import (
@@ -12,16 +11,7 @@ from zou.app.blueprints.crud.base import (
     build_db_error_message,
 )
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.entity import (
-    ENTITY_STATUSES,
-    Entity,
-    EntityConceptLink,
-    EntityLink,
-    EntityVersion,
-)
-from zou.app.models.project import Project
-from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task
+from zou.app.models.entity import ENTITY_STATUSES, Entity
 from zou.app.services import (
     assets_service,
     breakdown_service,
@@ -114,24 +104,12 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            query = query.join(Project).filter(
-                user_service.build_related_projects_filter()
-            )
             # Each entity follows the role held on its own project.
-            vendor_project_ids = user_service.get_project_ids_with_roles(
-                "vendor"
+            query = entities_service.filter_entities_by_projects(
+                query,
+                user_service.build_related_projects_filter(),
+                user_service.get_project_ids_with_roles("vendor"),
             )
-            if vendor_project_ids:
-                assigned_entity_ids = Task.query.with_entities(
-                    Task.entity_id
-                ).filter(persons_service.build_assignee_filter())
-                query = query.filter(
-                    or_(
-                        Entity.project_id.not_in(vendor_project_ids),
-                        Entity.id.in_(assigned_entity_ids),
-                    )
-                )
-
         return query
 
     def update_data(self, data):
@@ -215,21 +193,13 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             or updated_entity_type_id != current_entity_type_id
             or updated_parent_id != current_parent_id
         ):
-            query = Entity.query.filter(
-                Entity.name == updated_name,
-                Entity.project_id == updated_project_id,
-                Entity.entity_type_id == updated_entity_type_id,
-                Entity.id != instance_dict["id"],
-            )
-
-            if updated_parent_id is None:
-                query = query.filter(Entity.parent_id.is_(None))
-            else:
-                query = query.filter(Entity.parent_id == updated_parent_id)
-
-            existing_entity = query.first()
-
-            if existing_entity is not None:
+            if entities_service.is_entity_name_taken(
+                updated_name,
+                updated_project_id,
+                updated_entity_type_id,
+                updated_parent_id,
+                instance_dict["id"],
+            ):
                 raise WrongParameterException(
                     f"An entity with name '{updated_name}', project_id '{updated_project_id}', "
                     f"entity_type_id '{updated_entity_type_id}', and parent_id '{updated_parent_id}' "
@@ -264,12 +234,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         or its refusal by the database (tasks, versions, child entities)
         rolls them back.
         """
-        if entity_types_service.is_sequence(entity):
-            Subscription.delete_all_by_no_commit(entity_id=entity["id"])
-        EntityLink.delete_all_by_no_commit(entity_in_id=entity["id"])
-        EntityLink.delete_all_by_no_commit(entity_out_id=entity["id"])
-        EntityConceptLink.delete_all_by_no_commit(entity_in_id=entity["id"])
-        EntityConceptLink.delete_all_by_no_commit(entity_out_id=entity["id"])
+        entities_service.remove_entity_links_no_commit(entity)
         return entity
 
     @jwt_required()
@@ -352,11 +317,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             person_id = persons_service.get_current_user()["id"]
             version = self.get_recent_version(shot, previous_shot, person_id)
             if version is None:
-                version = EntityVersion.create(
-                    entity_id=shot["id"],
-                    name=previous_shot["name"],
-                    data=shot["data"],
-                    person_id=person_id,
+                version = shots_service.create_shot_version_raw(
+                    shot["id"], previous_shot["name"], shot["data"], person_id
                 )
             else:
                 version.update({"data": shot["data"]})
