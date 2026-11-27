@@ -230,7 +230,7 @@ def get_person_tasks_projects(person_id):
     Return the projects in which the current user may list the tasks of
     given person: the open ones for an admin, the user's own open ones for
     the other roles, and none for clients and vendors. A vendor may only
-    ask about themselves.
+    ask about themselves. Raise PermissionDenied for a bot person.
     """
     permissions_service.check_person_is_not_bot(person_id)
     current_user = persons_service.get_current_user()
@@ -920,8 +920,7 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         # Normalise the `project_id` filter once, before branching on the
         # caller's role. An empty or whitespace-only `?project_id=` is treated
         # as an absent filter; any other non-UUID value is rejected with a 400
-        # rather than reaching the query as an invalid UUID (which used to 500
-        # for admins and 404 for managers).
+        # rather than reaching the query as an invalid UUID.
         project_id = (self.get_project_id() or "").strip() or None
         if project_id is not None and not fields.is_valid_id(project_id):
             raise WrongParameterException("Invalid project_id.")

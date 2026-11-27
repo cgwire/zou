@@ -48,9 +48,9 @@ def _get_project_scope_for_person_access(person_id):
     """
     Returns (project_ids, scope) for the current user when accessing the
     given person_id. For admin or when person_id is the current user,
-    returns (None, None). For manager/supervisor returns the ids of these
-    projects and the task filter their roles grant. Raises PermissionDenied
-    otherwise.
+    returns (None, None). For manager/supervisor returns the ids of the
+    projects where the caller holds one of these roles and the task filter
+    their roles grant. Raises PermissionDenied otherwise.
     """
     if permissions.has_admin_permissions():
         return (None, None)

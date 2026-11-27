@@ -64,7 +64,7 @@ class WorkingFileCommentSchema(BaseSchema):
 
 class NewOutputFileSchema(BaseSchema):
     """
-    Body for creating a new entity output file.
+    Body for creating a new entity or asset instance output file.
     """
 
     name: str = "main"

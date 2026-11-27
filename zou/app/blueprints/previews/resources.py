@@ -125,6 +125,10 @@ def send_standard_file(
     as_attachment=False,
     last_modified=None,
 ):
+    """
+    Send the stored file of a non picture, non movie preview, through
+    send_storage_file.
+    """
     return send_storage_file(
         file_store.get_local_file_path,
         file_store.open_file,
@@ -372,6 +376,10 @@ def send_picture_file(
     download_name="",
     last_modified=None,
 ):
+    """
+    Send a stored picture through send_storage_file. The mimetype follows
+    the extension: PNG, Radiance HDR, or binary for the others.
+    """
     if extension == "png":
         mimetype = "image/png"
     elif extension == "hdr":
@@ -629,8 +637,11 @@ class BaseNewPreviewFilePicture:
         self, preview_file_id, uploaded_file, normalize=True
     ):
         """
-        Get uploaded movie, normalize it then build thumbnails then save
-        everything in the file storage.
+        Save the uploaded movie in the temporary folder, then hand the
+        normalization, the thumbnails and the storage over to
+        dispatch_movie_processing. Raise WrongParameterException for an
+        empty file, PreviewProcessingFailedException for a partial write.
+        Return the preview file id.
         """
         no_job = self.get_no_job()
         tmp_folder = config.TMP_DIR
@@ -672,7 +683,9 @@ class BaseNewPreviewFilePicture:
 
     def save_file_preview(self, instance_id, uploaded_file, extension):
         """
-        Get uploaded file then save it in the file storage.
+        Save the uploaded file in the file storage, record its storage state
+        and its size on the preview file, then remove the temporary copy.
+        Return the path of that temporary copy.
         """
         tmp_folder = config.TMP_DIR
         file_name = f"{instance_id}.{extension}"
@@ -697,7 +710,8 @@ class BaseNewPreviewFilePicture:
 
     def emit_app_preview_event(self, preview_file_id):
         """
-        Emit an event, each time a preview is added.
+        If the preview is attached to a comment, clear the news cache of
+        that comment and emit comment:update and preview-file:add-file.
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         comment = tasks_service.get_comment_by_preview_file_id(preview_file_id)
@@ -734,6 +748,12 @@ class BaseNewPreviewFilePicture:
     def process_uploaded_file(
         self, instance_id, uploaded_file, abort_on_failed=False
     ):
+        """
+        Store the uploaded picture, movie or file for the given preview file
+        and update the preview file. On a wrong extension or a failed
+        movie, remove the preview file, and raise if abort_on_failed is
+        set, else return None. Emit the preview events on success.
+        """
         file_name_parts = uploaded_file.filename.split(".")
         extension = file_name_parts.pop().lower()
         original_file_name = ".".join(file_name_parts)
@@ -840,7 +860,10 @@ class CreatePreviewFilePictureResource(
 
     def is_allowed(self, preview_file_id):
         """
-        Return true if user is allowed to add a preview.
+        Return True if the user can work on the task of the preview file.
+        Raise PreviewFileReuploadNotAllowedException if a file was already
+        uploaded for it, PermissionDenied if the user cannot work on the
+        task.
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         if preview_file["original_name"]:
@@ -891,7 +914,9 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
 
     def process_comments(self, task_id=None):
         """
-        Process comments.
+        Create the comments of the request, with their attachments and
+        their previews read from the uploaded files. Return the new
+        comments and the 201 status.
         """
         args = self.get_comments_args()
 
@@ -991,6 +1016,10 @@ class BasePreviewFileResource(MethodView):
         self.last_modified = None
 
     def is_allowed(self, preview_file_id):
+        """
+        Load the preview file and its last modification date, and raise
+        PermissionDenied if the user cannot access its task.
+        """
         self.preview_file = files_service.get_preview_file_for_access(
             preview_file_id
         )
@@ -1618,8 +1647,8 @@ class UpdatePreviewTrimResource(MethodView, ArgsMixin):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         entity = entities_service.get_entity(task["entity_id"])
-        # Same rule as the trim of the shot, saved in its data: managers
-        # and supervisors without departments.
+        # Same rule as the trim of the shot, saved in its data: managers,
+        # the creator of the entity and supervisors without departments.
         permissions_service.check_metadata_department_access(
             entity, {"data": trim}
         )
@@ -1673,7 +1702,7 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
 class RunningPreviewFiles(MethodView, ArgsMixin):
     """
     Retrieve all preview files from open productions with states equals
-    to processing or broken
+    to processing, broken or missing.
     """
 
     @jwt_required()
@@ -1883,8 +1912,8 @@ class ExtractTileFromPreview(MethodView):
 
 class CreatePreviewBackgroundFileResource(MethodView):
     """
-    Main resource to add a preview background file. It stores the preview background
-    file and generates a rectangle thumbnail.
+    Main resource to add a preview background file. It stores the preview
+    background file and generates a PNG thumbnail.
     """
 
     @jwt_required()
@@ -1947,8 +1976,10 @@ class CreatePreviewBackgroundFileResource(MethodView):
         self, instance_id, uploaded_file, extension
     ):
         """
-        Get uploaded preview background file, build thumbnail then save
-        everything in the file storage.
+        Save the uploaded preview background file and its thumbnail in the
+        file storage and clear their cached copies. Return its size. On a
+        failure, remove the preview background file and raise
+        WrongParameterException.
         """
         thumbnail_path = None
         try:
@@ -2068,7 +2099,6 @@ class PreviewBackgroundFileThumbnailResource(BaseThumbnailResource):
         """
         Uploads are not allowed on the display url.
         """
-        # Raising AttributeError here used to surface as an anonymous 500.
         return {
             "error": True,
             "message": "Preview backgrounds are uploaded through "

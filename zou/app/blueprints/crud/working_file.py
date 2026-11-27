@@ -31,8 +31,9 @@ class WorkingFilesResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         """
-        Overriding so that people without admin credentials can still access
-        this resource.
+        Let every role but vendors list the working files:
+        add_project_permission_filter keeps the files of the projects of
+        the user's team.
         """
         permissions_service.block_access_to_vendor()
         return True

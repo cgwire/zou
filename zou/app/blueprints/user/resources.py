@@ -71,7 +71,7 @@ class ShotTaskTypesResource(MethodView):
 
 class SceneTaskTypesResource(MethodView):
     """
-    Return tasks related to given scene for current user.
+    Return task types related to given scene for current user.
     """
 
     @swag_from(SPECS["SceneTaskTypesResource_get"])

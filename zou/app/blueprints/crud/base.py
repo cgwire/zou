@@ -13,8 +13,8 @@ rather than by reimplementing the HTTP methods:
 - add_project_permission_filter(query): narrow a list query to the
   projects the caller may see.
 - update_data(data[, instance_id]): last chance to clean or complete the
-  payload before it hits the model (protected fields are already
-  stripped and dates validated).
+  payload before it hits the model. The base method strips the protected
+  fields (and, on update, validates the dates): overrides call it first.
 - pre/post_create, pre/post_update, pre/post_delete: side effects around
   the mutation (events are emitted by emit_*_event).
 

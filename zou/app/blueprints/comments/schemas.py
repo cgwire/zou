@@ -12,6 +12,10 @@ from zou.app.utils.validation import BaseSchema
 
 
 class CopyClientCommentsSchema(BaseSchema):
+    """
+    Body for copying the last client comment of each given task.
+    """
+
     task_ids: List[UUID] = Field(..., min_length=1)
     prefix: str = ""
 

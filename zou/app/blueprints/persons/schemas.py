@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request/response validation in the persons blueprint.
+Pydantic schemas for request body validation in the persons blueprint.
 
 Use these schemas to ensure incoming JSON bodies match the expected format
 and to return clear validation errors (e.g. 400 with field-level messages).

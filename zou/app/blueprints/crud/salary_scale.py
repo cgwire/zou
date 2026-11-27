@@ -61,8 +61,8 @@ class SalaryScaleResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, SalaryScale)
         # BaseModelResource.__init__ assigns protected_fields on the instance,
-        # so the class attribute this used to declare never applied and
-        # department_id was writable through a PUT.
+        # so a class attribute of the same name never applies: append after
+        # it, else department_id is writable through a PUT.
         self.protected_fields.append("department_id")
 
     @jwt_required()

@@ -567,10 +567,9 @@ class ChangePasswordResource(MethodView, ArgsMixin):
         except WrongPasswordException:
             return {"error": True, "message": "Old password is wrong."}, 400
         except TooManyLoginFailedAttempts:
-            # check_auth applies the login lockout here too, so a user who
-            # just failed five logins and then changes his password used to
-            # get a 500. The caller holds a token for the account, telling
-            # him the truth discloses nothing.
+            # check_auth applies the login lockout here too. The caller
+            # holds a token for the account, telling him the truth
+            # discloses nothing.
             return (
                 {
                     "error": True,
@@ -814,11 +813,10 @@ class EmailOTPResource(MethodView, ArgsMixin):
         )
 
         # Answer with the same status and the same body whether or not the
-        # account exists, is active and has OTP by email enabled. This used
-        # to answer 404 "User not found.", 400 "OTP by email not enabled."
-        # and 200, which told the three apart in a single unauthenticated
-        # request. Response time still tracks the one branch that mails the
-        # OTP, emails.send_email talking SMTP synchronously.
+        # account exists, is active and has OTP by email enabled, so this
+        # public endpoint cannot be used to enumerate registered users.
+        # Response time still tracks the one branch that mails the OTP,
+        # emails.send_email talking SMTP synchronously.
         generic_response = {"success": True}
         try:
             person = persons_service.get_person_by_email_desktop_login(
@@ -948,8 +946,7 @@ class FIDOResource(MethodView, ArgsMixin):
 
         # An unknown address, a deactivated account and an account without
         # FIDO all get the same answer, so this public endpoint does not
-        # tell a registered address from an unknown one. It used to answer
-        # 404 "User not found." to the first and 400 to the second. What a
+        # tell a registered address from an unknown one. What a
         # challenge still discloses is that the account has FIDO enabled;
         # hiding that too would mean handing out a decoy challenge no
         # authenticator could ever honour.
@@ -1270,6 +1267,8 @@ class SAMLSSOResource(MethodView, ArgsMixin):
         the one bound to the issuer and subject of the assertion: the NameID
         email is mutable, it only finds the account on the first login.
         Without it, SAML carries no stable id and the email is all there is.
+        An unknown person is created, with a random password, from the
+        attributes of the assertion.
         """
         if not config.SAML_SUBJECT_ATTRIBUTE:
             try:

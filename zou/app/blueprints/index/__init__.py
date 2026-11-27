@@ -1,6 +1,6 @@
 """
-This module is named source instead of import because import is a Python
-keyword.
+Routes for the API index, the status probes, the usage stats and the
+configuration of the instance.
 """
 
 from flask import Blueprint

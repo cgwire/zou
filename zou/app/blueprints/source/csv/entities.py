@@ -88,6 +88,11 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
         self.current_user_id = persons_service.get_current_user()["id"]
 
     def get_tasks_update(self, row):
+        """
+        Return the task changes of the row: one entry per task type whose
+        status, comment or assignation cell is filled. Raise RowException
+        on an unknown status.
+        """
         tasks_update = []
         for task_type in self.task_types:
             task_status_name = row.get(task_type["name"], None)
@@ -125,6 +130,12 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
         return tasks_update
 
     def create_and_update_tasks(self, tasks_update, entity, creation=False):
+        """
+        Apply the task changes of the row: create the missing tasks, add
+        the assignees, and post a comment for a new status or a comment.
+        On creation, create a task for each task type of the project; with
+        no change, leave that to run_import.
+        """
         if tasks_update:
             if creation:
                 tasks_map = {

@@ -12,7 +12,7 @@ from zou.app.utils.validation import BaseSchema
 
 class SearchSchema(BaseSchema):
     """
-    Body for searching entities across the project.
+    Body for the full text search on assets, shots and persons.
     """
 
     query: str = Field(..., description="Search query string")

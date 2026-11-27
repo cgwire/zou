@@ -146,7 +146,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             self.created_shots.append(entity.serialize())
 
     def import_row(self, row, project_id):
-        # An empty cell used to create a sequence or a shot named "", from a
+        # An empty cell would create a sequence or a shot named "", from a
         # spreadsheet total row for instance.
         required_columns = ["Sequence", "Name"]
         if self.is_tv_show:

@@ -57,7 +57,8 @@ def check_drop_frame_separators(file_path, rate):
     OTIO skips the FCM line of an EDL and counts drop-frame timecodes from
     their ';' separator only: at 30000/1001 or 60000/1001 fps, the drop-frame
     rates, a drop-frame EDL written with ':' would be read as non-drop-frame,
-    18 frames off every 10 minutes at 29.97 fps.
+    18 frames off every 10 minutes at 29.97 fps. Raise ValueError when a
+    drop-frame EDL at such a rate has no ';' timecode.
     """
     if rate not in (30000 / 1001, 60000 / 1001):
         return
@@ -120,6 +121,11 @@ class OTIOBaseResource(MethodView, ArgsMixin):
     def prepare_import(
         self, project_id, episode_id, naming_convention, match_case
     ):
+        """
+        Load the project, its sequences and its shots (those of the episode
+        in a TV show). Map each shot name that the naming convention gives
+        to the shot id.
+        """
         self.sequence_map = {}
         self.shot_map = {}
         self.project_id = project_id
@@ -172,6 +178,13 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         naming_convention,
         match_case,
     ):
+        """
+        Read the timeline file, then create or update the shot of each clip.
+        Index the saved shots and create the tasks of the new shots, also
+        when a clip fails. Return the created and updated shots. Raise
+        WrongParameterException when the file type is not supported or the
+        file does not parse.
+        """
         result = {"updated_shots": [], "created_shots": []}
         import opentimelineio as otio
 

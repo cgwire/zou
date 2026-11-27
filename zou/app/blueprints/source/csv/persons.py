@@ -144,7 +144,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         """
         Turn a comma-separated list of department names into a list of UUIDs,
         raising RowException (400) on any unknown name. Names are matched
-        exactly (case-sensitive), like the other typed columns.
+        exactly (case-sensitive), like the Studio column.
         """
         department_ids = []
         for name in [

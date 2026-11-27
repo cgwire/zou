@@ -37,9 +37,9 @@ def check_criterion_access(criterions):
     Raise 403 if the caller filters by a project or episode they cannot access.
 
     Resolves ``project_id`` from the criterions (directly, or via the episode)
-    and calls ``permissions_service.check_project_access``. When no project/episode is
-    given, access is not checked here: ``assets_service.get_assets`` already
-    scopes the list with ``only_user_projects``.
+    and calls ``permissions_service.check_project_access``. When no
+    project/episode is given, access is not checked here: the asset services
+    already scope the list with ``only_user_projects``.
     """
     project_id = None
     if "project_id" in criterions:
@@ -396,6 +396,10 @@ class BaseSetSharedAssetsResource(MethodView, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id=None, asset_type_id=None, asset_ids=None):
+        """
+        Set the shared flag of the matching assets from the body. Checks no
+        permission: the subclasses do it before they call this method.
+        """
         body = validation.validate_request_body(SetSharedAssetsSchema)
         return assets_service.set_shared_assets(
             is_shared=body.is_shared,

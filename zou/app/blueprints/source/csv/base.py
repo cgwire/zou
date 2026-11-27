@@ -60,9 +60,8 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, *args):
         # Authorize before anything reaches the disk, and drop the file
-        # whatever happens next: the upload used to be written first and
-        # never removed, so any account could fill TMP_DIR by posting to an
-        # import route it is not allowed to use and collecting the 403.
+        # whatever happens next: otherwise any account could fill TMP_DIR
+        # by posting to an import route it is not allowed to use.
         self.check_permissions(*args)
         uploaded_file = request.files["file"]
         file_name = f"{uuid.uuid4()}.csv"
@@ -274,6 +273,10 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         return episode
 
     def get_descriptor_field_map(self, project_id, entity_type):
+        """
+        Return the metadata descriptors of the project for the given entity
+        type, by name. Also reset the person lookup of get_person_id.
+        """
         descriptor_map = {}
         self.person_lookup = None
         descriptors = metadata_descriptors_service.get_metadata_descriptors(

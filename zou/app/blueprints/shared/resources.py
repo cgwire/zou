@@ -67,7 +67,7 @@ class SharedPlaylistGuestResource(MethodView):
         """
         body = validation.validate_request_body(CreateGuestSchema)
 
-        # If a guest_id is provided, try to reuse it — but only if it was
+        # If a guest_id is provided, try to reuse it, but only if it was
         # created from this same share link. A guest UUID leaked from
         # another link must not grant access here.
         if body.guest_id is not None:
@@ -342,9 +342,9 @@ class SharedPlaylistAnnotationsResource(MethodView):
 
 def _is_task_in_playlist(playlist, task_id):
     """
-    Ensure the given task id is the preview task of one of the playlist's
-    shots. Used to scope guest mutations (comments, status changes) to the
-    playlist exposed by the share token.
+    Return True if the given task id is the preview task of one of the
+    playlist's shots. Used to scope guest mutations (comments, status
+    changes) to the playlist exposed by the share token.
     """
     tid = str(task_id)
     for shot in playlist.get("shots", []) or []:

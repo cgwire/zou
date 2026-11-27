@@ -103,6 +103,9 @@ def send_storage_file(
 class WorkingFileFileResource(MethodView):
 
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
+        """
+        Save the uploaded file in the temporary folder and return its path.
+        """
         uploaded_file = request.files["file"]
         tmp_folder = current_app.config["TMP_DIR"]
         file_name = f"working-file-{working_file_id}"
@@ -162,6 +165,10 @@ def uploaded_data(size):
 class OutputFileFileResource(MethodView):
 
     def check_access(self, output_file_id):
+        """
+        Raise PermissionDenied if the user has no access to the project of
+        the output file. Return the output file and its entity.
+        """
         output_file = files_service.get_output_file(output_file_id)
         entity = entities_service.get_entity(output_file["entity_id"])
         permissions_service.check_project_access(entity["project_id"])

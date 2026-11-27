@@ -35,6 +35,10 @@ def snap_to_whole(value):
 
 
 def parse_number(value):
+    """
+    Return the value as a float. Raise ValueError when it is not a finite
+    number.
+    """
     number = float(value)
     if not math.isfinite(number):
         raise ValueError(value)
@@ -258,8 +262,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 if not candidate["canceled"]
             ] or candidates
         if len(candidates) > 1 and self.own_episode_id is not None:
-            # The import matched the assets of the episode only before
-            # matching the cast ones: their rows must keep importing.
+            # The own assets of the episode win: a file that names them
+            # only must keep importing now that the cast ones match too.
             candidates = [
                 candidate
                 for candidate in candidates
@@ -274,11 +278,19 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         return candidates[0] if candidates else None
 
     def describe_row(self, parent, name):
+        """
+        Return the row entity as error messages name it, with its parent
+        when the parent counts.
+        """
         if self.is_parent_ignored(parent):
             return f"Entity '{name}'"
         return f"Entity '{name}' with parent '{parent}'"
 
     def describe_episodes(self, candidates):
+        """
+        Return the episodes of the candidates for an error message, an empty
+        string when the project has no episodes or for Episode rows.
+        """
         if not self.episode_names or self.for_entity == "Episode":
             return ""
         labels = sorted(
@@ -303,6 +315,10 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         )
 
     def is_exact_match(self, candidate, parent, name):
+        """
+        Tell whether the candidate has exactly the name and the parent name
+        of the row, the parent ignored when it does not count.
+        """
         return candidate["name"].strip() == name and (
             self.is_parent_ignored(parent)
             or candidate["parent_name"].strip() == parent

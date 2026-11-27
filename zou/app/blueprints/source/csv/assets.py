@@ -74,6 +74,11 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         }
 
     def get_tasks_update(self, row):
+        """
+        Return the task changes of the row: one entry per task type whose
+        status, comment or assignation cell is filled. Raise RowException
+        on an unknown status.
+        """
         tasks_update = []
         for task_type in self.task_types_in_project_for_assets:
             task_status_name = row.get(task_type["name"], None)
@@ -138,8 +143,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         self, tasks_update, entity, asset_creation=False
     ):
         """
-        Create the workflow tasks of the entity, then apply the statuses and
-        comments read from the row.
+        Create the workflow tasks of the entity, then apply the statuses,
+        comments and assignations read from the row.
         """
         tasks_map = self.create_missing_tasks(
             entity, {} if asset_creation else None
@@ -149,7 +154,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             task_type_id = task_update["task_type_id"]
             if task_type_id not in tasks_map:
                 # The column names a task type outside the asset type
-                # workflow: the explicit status still creates its task.
+                # workflow: a filled cell still creates its task.
                 task = tasks_service.create_task(
                     task_types_service.get_task_type(task_type_id),
                     entity.serialize(),
@@ -189,8 +194,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         asset_name = row["Name"]
         entity_type_name = row["Type"]
         if entity_type_name is None or not entity_type_name.strip():
-            # An empty cell used to create an asset type named "" that
-            # every later empty row then reused.
+            # An empty cell would create an asset type named "" that every
+            # later empty row would then reuse.
             raise RowException("An asset type is required in the Type column")
         # An empty cell reads as "" with DictReader: it means no episode,
         # not an episode named "".

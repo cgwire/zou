@@ -116,9 +116,9 @@ class MetadataDescriptorResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         """
-        Check if the data descriptor has a valid data_type and valid
-        departments, and that a new field name is not one a built-in field
-        uses. A descriptor created on one before that check keeps it.
+        Check if the data descriptor has a valid data_type, and that a new
+        field name is not one a built-in field uses. A descriptor created on
+        one before that check keeps it.
         """
         data = super().update_data(data, instance_id)
         if "data_type" in data:

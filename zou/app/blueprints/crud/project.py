@@ -67,8 +67,8 @@ class ProjectsResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         """
-        Check if the data descriptor has a valid production_style and
-        resolution.
+        Check that the project has a valid production_style, resolution and
+        movie bitrates. A null production_style becomes 2d3d.
         """
         if "production_style" in data:
             if data["production_style"] is None:
@@ -166,8 +166,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def get_serialized_instance(self, instance_id, relations=True):
         # With its relations, the project is the one the open projects
         # listing serves, extra data included: a closed project, read by
-        # its id since it is out of that listing, was missing its metadata
-        # descriptors, task type priorities, and task status links.
+        # its id since it is out of that listing, gets its metadata
+        # descriptors, task type priorities, and task status links too.
         if not relations:
             return super().get_serialized_instance(instance_id, relations)
         project = self.get_model_or_404(instance_id)
@@ -266,7 +266,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     def update_data(self, data, instance_id):
         """
-        Check if the data descriptor has a valid production_style.
+        Check that the project has a valid production_style. A null
+        production_style becomes 2d3d.
         """
         data = super().update_data(data, instance_id)
         if "production_style" in data:

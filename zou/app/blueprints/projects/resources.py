@@ -63,7 +63,8 @@ VALID_METADATA_ENTITY_TYPES = [
 class OpenProjectsResource(MethodView, ArgsMixin):
     """
     Return the list of projects currently running. Most of the time, past
-    projects are not needed.
+    projects are not needed. A non-admin gets only the open projects of
+    their teams.
     """
 
     @jwt_required()
@@ -81,8 +82,8 @@ class OpenProjectsResource(MethodView, ArgsMixin):
 
 class AllProjectsResource(MethodView, ArgsMixin):
     """
-    Return all projects listed in database. Ensure that user has at least
-    the manager level before that.
+    Return all projects listed in database to an admin. The other users
+    get only the projects of their teams.
     """
 
     @jwt_required()
@@ -384,7 +385,7 @@ class ProductionTaskTypeSoftwareRemoveResource(MethodView):
 
 class ProductionTaskStatusResource(MethodView, ArgsMixin):
     """
-    Allow to add a task type linked to a production.
+    Allow to list or add the task statuses linked to a production.
     """
 
     @jwt_required()
@@ -466,7 +467,7 @@ class ProductionSettingsBatchResource(MethodView):
 
 class ProductionStatusAutomationResource(MethodView, ArgsMixin):
     """
-    Allow to add a status automation linked to a production.
+    Allow to list or add the status automations linked to a production.
     """
 
     @jwt_required()
@@ -513,7 +514,8 @@ class ProductionStatusAutomationRemoveResource(MethodView):
 
 class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
     """
-    Allow to add a preview background file linked to a production.
+    Allow to list or add the preview background files linked to a
+    production.
     """
 
     @jwt_required()
@@ -928,7 +930,7 @@ class ProductionScheduleItemsResource(MethodView):
 
 class ProductionTaskTypeScheduleItemsResource(MethodView):
     """
-    Resource to retrieve schedule items for given production.
+    Resource to retrieve task type schedule items for given production.
     """
 
     @jwt_required()
@@ -1054,7 +1056,7 @@ class ProductionBudgetsResource(MethodView, ArgsMixin):
 
 class ProductionBudgetResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve a budget for given production.
+    Resource to retrieve, update or delete a budget of given production.
     """
 
     @jwt_required()

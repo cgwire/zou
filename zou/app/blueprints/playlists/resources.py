@@ -534,8 +534,8 @@ class PlaylistShareLinkInviteResource(MethodView):
     Email a share link to one or more recipients (manager+).
 
     Recipients can be free-form emails and/or existing Person ids
-    (e.g. clients on the project) — the server resolves person ids to
-    their email server-side. The endpoint is fire-and-forget: no DB
+    (e.g. clients on the project): the server resolves person ids to
+    their email. The endpoint is fire-and-forget: no DB
     record of the invitation is kept.
     """
 
