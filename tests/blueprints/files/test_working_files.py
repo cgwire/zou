@@ -152,6 +152,17 @@ class WorkingFilesTestCase(ApiDBTestCase):
             "blender/cosmos_landromat_props_tree_shaders_main_v066",
         )
 
+    def test_new_working_file_with_a_separator(self):
+        working_file = self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "sep": "\\"},
+        )
+        self.assertEqual(
+            working_file["path"],
+            "/simple\\productions\\cosmos_landromat\\assets\\props\\tree\\"
+            "shaders\\blender\\cosmos_landromat_props_tree_shaders_main_v001",
+        )
+
     def test_create_same_working_file(self):
         path = f"/data/tasks/{self.task_id}/working-files/new"
         self.post(

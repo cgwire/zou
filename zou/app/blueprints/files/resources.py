@@ -493,7 +493,12 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
 
     def build_path(self, task, name, revision, software, sep, mode):
         folder_path = file_tree_service.get_working_folder_path(
-            task, name=name, software=software, mode=mode, revision=revision
+            task,
+            name=name,
+            software=software,
+            mode=mode,
+            revision=revision,
+            sep=sep,
         )
         file_name = file_tree_service.get_working_file_name(
             task, name=name, software=software, revision=revision, mode=mode
