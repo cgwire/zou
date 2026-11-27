@@ -59,6 +59,7 @@ class LdapDirectoryMixin:
             "LDAP_VERIFY_CERTIFICATES": False,
             "LDAP_CA_FILE": "",
             "LDAP_NESTED_GROUPS": False,
+            "LDAP_START_TLS": False,
         }
         settings.update(settings_overrides)
         return settings

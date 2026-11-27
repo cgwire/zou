@@ -56,6 +56,7 @@ def get_settings():
         "LDAP_VERIFY_CERTIFICATES",
         "LDAP_CA_FILE",
         "LDAP_NESTED_GROUPS",
+        "LDAP_START_TLS",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -110,14 +111,23 @@ def get_server(settings, get_info=ldap3.ALL):
 def connect(settings, user, password, authentication, get_info=ldap3.ALL):
     """
     Open a connection to the directory and bind it with the given identity.
+    With StartTLS, the connection is encrypted before the bind, and a
+    failed StartTLS raises before any password is sent.
     """
+    auto_bind = True
+    if settings["LDAP_START_TLS"]:
+        if settings["LDAP_SSL"]:
+            raise ldap3.core.exceptions.LDAPSSLConfigurationError(
+                "LDAP_SSL and LDAP_START_TLS cannot be both set"
+            )
+        auto_bind = ldap3.AUTO_BIND_TLS_BEFORE_BIND
     conn = ldap3.Connection(
         get_server(settings, get_info=get_info),
         user=user,
         password=password,
         authentication=authentication,
         raise_exceptions=True,
-        auto_bind=True,
+        auto_bind=auto_bind,
         client_strategy=CLIENT_STRATEGY,
     )
     if not conn.bound:

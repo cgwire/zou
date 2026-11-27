@@ -156,6 +156,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             "LDAP_HOST": "dc.studio.local",
             "LDAP_PORT": "636",
             "LDAP_SSL": True,
+            "LDAP_START_TLS": False,
             "LDAP_VERIFY_CERTIFICATES": False,
             "LDAP_CA_FILE": "",
         }
@@ -285,6 +286,42 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
                 ldap3.core.exceptions.LDAPPasswordIsMandatoryError
             ):
                 ldap_service.open_service_connection(settings)
+
+    def connection_kwargs(self, settings):
+        with mock.patch.object(ldap3, "Connection") as connection:
+            ldap_service.connect(settings, "user", "secret", ldap3.SIMPLE)
+        (server,) = connection.call_args.args
+        return {"server": server, **connection.call_args.kwargs}
+
+    def test_connect_without_start_tls(self):
+        settings = self.tls_settings(LDAP_SSL=False)
+        self.assertIs(self.connection_kwargs(settings)["auto_bind"], True)
+
+    def test_connect_with_start_tls(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False, LDAP_PORT="389", LDAP_START_TLS=True
+        )
+        self.assertEqual(
+            self.connection_kwargs(settings)["auto_bind"],
+            ldap3.AUTO_BIND_TLS_BEFORE_BIND,
+        )
+
+    def test_connect_start_tls_verifies_certificates(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False,
+            LDAP_START_TLS=True,
+            LDAP_VERIFY_CERTIFICATES=True,
+        )
+        server = self.connection_kwargs(settings)["server"]
+        self.assertFalse(server.ssl)
+        self.assertEqual(server.tls.validate, ssl.CERT_REQUIRED)
+
+    def test_connect_ssl_and_start_tls(self):
+        settings = self.tls_settings(LDAP_START_TLS=True)
+        with self.assertRaises(
+            ldap3.core.exceptions.LDAPSSLConfigurationError
+        ):
+            ldap_service.connect(settings, "user", "secret", ldap3.SIMPLE)
 
     def test_search_users_excluded_account(self):
         settings = self.directory(

@@ -473,6 +473,17 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
         self.assertTrue(Person.get(person["id"]).active)
 
+    def test_start_tls_failure(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()])
+        with mock.patch.object(
+            ldap_service,
+            "open_service_connection",
+            side_effect=ldap3.core.exceptions.LDAPStartTLSError("refused"),
+        ):
+            self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
     def test_missing_ca_file(self):
         self.use_directory(
             [self.jdoe()],
