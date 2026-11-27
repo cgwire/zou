@@ -142,25 +142,10 @@ class WorkingFileFileResource(MethodView):
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
         )
-        try:
-            file_store.add_file("working", working_file_id, file_path)
-            size = os.path.getsize(file_path)
-        finally:
-            os.remove(file_path)
-        working_file = files_service.update_working_file(
-            working_file_id, uploaded_data(size)
+        working_file = files_service.store_working_file_content(
+            working_file_id, file_path
         )
         return working_file, 201
-
-
-def uploaded_data(size):
-    """
-    The fields that an upload sets on a working file or an output file.
-    """
-    return {
-        "uploaded_at": date_helpers.get_utc_now_datetime(),
-        "size": size,
-    }
 
 
 class OutputFileFileResource(MethodView):
@@ -216,13 +201,8 @@ class OutputFileFileResource(MethodView):
             current_app.config["TMP_DIR"], f"output-file-{output_file_id}"
         )
         uploaded_file.save(file_path)
-        try:
-            file_store.add_file("output", output_file_id, file_path)
-            size = os.path.getsize(file_path)
-        finally:
-            os.remove(file_path)
-        output_file = files_service.update_output_file(
-            output_file_id, uploaded_data(size)
+        output_file = files_service.store_output_file_content(
+            output_file_id, file_path
         )
         return output_file, 201
 

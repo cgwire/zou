@@ -1,5 +1,6 @@
 import itertools
 import logging
+import os
 from operator import itemgetter
 
 from sqlalchemy import desc, func
@@ -34,7 +35,14 @@ from zou.app.services.base_service import (
     get_or_create_instance_by_name,
 )
 from zou.app.stores import file_store, queue_store
-from zou.app.utils import cache, events, fields, fs, query as query_utils
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    events,
+    fields,
+    fs,
+    query as query_utils,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1057,6 +1065,45 @@ def update_output_file(output_file_id, data):
     output_file.update(data)
     clear_output_file_cache(output_file_id)
     return output_file.serialize()
+
+
+def store_working_file_content(working_file_id, file_path):
+    """
+    Save the given local file as the content of the given working file, then
+    remove the local file. Set the size and the upload date of the working
+    file. Return the working file as a dict.
+    """
+    return update_working_file(
+        working_file_id,
+        store_file_content("working", working_file_id, file_path),
+    )
+
+
+def store_output_file_content(output_file_id, file_path):
+    """
+    Save the given local file as the content of the given output file, then
+    remove the local file. Set the size and the upload date of the output
+    file. Return the output file as a dict.
+    """
+    return update_output_file(
+        output_file_id, store_file_content("output", output_file_id, file_path)
+    )
+
+
+def store_file_content(prefix, file_id, file_path):
+    """
+    Save the given local file in the file storage, then remove it. Return
+    the fields that an upload sets on a working file or an output file.
+    """
+    try:
+        file_store.add_file(prefix, file_id, file_path)
+        size = os.path.getsize(file_path)
+    finally:
+        os.remove(file_path)
+    return {
+        "uploaded_at": date_helpers.get_utc_now_datetime(),
+        "size": size,
+    }
 
 
 def get_output_types_for_entity(entity_id):
