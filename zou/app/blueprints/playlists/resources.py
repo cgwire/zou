@@ -374,9 +374,10 @@ class BuildJobResource(MethodView):
         """
         Delete build job
         """
-        permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
-        permissions_service.check_playlist_access(playlist)
+        permissions_service.check_manager_project_access(
+            playlist["project_id"]
+        )
         build_job = playlist_builds_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
             raise BuildJobNotFoundException

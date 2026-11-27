@@ -664,6 +664,23 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.delete(path)
         self.get_404(path)
 
+    def test_a_client_cannot_delete_a_build_job(self):
+        """
+        The delete route used the read check of the builds, which lets a
+        client of the team in on a playlist shared with clients.
+        """
+        self.generate_fixture_playlist("Playlist", for_client=True)
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+        path = f"/data/playlists/{self.playlist.id}/jobs/{build_job['id']}"
+        self.get(path)
+        self.delete(path, 403)
+
     def test_notify_clients(self):
         self.generate_fixture_playlist("Playlist")
         playlist_id = str(self.playlist.id)
