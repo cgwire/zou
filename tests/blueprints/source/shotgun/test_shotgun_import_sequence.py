@@ -72,3 +72,20 @@ class ImportShotgunSequence(ShotgunTestCase):
 
         sequence = self.get("data/sequences")[0]
         self.assertIsNone(sequence["parent_id"])
+
+    def test_remove_sequence_with_shots(self):
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("shots")
+        sequence = Entity.get_by(
+            shotgun_id=1,
+            entity_type_id=entity_types_service.get_sequence_type()["id"],
+        )
+
+        sequence_id = sequence.id
+        self.spare_fixtures_from_rollbacks()
+
+        api_path = "/import/shotgun/remove/sequence"
+        result = self.post(api_path, {"id": 1}, 200)
+        self.assertFalse(result["success"])
+        self.assertIsNotNone(Entity.get(sequence_id))

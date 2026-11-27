@@ -11,6 +11,7 @@ from zou.app.blueprints.source.shotgun.exception import (
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.services import (
+    cascade_deletion_service,
     entity_types_service,
     persons_service,
 )
@@ -100,6 +101,9 @@ class ImportRemoveShotgunSequenceResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self,
             Entity,
+            lambda sequence: cascade_deletion_service.remove_sequence(
+                str(sequence.id)
+            ),
             entity_type_id=entity_types_service.get_sequence_type()["id"],
         )
 

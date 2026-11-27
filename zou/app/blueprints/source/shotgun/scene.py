@@ -8,6 +8,7 @@ from zou.app.blueprints.source.shotgun.base import (
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.services import (
+    cascade_deletion_service,
     entity_types_service,
     persons_service,
 )
@@ -90,6 +91,7 @@ class ImportRemoveShotgunSceneResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self,
             Entity,
+            lambda scene: cascade_deletion_service.remove_scene(str(scene.id)),
             entity_type_id=entity_types_service.get_scene_type()["id"],
         )
 

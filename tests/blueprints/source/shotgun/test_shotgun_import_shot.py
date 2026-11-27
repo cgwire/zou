@@ -124,3 +124,36 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.assertEqual(self.shots, [])
 
         self.get(f"data/shots/{shot['id']}", 404)
+
+    def test_remove_shot_with_tasks(self):
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("assets")
+        self.load_fixture("status")
+        self.load_fixture("steps")
+        self.post("/import/shotgun/shots", [self.sg_shot], 200)
+        sg_task = {
+            "cached_display_name": "Animation",
+            "created_by": {"id": 1, "name": "John Doe", "type": "HumanUser"},
+            "due_date": None,
+            "duration": 7200,
+            "entity": {"id": self.sg_shot["id"], "type": "Shot"},
+            "id": 20,
+            "project": {"id": 1, "name": "Agent327", "type": "Project"},
+            "sg_sort_order": None,
+            "sg_status_list": "wip",
+            "start_date": None,
+            "step": {"id": 1, "name": "Modeling Shading", "type": "Step"},
+            "task_assignees": [],
+            "type": "Task",
+        }
+        self.post("/import/shotgun/tasks", [sg_task], 200)
+        shot = self.get("data/shots/all")[0]
+        self.assertEqual(
+            len(self.get(f"data/tasks?entity_id={shot['id']}")), 1
+        )
+
+        api_path = "/import/shotgun/remove/shot"
+        result = self.post(api_path, {"id": self.sg_shot["id"]}, 200)
+        self.assertTrue(result["success"])
+        self.assertTrue(Entity.get(shot["id"]).canceled)
