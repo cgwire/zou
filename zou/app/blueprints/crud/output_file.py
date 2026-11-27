@@ -2,9 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.entity import Entity
 from zou.app.models.output_file import QUALITIES, OutputFile
-from zou.app.models.project import Project
 from zou.app.services import (
     entities_service,
     files_service,
@@ -48,20 +46,12 @@ class OutputFilesResource(BaseModelsResource):
         if permissions.has_admin_permissions():
             return query
         else:
-            query = (
-                query.join(Entity, OutputFile.entity_id == Entity.id)
-                .join(Project)
-                .filter(user_service.build_related_projects_filter())
-            )
             # A vendor reads no output file, on the projects they are one.
-            vendor_project_ids = user_service.get_project_ids_with_roles(
-                "vendor"
+            return files_service.filter_output_files_by_projects(
+                query,
+                user_service.build_related_projects_filter(),
+                user_service.get_project_ids_with_roles("vendor"),
             )
-            if vendor_project_ids:
-                query = query.filter(
-                    Entity.project_id.not_in(vendor_project_ids)
-                )
-            return query
 
     def emit_create_event(self, instance_dict):
         entity = entities_service.get_entity(instance_dict["entity_id"])

@@ -24,6 +24,7 @@ from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
@@ -121,6 +122,24 @@ def _apply_output_file_filters(
         query = query.filter(OutputFile.representation == representation)
     if file_status_id:
         query = query.filter(OutputFile.file_status_id == file_status_id)
+    return query
+
+
+def filter_output_files_by_projects(
+    query, projects_filter, excluded_project_ids
+):
+    """
+    Return the given output file query limited by the given project filter,
+    applied to the projects of the output file entities. Remove the output
+    files of the given excluded projects.
+    """
+    query = (
+        query.join(Entity, OutputFile.entity_id == Entity.id)
+        .join(Project)
+        .filter(projects_filter)
+    )
+    if excluded_project_ids:
+        query = query.filter(Entity.project_id.not_in(excluded_project_ids))
     return query
 
 
