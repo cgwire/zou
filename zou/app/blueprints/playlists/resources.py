@@ -36,8 +36,8 @@ from zou.app.services import (
     projects_service,
     shots_service,
 )
-from zou.app.stores import file_store, queue_store
-from zou.app.utils import fs, permissions, validation
+from zou.app.stores import queue_store
+from zou.app.utils import permissions, validation
 from zou.app.utils.openapi import load_specs, swag_from
 from zou.utils.movie import EncodingParameters
 
@@ -239,13 +239,10 @@ class PlaylistDownloadResource(MethodView):
             return {"error": True, "message": "Build is not finished"}, 400
 
         project = projects_service.get_project(playlist["project_id"])
-        movie_file_path = fs.get_file_path_and_file(
-            config,
-            file_store.get_local_movie_path,
-            file_store.open_movie,
-            "playlists",
-            build_job_id,
-            "mp4",
+        movie_file_path = (
+            playlist_builds_service.get_stored_playlist_movie_path(
+                build_job_id
+            )
         )
         context_name = (
             playlist_builds_service.get_playlist_download_context_name(

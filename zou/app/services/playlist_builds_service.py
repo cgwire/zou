@@ -453,6 +453,21 @@ def get_playlist_movie_file_path(build_job):
     return os.path.join(config.TMP_DIR, movie_file_name)
 
 
+def get_stored_playlist_movie_path(build_job_id):
+    """
+    Return the local path of the stored movie of the given build job. If the
+    storage is not local, download the movie into the cache first.
+    """
+    return fs.get_file_path_and_file(
+        config,
+        file_store.get_local_movie_path,
+        file_store.open_movie,
+        "playlists",
+        build_job_id,
+        "mp4",
+    )
+
+
 def get_playlist_zip_file_path(playlist):
     """
     Build a file path for an archive of the given playlist. Each call gives a
