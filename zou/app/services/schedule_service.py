@@ -401,6 +401,18 @@ def get_production_schedule_version_task_links(
     return fields.serialize_models(query.all(), relations=relations)
 
 
+def filter_version_task_links_by_project(query, project_id):
+    """
+    Return the given production schedule version task link query limited to
+    the task links of the versions of the given project.
+    """
+    return query.join(
+        ProductionScheduleVersion,
+        ProductionScheduleVersion.id
+        == ProductionScheduleVersionTaskLink.production_schedule_version_id,
+    ).filter(ProductionScheduleVersion.project_id == project_id)
+
+
 def detach_production_schedule_version(production_schedule_version_id):
     """
     Clear the references to the given production schedule version in

@@ -145,13 +145,8 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
         if "project_id" in options:
             if not fields.is_valid_id(options["project_id"]):
                 raise WrongParameterException("Invalid project_id.")
-            link = ProductionScheduleVersionTaskLink
-            query = query.join(
-                ProductionScheduleVersion,
-                ProductionScheduleVersion.id
-                == link.production_schedule_version_id,
-            ).filter(
-                ProductionScheduleVersion.project_id == options["project_id"]
+            query = schedule_service.filter_version_task_links_by_project(
+                query, options["project_id"]
             )
         return query
 
