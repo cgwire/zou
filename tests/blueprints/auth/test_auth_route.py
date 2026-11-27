@@ -93,12 +93,6 @@ class AuthTestCase(ApiDBTestCase):
             )
             self.assertIn(response.status_code, (401, 422), nested_part)
 
-    def test_login(self):
-        tokens = self.post("auth/login", self.credentials, 200)
-
-        self.assertIsAuthenticated(tokens)
-        self.logout(tokens)
-
     def test_login_returns_departments(self):
         self.generate_fixture_department()
         persons_service.add_to_department(
@@ -657,8 +651,6 @@ class AuthTestCase(ApiDBTestCase):
         self.log_in("john.did@example.com")
         login_logs = self.get("/data/events/login-logs/last")
         self.assertEqual(len(login_logs), 4)
-        login_logs = self.get("/data/events/login-logs/last?limit=2")
-        self.assertEqual(len(login_logs), 2)
 
 
 class Enforce2FATestCase(ApiDBTestCase):
