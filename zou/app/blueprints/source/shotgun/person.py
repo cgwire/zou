@@ -70,6 +70,8 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
             person = Person.get_by(shotgun_id=data["shotgun_id"])
             if person is None:
                 person = Person.get_by(email=data["email"], is_bot=False)
+                if person is not None:
+                    person.update({"shotgun_id": data["shotgun_id"]})
 
             if person is None:
                 data["password"] = None

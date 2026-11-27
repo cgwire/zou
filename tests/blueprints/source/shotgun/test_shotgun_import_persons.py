@@ -89,3 +89,21 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
 
         person = self.persons[1]
         self.assertEqual(person["role"], "admin")
+
+    def test_import_person_matched_by_email(self):
+        person = Person.create(
+            first_name="James",
+            last_name="Doe",
+            email="james.doe@example.com",
+        )
+        sg_person = {
+            "email": "james.doe@example.com",
+            "firstname": "James",
+            "lastname": "Doe",
+            "login": "jamie",
+            "id": 3,
+            "type": "HumanUser",
+        }
+        self.post("/import/shotgun/persons", [sg_person], 200)
+        self.assertEqual(Person.get(person.id).shotgun_id, 3)
+        self.assertEqual(len(self.get("data/persons")), 2)
