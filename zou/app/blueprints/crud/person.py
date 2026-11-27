@@ -305,11 +305,7 @@ class PersonsResource(BaseModelsResource):
                 raise WrongParameterException(str(e))
 
             if not data.get("is_bot", False):
-                existing = Person.query.filter(
-                    Person.email == data["email"],
-                    Person.is_bot.isnot(True),
-                ).first()
-                if existing is not None:
+                if persons_service.is_email_used(data["email"]):
                     raise WrongParameterException("Email already in use.")
 
         return data
@@ -426,7 +422,9 @@ class PersonResource(BaseModelResource, ArgsMixin):
             # Reject a past date only when it actually changes. Re-submitting an
             # already-expired person's own date (e.g. to disable a bot) must
             # keep working, otherwise expired accounts can never be edited.
-            current_expiration_date = Person.get(instance_id).expiration_date
+            current_expiration_date = persons_service.get_person_raw(
+                instance_id
+            ).expiration_date
             if (
                 new_expiration_date != current_expiration_date
                 and new_expiration_date < datetime.date.today()
@@ -441,15 +439,12 @@ class PersonResource(BaseModelResource, ArgsMixin):
             except auth.EmailNotValidException as e:
                 raise WrongParameterException(str(e))
 
-            person = Person.get(instance_id)
+            person = persons_service.get_person_raw(instance_id)
             is_bot = data.get("is_bot", person.is_bot)
             if not is_bot:
-                existing = Person.query.filter(
-                    Person.email == data["email"],
-                    Person.id != instance_id,
-                    Person.is_bot.isnot(True),
-                ).first()
-                if existing is not None:
+                if persons_service.is_email_used(
+                    data["email"], exclude_id=instance_id
+                ):
                     raise WrongParameterException("Email already in use.")
 
         return data

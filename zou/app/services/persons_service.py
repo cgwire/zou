@@ -392,6 +392,20 @@ def get_person_by_email(email, unsafe=False, relations=False):
         return person.serialize_safe(relations=relations)
 
 
+def is_email_used(email, exclude_id=None):
+    """
+    Return True if a person that is not a bot has the given email. Do not
+    count the person that has the given exclude ID.
+    """
+    query = Person.query.filter(
+        Person.email == email,
+        Person.is_bot.isnot(True),
+    )
+    if exclude_id is not None:
+        query = query.filter(Person.id != exclude_id)
+    return query.first() is not None
+
+
 def get_person_by_sso_identity(protocol, issuer, subject):
     """
     Return the person linked to the given identity as a dict. The protocol
