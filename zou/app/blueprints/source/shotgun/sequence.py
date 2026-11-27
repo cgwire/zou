@@ -34,12 +34,11 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
         self.current_user_id = persons_service.get_current_user()["id"]
 
     def get_episode(self, sg_sequence):
-        sg_episode = sg_sequence.get("episode", {"id": None})
-        if sg_episode is not None:
-            episode_sg_id = sg_episode.get("id", None)
-            return self.get_episode_id(episode_sg_id)
-        else:
+        # A None ID would match the episodes created in Kitsu.
+        episode_sg_id = (sg_sequence.get("episode") or {}).get("id")
+        if episode_sg_id is None:
             return None
+        return self.get_episode_id(episode_sg_id)
 
     def extract_data(self, sg_sequence):
         project_id = self.get_project(sg_sequence)

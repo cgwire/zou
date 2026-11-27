@@ -1,6 +1,7 @@
 from tests.blueprints.source.shotgun.base import ShotgunTestCase
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
+from zou.app.services import entity_types_service
 
 
 class ImportShotgunSequence(ShotgunTestCase):
@@ -50,3 +51,24 @@ class ImportShotgunSequence(ShotgunTestCase):
         self.assertEqual(sequence["shotgun_id"], sg_sequence["id"])
         self.assertEqual(sequence["project_id"], str(project.id))
         self.assertEqual(sequence["parent_id"], str(episode.id))
+
+    def test_import_sequence_without_episode(self):
+        self.load_fixture("projects")
+        project = Project.get_by(name="Agent327")
+        Entity.create(
+            name="E01",
+            project_id=project.id,
+            entity_type_id=entity_types_service.get_episode_type()["id"],
+        )
+        sg_sequence = {
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
+            "code": "S04",
+            "type": "Sequence",
+            "id": 4,
+            "description": "test description",
+        }
+        api_path = "/import/shotgun/sequences"
+        self.post(api_path, [sg_sequence], 200)
+
+        sequence = self.get("data/sequences")[0]
+        self.assertIsNone(sequence["parent_id"])
