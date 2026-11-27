@@ -1,8 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.export.csv.base import BaseCsvExport
-from zou.app.models.department import Department
-from zou.app.models.task_type import TaskType
+from zou.app.services import task_types_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -26,10 +25,7 @@ class TaskTypesCsvExport(BaseCsvExport):
         return ["Department", "Name"]
 
     def build_query(self):
-        query = TaskType.query.order_by(Department.name, TaskType.name)
-        query = query.join(Department, TaskType.department_id == Department.id)
-        query = query.add_columns(Department.name)
-        return query
+        return task_types_service.get_task_types_with_department_names_query()
 
     def build_row(self, task_type_row):
         task_type, department_name = task_type_row

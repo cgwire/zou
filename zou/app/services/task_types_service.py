@@ -5,6 +5,7 @@ from zou.app.exceptions import (
     TaskTypeNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.department import Department
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
@@ -64,6 +65,16 @@ def get_task_types():
     Return all the task types.
     """
     return fields.serialize_models(TaskType.get_all())
+
+
+def get_task_types_with_department_names_query():
+    """
+    Return a query on the task types joined with the name of their
+    department, sorted by department name and task type name.
+    """
+    query = TaskType.query.order_by(Department.name, TaskType.name)
+    query = query.join(Department, TaskType.department_id == Department.id)
+    return query.add_columns(Department.name)
 
 
 @cache.memoize_function(120)
