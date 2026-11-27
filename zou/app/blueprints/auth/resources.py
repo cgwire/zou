@@ -1252,6 +1252,8 @@ class SAMLSSOResource(MethodView):
         An unknown person is created, with a random password, from the
         attributes of the assertion.
         """
+        # create_person requires the names, the assertion may not carry them.
+        create_info = {"first_name": "", "last_name": "", **person_info}
         if not config.SAML_SUBJECT_ATTRIBUTE:
             try:
                 return persons_service.get_person_by_email(email)
@@ -1260,7 +1262,7 @@ class SAMLSSOResource(MethodView):
                     secrets.token_urlsafe(48)
                 )
                 return persons_service.create_person(
-                    email, random_password, **person_info
+                    email, random_password, **create_info
                 )
         issuer = authn_response.issuer()
         subject = get_subject_from_ava(authn_response.ava)
@@ -1273,7 +1275,7 @@ class SAMLSSOResource(MethodView):
                 "saml", issuer, subject
             )
         except PersonNotFoundException:
-            return link_sso_person("saml", issuer, subject, email, person_info)
+            return link_sso_person("saml", issuer, subject, email, create_info)
 
 
 class SAMLLoginResource(MethodView):
