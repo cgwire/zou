@@ -1,4 +1,7 @@
+import json
+
 from tests.base import ApiDBTestCase
+from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.services import (
     persons_service,
@@ -277,6 +280,24 @@ class PreviewFileTestCase(ApiDBTestCase):
         preview_files = self.get("data/preview-files")
         self.assertEqual(len(preview_files), 5)
         self.delete_404(f"data/preview-files/{fields.gen_uuid()}")
+
+    def test_delete_preview_file_referenced_by_a_comment(self):
+        """
+        The refusal of the database used to reach the client raw, SQL
+        statement and values included.
+        """
+        self.generate_fixture_comment(task_id=self.task1_1.id)
+        preview_file_id = str(self.preview_file1_1.id)
+        Comment.get(self.comment["id"]).update(
+            {"preview_file_id": preview_file_id}
+        )
+        result = json.loads(
+            self.delete(f"data/preview-files/{preview_file_id}", 400)
+        )
+        self.assertEqual(
+            result["message"],
+            "The change conflicts with records referencing this one.",
+        )
 
     def test_token_cost_fields(self):
         # Roundtrip through the CRUD endpoint: set token_in / token_out

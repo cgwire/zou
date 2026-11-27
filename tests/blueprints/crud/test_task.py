@@ -1,6 +1,10 @@
+import datetime
+import json
+
 from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.models.task import Task
+from zou.app.models.time_spent import TimeSpent
 from zou.app.services import projects_service, tasks_service
 from zou.app.utils import fields
 
@@ -176,6 +180,24 @@ class TaskTestCase(ApiDBTestCase):
         tasks = self.get("data/tasks")
         self.assertEqual(len(tasks), 2)
         self.delete_404(f"data/tasks/{fields.gen_uuid()}")
+
+    def test_delete_task_with_time_spents_without_force(self):
+        """
+        The refusal of the database used to reach the client raw, SQL
+        statement and values included.
+        """
+        task_id = str(self.tasks[0].id)
+        TimeSpent.create(
+            task_id=task_id,
+            person_id=self.person.id,
+            date=datetime.date(2024, 1, 1),
+            duration=60,
+        )
+        result = json.loads(self.delete(f"data/tasks/{task_id}", 400))
+        self.assertEqual(
+            result["message"],
+            "The change conflicts with records referencing this one.",
+        )
 
     def test_filter_by_assignee(self):
         tasks = self.get(f"data/tasks?assignees={self.person.id}")

@@ -2,7 +2,11 @@ from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import (
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
@@ -180,12 +184,8 @@ class PreviewFileResource(BaseModelResource):
             self.emit_delete_event(instance_dict)
             self.post_delete(instance_dict)
 
-        except IntegrityError as exception:
+        except (IntegrityError, StatementError) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
         return "", 204

@@ -304,6 +304,6 @@ class TaskResource(BaseModelResource, ArgsMixin):
 
         except IntegrityError as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
         return "", 204

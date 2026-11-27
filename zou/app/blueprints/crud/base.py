@@ -454,7 +454,7 @@ class BaseModelResource(MethodView, ArgsMixin):
 
         except StatementError as exception:
             current_app.logger.warning(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
         except ValueError:
             raise WrongParameterException("Invalid value.")
