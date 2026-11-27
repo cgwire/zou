@@ -606,22 +606,32 @@ def remove_otp_revovery_code(person_id, recovery_hash):
     return person.serialize()
 
 
+def _remove_spaces(code):
+    """
+    Return the given 2FA code without the spaces typed in it: authenticator
+    apps show a TOTP in two groups of digits, and no code holds a space.
+    """
+    return "".join(str(code).split())
+
+
 def check_totp(person, totp):
     """
-    Check the TOTP of a person.
+    Check the TOTP of a person. The spaces typed in the code are ignored.
     """
-    return pyotp.TOTP(person["totp_secret"]).verify(totp, valid_window=1)
+    return pyotp.TOTP(person["totp_secret"]).verify(
+        _remove_spaces(totp), valid_window=1
+    )
 
 
 def check_email_otp(person, email_otp, consume=True):
     """
     Check the email OTP of a person. A correct code works one time only,
-    unless consume is False.
+    unless consume is False. The spaces typed in the code are ignored.
     """
     count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
     if count is not None:
         if pyotp.HOTP(person["email_otp_secret"]).verify(
-            email_otp, int(count)
+            _remove_spaces(email_otp), int(count)
         ):
             if consume:
                 auth_tokens_store.delete(f"email-otp-count-{person['email']}")
@@ -633,9 +643,9 @@ def check_recovery_code(person, recovery_code):
     """
     Check the recovery code of a person. Remove a matching code from the
     person: it works one time only. Codes are made of capital letters and
-    digits, so a code typed in lowercase or between spaces matches too.
+    digits, so a code typed in lowercase or with spaces matches too.
     """
-    recovery_code = recovery_code.strip().upper()
+    recovery_code = _remove_spaces(recovery_code).upper()
     for recovery_hash in person["otp_recovery_codes"]:
         if auth.check_password(recovery_hash, recovery_code):
             remove_otp_revovery_code(person["id"], recovery_hash)
