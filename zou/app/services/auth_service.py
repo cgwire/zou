@@ -25,6 +25,7 @@ from ldap3.core.exceptions import (
     LDAPInvalidCredentialsResult,
     LDAPInvalidFilterError,
     LDAPSocketOpenError,
+    LDAPSSLConfigurationError,
 )
 from sqlalchemy import func
 from sqlalchemy.orm.attributes import flag_modified
@@ -367,6 +368,11 @@ def find_search_bind_user(person, identifier, password, app):
         app.logger.error(
             "LDAP service account bind failed: check LDAP_USER and "
             "LDAP_PASSWORD."
+        )
+        raise NoAuthStrategyConfigured()
+    except LDAPSSLConfigurationError as exception:
+        app.logger.error(
+            f"LDAP TLS configuration error, check LDAP_CA_FILE: {exception}"
         )
         raise NoAuthStrategyConfigured()
     try:

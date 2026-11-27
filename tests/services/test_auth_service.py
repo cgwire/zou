@@ -1,6 +1,7 @@
 import datetime
 from unittest import mock
 
+import ldap3
 import pytest
 from ldap3.core.exceptions import (
     LDAPInvalidCredentialsResult,
@@ -465,6 +466,21 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
     def test_no_service_account(self):
         self.use_directory([self.jdoe()], LDAP_USER="")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
+    def test_missing_ca_file(self):
+        self.use_directory(
+            [self.jdoe()],
+            LDAP_VERIFY_CERTIFICATES=True,
+            LDAP_CA_FILE="/nonexistent/ca.pem",
+        )
+        with mock.patch.object(
+            ldap_service,
+            "get_server",
+            side_effect=lambda settings, **kwargs: ldap3.Server(
+                "mock", tls=ldap_service.get_tls(settings)
+            ),
+        ):
+            self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
 
     def test_invalid_user_filter(self):
         person = self.ldap_person()

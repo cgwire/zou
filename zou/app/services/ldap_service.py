@@ -3,6 +3,8 @@ Access to the LDAP directory: connection, user search and the conversion of
 directory entries into the dicts the person sync understands.
 """
 
+import ssl
+
 import ldap3
 from flask import current_app
 from ldap3.utils.conv import escape_filter_chars
@@ -50,6 +52,8 @@ def get_settings():
         "LDAP_IS_AD_SIMPLE",
         "LDAP_SEARCH_BIND",
         "LDAP_USER_FILTER",
+        "LDAP_VERIFY_CERTIFICATES",
+        "LDAP_CA_FILE",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -72,6 +76,21 @@ def get_login_attribute(settings):
     return "uid"
 
 
+def get_tls(settings):
+    """
+    TLS settings of the directory connection. Without certificate
+    verification, ldap3 accepts any server certificate. The host name is
+    sent (SNI) for the servers that pick their certificate from it.
+    """
+    if not settings["LDAP_VERIFY_CERTIFICATES"]:
+        return None
+    return ldap3.Tls(
+        validate=ssl.CERT_REQUIRED,
+        ca_certs_file=settings["LDAP_CA_FILE"] or None,
+        sni=settings["LDAP_HOST"],
+    )
+
+
 def get_server(settings, get_info=ldap3.ALL):
     """
     The directory server described by the settings. Reading its info (schema
@@ -81,6 +100,7 @@ def get_server(settings, get_info=ldap3.ALL):
         f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}",
         get_info=get_info,
         use_ssl=settings["LDAP_SSL"],
+        tls=get_tls(settings),
         connect_timeout=CONNECT_TIMEOUT,
     )
 

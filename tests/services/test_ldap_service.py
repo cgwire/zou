@@ -1,3 +1,5 @@
+import ssl
+import tempfile
 import uuid
 from unittest import mock
 
@@ -142,6 +144,51 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertEqual(search.call_count, 3)
         for call in search.call_args_list:
             self.assertEqual(call.kwargs["paged_size"], 2)
+
+    def tls_settings(self, **overrides):
+        settings = {
+            "LDAP_HOST": "dc.studio.local",
+            "LDAP_PORT": "636",
+            "LDAP_SSL": True,
+            "LDAP_VERIFY_CERTIFICATES": False,
+            "LDAP_CA_FILE": "",
+        }
+        settings.update(overrides)
+        return settings
+
+    def test_get_server_does_not_verify_by_default(self):
+        server = ldap_service.get_server(self.tls_settings())
+        self.assertTrue(server.ssl)
+        self.assertEqual(server.tls.validate, ssl.CERT_NONE)
+
+    def test_get_server_verifies_certificates(self):
+        server = ldap_service.get_server(
+            self.tls_settings(LDAP_VERIFY_CERTIFICATES=True)
+        )
+        self.assertEqual(server.tls.validate, ssl.CERT_REQUIRED)
+        self.assertIsNone(server.tls.ca_certs_file)
+        self.assertEqual(server.tls.sni, "dc.studio.local")
+
+    def test_get_server_verifies_with_ca_file(self):
+        with tempfile.NamedTemporaryFile(suffix=".pem") as ca_file:
+            server = ldap_service.get_server(
+                self.tls_settings(
+                    LDAP_VERIFY_CERTIFICATES=True, LDAP_CA_FILE=ca_file.name
+                )
+            )
+        self.assertEqual(server.tls.validate, ssl.CERT_REQUIRED)
+        self.assertEqual(server.tls.ca_certs_file, ca_file.name)
+
+    def test_get_server_missing_ca_file(self):
+        with self.assertRaises(
+            ldap3.core.exceptions.LDAPSSLConfigurationError
+        ):
+            ldap_service.get_server(
+                self.tls_settings(
+                    LDAP_VERIFY_CERTIFICATES=True,
+                    LDAP_CA_FILE="/nonexistent/ca.pem",
+                )
+            )
 
     def test_search_users_excluded_account(self):
         settings = self.directory(
@@ -412,7 +459,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertFalse(ldap_service.is_excluded(settings, "svc3"))
 
     def test_get_server_short_timeout(self):
-        settings = {"LDAP_HOST": "h", "LDAP_PORT": "389", "LDAP_SSL": False}
+        settings = self.tls_settings(LDAP_SSL=False)
         with mock.patch.object(ldap3, "Server") as server:
             ldap_service.get_server(settings)
             ldap_service.get_server(settings, get_info=ldap3.NONE)

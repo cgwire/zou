@@ -56,6 +56,8 @@ class LdapDirectoryMixin:
             "LDAP_IS_AD_SIMPLE": True,
             "LDAP_SEARCH_BIND": False,
             "LDAP_USER_FILTER": "",
+            "LDAP_VERIFY_CERTIFICATES": False,
+            "LDAP_CA_FILE": "",
         }
         settings.update(settings_overrides)
         return settings

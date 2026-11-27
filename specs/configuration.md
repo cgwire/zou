@@ -81,6 +81,8 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_IS_AD` | false | The directory is an Active Directory (NTLM bind, `sAMAccountName`) |
 | `LDAP_IS_AD_SIMPLE` | false | Active Directory with a simple bind and `cn` as login |
 | `LDAP_SSL` | false | Connect with LDAPS |
+| `LDAP_VERIFY_CERTIFICATES` | false | With `LDAP_SSL`, check the server certificate (trusted CA and host name). Off, any certificate is accepted |
+| `LDAP_CA_FILE` | (none) | With `LDAP_VERIFY_CERTIFICATES`, PEM file of the CA that signed the server certificate. Empty, the system CAs are used |
 | `LDAP_FALLBACK` | false | When the directory is unreachable, accept the local password of the account |
 | `LDAP_SEARCH_BIND` | false | Log users in by search then bind: find the entry anywhere under `LDAP_BASE_DN` with the service account, then bind with its DN. Unknown users of the directory get their account created on first login; accounts gone from the directory (or the group), disabled or excluded are refused before the password is tried, and deactivated. Deactivation happens at a login attempt only, so keep the sync scheduled. Requires `LDAP_USER` |
 | `LDAP_USER_FILTER` | (none) | LDAP filter selecting the user entries, for the sync and the search-bind login, e.g. `(&(objectClass=user)(department=Animation))`. It replaces the default `(&(objectClass=person)(!(objectClass=computer)))` on Active Directory and `(objectClass=person)` elsewhere. The `LDAP_GROUP` and login filters are still added to it |
