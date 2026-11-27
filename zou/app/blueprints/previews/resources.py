@@ -692,16 +692,8 @@ class BaseNewPreviewFilePicture:
         file_path = os.path.join(tmp_folder, file_name)
         uploaded_file.save(file_path)
         try:
-            file_store.add_file("previews", instance_id, file_path)
-            preview_file_states_service.record_file_state(
-                instance_id,
-                "files",
-                "previews",
-                preview_file_states_service.OK,
-            )
-            file_size = fs.get_file_size(file_path)
-            preview_files_service.update_preview_file(
-                instance_id, {"file_size": file_size}, silent=True
+            preview_files_service.store_preview_file_content(
+                instance_id, file_path
             )
         finally:
             if os.path.exists(file_path):
@@ -1443,14 +1435,9 @@ class BaseThumbnailResource(MethodView):
         thumbnail_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
         )
-        try:
-            thumbnail_path = thumbnail_utils.turn_into_thumbnail(
-                thumbnail_path, size=self.size
-            )
-            file_store.add_picture("thumbnails", instance_id, thumbnail_path)
-        finally:
-            if os.path.exists(thumbnail_path):
-                os.remove(thumbnail_path)
+        preview_files_service.store_thumbnail(
+            instance_id, thumbnail_path, self.size
+        )
 
         # Mark the avatar as present only once the thumbnail is stored, so a
         # missing/invalid file or a storage failure cannot leave has_avatar
@@ -1890,13 +1877,7 @@ class ExtractTileFromPreview(MethodView):
         )
         if extracted_tile_path is None:
             return {"error": "preview file binary is not available"}, 404
-        file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
-        preview_file_states_service.record_file_state(
-            preview_file_id,
-            "pictures",
-            "tiles",
-            preview_file_states_service.OK,
-        )
+        preview_files_service.store_tile(preview_file_id, extracted_tile_path)
         try:
             return flask_send_file(
                 extracted_tile_path,
@@ -1937,7 +1918,7 @@ class CreatePreviewBackgroundFileResource(MethodView):
         original_file_name = ".".join(file_name_parts)
 
         if extension in ALLOWED_PREVIEW_BACKGROUND_EXTENSION:
-            metadata = self.save_preview_background_file(
+            metadata = preview_files_service.save_preview_background_file(
                 instance_id, uploaded_file, extension
             )
             preview_background_file = (
@@ -1970,62 +1951,6 @@ class CreatePreviewBackgroundFileResource(MethodView):
         Check if user has permissions to add a preview background file.
         """
         return permissions.check_admin_permissions()
-
-    def save_preview_background_file(
-        self, instance_id, uploaded_file, extension
-    ):
-        """
-        Save the uploaded preview background file and its thumbnail in the
-        file storage and clear their cached copies. Return its size. On a
-        failure, remove the preview background file and raise
-        WrongParameterException.
-        """
-        thumbnail_path = None
-        try:
-            tmp_folder = config.TMP_DIR
-            file_name = f"{instance_id}.{extension}"
-            preview_background_path = os.path.join(tmp_folder, file_name)
-            uploaded_file.save(preview_background_path)
-            file_size = fs.get_file_size(preview_background_path)
-            file_store.add_picture(
-                "preview-backgrounds", instance_id, preview_background_path
-            )
-            preview_files_service.clear_variant_from_cache(
-                instance_id, "preview-backgrounds", extension
-            )
-            if extension == "hdr":
-                thumbnail_path = thumbnail_utils.turn_hdr_into_thumbnail(
-                    preview_background_path
-                )
-                file_store.add_picture(
-                    "thumbnails", instance_id, thumbnail_path
-                )
-                preview_files_service.clear_variant_from_cache(
-                    instance_id, "thumbnails"
-                )
-
-            return {
-                "preview_file_id": instance_id,
-                "file_size": file_size,
-            }
-        except Exception:
-            current_app.logger.error(
-                f"Error while saving preview background file and thumbnail: {instance_id}"
-            )
-            deletion_service.remove_preview_background_file_by_id(
-                instance_id, force=True
-            )
-            raise WrongParameterException(
-                f"Error while saving preview background file and thumbnail: {instance_id}"
-            )
-        finally:
-            try:
-                if os.path.exists(preview_background_path):
-                    os.remove(preview_background_path)
-                if thumbnail_path and os.path.exists(thumbnail_path):
-                    os.remove(thumbnail_path)
-            except OSError:
-                pass
 
     def emit_preview_background_file_event(self, preview_background_file):
         """
