@@ -1,9 +1,18 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
-from zou.app.exceptions import ConceptNotFoundException
+from zou.app.exceptions import (
+    ConceptNotFoundException,
+    EntityNotFoundException,
+    WrongIdFormatException,
+)
 from zou.app.models.entity import Entity
+from zou.app.models.task import Task
 from zou.app.services import (
     concepts_service,
+    persons_service,
 )
+from zou.app.utils import fields
 
 
 class ConceptsServiceTestCase(ApiDBTestCase):
@@ -155,3 +164,56 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             concepts_service.get_full_concept(
                 "00000000-0000-0000-0000-000000000000"
             )
+
+    def test_the_assigned_concepts_are_the_ones_with_a_task_of_the_user(self):
+        """
+        The caller comes from the request context, which a service test has
+        none of: the assignee filter points at the person of the task.
+        """
+        concept, _ = self.a_concept_with_a_task("Assigned")
+        self.a_concept("Not Assigned")
+
+        with patch.object(
+            persons_service,
+            "build_assignee_filter",
+            side_effect=lambda: Task.assignees.contains(
+                persons_service.get_person_raw(self.person.id)
+            ),
+        ):
+            concepts = concepts_service.get_concepts({"assigned_to": True})
+            concepts_and_tasks = concepts_service.get_concepts_and_tasks(
+                {"assigned_to": True}
+            )
+
+        self.assertEqual([held["id"] for held in concepts], [concept["id"]])
+        self.assertEqual(
+            [held["id"] for held in concepts_and_tasks], [concept["id"]]
+        )
+
+    def test_create_concept_keeps_its_data_and_existing_links(self):
+        """
+        A linked ID that matches no entity is skipped, the others are
+        listed on the concept.
+        """
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset()
+
+        concept = self.a_concept(
+            "Linked",
+            data={"mood": "dark"},
+            entity_concept_links=[str(self.asset.id), fields.gen_uuid()],
+        )
+
+        self.assertEqual(concept["data"], {"mood": "dark"})
+        held = concepts_service.get_concepts_and_tasks({"id": concept["id"]})[
+            0
+        ]
+        self.assertEqual(held["entity_concept_links"], [str(self.asset.id)])
+
+    def test_create_concept_refuses_a_malformed_link_id(self):
+        with self.assertRaises(EntityNotFoundException):
+            self.a_concept("Bad Link", entity_concept_links=["not-an-id"])
+
+    def test_move_concepts_refuses_a_malformed_id(self):
+        with self.assertRaises(WrongIdFormatException):
+            concepts_service.move_concepts(str(self.project.id), ["not-an-id"])

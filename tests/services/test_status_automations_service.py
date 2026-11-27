@@ -14,6 +14,7 @@ from zou.app.exceptions import (
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task import Task
@@ -1616,6 +1617,98 @@ class StatusAutomationRunnerTestCase(ApiDBTestCase):
         self.assertIn(
             f"Status automation {broken.id} failed on task {lighting_task.id}",
             "\n".join(logs.output),
+        )
+
+    def test_a_failing_decision_does_not_fail_the_comment(self):
+        """
+        If the decision fails in the database, it is logged and rolled back:
+        the comment and its status change stay, and no automation applies.
+        """
+        lighting = self.a_task_type("Lighting")
+        compositing = self.a_task_type("Compositing")
+        lighting_task = self.a_task(self.shot, lighting)
+        compositing_task = self.a_task(self.shot, compositing)
+        self.an_automation(
+            "shot", "and", [(lighting, [self.done])], compositing, self.ready
+        )
+
+        def fail_in_the_database(*args):
+            db.session.execute(text("SELECT 1 / 0"))
+
+        self.spare_fixtures_from_rollbacks()
+        with mock.patch.object(
+            comments_service,
+            "_get_condition_tasks",
+            side_effect=fail_in_the_database,
+        ), self.assertLogs(current_app.logger, level="ERROR") as logs:
+            comment = self.comment(lighting_task, self.done)
+
+        self.assertEqual(comment["task_status_id"], str(self.done.id))
+        self.assert_status(lighting_task, self.done)
+        self.assert_status(compositing_task, self.todo)
+        self.assertIn(
+            f"Status automations failed on task {lighting_task.id}",
+            "\n".join(logs.output),
+        )
+
+    def test_an_output_with_no_task_on_the_entity_is_skipped(self):
+        lighting = self.a_task_type("Lighting")
+        compositing = self.a_task_type("Compositing")
+        review = self.a_task_type("Review")
+        lighting_task = self.a_task(self.shot, lighting)
+        review_task = self.a_task(self.shot, review)
+        without_target = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], compositing, self.ready
+        )
+        healthy = self.an_automation(
+            "shot", "and", [(lighting, [self.done])], review, self.ready
+        )
+
+        self.automations_in_order(without_target, healthy)
+        self.spare_fixtures_from_rollbacks()
+        with self.assertNoLogs(current_app.logger, level="ERROR"):
+            self.comment(lighting_task, self.done)
+
+        self.assert_status(review_task, self.ready)
+
+    def test_the_last_revision_of_the_source_reaches_the_output(self):
+        lighting = self.a_task_type("Lighting")
+        compositing = self.a_task_type("Compositing")
+        lighting_task = self.a_task(self.shot, lighting)
+        compositing_task = self.a_task(self.shot, compositing)
+        for name, revision, extension in [
+            ("first", 1, "png"),
+            ("last", 2, "pdf"),
+            ("last second", 2, "pdf"),
+        ]:
+            PreviewFile.create(
+                name=name,
+                revision=revision,
+                extension=extension,
+                task_id=lighting_task.id,
+                person_id=self.person.id,
+                status="ready",
+            )
+        self.an_automation(
+            "shot",
+            "and",
+            [(lighting, [self.done])],
+            compositing,
+            self.ready,
+            import_last_revision=True,
+        )
+
+        self.comment(lighting_task, self.done)
+
+        (output_comment,) = Comment.query.filter_by(
+            object_id=compositing_task.id
+        ).all()
+        self.assertEqual(
+            sorted(
+                (preview.extension, str(preview.task_id))
+                for preview in output_comment.previews
+            ),
+            [("pdf", str(compositing_task.id))] * 2,
         )
 
     def test_a_hashtag_copy_does_not_fire(self):

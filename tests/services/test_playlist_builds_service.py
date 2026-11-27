@@ -176,6 +176,90 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
         end_build_job.assert_not_called()
 
+    def build_locally(self, playlist, job, full, demuxer_succeeds=True):
+        """
+        Run a local build where ffmpeg is faked. Return the ended job and
+        the concatenation modes, in the order of the calls.
+        """
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+        modes = []
+
+        def fake_build(mode, tmp_file_paths, movie_file_path, **kwargs):
+            modes.append(mode)
+            if mode is movie.concat_demuxer and not demuxer_succeeds:
+                return {"success": False, "message": "rejected"}
+            open(movie_file_path, "w").close()
+            return {"success": True}
+
+        with (
+            patch.object(
+                playlists_service,
+                "playlist_previews",
+                return_value=[{"id": "a", "extension": "mp4"}],
+            ),
+            patch.object(
+                playlist_builds_service,
+                "retrieve_playlist_tmp_files",
+                return_value=[("/tmp/a.mp4", "a.mp4")],
+            ),
+            patch.object(movie, "build_playlist_movie", fake_build),
+            patch.object(playlist_builds_service.file_store, "add_movie"),
+        ):
+            job = playlist_builds_service.build_playlist_movie_file(
+                playlist, job, [], params, full, False
+            )
+        return job, modes
+
+    def test_a_full_build_uses_the_concat_filter_only(self):
+        """
+        A full build encodes again: the demuxer is never tried, and no
+        fallback is reported.
+        """
+        playlist = self.generate_fixture_playlists()
+        job = playlist_builds_service.start_build_job(playlist)
+
+        job, modes = self.build_locally(playlist, job, full=True)
+
+        self.assertEqual(modes, [movie.concat_filter])
+        self.assertEqual(job["status"], "succeeded")
+        self.assertIsNone(job["message"])
+
+    def test_a_build_accepted_by_the_demuxer_encodes_nothing(self):
+        playlist = self.generate_fixture_playlists()
+        job = playlist_builds_service.start_build_job(playlist)
+
+        job, modes = self.build_locally(playlist, job, full=False)
+
+        self.assertEqual(modes, [movie.concat_demuxer])
+        self.assertEqual(job["status"], "succeeded")
+        self.assertIsNone(job["message"])
+
+    def test_a_failed_remote_build_fails_its_job(self):
+        playlist = self.generate_fixture_playlists()
+        job = playlist_builds_service.start_build_job(playlist)
+        params = EncodingParameters(width=1920, height=1080, fps="25.00")
+
+        with (
+            patch.object(
+                playlists_service,
+                "playlist_previews",
+                return_value=[{"id": "a", "extension": "mp4"}],
+            ),
+            patch.object(
+                playlist_builds_service,
+                "_run_remote_job_build_playlist",
+                side_effect=RuntimeError("nomad is down"),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                Exception, "Failure while building playlist"
+            ):
+                playlist_builds_service.build_playlist_movie_file(
+                    playlist, job, [], params, False, True
+                )
+
+        self.assertEqual(BuildJob.get(job["id"]).status.code, "failed")
+
     def test_a_remote_build_downloads_no_preview(self):
         """
         The remote runner fetches the previews itself: the worker neither
@@ -440,6 +524,37 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             shutil.rmtree(tmp_dir, ignore_errors=True)
             file_store.remove_movie("lowdef", preview["id"], force=True)
 
+    def test_a_picture_preview_is_copied_from_its_original(self):
+        self.generate_fixture_preview_files()
+        self.preview_file_1.update({"extension": "png"})
+        preview = self.preview_file_1.serialize()
+        picture_fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "th01.png")
+        )
+        file_store.add_picture("original", preview["id"], picture_fixture)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            path, _ = playlist_builds_service.retrieve_playlist_tmp_file(
+                preview, tmp_dir
+            )
+            with (
+                open(path, "rb") as copy,
+                open(picture_fixture, "rb") as original,
+            ):
+                self.assertEqual(copy.read(), original.read())
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            file_store.remove_picture("original", preview["id"], force=True)
+
+    def test_a_movie_missing_from_every_version_is_not_found(self):
+        self.generate_fixture_preview_files()
+        preview = self.preview_file_1.serialize()
+        self.assertRaises(
+            fs.ConfirmedFileNotFound,
+            playlist_builds_service._retrieve_playlist_movie,
+            preview,
+        )
+
     def test_a_transient_failure_does_not_switch_movie_version(self):
         # Only a confirmed absence sends the build to the next version: a
         # storage hiccup must not concatenate the low def movie instead.
@@ -571,3 +686,84 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             )
 
         send_email.assert_not_called()
+
+    def test_remove_an_unknown_build_job(self):
+        playlist = self.generate_fixture_playlists()
+        self.assertIsNone(
+            playlist_builds_service.remove_build_job(
+                playlist, fields.gen_uuid()
+            )
+        )
+
+    def test_remove_a_build_job_already_deleted(self):
+        """
+        The files and the event go even when the row is already gone, so
+        that the clients drop the job.
+        """
+        playlist = self.generate_fixture_playlists()
+        job = {"id": fields.gen_uuid()}
+
+        with (
+            patch.object(playlist_builds_service.file_store, "remove_movie"),
+            patch.object(playlist_builds_service.events, "emit") as emit,
+        ):
+            playlist_builds_service.remove_build_job_impl(playlist, job)
+
+        emit.assert_called_once_with(
+            "build-job:delete",
+            {"build_job_id": job["id"], "playlist_id": playlist["id"]},
+            project_id=playlist["project_id"],
+        )
+
+
+class PlaylistDownloadContextNameTestCase(ApiDBTestCase):
+    """
+    The slug that starts the file names of the playlist downloads.
+    """
+
+    tvshow = {"name": "My Show", "production_type": "tvshow"}
+
+    def context_name(self, project, **playlist):
+        return playlist_builds_service.get_playlist_download_context_name(
+            project, playlist
+        )
+
+    def test_a_feature_film_is_named_after_its_production(self):
+        self.assertEqual(
+            self.context_name(
+                {"name": "My Film", "production_type": "featurefilm"},
+                episode_id=None,
+            ),
+            "my_film",
+        )
+
+    def test_a_tv_show_adds_the_episode(self):
+        episode = self.generate_fixture_episode()
+        self.assertEqual(
+            self.context_name(self.tvshow, episode_id=str(episode.id)),
+            "my_show_e01",
+        )
+
+    def test_a_tv_show_names_the_playlists_without_episode(self):
+        self.assertEqual(
+            self.context_name(
+                self.tvshow,
+                episode_id=None,
+                is_for_all=True,
+                for_entity="asset",
+            ),
+            "my_show_all_assets",
+        )
+        self.assertEqual(
+            self.context_name(
+                self.tvshow,
+                episode_id=None,
+                is_for_all=True,
+                for_entity="shot",
+            ),
+            "my_show_all_shots",
+        )
+        self.assertEqual(
+            self.context_name(self.tvshow, episode_id=None, is_for_all=False),
+            "my_show_main_pack",
+        )

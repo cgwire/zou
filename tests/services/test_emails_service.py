@@ -8,6 +8,7 @@ from zou.app.models.person import Person
 from zou.app.services import (
     emails_service,
     organisation_service,
+    persons_service,
 )
 from zou.app.stores import queue_store
 
@@ -178,6 +179,41 @@ class EmailsServiceTestCase(ApiDBTestCase):
 
         self.assertIn("Best regards", html_body)
 
+    def test_send_notification_queues_the_email(self):
+        person = self.a_person("Queued", "en_US")
+        job_queue = MagicMock()
+
+        with patch.object(config, "ENABLE_JOB_QUEUE", True), patch.object(
+            queue_store, "job_queue", job_queue, create=True
+        ), patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_notification(
+                str(person.id), "Test Subject", MESSAGES, title="Test Title"
+            )
+
+        mock_send.assert_not_called()
+        job_queue.enqueue.assert_called_once()
+        args = job_queue.enqueue.call_args.kwargs["args"]
+        self.assertEqual(args[0], "Test Subject")
+        self.assertEqual(args[2], "queued@example.com")
+
+    def test_2fa_disabled_by_admin_mail(self):
+        person = self.a_person("Secured", "en_US")
+
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_2fa_disabled_by_admin_email(
+                persons_service.get_person(str(person.id)),
+                person_IP="192.0.2.1",
+            )
+
+        subject, html, recipient = mock_send.call_args[0]
+        self.assertIn("two factor authentication disabled", subject)
+        self.assertIn("192.0.2.1", html)
+        self.assertEqual(recipient, "secured@example.com")
+
     def test_build_messages_carries_the_production_name(self):
         messages = emails_service._build_messages(
             "email", "slack", "discord", self.project.serialize()
@@ -231,12 +267,49 @@ class PlaylistMailTestCase(EmailsServiceTestCase):
         self.assertIn("Sunday &amp; Monday", html)
         self.assertNotIn("&amp;amp;", html)
 
-    def test_the_invitation_message_is_still_escaped(self):
-        """
-        Its segment is concatenated straight into the body rather than
-        handed to another template, so it is the one place a fragment must
-        keep being escaped where it is built.
-        """
+    def test_a_playlist_without_episode_links_to_the_production(self):
+        playlist = {**self.a_playlist(), "episode_id": None}
+
+        html = self.playlist_mail(playlist)
+
+        self.assertIn(
+            f"/productions/{self.project.id}/playlists/{playlist['id']}", html
+        )
+        self.assertIn("under the project", html)
+
+    def test_an_asset_playlist_of_a_tv_show_for_all_episodes(self):
+        self.project.update({"production_type": "tvshow"})
+        playlist = {
+            **self.a_playlist(),
+            "episode_id": None,
+            "for_entity": "asset",
+            "is_for_all": True,
+        }
+
+        html = self.playlist_mail(playlist)
+
+        self.assertIn(f"/episodes/all/playlists/{playlist['id']}", html)
+
+    def test_an_asset_playlist_of_a_tv_show_for_the_main_episode(self):
+        self.project.update({"production_type": "tvshow"})
+        playlist = {
+            **self.a_playlist(),
+            "episode_id": None,
+            "for_entity": "asset",
+        }
+
+        html = self.playlist_mail(playlist)
+
+        self.assertIn(f"/episodes/main/playlists/{playlist['id']}", html)
+
+    def test_the_mail_counts_the_elements(self):
+        playlist = {**self.a_playlist(), "shots": [{}, {}]}
+
+        html = self.playlist_mail(playlist)
+
+        self.assertIn("2 elements are listed", html)
+
+    def share_invitation_mail(self, message=None):
         with patch(
             "zou.app.services.emails_service.emails.send_email"
         ) as mock_send:
@@ -246,10 +319,44 @@ class PlaylistMailTestCase(EmailsServiceTestCase):
                 {"name": "Playlist"},
                 self.project.serialize(),
                 "https://localhost:8080/share/token",
-                message="<script>alert(1)</script>",
+                message=message,
                 locale="en_US",
             )
-            html = mock_send.call_args[0][1]
+            return mock_send.call_args[0][1]
+
+    def test_an_invitation_without_message_has_no_message_segment(self):
+        html = self.share_invitation_mail()
+
+        self.assertNotIn("<em>", html)
+
+    def test_the_invitation_is_queued(self):
+        job_queue = MagicMock()
+
+        with patch.object(config, "ENABLE_JOB_QUEUE", True), patch.object(
+            queue_store, "job_queue", job_queue, create=True
+        ), patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
+            emails_service.send_share_invitation(
+                "guest@example.com",
+                {"full_name": "John Did"},
+                {"name": "Playlist"},
+                self.project.serialize(),
+                "https://localhost:8080/share/token",
+                locale="en_US",
+            )
+
+        mock_send.assert_not_called()
+        args = job_queue.enqueue.call_args.kwargs["args"]
+        self.assertEqual(args[2], "guest@example.com")
+
+    def test_the_invitation_message_is_still_escaped(self):
+        """
+        Its segment is concatenated straight into the body rather than
+        handed to another template, so it is the one place a fragment must
+        keep being escaped where it is built.
+        """
+        html = self.share_invitation_mail("<script>alert(1)</script>")
 
         self.assertNotIn("<script>", html)
         self.assertIn("&lt;script&gt;", html)
@@ -269,6 +376,13 @@ class TaskUrlTestCase(EmailsServiceTestCase):
     def test_a_standard_production_names_no_episode(self):
         self.assertIn("/assets/tasks/", self.url_of(self.task))
         self.assertNotIn("/episodes/", self.url_of(self.task))
+
+    def test_an_edit_task_links_to_the_edits(self):
+        task = self.generate_fixture_task(
+            name="Edit", task_type_id=self.task_type_edit.id
+        )
+
+        self.assertIn("/edits/tasks/", self.url_of(task))
 
     def test_a_tv_show_scopes_a_shot_task_to_its_episode(self):
         self.project.update({"production_type": "tvshow"})
@@ -339,6 +453,20 @@ class SenderTestCase(EmailsServiceTestCase):
                 html = self.mail_of(send)
                 self.assertIn("Shaders", html)
                 self.assertIn(str(self.task.id), html)
+
+    def test_a_comment_without_text_tells_the_status_change(self):
+        recipient = self.a_person("Jean", "en_US")
+
+        html = self.mail_of(
+            lambda: emails_service.send_comment_notification(
+                str(recipient.id),
+                str(self.person.id),
+                {"text": ""},
+                self.task_dict,
+            )
+        )
+
+        self.assertIn("changed status of", html)
 
     def test_no_sender_writes_to_someone_who_turned_them_off(self):
         quiet = self.a_person("Muet", "en_US", notifications_enabled=False)

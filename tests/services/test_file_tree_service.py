@@ -10,6 +10,7 @@ from zou.app.exceptions import (
     WrongPathFormatException,
 )
 from zou.app.models.entity import Entity
+from zou.app.models.task_type import TaskType
 from zou.app.services import file_tree_service, files_service
 
 
@@ -79,6 +80,13 @@ class TreeLookupTestCase(FileTreeTestCase):
                     )
         finally:
             os.remove(secret.name)
+
+    def test_a_tree_name_with_no_file_is_refused(self):
+        self.assertRaises(
+            WrongFileTreeFileException,
+            file_tree_service.get_tree_from_file,
+            "no_such_tree",
+        )
 
     def test_the_tree_of_a_production_is_read_off_the_production(self):
         self.assertIsNotNone(
@@ -247,6 +255,14 @@ class TokenTestCase(FileTreeTestCase):
                 self.department.name,
             ),
             ("Department", {"entity": asset}, ""),
+            (
+                "Department",
+                {
+                    "entity": shot,
+                    "task_type": self.task_type_animation.serialize(),
+                },
+                self.department_animation.name,
+            ),
             ("Task", {"entity": asset, "task": task}, self.task.name),
             ("TaskType", {"entity": asset, "task": task}, self.task_type.name),
             (
@@ -313,6 +329,28 @@ class TokenTestCase(FileTreeTestCase):
                     datatype,
                     **kwargs,
                 )
+
+    def test_a_shot_outside_any_sequence_falls_back_on_a_flat_episode(self):
+        shot = Entity.create(
+            name="P99",
+            project_id=self.project.id,
+            entity_type_id=self.shot_type.id,
+        )
+        self.assertEqual(
+            file_tree_service.get_folder_from_datatype(
+                "Episode", entity=shot.serialize()
+            ),
+            "e001",
+        )
+
+    def test_a_token_whose_value_is_empty_is_left_in_place(self):
+        task_type = dict(self.task_type.serialize(), short_name=None)
+        self.assertEqual(
+            file_tree_service.update_variable(
+                "<TaskType.short_name>_<TaskType>", task_type=task_type
+            ),
+            "<TaskType.short_name>_shaders",
+        )
 
     def test_a_sequence_folder_keeps_the_sequence_name(self):
         for name, expected in [("Seq02", "Seq02"), ("MySeq02", "MySeq02")]:
@@ -611,6 +649,19 @@ class InstancePathTestCase(FileTreeTestCase):
             ),
             "cosmos_landromat_s01_p01_animation_cache_main_tree_0001_v003",
         )
+        self.assertEqual(
+            file_tree_service.get_instance_file_name(
+                self.asset_instance.serialize(),
+                self.shot.serialize(),
+                output_type=self.output_type_cache,
+                task_type=self.task_type_animation.serialize(),
+                name="main",
+                revision=3,
+                nb_elements=50,
+            ),
+            "cosmos_landromat_s01_p01_animation_cache_main_tree_0001_v003"
+            "_[1-50]",
+        )
 
     def test_an_instance_in_a_scene(self):
         self.generate_fixture_scene_asset_instance()
@@ -861,6 +912,69 @@ class PathToTaskTestCase(FileTreeTestCase):
             {"Sequence": "s01", "Shot": "p01"},
         )
 
+    def test_a_path_shorter_than_the_template_is_read_up_to_its_end(self):
+        self.assertEqual(
+            file_tree_service.extract_variable_values_from_path(
+                ["cosmos_landromat"], ["<Project>", "shots", "<Sequence>"]
+            ),
+            {"Project": "cosmos landromat"},
+        )
+
+    def test_an_asset_path_of_another_shape_is_refused(self):
+        self.assertRaises(
+            WrongPathFormatException,
+            file_tree_service.get_asset_task_from_path,
+            "/simple/productions/cosmos_landromat/assets/Props/Tree",
+            self.project.serialize(),
+        )
+
+    def test_the_episode_of_the_path_narrows_the_sequence(self):
+        project = self.project.serialize()
+        self.assertEqual(
+            file_tree_service.guess_shot(project, "E01", "S01", "P01").id,
+            self.shot.id,
+        )
+        # Without the episode, only a sequence with no parent matches.
+        self.assertIsNone(
+            file_tree_service.guess_shot(project, "", "S01", "P01")
+        )
+
+    def test_a_path_naming_no_asset_name_is_refused(self):
+        self.assertRaises(
+            WrongPathFormatException,
+            file_tree_service.guess_asset,
+            self.project.serialize(),
+            "Props",
+            "",
+        )
+
+    def test_the_department_picks_between_task_types_of_the_same_name(self):
+        same_name = TaskType.create(
+            name="Shaders",
+            for_entity="Asset",
+            department_id=self.department_animation.id,
+        )
+        self.assertEqual(
+            file_tree_service.guess_task_type("Animation", "Shaders").id,
+            same_name.id,
+        )
+        self.assertEqual(
+            file_tree_service.guess_task_type("Modeling", "Shaders").id,
+            self.task_type.id,
+        )
+
+    def test_the_task_name_picks_between_tasks_of_the_same_type(self):
+        master = self.task
+        second = self.generate_fixture_task(name="Second")
+        for name, expected in [("Master", master), ("Second", second)]:
+            with self.subTest(name=name):
+                self.assertEqual(
+                    file_tree_service.guess_task(
+                        self.asset, self.task_type, name
+                    ).id,
+                    expected.id,
+                )
+
 
 class GuessFromPathTestCase(FileTreeTestCase):
     """
@@ -997,6 +1111,146 @@ class GuessFromPathTestCase(FileTreeTestCase):
         self.assertIsNone(
             file_tree_service.get_data_from_token("Scene", "sc01")
         )
+
+    def test_a_task_token_is_resolved_on_the_entity_of_the_path(self):
+        """
+        A task name repeats on every entity: the scene, asset or shot the
+        path read before is what tells the tasks apart.
+        """
+        asset_task = self.task
+        shot_task = self.shot_task
+        scene_task = self.generate_fixture_task(
+            entity_id=self.scene.id, task_type_id=self.task_type_animation.id
+        )
+        project_id = str(self.project.id)
+        shaders = {"Project": project_id, "TaskType": str(self.task_type.id)}
+        animation = {
+            "Project": project_id,
+            "TaskType": str(self.task_type_animation.id),
+        }
+        for label, constraints, expected in [
+            ("asset", dict(shaders, Asset=str(self.asset.id)), asset_task),
+            ("shot", dict(animation, Shot=str(self.shot.id)), shot_task),
+            ("scene", dict(animation, Scene=str(self.scene.id)), scene_task),
+        ]:
+            with self.subTest(label=label):
+                self.assertEqual(
+                    file_tree_service.get_data_from_token(
+                        "Task", "master", constraints
+                    ).id,
+                    expected.id,
+                )
+        for label, constraints in [
+            ("no entity", animation),
+            ("no task type", {"Project": project_id, "Shot": self.shot.id}),
+        ]:
+            with self.subTest(label=label):
+                self.assertIsNone(
+                    file_tree_service.get_data_from_token(
+                        "Task", "master", constraints
+                    )
+                )
+
+    def test_every_path_token_is_resolved(self):
+        project_id = str(self.project.id)
+        cases = [
+            ("Department", "modeling", {}, self.department.id),
+            (
+                "OutputType",
+                "cache",
+                {},
+                self.output_type_cache["id"],
+            ),
+            ("TemporalEntityType", "shot", {}, self.shot_type.id),
+            (
+                "TemporalEntity",
+                "p01",
+                {
+                    "Project": project_id,
+                    "TemporalEntityType": str(self.shot_type.id),
+                },
+                self.shot.id,
+            ),
+        ]
+        for token, value, constraints, expected_id in cases:
+            with self.subTest(token=token):
+                self.assertEqual(
+                    str(
+                        file_tree_service.get_data_from_token(
+                            token, value, constraints
+                        ).id
+                    ),
+                    str(expected_id),
+                )
+        for token, value, expected in [
+            ("Name", "main", "main"),
+            ("Representation", "abc", "abc"),
+            ("Version", "003", 3),
+        ]:
+            with self.subTest(token=token):
+                self.assertEqual(
+                    file_tree_service.get_data_from_token(token, value),
+                    expected,
+                )
+
+    def test_a_path_token_missing_its_constraints_resolves_to_nothing(self):
+        project_id = str(self.project.id)
+        for token, value, constraints in [
+            ("Asset", "tree", {"Project": project_id}),
+            ("Episode", "e01", {}),
+            ("Shot", "p01", {"Project": project_id}),
+            ("TemporalEntity", "p01", {"Project": project_id}),
+            ("Instance", "tree", {"Project": project_id}),
+            ("Version", "latest", {}),
+        ]:
+            with self.subTest(token=token):
+                self.assertIsNone(
+                    file_tree_service.get_data_from_token(
+                        token, value, constraints
+                    )
+                )
+
+    def test_the_name_and_the_version_of_a_path_are_returned_as_text(self):
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["working"]["folder_path"][
+            "shot"
+        ] = "<Project>/shots/<Sequence>/<Shot>/<Name>/v<Version>"
+        self.project.update({"file_tree": tree})
+
+        matches = self.guess(
+            "/simple/productions/cosmos landromat/shots/s01/p01/main/v003"
+        )
+
+        self.assertEqual(
+            matches["shot"],
+            {
+                "Template": "shot",
+                "Project": str(self.project.id),
+                "Sequence": str(self.sequence.id),
+                "Shot": str(self.shot.id),
+                "Name": "main",
+                "Version": "3",
+            },
+        )
+
+    def test_the_style_key_of_a_tree_is_not_a_template(self):
+        """
+        The style sits among the templates of folder_path: a path element
+        spelling it must not come back as a "style" template.
+        """
+        matches = self.guess("/simple/productions/lowercase")
+        self.assertNotIn("style", matches)
+
+    def test_a_template_matched_in_two_modes_is_returned_once(self):
+        """
+        The preview root sits under the working root: a path that resolves
+        nothing in either mode gives the same entry twice.
+        """
+        matches = file_tree_service.guess_from_path(
+            str(self.project.id), "/simple/productions/previews/shots"
+        )
+        templates = [match["Template"] for match in matches]
+        self.assertEqual(len(templates), len(set(templates)))
 
 
 class HelpersTestCase(ApiDBTestCase):

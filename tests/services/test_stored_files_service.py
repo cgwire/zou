@@ -1,5 +1,6 @@
 import os
 import tempfile
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest import mock
 
@@ -119,6 +120,39 @@ class StoredFilesServiceTestCase(ApiDBTestCase):
         self.assertIsNone(row.deleted_at)
         self.assertEqual(self.ops(row), ["create", "delete", "undelete"])
         self.assertEqual(stored_files_service.get_files_to_purge(), [])
+
+    def test_a_second_deletion_keeps_the_first_date(self):
+        """
+        The grace delay of the purge counts from the first deletion: a
+        file deleted again must not get a new delay.
+        """
+        files = [("pictures", "thumbnails", self.file_id)]
+        deleted_at = stored_files_service.mark_deleted(files)[0].deleted_at
+        later = deleted_at + timedelta(hours=1)
+
+        with mock.patch.object(
+            stored_files_service.date_helpers,
+            "get_utc_now_datetime",
+            return_value=later,
+        ):
+            stored_files_service.mark_deleted(files, force=True)
+
+        row = self.get_row()
+        self.assertEqual(row.deleted_at, deleted_at)
+        self.assertTrue(row.purge_forced)
+        self.assertEqual(self.ops(row), ["delete", "delete"])
+
+    def test_nothing_to_record_opens_no_transaction(self):
+        with mock.patch.object(
+            stored_files_service,
+            "_session",
+            wraps=stored_files_service._session,
+        ) as session:
+            self.assertEqual(stored_files_service.record_writes([]), [])
+            self.assertEqual(
+                stored_files_service.purge([], mock.Mock()), set()
+            )
+        session.assert_not_called()
 
     def test_files_to_purge_follow_remove_files(self):
         forced_id = str(fields.gen_uuid())

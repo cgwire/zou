@@ -1,11 +1,15 @@
 import os
+import shutil
+import tempfile
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 from tests.base import ApiDBTestCase
 from tests.services.cases import PreviewFileTestCase, SpyProgress
 from zou.app import config
+from zou.app.exceptions import EpisodeNotFoundException
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.services import (
     files_service,
     preview_file_states_service as states_service,
@@ -13,8 +17,22 @@ from zou.app.services import (
     preview_maintenance_service,
 )
 from zou.app.stores import file_store, queue_store, redis_client
-from zou.app.utils import thumbnail as thumbnail_utils
+from zou.app.utils import fs, thumbnail as thumbnail_utils
 from zou.utils import movie
+
+
+def store_original_picture(preview_file_id):
+    path = file_store.get_local_picture_path("original", preview_file_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    shutil.copyfile("tests/fixtures/thumbnails/th01.png", path)
+    return path
+
+
+def store_movie(preview_file_id):
+    path = file_store.get_local_movie_path("previews", preview_file_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    shutil.copyfile("tests/fixtures/videos/test_preview_tiles.mp4", path)
+    return path
 
 
 class ResetPictureFilesMetadataTestCase(ApiDBTestCase):
@@ -31,18 +49,8 @@ class ResetPictureFilesMetadataTestCase(ApiDBTestCase):
         self.preview_file = self.generate_fixture_preview_file()
         self.preview_file.update({"extension": "png"})
 
-    def store_original_picture(self):
-        path = file_store.get_local_picture_path(
-            "original", str(self.preview_file.id)
-        )
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open("tests/fixtures/thumbnails/th01.png", "rb") as source:
-            with open(path, "wb") as target:
-                target.write(source.read())
-        return path
-
     def test_reset_picture_files_metadata(self):
-        path = self.store_original_picture()
+        path = store_original_picture(str(self.preview_file.id))
         expected = thumbnail_utils.get_dimensions(path)
 
         preview_maintenance_service.reset_picture_files_metadata()
@@ -77,13 +85,7 @@ class ResetMovieFilesMetadataTestCase(ApiDBTestCase):
         self.preview_file = self.generate_fixture_preview_file()
 
     def test_reset_movie_files_metadata(self):
-        path = file_store.get_local_movie_path(
-            "previews", str(self.preview_file.id)
-        )
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open("tests/fixtures/videos/test_preview_tiles.mp4", "rb") as f:
-            with open(path, "wb") as target:
-                target.write(f.read())
+        path = store_movie(str(self.preview_file.id))
 
         preview_maintenance_service.reset_movie_files_metadata()
 
@@ -94,6 +96,15 @@ class ResetMovieFilesMetadataTestCase(ApiDBTestCase):
         )
         self.assertEqual(preview_file.file_size, os.path.getsize(path))
         self.assertGreater(preview_file.duration, 0)
+
+    def test_a_missing_movie_does_not_stop_the_run(self):
+        before = PreviewFile.get(self.preview_file.id).updated_at
+
+        preview_maintenance_service.reset_movie_files_metadata()
+
+        self.assertEqual(
+            PreviewFile.get(self.preview_file.id).updated_at, before
+        )
 
 
 class MissingTileTestCase(PreviewFileTestCase):
@@ -259,6 +270,23 @@ class MissingTileTestCase(PreviewFileTestCase):
         )
         mock_retrieve.assert_not_called()
         self.assertFalse(self.redis.exists(attempt_key))
+
+    @patch("zou.app.services.preview_files_service.remote_job.run_job")
+    def test_a_movie_not_ready_gets_no_tile(self, mock_run_job):
+        """
+        A movie still in processing has no stored binary yet: no job may
+        run for it.
+        """
+        self.preview_file.update({"status": "processing"})
+        files_service.clear_preview_file_cache(self.preview_file_id)
+
+        with self.remote_tile_job():
+            self.assertFalse(
+                preview_maintenance_service.generate_missing_tile(
+                    self.preview_file_id
+                )
+            )
+        mock_run_job.assert_not_called()
 
 
 class QueueMissingTilesTestCase(PreviewFileTestCase):
@@ -490,3 +518,186 @@ class GeneratePreviewExtraTestCase(PreviewFileTestCase):
         preview_file = PreviewFile.get(self.preview_file.id)
         self.assertEqual(preview_file.width, 1920)
         self.assertEqual(preview_file.height, 1080)
+
+    def a_picture(self):
+        preview_file = self.generate_fixture_preview_file()
+        preview_file.update({"extension": "png"})
+        return preview_file
+
+    def test_preview_extra_reads_the_size_of_a_picture(self):
+        preview_file = self.a_picture()
+        path = store_original_picture(str(preview_file.id))
+
+        preview_maintenance_service.generate_preview_extra(with_metadata=True)
+
+        preview_file = PreviewFile.get(preview_file.id)
+        self.assertEqual(
+            (preview_file.width, preview_file.height),
+            thumbnail_utils.get_dimensions(path),
+        )
+        self.assertEqual(preview_file.file_size, os.path.getsize(path))
+        self.assertIsNone(preview_file.duration)
+
+    def test_preview_extra_builds_the_thumbnails_of_a_picture(self):
+        preview_file_id = str(self.a_picture().id)
+        store_original_picture(preview_file_id)
+
+        preview_maintenance_service.generate_preview_extra(
+            with_thumbnails=True
+        )
+
+        self.assertTrue(
+            file_store.exists_picture("thumbnails", preview_file_id)
+        )
+
+    def test_preview_extra_builds_the_tile_of_a_movie(self):
+        preview_file_id = str(self.generate_fixture_preview_file().id)
+        store_movie(preview_file_id)
+        tile_folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tile_folder, True)
+        tile_path = os.path.join(tile_folder, "tile.png")
+        shutil.copyfile("tests/fixtures/thumbnails/th01.png", tile_path)
+
+        with patch.object(
+            preview_files_service.movie,
+            "generate_tile",
+            return_value=tile_path,
+        ):
+            preview_maintenance_service.generate_preview_extra(with_tiles=True)
+
+        self.assertTrue(file_store.exists_picture("tiles", preview_file_id))
+
+    def run_on_object_storage(self, downloaded_path):
+        with patch.object(config, "FS_BACKEND", "s3"), patch.object(
+            preview_files_service,
+            "retrieve_preview_file",
+            return_value=downloaded_path,
+        ):
+            preview_maintenance_service.generate_preview_extra()
+
+    def test_object_storage_download_is_removed_after_use(self):
+        """
+        On object storage, each preview is downloaded to the temp folder:
+        a run over the whole store must not fill the disk.
+        """
+        self.a_picture()
+        os.makedirs(config.TMP_DIR, exist_ok=True)
+        fd, path = tempfile.mkstemp(dir=config.TMP_DIR, suffix=".png")
+        os.close(fd)
+        self.addCleanup(fs.rm_file, path)
+
+        self.run_on_object_storage(path)
+
+        self.assertFalse(os.path.exists(path))
+
+    def test_object_storage_cache_entry_is_kept(self):
+        """
+        A file that was already in the read cache belongs to the cache:
+        the command does not remove it.
+        """
+        preview_file_id = str(self.a_picture().id)
+        os.makedirs(config.TMP_DIR, exist_ok=True)
+        path = os.path.join(
+            config.TMP_DIR, f"cache-original-{preview_file_id}.png"
+        )
+        open(path, "wb").close()
+        self.addCleanup(fs.rm_file, path)
+
+        self.run_on_object_storage(path)
+
+        self.assertTrue(os.path.exists(path))
+
+
+class PreviewExtraQueryTestCase(PreviewFileTestCase):
+    """
+    The selection of the preview extra commands. A filter that does not
+    apply makes the command process the whole store again.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.asset_preview = self.generate_fixture_preview_file()
+        self.episodes = []
+        self.shots = []
+        self.shot_previews = []
+        for name in ["E01", "E02"]:
+            episode = self.generate_fixture_episode(name)
+            sequence = self.generate_fixture_sequence(
+                f"S-{name}", episode_id=episode.id
+            )
+            shot = self.generate_fixture_shot(
+                f"P-{name}", sequence_id=sequence.id
+            )
+            task = self.generate_fixture_task(entity_id=shot.id)
+            self.episodes.append(episode)
+            self.shots.append(shot)
+            self.shot_previews.append(
+                self.generate_fixture_preview_file(task_id=task.id)
+            )
+        other_project = Project.create(
+            name="Other", project_status_id=self.open_status.id
+        )
+        other_asset = self.generate_fixture_asset(
+            name="Rock", project_id=other_project.id
+        )
+        other_task = self.generate_fixture_task(
+            entity_id=other_asset.id, project_id=other_project.id
+        )
+        self.other_preview = self.generate_fixture_preview_file(
+            task_id=other_task.id
+        )
+
+    def selected(self, **filters):
+        query = preview_maintenance_service._build_preview_extra_query(
+            **filters
+        )
+        return {str(preview_file.id) for preview_file in query}
+
+    def ids(self, *preview_files):
+        return {str(preview_file.id) for preview_file in preview_files}
+
+    def test_project_given_by_name(self):
+        self.assertEqual(
+            self.selected(project="Cosmos Landromat"),
+            self.ids(self.asset_preview, *self.shot_previews),
+        )
+
+    def test_project_given_by_id(self):
+        self.assertEqual(
+            self.selected(project=self.project_id),
+            self.ids(self.asset_preview, *self.shot_previews),
+        )
+
+    def test_entity(self):
+        self.assertEqual(
+            self.selected(entity_id=str(self.shots[0].id)),
+            self.ids(self.shot_previews[0]),
+        )
+
+    def test_episode_given_by_id(self):
+        self.assertEqual(
+            self.selected(episodes=[str(self.episodes[0].id)]),
+            self.ids(self.shot_previews[0]),
+        )
+
+    def test_episode_given_by_name_in_a_project(self):
+        self.assertEqual(
+            self.selected(project="Cosmos Landromat", episodes=["E01"]),
+            self.ids(self.shot_previews[0]),
+        )
+
+    def test_episode_name_needs_a_project(self):
+        self.assertRaises(
+            EpisodeNotFoundException, self.selected, episodes=["E01"]
+        )
+
+    def test_only_shots(self):
+        self.assertEqual(
+            self.selected(only_shots=True), self.ids(*self.shot_previews)
+        )
+
+    def test_only_assets(self):
+        self.assertEqual(
+            self.selected(only_assets=True),
+            self.ids(self.asset_preview, self.other_preview),
+        )

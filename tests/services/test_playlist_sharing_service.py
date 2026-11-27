@@ -1,6 +1,8 @@
 import datetime
 from unittest.mock import patch
 
+import pytest
+
 from tests.base import ApiDBTestCase
 from zou.app.exceptions import (
     PlaylistShareLinkNotFoundException,
@@ -13,12 +15,17 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
 from zou.app.services import (
     attachment_files_service,
     comments_service,
     playlist_sharing_service,
 )
-from zou.app.services.playlist_sharing_service import GuestCommentNotFound
+from zou.app.services.playlist_sharing_service import (
+    GuestCommentForbidden,
+    GuestCommentNotFound,
+)
+from zou.app.utils import fields
 
 
 class SharedPlaylistTestCase(ApiDBTestCase):
@@ -201,6 +208,71 @@ class ShareTokenTestCase(SharedPlaylistTestCase):
                 emails=["reviewer@example.com"],
             )
         send.assert_not_called()
+
+    @pytest.mark.real_bcrypt
+    def test_a_password_that_cannot_be_checked_is_refused(self):
+        """
+        A stored value that is not a bcrypt hash makes the check raise.
+        The link must stay closed, not answer a 500.
+        """
+        token = self.share(password="secret")
+        PlaylistShareLink.get_by(token=token).update(
+            {"password": "not-a-hash"}
+        )
+        self.assertRaises(
+            PlaylistShareLinkNotFoundException,
+            playlist_sharing_service.check_share_link_password,
+            token,
+            "secret",
+        )
+
+    def test_a_link_of_another_playlist_invites_nobody(self):
+        """
+        A manager who knows a token cannot send it under the URL of a
+        different playlist.
+        """
+        token = self.share()
+        other = self.generate_fixture_playlist("Other Playlist")
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send:
+            self.assertRaises(
+                PlaylistShareLinkNotFoundException,
+                playlist_sharing_service.send_share_invitations,
+                other["id"],
+                token,
+                self.person.id,
+                emails=["reviewer@example.com"],
+            )
+        send.assert_not_called()
+
+    def test_invitations_skip_unknown_persons_and_persons_without_email(
+        self,
+    ):
+        token = self.share()
+        no_email = Person.create(first_name="No", last_name="Email")
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send:
+            sent = playlist_sharing_service.send_share_invitations(
+                self.playlist["id"],
+                token,
+                self.person.id,
+                person_ids=[
+                    fields.gen_uuid(),
+                    str(no_email.id),
+                    str(self.person.id),
+                ],
+            )
+        self.assertEqual(sent, [self.person.email])
+        self.assertEqual(send.call_count, 1)
+
+    def test_a_studio_member_is_not_a_guest(self):
+        self.assertRaises(
+            PlaylistShareLinkNotFoundException,
+            playlist_sharing_service.get_guest,
+            str(self.person.id),
+        )
 
     def test_an_unknown_token_is_not_found(self):
         self.assertRaises(
@@ -503,6 +575,23 @@ class SharedPlaylistReadTestCase(SharedPlaylistTestCase):
         self.assertEqual(shot["preview_file_task_type"]["color"], "#111111")
         self.assertEqual(shot["task_status_color"], "#222222")
 
+    def test_a_playlist_without_project_gets_no_project_line(self):
+        result = playlist_sharing_service.enrich_shots_with_entity_info(
+            {"shots": []}
+        )
+        self.assertEqual(result, {"shots": []})
+
+    def test_a_shot_of_an_unknown_task_gets_no_colours(self):
+        (shot,) = self.enrich(
+            {
+                "id": str(self.asset.id),
+                "preview_file_task_id": fields.gen_uuid(),
+            }
+        )["shots"]
+        self.assertEqual(shot["name"], self.asset.name)
+        self.assertNotIn("preview_file_task_type", shot)
+        self.assertNotIn("task_status_color", shot)
+
     def test_a_shot_of_a_deleted_entity_is_left_alone(self):
         """
         Deleting an entity does not scrub the playlists holding it, so the
@@ -663,6 +752,19 @@ class SharedCommentTestCase(SharedPlaylistTestCase):
             "note.png",
         )
 
+    def test_download_refused_on_an_attachment_without_comment(self):
+        token = self.share()
+        attachment = AttachmentFile.create(
+            name="note.png", size=3, extension="png", mimetype="image/png"
+        )
+        self.assertRaises(
+            GuestCommentNotFound,
+            playlist_sharing_service.download_shared_attachment,
+            token,
+            str(attachment.id),
+            "note.png",
+        )
+
     def test_download_refused_on_a_task_outside_the_playlist(self):
         token, attachment_id = self.share_a_comment_attachment(for_client=True)
         self.position()
@@ -673,3 +775,97 @@ class SharedCommentTestCase(SharedPlaylistTestCase):
             attachment_id,
             "note.png",
         )
+
+
+class GuestCommentTestCase(SharedPlaylistTestCase):
+    """
+    A guest edits their own comments through the link. The link limits
+    them to the tasks of its playlist and to the statuses clients can set.
+    """
+
+    def setUp(self):
+        super().setUp()
+        preview = self.preview()
+        self.position(
+            {
+                "entity_id": str(self.asset.id),
+                "preview_file_id": str(preview.id),
+            }
+        )
+        self.token = self.share()
+        self.guest = playlist_sharing_service.create_guest(
+            self.token, "Reviewer"
+        )
+        self.comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.guest["id"], "look"
+        )
+
+    def update(self, data, guest_id=None, token=None):
+        return playlist_sharing_service.update_guest_comment(
+            self.comment["id"],
+            guest_id or self.guest["id"],
+            data,
+            token or self.token,
+        )
+
+    def test_a_guest_sets_a_status_clients_can_set(self):
+        wip = self.generate_fixture_task_status_wip()
+
+        self.update({"task_status_id": str(wip.id)})
+
+        comment = Comment.get(self.comment["id"])
+        self.assertEqual(comment.task_status_id, wip.id)
+        self.assertEqual(comment.text, "look")
+        self.assertEqual(Task.get(self.task.id).task_status_id, wip.id)
+
+    def test_a_guest_cannot_set_a_status_for_the_studio_only(self):
+        studio_only = TaskStatus.create(
+            name="Approved",
+            short_name="app",
+            color="#000000",
+            is_client_allowed=False,
+        )
+        self.assertRaises(
+            GuestCommentForbidden,
+            self.update,
+            {"task_status_id": str(studio_only.id)},
+        )
+        self.assertEqual(
+            Comment.get(self.comment["id"]).task_status_id,
+            self.task_status.id,
+        )
+
+    def test_a_guest_cannot_set_an_unknown_status(self):
+        self.assertRaises(
+            GuestCommentForbidden,
+            self.update,
+            {"task_status_id": fields.gen_uuid()},
+        )
+
+    def test_a_guest_of_another_link_cannot_edit(self):
+        """
+        A guest ID that leaked from another link does not work with this
+        token, even on a comment that the guest wrote.
+        """
+        other_playlist = self.generate_fixture_playlist("Other Playlist")
+        other_token = playlist_sharing_service.create_share_link(
+            other_playlist["id"], self.person.id
+        )["token"]
+        intruder = playlist_sharing_service.create_guest(other_token, "Other")
+        self.comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, intruder["id"], "look"
+        )
+
+        self.assertRaises(
+            GuestCommentForbidden,
+            self.update,
+            {"text": "changed"},
+            guest_id=intruder["id"],
+        )
+        self.assertEqual(Comment.get(self.comment["id"]).text, "look")
+
+    def test_a_guest_cannot_edit_a_comment_outside_the_playlist(self):
+        self.position()
+
+        self.assertRaises(GuestCommentForbidden, self.update, {"text": "x"})
+        self.assertEqual(Comment.get(self.comment["id"]).text, "look")

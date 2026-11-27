@@ -4,13 +4,17 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
-from zou.app.exceptions import PlaylistLockTimeoutException
+from zou.app.exceptions import (
+    PlaylistLockTimeoutException,
+    PlaylistNotFoundException,
+)
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
     entities_service,
     playlists_service,
     projects_service,
 )
+from zou.app.utils import fields
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
@@ -325,6 +329,34 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             ["SH010_animation_v002", "SH010_animation_v001"],
         )
 
+    def test_get_playlist_without_the_annotations(self):
+        """
+        The web client loads the annotations later: neither the shot nor
+        its revisions carry them.
+        """
+        self.generate_fixture_preview_files()
+        playlist = Playlist.create(
+            name="Playlist with shot",
+            project_id=self.project.id,
+            shots=[
+                {
+                    "entity_id": str(self.shot.id),
+                    "preview_file_id": str(self.preview_file.id),
+                }
+            ],
+        )
+
+        result = playlists_service.get_playlist_with_preview_file_revisions(
+            playlist.id, with_annotations=False
+        )
+
+        shot = result["shots"][0]
+        self.assertEqual(shot["preview_file_id"], str(self.preview_file.id))
+        self.assertNotIn("preview_file_annotations", shot)
+        for revisions in shot["preview_files"].values():
+            for revision in revisions:
+                self.assertNotIn("annotations", revision)
+
     def test_get_playlist_with_an_empty_preview_status(self):
         """
         The preview file route stores an empty status as it is: such a
@@ -623,3 +655,234 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             )
 
         self.assertEqual(Playlist.get(playlist.id).shots, [])
+
+
+class PlaylistsServiceSmallTestCase(ApiDBTestCase):
+    """
+    Tests that need one production and little more.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_project()
+
+    def test_all_playlists_for_episode_holds_the_ones_for_clients(self):
+        episode = self.generate_fixture_episode()
+        self.generate_fixture_playlist("Internal", episode_id=episode.id)
+        self.generate_fixture_playlist(
+            "For client", episode_id=episode.id, for_client=True
+        )
+
+        playlists = playlists_service.all_playlists_for_episode(
+            self.project.id, episode.id, for_client=True
+        )
+
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists], ["For client"]
+        )
+
+    def test_all_playlists_for_episode_of_one_task_type(self):
+        episode = self.generate_fixture_episode()
+        self.generate_fixture_task_type()
+        self.generate_fixture_playlist(
+            "Shaders", episode_id=episode.id, task_type_id=self.task_type.id
+        )
+        self.generate_fixture_playlist(
+            "Animation",
+            episode_id=episode.id,
+            task_type_id=self.task_type_animation.id,
+        )
+        self.generate_fixture_playlist("No task type", episode_id=episode.id)
+
+        playlists = playlists_service.all_playlists_for_episode(
+            self.project.id, episode.id, task_type_id=str(self.task_type.id)
+        )
+
+        self.assertEqual(
+            [playlist["name"] for playlist in playlists], ["Shaders"]
+        )
+
+    def test_the_listing_gives_the_preview_of_the_first_shot(self):
+        episode = self.generate_fixture_episode()
+        preview_file_id = str(fields.gen_uuid())
+        Playlist.create(
+            name="With shots",
+            project_id=self.project.id,
+            episode_id=episode.id,
+            shots=[
+                {"entity_id": str(fields.gen_uuid()), "preview_file_id": None},
+                {
+                    "entity_id": str(fields.gen_uuid()),
+                    "preview_file_id": str(fields.gen_uuid()),
+                },
+            ],
+        )
+        Playlist.create(
+            name="First shot with preview",
+            project_id=self.project.id,
+            episode_id=episode.id,
+            shots=[
+                {
+                    "entity_id": str(fields.gen_uuid()),
+                    "preview_file_id": preview_file_id,
+                }
+            ],
+        )
+
+        playlists = {
+            playlist["name"]: playlist
+            for playlist in playlists_service.all_playlists_for_episode(
+                self.project.id, episode.id
+            )
+        }
+
+        self.assertEqual(
+            playlists["First shot with preview"]["first_preview_file_id"],
+            preview_file_id,
+        )
+        self.assertNotIn("first_preview_file_id", playlists["With shots"])
+
+    def test_build_playlist_dict_reads_the_first_shot_on_the_model(self):
+        preview_file_id = str(fields.gen_uuid())
+        playlist = Playlist.create(
+            name="Playlist",
+            project_id=self.project.id,
+            shots=[
+                {
+                    "entity_id": str(fields.gen_uuid()),
+                    "preview_file_id": preview_file_id,
+                }
+            ],
+        )
+
+        playlist_dict = playlists_service.build_playlist_dict(playlist)
+
+        self.assertEqual(
+            playlist_dict["first_preview_file_id"], preview_file_id
+        )
+
+    def test_get_an_unknown_playlist_with_its_revisions(self):
+        self.assertRaises(
+            PlaylistNotFoundException,
+            playlists_service.get_playlist_with_preview_file_revisions,
+            fields.gen_uuid(),
+        )
+
+    def test_get_a_playlist_without_shots_with_its_revisions(self):
+        playlist = Playlist.create(
+            name="Empty", project_id=self.project.id, shots=None
+        )
+
+        result = playlists_service.get_playlist_with_preview_file_revisions(
+            playlist.id
+        )
+
+        self.assertEqual(result["shots"], [])
+
+    def test_get_a_playlist_with_its_build_jobs(self):
+        """
+        The client reads the build jobs on the playlist to know if a movie
+        is available.
+        """
+        self.generate_fixture_playlist("Playlist")
+        jobs = [
+            self.generate_fixture_build_job(datetime(2026, 1, day))
+            for day in (1, 2)
+        ]
+
+        result = playlists_service.get_playlist_with_preview_file_revisions(
+            self.playlist.id
+        )
+
+        self.assertEqual(
+            {job["id"] for job in result["build_jobs"]},
+            {job["id"] for job in jobs},
+        )
+
+    def test_playlist_previews_keeps_the_known_previews_in_order(self):
+        """
+        Entries that are not dicts, without preview, with a blank or an
+        unknown preview ID give nothing. only_movies keeps the mp4 files.
+        """
+        self.generate_fixture_task()
+        picture = self.generate_fixture_preview_file(revision=1)
+        picture.update({"extension": "png"})
+        movie = self.generate_fixture_preview_file(revision=2)
+        shots = [
+            "not a shot",
+            {"entity_id": str(self.asset.id)},
+            {"preview_file_id": "  "},
+            {"preview_file_id": fields.gen_uuid()},
+            {"preview_file_id": str(picture.id)},
+            {"preview_file_id": str(movie.id)},
+        ]
+
+        self.assertEqual(
+            playlists_service.playlist_previews(shots),
+            [
+                {"id": str(picture.id), "extension": "png"},
+                {"id": str(movie.id), "extension": "mp4"},
+            ],
+        )
+        self.assertEqual(
+            playlists_service.playlist_previews(shots, only_movies=True),
+            [{"id": str(movie.id), "extension": "mp4"}],
+        )
+
+    def test_generate_temp_playlist_without_tasks(self):
+        self.assertEqual(playlists_service.generate_temp_playlist([]), [])
+
+    def test_a_sequence_entry_is_placed_under_its_episode(self):
+        # The production has no episode yet: the sequence has no parent.
+        orphan_task = self.generate_fixture_sequence_task()
+        orphan = playlists_service.generate_playlisted_entity_from_task(
+            orphan_task.id, []
+        )
+        self.assertEqual(orphan["id"], str(self.sequence.id))
+        self.assertEqual(orphan["parent_name"], "")
+        self.assertEqual(orphan["episode_name"], "")
+
+        episode = self.generate_fixture_episode()
+        sequence = self.generate_fixture_sequence("S02", episode_id=episode.id)
+        task = self.generate_fixture_sequence_task("S02 task")
+        entry = playlists_service.generate_playlisted_entity_from_task(
+            task.id, []
+        )
+        self.assertEqual(entry["id"], str(sequence.id))
+        self.assertEqual(entry["parent_name"], "E01")
+        self.assertEqual(entry["episode_id"], str(episode.id))
+        self.assertEqual(entry["episode_name"], "E01")
+
+    def test_an_episode_entry_has_no_parent(self):
+        task = self.generate_fixture_episode_task()
+
+        entry = playlists_service.generate_playlisted_entity_from_task(
+            task.id, []
+        )
+
+        self.assertEqual(entry["id"], str(self.episode.id))
+        self.assertEqual(entry["name"], "E01")
+        self.assertEqual(entry["parent_name"], "")
+        self.assertEqual(entry["episode_name"], "")
+
+    def test_an_entry_falls_back_on_a_task_type_with_previews(self):
+        """
+        When the task has no preview, the entry takes the preview of the
+        first task type of the project that has one for the entity.
+        """
+        task = self.generate_fixture_shot_task()
+        layout_task = self.generate_fixture_shot_task(
+            "Layout", task_type_id=self.task_type_layout.id
+        )
+        self.task = layout_task
+        preview = self.generate_fixture_preview_file()
+        task_type_links = [
+            {"task_type_id": str(self.task_type_animation.id)},
+            {"task_type_id": str(self.task_type_layout.id)},
+        ]
+
+        entry = playlists_service.generate_playlisted_entity_from_task(
+            task.id, task_type_links
+        )
+
+        self.assertEqual(entry["preview_file_id"], str(preview.id))
