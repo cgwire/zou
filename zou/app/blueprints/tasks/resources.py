@@ -207,6 +207,8 @@ class TaskCommentResource(MethodView):
         Delete comment
         """
         comment = comments_service.get_comment(comment_id)
+        if comment["object_id"] != task_id:
+            raise CommentNotFoundException
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():

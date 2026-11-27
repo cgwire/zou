@@ -14,6 +14,7 @@ from zou.app.services import (
     tasks_service,
     time_spents_service,
 )
+from zou.app.utils import fields
 
 
 class TaskTestCase(ApiDBTestCase):
@@ -738,6 +739,10 @@ class TaskCommentTestCase(TaskTestCase):
         }
         comment = self.post(path, comment)
 
+        other_task_path = (
+            f"/data/tasks/{fields.gen_uuid()}/comments/{comment['id']}"
+        )
+        self.delete(other_task_path, 404)
         path = f"/data/tasks/{self.task_id}/comments/{comment['id']}"
         comments = self.delete(path)
         self.delete(path, 404)
