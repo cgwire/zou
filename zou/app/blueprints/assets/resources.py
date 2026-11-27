@@ -392,24 +392,7 @@ class AssetAssetInstancesResource(MethodView, ArgsMixin):
         return asset_instance, 201
 
 
-class BaseSetSharedAssetsResource(MethodView, ArgsMixin):
-
-    @jwt_required()
-    def post(self, project_id=None, asset_type_id=None, asset_ids=None):
-        """
-        Set the shared flag of the matching assets from the body. Checks no
-        permission: the subclasses do it before they call this method.
-        """
-        body = validation.validate_request_body(SetSharedAssetsSchema)
-        return assets_service.set_shared_assets(
-            is_shared=body.is_shared,
-            project_id=project_id,
-            asset_type_id=asset_type_id,
-            asset_ids=asset_ids,
-        )
-
-
-class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
+class SetSharedProjectAssetsResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["SetSharedProjectAssetsResource_post"])
@@ -422,10 +405,14 @@ class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
         asset_ids = (
             [str(a) for a in body.asset_ids] if body.asset_ids else None
         )
-        return super().post(project_id=project_id, asset_ids=asset_ids)
+        return assets_service.set_shared_assets(
+            is_shared=body.is_shared,
+            project_id=project_id,
+            asset_ids=asset_ids,
+        )
 
 
-class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
+class SetSharedProjectAssetTypeAssetsResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["SetSharedProjectAssetTypeAssetsResource_post"])
@@ -434,10 +421,15 @@ class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
         Set asset type assets shared
         """
         permissions_service.check_manager_project_access(project_id)
-        return super().post(project_id=project_id, asset_type_id=asset_type_id)
+        body = validation.validate_request_body(SetSharedAssetsSchema)
+        return assets_service.set_shared_assets(
+            is_shared=body.is_shared,
+            project_id=project_id,
+            asset_type_id=asset_type_id,
+        )
 
 
-class SetSharedAssetsResource(BaseSetSharedAssetsResource):
+class SetSharedAssetsResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["SetSharedAssetsResource_post"])
@@ -452,7 +444,9 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
             project_ids.add(assets_service.get_asset(asset_id)["project_id"])
         for project_id in project_ids:
             permissions_service.check_manager_project_access(project_id)
-        return super().post(asset_ids=asset_ids)
+        return assets_service.set_shared_assets(
+            is_shared=body.is_shared, asset_ids=asset_ids
+        )
 
 
 class ProjectAssetsSharedUsedResource(MethodView, ArgsMixin):

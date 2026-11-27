@@ -20,9 +20,6 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 
 class TimeSpentsCsvExport(BaseCsvExport):
-    def __init__(self):
-        BaseCsvExport.__init__(self)
-
     @jwt_required()
     @swag_from(SPECS["TimeSpentsCsvExport_get"])
     def get(self):
