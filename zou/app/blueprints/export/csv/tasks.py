@@ -1,15 +1,7 @@
 from flask_jwt_extended import jwt_required
-from sqlalchemy.orm import aliased, selectinload
 
 from zou.app.blueprints.export.csv.base import BaseCsvExport
-from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
-from zou.app.models.person import Person
-from zou.app.models.project import Project
-from zou.app.models.task import Task
-from zou.app.models.task_status import TaskStatus
-from zou.app.models.task_type import TaskType
-from zou.app.services import projects_service
+from zou.app.services import tasks_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -49,44 +41,7 @@ class TasksCsvExport(BaseCsvExport):
         ]
 
     def build_query(self):
-        Sequence = aliased(Entity, name="sequence")
-        Episode = aliased(Entity, name="episode")
-        open_status = projects_service.get_open_status()
-
-        query = Task.query.order_by(Project.name, TaskType.name, Task.name)
-        query = query.join(Project, Task.project_id == Project.id)
-        query = query.join(TaskType, Task.task_type_id == TaskType.id)
-        query = query.join(TaskStatus, Task.task_status_id == TaskStatus.id)
-        query = query.join(Entity, Task.entity_id == Entity.id)
-        query = query.join(EntityType)
-        query = (
-            query.outerjoin(Person, Task.assigner_id == Person.id)
-            .outerjoin(Sequence, Sequence.id == Entity.parent_id)
-            .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        )
-        query = query.add_columns(
-            Project.name,
-            TaskType.name,
-            TaskStatus.name,
-            Episode.name,
-            Sequence.name,
-            EntityType.name,
-            Entity.name,
-            Person.first_name,
-            Person.last_name,
-        )
-        query = query.options(selectinload(Task.assignees))
-        query = query.filter(Project.project_status_id == open_status["id"])
-        query = query.order_by(
-            Project.name,
-            TaskType.name,
-            Episode.name,
-            Sequence.name,
-            EntityType.name,
-            Entity.name,
-        )
-
-        return query
+        return tasks_service.get_open_projects_tasks_query()
 
     def build_row(self, task_data):
         (

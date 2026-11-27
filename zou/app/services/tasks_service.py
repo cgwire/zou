@@ -18,7 +18,7 @@ from typing import Optional
 from sqlalchemy import and_, any_, cast
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql import func
 
@@ -569,6 +569,50 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
         .all()
     )
     return Task.serialize_list(tasks)
+
+
+def get_open_projects_tasks_query():
+    """
+    Return a query on the tasks of the open projects, joined with the names
+    of their project, task type, task status, episode, sequence, entity type,
+    entity and assigner. The assignees are loaded with the tasks.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    open_status = projects_service.get_open_status()
+
+    query = Task.query.order_by(Project.name, TaskType.name, Task.name)
+    query = query.join(Project, Task.project_id == Project.id)
+    query = query.join(TaskType, Task.task_type_id == TaskType.id)
+    query = query.join(TaskStatus, Task.task_status_id == TaskStatus.id)
+    query = query.join(Entity, Task.entity_id == Entity.id)
+    query = query.join(EntityType)
+    query = (
+        query.outerjoin(Person, Task.assigner_id == Person.id)
+        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
+        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+    )
+    query = query.add_columns(
+        Project.name,
+        TaskType.name,
+        TaskStatus.name,
+        Episode.name,
+        Sequence.name,
+        EntityType.name,
+        Entity.name,
+        Person.first_name,
+        Person.last_name,
+    )
+    query = query.options(selectinload(Task.assignees))
+    query = query.filter(Project.project_status_id == open_status["id"])
+    return query.order_by(
+        Project.name,
+        TaskType.name,
+        Episode.name,
+        Sequence.name,
+        EntityType.name,
+        Entity.name,
+    )
 
 
 def get_last_comment_map(task_ids):
