@@ -405,6 +405,20 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
                 "delivery_code", [d["field_name"] for d in descriptors]
             )
 
+    def test_all_projects_partial_update_keeps_the_other_fields(self):
+        metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id, "Project", "Stage", "list", ["a", "b"], True
+        )
+        updated = self.put(
+            "data/metadata-descriptors/all-projects/stage",
+            {"entity_type": "Project", "name": "Step"},
+        )
+        self.assertEqual(len(updated), 1)
+        self.assertEqual(updated[0]["field_name"], "step")
+        self.assertEqual(updated[0]["data_type"], "list")
+        self.assertEqual(updated[0]["choices"], ["a", "b"])
+        self.assertTrue(updated[0]["for_client"])
+
     def test_unallowed_update_metadata_descriptor(self):
         descriptor = metadata_descriptors_service.add_metadata_descriptor(
             self.project_id, "Asset", "Contractor", "string", [], False

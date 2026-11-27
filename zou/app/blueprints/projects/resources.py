@@ -823,18 +823,10 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
             AllProjectsMetadataDescriptorUpdateSchema
         )
         _check_metadata_entity_type(body.entity_type)
+        changes = body.model_dump(exclude_unset=True, exclude={"entity_type"})
         types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
+        if "data_type" in changes and changes["data_type"] not in types:
             raise WrongParameterException("Invalid data_type")
-        changes = {
-            "for_client": body.for_client,
-            "data_type": body.data_type,
-            "choices": body.choices,
-            "departments": body.departments,
-        }
-        # Keep the field name untouched when the name is not being changed.
-        if body.name:
-            changes["name"] = body.name
         return metadata_descriptors_service.update_metadata_descriptor_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
