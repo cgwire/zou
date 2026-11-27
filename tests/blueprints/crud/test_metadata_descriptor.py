@@ -99,7 +99,7 @@ class MetadataTestCase(ApiDBTestCase):
             f"data/metadata-descriptors/{descriptor['id']}"
         )
         self.assertEqual(descriptor, descriptor_again)
-        self.get_404(f"data/metadata-descriptor/{fields.gen_uuid()}")
+        self.get_404(f"data/metadata-descriptors/{fields.gen_uuid()}")
 
     def test_create_metadata_descriptor(self):
         data = {

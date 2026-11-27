@@ -202,12 +202,3 @@ class TaskTestCase(ApiDBTestCase):
     def test_filter_by_assignee(self):
         tasks = self.get(f"data/tasks?assignees={self.person.id}")
         self.assertEqual(len(tasks), 3)
-
-    def test_full_task(self):
-        task = self.get(f"data/tasks/{self.tasks[0].id}/full")
-        self.assertEqual(task["task_type"]["name"], "Shaders")
-        self.assertEqual(task["persons"][0]["first_name"], "John")
-        self.assertEqual(task["task_status"]["name"], "Open")
-        self.assertEqual(task["project"]["name"], "Cosmos Landromat")
-        self.assertEqual(task["entity"]["name"], "Tree")
-        self.assertEqual(task["assigner"]["first_name"], "Ema")

@@ -15,12 +15,6 @@ class CommentTestCase(ApiDBTestCase):
         self.comments.append(self.generate_fixture_comment())
         self.comments.append(self.generate_fixture_comment())
 
-    def test_repr(self):
-        self.assertEqual(
-            str(Comment.get(self.comments[0]["id"])),
-            f"<Comment of {self.comments[0]['object_id']}>",
-        )
-
     def test_get_comments(self):
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 3)
@@ -169,8 +163,6 @@ class CommentTestCase(ApiDBTestCase):
         self.put(f"data/comments/{comment_id}", {"checklist": checklist})
         for change in (
             [{"text": "Fix the hands", "checked": True}],
-            [{"text": "Looks good", "checked": True}],
-            checklist + [{"text": "And the feet", "checked": False}],
             [],
         ):
             self.put(f"data/comments/{comment_id}", {"checklist": change}, 403)

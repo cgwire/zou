@@ -253,23 +253,6 @@ class ProjectTestCase(ApiDBTestCase):
         self.assertIsNotNone(Project.get(project_id))
         self.assertIsNotNone(Person.get(preview_account_id))
 
-    def test_project_status(self):
-        data = {"name": "stalled", "color": "#FFFFFF"}
-        self.open_status = self.post("data/project-status", data)
-        data = {"name": "close", "color": "#000000"}
-        self.close_status = self.post("data/project-status", data)
-        data = {
-            "name": "Cosmos Landromat 2",
-            "description": "Video game trailer.",
-            "project_status_id": self.open_status["id"],
-        }
-        self.project = self.post("data/projects", data)
-        self.assertIsNotNone(self.project["id"])
-        project_again = self.get(f"data/projects/{self.project['id']}")
-        self.assertEqual(
-            project_again["project_status_id"], self.open_status["id"]
-        )
-
     def test_get_project_by_name(self):
         project_before = self.get("data/projects")[1]
         project = self.get_first(

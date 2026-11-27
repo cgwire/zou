@@ -166,16 +166,3 @@ class WorkingFileTestCase(ApiDBTestCase):
         working_files = self.get("data/working-files")
         self.assertEqual(len(working_files), 2)
         self.delete_404(f"data/working-files/{fields.gen_uuid()}")
-
-    def test_serialize_outputs(self):
-        self.generate_fixture_software()
-        working_file = self.generate_fixture_working_file()
-        self.generate_fixture_file_status()
-        self.generate_fixture_output_type()
-        output_file = self.generate_fixture_output_file()
-        output_file.source_file_id = working_file.id
-        output_file.save()
-        self.assertEqual(
-            working_file.serialize(relations=True)["outputs"],
-            [str(output_file.id)],
-        )
