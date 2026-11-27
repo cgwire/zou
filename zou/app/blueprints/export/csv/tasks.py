@@ -1,7 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.export.csv.base import BaseCsvExport
-from zou.app.services import tasks_service
+from zou.app.services import tasks_service, user_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -41,7 +41,9 @@ class TasksCsvExport(BaseCsvExport):
         ]
 
     def build_query(self):
-        return tasks_service.get_open_projects_tasks_query()
+        return tasks_service.get_open_projects_tasks_query(
+            user_service.get_open_project_ids()
+        )
 
     def build_row(self, task_data):
         (

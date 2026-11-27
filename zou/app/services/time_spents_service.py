@@ -118,9 +118,9 @@ def get_time_spents_for_entity(entity_id):
     return TimeSpent.serialize_list(query.all())
 
 
-def get_open_projects_time_spents_query():
+def get_open_projects_time_spents_query(project_ids):
     """
-    Return a query on the time spents of the open projects, joined with
+    Return a query on the time spents of the given open projects, joined with
     the names of their project, entity type, entity, task type and person.
     """
     return (
@@ -146,6 +146,7 @@ def get_open_projects_time_spents_query():
         .add_columns(Person.first_name)
         .add_columns(Person.last_name)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(Project.id.in_(project_ids))
     )
 
 

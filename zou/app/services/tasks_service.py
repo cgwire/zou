@@ -600,11 +600,11 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
     return Task.serialize_list(tasks)
 
 
-def get_open_projects_tasks_query():
+def get_open_projects_tasks_query(project_ids):
     """
-    Return a query on the tasks of the open projects, joined with the names
-    of their project, task type, task status, episode, sequence, entity type,
-    entity and assigner. The assignees are loaded with the tasks.
+    Return a query on the tasks of the given open projects, joined with the
+    names of their project, task type, task status, episode, sequence, entity
+    type, entity and assigner. The assignees are loaded with the tasks.
     """
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -634,6 +634,7 @@ def get_open_projects_tasks_query():
     )
     query = query.options(selectinload(Task.assignees))
     query = query.filter(Project.project_status_id == open_status["id"])
+    query = query.filter(Project.id.in_(project_ids))
     return query.order_by(
         Project.name,
         TaskType.name,

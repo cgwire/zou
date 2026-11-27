@@ -5,6 +5,7 @@ from zou.app.services import (
     entities_service,
     persons_service,
     time_spents_service,
+    user_service,
 )
 from zou.app.utils import date_helpers
 from zou.app.utils.openapi import load_specs, swag_from
@@ -38,7 +39,9 @@ class TimeSpentsCsvExport(BaseCsvExport):
         ]
 
     def build_query(self):
-        return time_spents_service.get_open_projects_time_spents_query()
+        return time_spents_service.get_open_projects_time_spents_query(
+            user_service.get_open_project_ids()
+        )
 
     def build_row(self, time_spent_row):
         (

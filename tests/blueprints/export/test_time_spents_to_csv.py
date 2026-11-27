@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.services import (
+    projects_service,
     time_spents_service,
 )
 
@@ -33,3 +34,19 @@ class TasksCsvExportTestCase(ApiDBTestCase):
 Cosmos Landromat;John Doe;Props;Tree;Shaders;2023-03-04;500.0\r
 """
         self.assertEqual(csv_tasks, expected_result)
+
+    def test_export_for_a_manager_is_limited_to_their_projects(self):
+        headers = "Project;Person;Entity Type Name;Entity;Task Type;Date;Time spent\r\n"
+        row = (
+            "Cosmos Landromat;John Doe;Props;Tree;Shaders;2023-03-04;500.0\r\n"
+        )
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        csv_time_spents = self.get_raw("/export/csv/time-spents.csv")
+        self.assertEqual(csv_time_spents, headers)
+
+        projects_service.add_team_member(
+            self.project_id, self.user_manager["id"]
+        )
+        csv_time_spents = self.get_raw("/export/csv/time-spents.csv")
+        self.assertEqual(csv_time_spents, headers + row)
