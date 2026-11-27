@@ -504,6 +504,19 @@ class PersonWriteTestCase(PersonsTestCase):
             "Updated",
         )
 
+    def test_update_person_drops_the_cached_email_lookup(self):
+        person = persons_service.get_person_by_email("john.doe@example.com")
+        person_raw = Person.get(person["id"])
+        person_raw.update({"email": "jhon.doe.bis@example.com"})
+        person = persons_service.get_person_by_email("john.doe@example.com")
+
+        person = persons_service.update_person(
+            person["id"], {"email": "john.doe2@example.com"}
+        )
+        with self.assertRaises(PersonNotFoundException):
+            persons_service.get_person_by_email("john.doe@example.com")
+        person = persons_service.get_person_by_email("john.doe2@example.com")
+
     def test_update_person_expiration_date_in_past(self):
         self.assertRaises(
             WrongParameterException,

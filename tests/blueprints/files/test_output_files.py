@@ -198,6 +198,10 @@ class NewOutputFileTestCase(OutputFileTestCase):
         output_file = self.get(f"/data/output-files/{output_file_id}")
         self.assertEqual(output_file["revision"], 66)
 
+    def test_the_working_file_belongs_to_the_entity(self):
+        self.generate_fixture_shot_working_file()
+        self.publish(400, working_file_id=str(self.working_file.id))
+
     def test_get_output_files_of_an_asset_instance(self):
         # The resource read its filters through ArgsMixin without
         # inheriting it: the route answered 500.
@@ -371,6 +375,36 @@ class AssetInstanceOutputFileTestCase(OutputFileTestCase):
             200,
         )
         self.assertEqual(result["next_revision"], 2)
+
+    def test_the_working_file_belongs_to_the_asset_instance(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        shot_working_file = self.generate_fixture_shot_working_file()
+        self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/"
+            f"{self.scene.id}/output-files/new",
+            {
+                "output_type_id": self.cache_type_id,
+                "task_type_id": str(self.task_type_animation.id),
+                "working_file_id": str(shot_working_file.id),
+            },
+            400,
+        )
+
+    def test_get_next_instance_revision_stays_in_the_project(self):
+        self.generate_fixture_scene()
+        self.generate_fixture_scene_asset_instance()
+        other_shot = self.generate_fixture_shot_standard()
+        self.post(
+            f"data/asset-instances/{self.asset_instance.id}/entities/"
+            f"{other_shot.id}/output-files/next-revision",
+            {
+                "output_type_id": self.cache_type_id,
+                "task_type_id": str(self.task_type_animation.id),
+                "name": "main",
+            },
+            403,
+        )
 
     def test_get_last_instance_outputs(self):
         self.generate_fixture_scene()

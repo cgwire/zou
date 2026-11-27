@@ -103,6 +103,21 @@ class SamlRoutesTestCase(ApiDBTestCase):
         self.assertEqual(person["country"], "FR")
         self.assertIn("access_token_cookie", response.headers["Set-Cookie"])
 
+    def test_sso_provisions_new_user_without_names(self):
+        self._post_sso("nameless@example.com", {"country": ["fr"]})
+        person = persons_service.get_person_by_email("nameless@example.com")
+        self.assertEqual(person["first_name"], "")
+        self.assertEqual(person["last_name"], "")
+
+    def test_sso_provisions_new_user_without_names_through_the_subject(
+        self,
+    ):
+        config.SAML_SUBJECT_ATTRIBUTE = "uid"
+        person_id = self._sign_in("nameless@example.com", {"uid": ["nobody"]})
+        self.assertIsNotNone(person_id)
+        person = persons_service.get_person(person_id)
+        self.assertEqual(person["first_name"], "")
+
     def test_sso_updates_existing_user(self):
         self.generate_fixture_person(
             first_name="Old", last_name="Name", email="known@example.com"

@@ -32,7 +32,6 @@ class ShotCastingTestCase(ApiDBTestCase):
             {"asset_id": self.asset_id, "nb_occurences": 1},
             {"asset_id": self.asset_character_id, "nb_occurences": 3},
         ]
-        path = f"/data/shots/{self.shot_id!s}/casting"
         path = (
             f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
         )

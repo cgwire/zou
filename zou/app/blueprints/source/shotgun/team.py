@@ -50,14 +50,14 @@ class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
             person = Person.get_by(shotgun_id=data["person_shotgun_id"])
 
             if project is not None and person is not None:
-                # Through the service, which drops the cached team and tells
-                # the clients: the new member would wait for the cache
-                # otherwise.
+                # Use the service: it clears the cached team and tells the
+                # clients. Otherwise, the new member would wait for the cache.
                 projects_service.add_team_member(
                     str(project.id), str(person.id)
                 )
-                # Record the Shotgun id on the link so the next import and
-                # the removal route find it instead of duplicating it.
+                # Record the Shotgun ID on the link. Thus the next import and
+                # the removal route find the link, and do not make a copy of
+                # it.
                 link = ProjectPersonLink.query.filter_by(
                     project_id=project.id, person_id=person.id
                 ).first()
@@ -89,8 +89,8 @@ class ImportRemoveShotgunProjectConnectionResource(
         ).first()
 
     def delete_instance(self, instance):
-        # Through the service, which drops the cached team and tells the
-        # clients: the removed member would keep their access otherwise.
+        # Use the service: it clears the cached team and tells the clients.
+        # Otherwise, the removed member would keep their access.
         projects_service.remove_team_member(
             str(instance.project_id), str(instance.person_id)
         )

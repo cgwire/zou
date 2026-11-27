@@ -1,12 +1,9 @@
 from flask_jwt_extended import jwt_required
-from sqlalchemy import func
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
-from zou.app.services import permissions_service, tasks_service, user_service
-from zou.app.utils import events
+from zou.app.services import permissions_service, time_spents_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/time_spent.yml")
@@ -45,27 +42,12 @@ class TimeSpentsResource(BaseModelsResource):
                 "`end_date` must be given."
             )
 
-        return query.filter(
-            self.model.date.between(
-                func.cast(start_date, TimeSpent.date.type),
-                func.cast(end_date, TimeSpent.date.type),
-            )
+        return time_spents_service.filter_time_spents_between(
+            query, start_date, end_date
         )
 
     def post_creation(self, instance):
-        task_id = str(instance.task_id)
-        task = Task.get(task_id)
-        task.duration = sum(
-            time_spent.duration
-            for time_spent in TimeSpent.get_all_by(task_id=task_id)
-        )
-        task.save()
-        tasks_service.clear_task_cache(task_id)
-        events.emit(
-            "task:update",
-            {"task_id": task_id},
-            project_id=str(task.project_id),
-        )
+        time_spents_service.update_task_duration(str(instance.task_id))
         return instance.serialize(relations=True)
 
 
@@ -103,35 +85,9 @@ class TimeSpentResource(BaseModelResource):
         return super().delete(instance_id)
 
     def post_update(self, instance_dict, data):
-        task = Task.get(instance_dict["task_id"])
-        task.duration = sum(
-            time_spent.duration
-            for time_spent in TimeSpent.get_all_by(
-                task_id=instance_dict["task_id"]
-            )
-        )
-        task.save()
-        tasks_service.clear_task_cache(instance_dict["task_id"])
-        events.emit(
-            "task:update",
-            {"task_id": instance_dict["task_id"]},
-            project_id=str(task.project_id),
-        )
+        time_spents_service.update_task_duration(instance_dict["task_id"])
         return instance_dict
 
     def post_delete(self, instance_dict):
-        task = Task.get(instance_dict["task_id"])
-        task.duration = sum(
-            time_spent.duration
-            for time_spent in TimeSpent.get_all_by(
-                task_id=instance_dict["task_id"]
-            )
-        )
-        task.save()
-        tasks_service.clear_task_cache(instance_dict["task_id"])
-        events.emit(
-            "task:update",
-            {"task_id": instance_dict["task_id"]},
-            project_id=str(task.project_id),
-        )
+        time_spents_service.update_task_duration(instance_dict["task_id"])
         return instance_dict

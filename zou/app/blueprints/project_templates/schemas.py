@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request body validation in the project templates
+Pydantic schemas that validate the request bodies of the project templates
 blueprint.
 """
 
@@ -12,7 +12,7 @@ from zou.app.utils.validation import BaseSchema
 
 class AddTaskTypeSchema(BaseSchema):
     """
-    Body for attaching a task type to a project template.
+    Body to attach a task type to a project template.
     """
 
     task_type_id: str = Field(..., min_length=1, description="Task type UUID")
@@ -23,8 +23,9 @@ class AddTaskTypeSchema(BaseSchema):
 
     def bitrates(self):
         """
-        The bitrates to write on the link, or None when the body did not
-        mention them: a priority-only call leaves them as they are.
+        Return the bitrates to write on the link. If the body does not give
+        them, return None: a call that sets only the priority keeps the current
+        bitrates.
         """
         keys = ("hd_bitrate_compression", "ld_bitrate_compression")
         if not self.model_fields_set.intersection(keys):
@@ -34,7 +35,7 @@ class AddTaskTypeSchema(BaseSchema):
 
 class AddTaskStatusSchema(BaseSchema):
     """
-    Body for attaching a task status to a project template.
+    Body to attach a task status to a project template.
     """
 
     task_status_id: str = Field(
@@ -47,8 +48,8 @@ class AddTaskStatusSchema(BaseSchema):
 
 class AssetTypeWorkflowSchema(BaseSchema):
     """
-    Body for setting the workflow of an asset type on a template. An empty
-    list restores the studio workflow.
+    Body to set the workflow of an asset type on a template. An empty list
+    restores the studio workflow.
     """
 
     task_type_ids: List[str]
@@ -56,7 +57,7 @@ class AssetTypeWorkflowSchema(BaseSchema):
 
 class AddAssetTypeSchema(BaseSchema):
     """
-    Body for attaching an asset type to a project template.
+    Body to attach an asset type to a project template.
     """
 
     asset_type_id: str = Field(
@@ -66,7 +67,7 @@ class AddAssetTypeSchema(BaseSchema):
 
 class AddStatusAutomationSchema(BaseSchema):
     """
-    Body for attaching a status automation to a project template.
+    Body to attach a status automation to a project template.
     """
 
     status_automation_id: str = Field(
@@ -76,7 +77,7 @@ class AddStatusAutomationSchema(BaseSchema):
 
 class AddBackgroundSchema(BaseSchema):
     """
-    Body for attaching a preview background to a project template.
+    Body to attach a preview background to a project template.
     """
 
     preview_background_file_id: str = Field(
@@ -86,7 +87,7 @@ class AddBackgroundSchema(BaseSchema):
 
 class ReorderTaskTypesSchema(BaseSchema):
     """
-    Body of the task type reorder route: the ids in their new order.
+    Body of the route that reorders the task types: the IDs in their new order.
     """
 
     task_type_ids: List[str]
@@ -94,7 +95,8 @@ class ReorderTaskTypesSchema(BaseSchema):
 
 class ReorderTaskStatusesSchema(BaseSchema):
     """
-    Body of the task status reorder route: the ids in their new order.
+    Body of the route that reorders the task statuses: the IDs in their new
+    order.
     """
 
     task_status_ids: List[str]
@@ -102,7 +104,7 @@ class ReorderTaskStatusesSchema(BaseSchema):
 
 class SetMetadataDescriptorsSchema(BaseSchema):
     """
-    Body for replacing the metadata descriptors snapshot on a template.
+    Body to replace the snapshot of the metadata descriptors on a template.
     """
 
     metadata_descriptors: Optional[list] = None
@@ -110,7 +112,7 @@ class SetMetadataDescriptorsSchema(BaseSchema):
 
 class SetDefaultBackgroundSchema(BaseSchema):
     """
-    Body for setting the default preview background of a template.
+    Body to set the default preview background of a template.
     """
 
     default_preview_background_file_id: Optional[str] = None
@@ -118,7 +120,7 @@ class SetDefaultBackgroundSchema(BaseSchema):
 
 class CreateTemplateFromProjectSchema(BaseSchema):
     """
-    Body for creating a template from an existing project.
+    Body to create a template from an existing project.
     """
 
     name: str = Field(..., min_length=1, description="Template name")

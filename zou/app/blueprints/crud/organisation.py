@@ -22,8 +22,9 @@ class OrganisationsResource(BaseModelsResource):
 
     def get_filterable_column_names(self):
         """
-        The chat tokens are stripped from the payload for non admins, so
-        they must not be answerable through a filter either.
+        Return the filter names without the chat tokens. The payload does
+        not show the chat tokens to users who are not admins. Thus a filter
+        must not give them either.
         """
         names = inspect(self.model).all_orm_descriptors.keys()
         if has_admin_permissions():

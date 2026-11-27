@@ -1,5 +1,6 @@
 import itertools
 import logging
+import os
 from operator import itemgetter
 
 from sqlalchemy import desc, func
@@ -23,18 +24,28 @@ from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import (
     entities_service,
+    projects_service,
 )
 from zou.app.services.base_service import (
     get_instance,
     get_or_create_instance_by_name,
 )
 from zou.app.stores import file_store, queue_store
-from zou.app.utils import cache, events, fields, fs, query as query_utils
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    events,
+    fields,
+    fs,
+    query as query_utils,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +127,24 @@ def _apply_output_file_filters(
     return query
 
 
+def filter_output_files_by_projects(
+    query, projects_filter, excluded_project_ids
+):
+    """
+    Return the given output file query limited by the given project filter,
+    applied to the projects of the output file entities. Remove the output
+    files of the given excluded projects.
+    """
+    query = (
+        query.join(Entity, OutputFile.entity_id == Entity.id)
+        .join(Project)
+        .filter(projects_filter)
+    )
+    if excluded_project_ids:
+        query = query.filter(Entity.project_id.not_in(excluded_project_ids))
+    return query
+
+
 def clear_file_status_cache():
     """
     Remove the memoized default file status.
@@ -135,6 +164,18 @@ def get_default_file_status():
         )
         default_status.save()
     return default_status.serialize()
+
+
+def filter_working_files_by_projects(query, projects_filter):
+    """
+    Return the given working file query limited by the given project filter,
+    applied to the projects of the working file entities.
+    """
+    return (
+        query.join(Entity, WorkingFile.entity_id == Entity.id)
+        .join(Project)
+        .filter(projects_filter)
+    )
 
 
 def get_working_file_raw(working_file_id):
@@ -286,6 +327,7 @@ def create_new_working_revision(
     path="",
     comment="",
     revision=0,
+    description="",
 ):
     """
     Create a new working file revision for the given task. An author
@@ -300,6 +342,7 @@ def create_new_working_revision(
     try:
         working_file = WorkingFile.create(
             comment=comment,
+            description=description,
             name=name,
             revision=revision,
             path=path,
@@ -793,6 +836,51 @@ def get_last_output_files_for_instance(
     return fields.serialize_models(output_files)
 
 
+def filter_preview_files_by_project(query, project_id):
+    """
+    Return the given preview file query limited to the previews of the
+    tasks of the given project. Use a subquery, not a join: the project
+    filter of the preview file list already joins the task table.
+    """
+    return query.filter(
+        PreviewFile.task_id.in_(
+            Task.query.with_entities(Task.id).filter(
+                Task.project_id == project_id
+            )
+        )
+    )
+
+
+def filter_preview_files_by_open_projects(query, access_filter):
+    """
+    Return the given preview file query limited to the previews of the
+    tasks of open projects, then limited by the given access filter.
+    """
+    return (
+        query.join(Task)
+        .join(Project)
+        .join(
+            ProjectStatus,
+            Project.project_status_id == ProjectStatus.id,
+        )
+        .filter(projects_service.build_open_project_filter())
+        .filter(access_filter)
+    )
+
+
+def update_extra_preview_revisions_no_commit(
+    task_id, revision, new_revision, preview_file_id
+):
+    """
+    Set the given new revision on the previews of the given task that have
+    the given revision, except the given preview file. Do not commit: the
+    caller commits.
+    """
+    PreviewFile.query.filter_by(task_id=task_id, revision=revision).filter(
+        PreviewFile.id != preview_file_id
+    ).update({"revision": new_revision})
+
+
 def get_preview_file_raw(preview_file_id):
     """
     Return the preview file as an active record.
@@ -1057,6 +1145,45 @@ def update_output_file(output_file_id, data):
     return output_file.serialize()
 
 
+def store_working_file_content(working_file_id, file_path):
+    """
+    Save the given local file as the content of the given working file, then
+    remove the local file. Set the size and the upload date of the working
+    file. Return the working file as a dict.
+    """
+    return update_working_file(
+        working_file_id,
+        store_file_content("working", working_file_id, file_path),
+    )
+
+
+def store_output_file_content(output_file_id, file_path):
+    """
+    Save the given local file as the content of the given output file, then
+    remove the local file. Set the size and the upload date of the output
+    file. Return the output file as a dict.
+    """
+    return update_output_file(
+        output_file_id, store_file_content("output", output_file_id, file_path)
+    )
+
+
+def store_file_content(prefix, file_id, file_path):
+    """
+    Save the given local file in the file storage, then remove it. Return
+    the fields that an upload sets on a working file or an output file.
+    """
+    try:
+        file_store.add_file(prefix, file_id, file_path)
+        size = os.path.getsize(file_path)
+    finally:
+        os.remove(file_path)
+    return {
+        "uploaded_at": date_helpers.get_utc_now_datetime(),
+        "size": size,
+    }
+
+
 def get_output_types_for_entity(entity_id):
     """
     Return the output types of all the output files of the given entity.
@@ -1158,6 +1285,14 @@ def get_preview_background_file_raw(preview_background_file_id):
         raise PreviewBackgroundFileNotFoundException
 
     return preview_background
+
+
+def get_preview_background_file_raw_by_name(name):
+    """
+    Return the preview background file that has the given name as an active
+    record, or None.
+    """
+    return PreviewBackgroundFile.get_by(name=name)
 
 
 @cache.memoize_function(1200)

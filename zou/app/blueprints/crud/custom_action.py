@@ -6,7 +6,6 @@ from zou.app.models.custom_action import CustomAction
 from zou.app.services import (
     custom_actions_service,
     permissions_service,
-    user_service,
 )
 from zou.app.utils.openapi import load_specs, swag_from
 
@@ -23,7 +22,7 @@ class CustomActionsResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         """
-        Validate that the required 'name' field is present and not None.
+        Make sure that the required 'name' field is present and not None.
         """
         if "name" not in data or data.get("name") is None:
             raise WrongParameterException(
@@ -82,7 +81,7 @@ class CustomActionResource(BaseModelResource):
 
     def pre_update(self, instance_dict, data):
         """
-        Validate that if 'name' is being updated, it is not None.
+        If the update changes 'name', make sure that it is not None.
         """
         if "name" in data and data.get("name") is None:
             raise WrongParameterException(

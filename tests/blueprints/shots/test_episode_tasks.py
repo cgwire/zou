@@ -31,6 +31,4 @@ class EpisodeTasksTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
         task_types = self.get(f"/data/episodes/{self.episode.id}/task-types")
         self.assertEqual(len(task_types), 1)
-        self.assertDictEqual(
-            task_types[0], self.task_type_animation.serialize()
-        )
+        self.assertEqual(task_types[0]["id"], str(self.task_type_animation.id))

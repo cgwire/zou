@@ -10,8 +10,10 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app import app
 from zou.app.blueprints.crud.base import build_db_error_message
+from zou.app.exceptions import WrongParameterException
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    comments_service,
     entities_service,
     entity_types_service,
     metadata_descriptors_service,
@@ -43,12 +45,12 @@ class RowException(Exception):
         self.message = message
 
 
-# The delimiters the sniffer prefers, plus the pipe, minus the space, which
-# names hold.
+# The delimiters that the sniffer prefers, with the pipe and without the space:
+# names hold spaces.
 DELIMITERS = ",;\t|:"
 
-# A control character that text does not hold, as is_single_column checks:
-# each line is a single cell, whatever delimiter the writer of the file used.
+# A control character that text does not hold, as is_single_column checks.
+# Each line is a single cell, whatever delimiter the writer of the file used.
 SINGLE_COLUMN_DELIMITER = "\x1f"
 
 
@@ -59,10 +61,9 @@ class SingleColumnDialect(csv.excel):
 class BaseCsvImportResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self, *args):
-        # Authorize before anything reaches the disk, and drop the file
-        # whatever happens next: the upload used to be written first and
-        # never removed, so any account could fill TMP_DIR by posting to an
-        # import route it is not allowed to use and collecting the 403.
+        # Authorize before anything goes to the disk, and always remove the
+        # file at the end. Otherwise, any account could fill TMP_DIR: it could
+        # post files to an import route that it cannot use.
         self.check_permissions(*args)
         uploaded_file = request.files["file"]
         file_name = f"{uuid.uuid4()}.csv"
@@ -74,8 +75,8 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         try:
             result = self.run_import(file_path, *args)
             return result, 201
-        # A malformed file is client input, not a server fault: warnings keep
-        # it out of the error monitoring while the 400 still tells the user
+        # A malformed file is client input, not a server fault. A warning keeps
+        # it out of the error monitoring, and the 400 still tells the user
         # which line to fix.
         except ImportRowException as e:
             current_app.logger.warning(
@@ -102,19 +103,22 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
 
     def run_import(self, file_path, *args):
         """
-        Import rows one by one, each committed on its own: a failure stops
-        the import but keeps previously imported rows (imported_rows in
-        the error payload tells the client how many). Fixing the file and
-        re-importing with update=true completes the job idempotently.
+        Import the rows one by one, with one commit for each row. A failure
+        stops the import but keeps the rows imported before it. The
+        imported_rows field of the error payload tells the client how many. To
+        complete the job, fix the file and import it again with update=true.
+        This second import is idempotent.
         """
-        # Permissions are checked by post(), before the upload is written.
+        # post() checks the permissions before it writes the upload.
         result = []
         self.prepare_import(*args)
-        # utf-8-sig drops the byte order mark that starts a "CSV UTF-8" file
-        # of Excel, which would otherwise begin the first header.
+        # utf-8-sig removes the byte order mark at the start of a "CSV UTF-8"
+        # file of Excel. Otherwise, the mark would be the start of the first
+        # header.
         with open(file_path, newline="", encoding="utf-8-sig") as csvfile:
-            # Decoded whole first: a file in another encoding, such as the
-            # Windows-1252 of a spreadsheet, is refused before any import.
+            # Decode the full file first: thus the import refuses a file in
+            # another encoding, such as the Windows-1252 of a spreadsheet,
+            # before it imports a row.
             try:
                 csvfile.read()
             except UnicodeDecodeError:
@@ -125,8 +129,8 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
                 # reader.line_num is the real file line (header included),
                 # so errors point at the line the user sees in the file.
                 line_number = reader.line_num
-                # Spreadsheets often export empty lines made of separators
-                # only: they carry nothing to import.
+                # Spreadsheets often export empty lines with only separators:
+                # they hold nothing to import.
                 if not any(
                     isinstance(value, str) and value.strip()
                     for value in row.values()
@@ -168,13 +172,13 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
         try:
             dialect = sniffer.sniff(sample)
         except csv.Error:
-            # It gives up on a file of a single column.
+            # The sniffer gives up on a file of a single column.
             if self.is_single_column(csvfile, SingleColumnDialect):
                 return SingleColumnDialect
             raise
         dialect.doublequote = True
-        # Or takes the quote of its cells for the delimiter, which Python 3.13
-        # refuses, or a letter of its names.
+        # Or it uses the quote of the cells as the delimiter, which Python 3.13
+        # refuses, or a letter of the names.
         if (
             dialect.delimiter == dialect.quotechar
             or dialect.delimiter.isalnum()
@@ -186,11 +190,14 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
 
     def is_single_column(self, csvfile, dialect):
         """
-        Tell whether given file, read with the quote and the spacing of given
-        dialect, holds a single column: a header on its first line,
-        well-formed quoted cells, and out of them no comma, semicolon, tab,
-        pipe, or colon, nor the delimiter of a single column. Such a
-        delimiter leaves a doubt: a name can hold it, or a line can hold
+        Tell whether the given file holds a single column. Read the file with
+        the quote and the spacing of the given dialect. A file with a single
+        column has:
+        - a header on its first line,
+        - quoted cells that are well-formed,
+        - outside these cells, no comma, semicolon, tab, pipe or colon, and no
+          delimiter of a single column.
+        Such a delimiter leaves a doubt: a name can hold it, or a line can hold
         more cells than the header names. A quote left open would merge the
         next lines into one name.
         """
@@ -236,18 +243,17 @@ class BaseCsvImportResource(MethodView, ArgsMixin):
 class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
     def check_permissions(self, project_id, *args):
         """
-        Importing into a production requires managing that production, not
-        just holding the manager role somewhere. This mirrors the OTIO
-        import next door and the CSV exports, which all scope to the
-        project.
+        An import into a production requires the right to manage that
+        production. The manager role on another production is not enough. The
+        OTIO import and the CSV exports do the same check on the project.
         """
         return permissions_service.check_manager_project_access(project_id)
 
     def get_or_create_episode(self, project_id, name):
         """
-        Return the episode of given name. When the production does not have
+        Return the episode with the given name. If the production does not have
         it yet, create it with a task for each Episode task type of the
-        project, as Kitsu and the episodes import do.
+        project. Kitsu and the episodes import do the same.
         """
         is_missing = (
             entities_service.find_entity_raw(
@@ -261,8 +267,8 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
             project_id, name, created_by=self.current_user_id
         )
         if is_missing:
-            # Serialized first: create_tasks commits, which expires the
-            # model instances.
+            # Serialized first: create_tasks commits, and the commit expires
+            # the active records.
             task_types = [
                 task_type.serialize()
                 for task_type in projects_service.get_project_task_types_raw(
@@ -274,6 +280,10 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         return episode
 
     def get_descriptor_field_map(self, project_id, entity_type):
+        """
+        Return the metadata descriptors of the project for the given entity
+        type, by name. Also reset the person lookup of get_person_id.
+        """
         descriptor_map = {}
         self.person_lookup = None
         descriptors = metadata_descriptors_service.get_metadata_descriptors(
@@ -286,16 +296,16 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
 
     def get_descriptor_values(self, row, data=None):
         """
-        Return a new data dict merging the row's metadata descriptor cells
-        into the given base data, storing typed values in their canonical
-        form: booleans as true/false strings, persons as their id.
+        Return a new data dict: the given base data, with the metadata
+        descriptor cells of the row merged in. Store the typed values in their
+        canonical form: booleans as true/false strings, persons as their ID.
         """
         new_data = dict(data or {})
         for name, descriptor in self.descriptor_fields.items():
             if name in row:
                 value = row[name]
-                # An empty cell means "not set": store it as is instead of
-                # feeding it to the typed conversions (strtobool raises on "").
+                # An empty cell means "not set": store it as is. Do not give it
+                # to the typed conversions: strtobool raises on "".
                 if value not in (None, ""):
                     if descriptor["data_type"] == "boolean":
                         value = "true" if string.strtobool(value) else "false"
@@ -306,9 +316,9 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
 
     def get_person_id(self, value):
         """
-        Resolve a person cell to a person id. Accepts the person full name,
-        email or id, so that CSV files exported by Kitsu (full names) and
-        older files built from raw ids both import correctly.
+        Resolve a person cell to a person ID. Accept the full name, the email
+        or the ID of the person. Thus the CSV files that Kitsu exports (full
+        names) and the older files with raw IDs both import correctly.
         """
         if value in (None, ""):
             return value
@@ -326,10 +336,10 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
 
     def get_assignation_ids(self, row, task_type_name):
         """
-        Resolve the "<task type> assignations" cell into person ids. The
-        cell holds comma-separated full names, emails or ids (the export
-        writes full names); an empty or absent cell means no assignation
-        change.
+        Resolve the "<task type> assignations" cell to person IDs. The cell
+        holds full names, emails or IDs, with commas between them. The export
+        writes full names. An empty or absent cell means no change of
+        assignation.
         """
         value = row.get(f"{task_type_name} assignations", None)
         if value in (None, ""):
@@ -339,3 +349,77 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
             for name in value.split(",")
             if name.strip() != ""
         ]
+
+    def get_tasks_update(self, row, task_types):
+        """
+        Return the task changes of the row: one entry for each task type with a
+        filled status, comment or assignation cell. If a status is unknown,
+        raise RowException.
+        """
+        tasks_update = []
+        for task_type in task_types:
+            task_status_name = row.get(task_type["name"], None)
+            task_status_id = None
+            if task_status_name not in [None, ""]:
+                for status_id, status_names in self.task_statuses.items():
+                    if task_status_name.lower() in status_names:
+                        task_status_id = status_id
+                        break
+                if task_status_id is None:
+                    raise RowException(
+                        f"Task status not found for {task_status_name}"
+                    )
+
+            # An empty cell holds no comment, as a missing column does.
+            task_comment_text = (
+                row.get(f"{task_type['name']} comment", None) or None
+            )
+            task_assignees = self.get_assignation_ids(row, task_type["name"])
+
+            if (
+                task_status_id is not None
+                or task_comment_text is not None
+                or task_assignees
+            ):
+                tasks_update.append(
+                    {
+                        "task_type_id": task_type["id"],
+                        "task_status_id": task_status_id,
+                        "comment": task_comment_text,
+                        "assignees": task_assignees,
+                    }
+                )
+
+        return tasks_update
+
+    def apply_task_update(self, task, task_update):
+        """
+        Add the assignees of the task update to the task, and post a
+        comment for a new status or a comment.
+        """
+        # Assignations only add people: an import never removes one.
+        already_assigned = set(task.get("assignees") or [])
+        for person_id in task_update["assignees"]:
+            if person_id not in already_assigned:
+                tasks_service.assign_task(
+                    task["id"], person_id, self.current_user_id
+                )
+        # The status guard needs the explicit None check: an entry created
+        # for its assignations alone must not post an empty comment at the
+        # default status.
+        if task_update["comment"] is not None or (
+            task_update["task_status_id"] is not None
+            and task_update["task_status_id"] != task["task_status_id"]
+        ):
+            try:
+                comments_service.create_comment(
+                    self.current_user_id,
+                    task["id"],
+                    task_update["task_status_id"] or task["task_status_id"],
+                    task_update["comment"] or "",
+                    [],
+                    {},
+                    "",
+                )
+            except WrongParameterException:
+                pass

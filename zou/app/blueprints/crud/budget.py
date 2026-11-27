@@ -31,9 +31,10 @@ class BudgetsResource(BaseModelsResource):
 class BudgetResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Budget)
-        # BaseModelResource.__init__ assigns protected_fields on the instance,
-        # so a class attribute of the same name never applies: append after it.
-        # project_id is already added there, revision identifies the quote.
+        # BaseModelResource.__init__ sets protected_fields on the instance.
+        # Thus a class attribute with the same name has no effect: append after
+        # the call. The __init__ method already adds project_id. The revision
+        # identifies the quote.
         self.protected_fields.append("revision")
 
     @jwt_required()

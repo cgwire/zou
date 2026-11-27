@@ -15,10 +15,10 @@ import collections
 import dataclasses
 from typing import Optional
 
-from sqlalchemy import and_, any_, cast
+from sqlalchemy import and_, any_, cast, or_
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.sql import func
 
@@ -86,6 +86,35 @@ def get_department_from_task(task_id):
     """
     task = get_task_raw(task_id)
     return departments_service.get_department_from_task_type(task.task_type_id)
+
+
+def filter_tasks_by_projects(query, projects_filter, vendor_project_ids):
+    """
+    Return the given task query limited by the given project filter. On the
+    given vendor projects, keep only the tasks assigned to the current user.
+    """
+    query = query.join(Project).filter(projects_filter)
+    if vendor_project_ids:
+        query = query.filter(
+            or_(
+                Task.project_id.not_in(vendor_project_ids),
+                persons_service.build_assignee_filter(),
+            )
+        )
+    return query
+
+
+def filter_tasks_by_episode(query, episode_id):
+    """
+    Return the given task query limited to the tasks of the entities whose
+    sequence belongs to the given episode.
+    """
+    Sequence = aliased(Entity)
+    return (
+        query.join(Entity, Task.entity_id == Entity.id)
+        .join(Sequence, Entity.parent_id == Sequence.id)
+        .filter(Sequence.parent_id == episode_id)
+    )
 
 
 def get_task_raw(task_id):
@@ -571,6 +600,51 @@ def get_tasks_for_project_and_task_type(project_id, task_type_id):
     return Task.serialize_list(tasks)
 
 
+def get_open_projects_tasks_query(project_ids):
+    """
+    Return a query on the tasks of the given open projects, joined with the
+    names of their project, task type, task status, episode, sequence, entity
+    type, entity and assigner. The assignees are loaded with the tasks.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    open_status = projects_service.get_open_status()
+
+    query = Task.query.order_by(Project.name, TaskType.name, Task.name)
+    query = query.join(Project, Task.project_id == Project.id)
+    query = query.join(TaskType, Task.task_type_id == TaskType.id)
+    query = query.join(TaskStatus, Task.task_status_id == TaskStatus.id)
+    query = query.join(Entity, Task.entity_id == Entity.id)
+    query = query.join(EntityType)
+    query = (
+        query.outerjoin(Person, Task.assigner_id == Person.id)
+        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
+        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+    )
+    query = query.add_columns(
+        Project.name,
+        TaskType.name,
+        TaskStatus.name,
+        Episode.name,
+        Sequence.name,
+        EntityType.name,
+        Entity.name,
+        Person.first_name,
+        Person.last_name,
+    )
+    query = query.options(selectinload(Task.assignees))
+    query = query.filter(Project.project_status_id == open_status["id"])
+    query = query.filter(Project.id.in_(project_ids))
+    return query.order_by(
+        Project.name,
+        TaskType.name,
+        Episode.name,
+        Sequence.name,
+        EntityType.name,
+        Entity.name,
+    )
+
+
 def get_last_comment_map(task_ids):
     """
     Return the last comment of each given task, in one query. Ignore the
@@ -818,6 +892,21 @@ def create_task(task_type, entity, name="main"):
     except IntegrityError:
         pass  # The task already exists, so do not create it.
     return None
+
+
+def create_task_raw_from_data(data, assignee_ids=None):
+    """
+    Create a task from the given column values and return it as an active
+    record. If assignee IDs are given, assign the persons that have these
+    IDs to the task.
+    """
+    if assignee_ids is not None:
+        persons = Person.query.filter(Person.id.in_(assignee_ids)).all()
+    task = Task(**data)
+    if assignee_ids is not None:
+        task.assignees = persons
+    task.save()
+    return task
 
 
 def _finalize_task_creation(task_type, task_status, task):

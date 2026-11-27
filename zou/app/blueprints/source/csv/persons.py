@@ -59,8 +59,8 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         active = row.get("Active", None)
 
         # The person routes refuse an email like "jdoe", which breaks the
-        # people search of Kitsu. No deliverability check: it would cost a
-        # DNS query per row.
+        # people search of Kitsu. Do not check deliverability: it would cost a
+        # DNS query for each row.
         try:
             email = auth.validate_email(email, check_deliverability=False)
         except auth.EmailNotValidException as e:
@@ -81,8 +81,8 @@ class PersonsCsvImportResource(BaseCsvImportResource):
             data["seniority"] = self.map_choice(
                 "Seniority", seniority, self.seniority_types_map
             )
-        # Share the Person model rule (ISO 3166-1 alpha-2) but fail the row
-        # instead of silently storing None like the model validator.
+        # Use the rule of the Person model (ISO 3166-1 alpha-2), but fail the
+        # row. The model validator stores None and shows no error.
         is_valid_country, normalized_country = normalize_country(country)
         if not is_valid_country:
             raise ValueError(f"Country: {country}")
@@ -112,8 +112,8 @@ class PersonsCsvImportResource(BaseCsvImportResource):
                     f"Active: {active} (accepted values: yes, no)"
                 )
 
-        # Resolve departments before any write so an unknown name fails the
-        # row without leaving an orphan person behind.
+        # Resolve the departments before any write. Thus an unknown name fails
+        # the row and leaves no orphan person behind.
         department_ids = None
         if departments_value:
             department_ids = self.resolve_departments(departments_value)
@@ -128,9 +128,10 @@ class PersonsCsvImportResource(BaseCsvImportResource):
 
     def map_choice(self, label, value, choice_map):
         """
-        Accept either a human label ("Lead") or a stored code ("lead") for a
-        ChoiceType column, case-insensitively, and return the code. Raise
-        ValueError (400) naming the accepted values on an unknown one.
+        Return the code of the given value of a ChoiceType column. The value
+        can be a human label ("Lead") or a stored code ("lead"), in any case.
+        If the value is unknown, raise ValueError (400) with the accepted
+        values.
         """
         folded = value.casefold()
         for choice_label, code in choice_map.items():
@@ -142,9 +143,9 @@ class PersonsCsvImportResource(BaseCsvImportResource):
 
     def resolve_departments(self, departments_value):
         """
-        Turn a comma-separated list of department names into a list of UUIDs,
-        raising RowException (400) on any unknown name. Names are matched
-        exactly (case-sensitive), like the other typed columns.
+        Return the UUIDs of the departments of the given comma-separated list
+        of names. If a name is unknown, raise RowException (400). The match of
+        the names is exact and case-sensitive, as for the Studio column.
         """
         department_ids = []
         for name in [

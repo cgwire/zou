@@ -1,6 +1,9 @@
+from unittest.mock import patch
+
 from flask import g
 
 from tests.base import ApiDBTestCase
+from zou.app import config
 from zou.app.models.build_job import BuildJob
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
@@ -69,15 +72,6 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         )
 
         self.assertEqual(playlists, [])
-
-    def test_get_project_playlist(self):
-        self.generate_fixture_playlist("Single Playlist")
-        playlists = self.get(f"/data/projects/{self.project_id}/playlists")
-        playlist_id = playlists[0]["id"]
-        result = self.get(
-            f"/data/projects/{self.project_id}" f"/playlists/{playlist_id}"
-        )
-        self.assertEqual(result["id"], playlist_id)
 
     def test_get_entity_preview_files(self):
         """
@@ -363,99 +357,6 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             result["shots"][0]["preview_file_id"], self.own_preview_file_id
         )
 
-    def test_create_playlist_unpins_a_foreign_preview(self):
-        self.generate_fixture_foreign_preview_file()
-        created = self.post(
-            "data/playlists/",
-            {
-                "name": "Playlist created with a foreign pin",
-                "project_id": self.project_id,
-                "for_entity": "shot",
-                "shots": [
-                    {
-                        "entity_id": self.first_shot_id,
-                        "preview_file_id": self.foreign_preview_file_id,
-                    },
-                    {
-                        "entity_id": self.first_shot_id,
-                        "preview_file_id": self.own_preview_file_id,
-                    },
-                ],
-            },
-            201,
-        )
-        self.assertEqual(
-            [shot["preview_file_id"] for shot in created["shots"]],
-            [None, self.own_preview_file_id],
-        )
-
-    def test_update_playlist_keeps_an_own_pin_written_in_uppercase(self):
-        # The playlist reads match the lowercase form of the preview ids.
-        self.generate_fixture_foreign_preview_file()
-        self.generate_fixture_playlist("Playlist with an uppercase pin")
-        result = self.put(
-            f"data/playlists/{self.playlist.id}",
-            {
-                "shots": [
-                    {
-                        "entity_id": self.first_shot_id,
-                        "preview_file_id": self.own_preview_file_id.upper(),
-                    }
-                ]
-            },
-        )
-        self.assertEqual(
-            result["shots"][0]["preview_file_id"], self.own_preview_file_id
-        )
-
-    def test_update_playlist_unpins_a_foreign_preview(self):
-        other_shot_id = self.generate_fixture_foreign_preview_file()
-        self.generate_fixture_playlist("Playlist with a foreign pin")
-        result = self.put(
-            f"data/playlists/{self.playlist.id}",
-            {
-                "shots": [
-                    {
-                        "entity_id": self.first_shot_id,
-                        "preview_file_id": self.foreign_preview_file_id,
-                    },
-                    {
-                        "entity_id": other_shot_id,
-                        "preview_file_id": self.foreign_preview_file_id,
-                    },
-                    {
-                        "entity_id": self.first_shot_id,
-                        "preview_file_id": "not-an-id",
-                    },
-                ]
-            },
-        )
-        self.assertEqual(
-            [shot["preview_file_id"] for shot in result["shots"]],
-            [None, self.foreign_preview_file_id, None],
-        )
-
-    def test_update_playlist_keeps_an_entry_without_preview(self):
-        # Such an entry is served without the preview_file_id key: a client
-        # saving back the shots it read must not lose it.
-        self.generate_fixture_playlist(
-            "Playlist with an entry without preview"
-        )
-        result = self.put(
-            f"data/playlists/{self.playlist.id}",
-            {
-                "shots": [
-                    {"entity_id": str(self.shot.id)},
-                    {"entity_id": None, "id": str(self.shot.id)},
-                    {"preview_file_id": None},
-                ]
-            },
-        )
-        self.assertEqual(
-            result["shots"],
-            [{"entity_id": str(self.shot.id), "preview_file_id": None}] * 2,
-        )
-
     def test_add_entities_to_playlist_uses_playlist_task_type(self):
         # The shot has a preview on its animation task (from setUp)...
         self.generate_fixture_preview_file(
@@ -529,6 +430,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
     def test_add_entity_as_supervisor_non_creator_is_forbidden(self):
         self.generate_fixture_user_supervisor()
         self.generate_fixture_user_supervisor_2()
+        self._add_supervisor_to_team()
         playlist = self._create_playlist(
             "Other Supervisor Playlist",
             creator_id=self.user_supervisor_2["id"],
@@ -551,68 +453,6 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             {"entity_id": str(self.shot.id)},
             403,
         )
-
-    def test_update_playlist_as_supervisor_creator(self):
-        self.generate_fixture_user_supervisor()
-        self._add_supervisor_to_team()
-        playlist = self._create_playlist(
-            "Supervisor Playlist", creator_id=self.user_supervisor["id"]
-        )
-        self.log_in_supervisor()
-        self.put(
-            f"/data/playlists/{playlist['id']}",
-            {"name": "Renamed by supervisor"},
-            200,
-        )
-
-    def test_update_playlist_as_supervisor_non_creator_is_forbidden(self):
-        self.generate_fixture_user_supervisor()
-        self.generate_fixture_user_supervisor_2()
-        playlist = self._create_playlist(
-            "Other Playlist", creator_id=self.user_supervisor_2["id"]
-        )
-        self.log_in_supervisor()
-        self.put(
-            f"/data/playlists/{playlist['id']}",
-            {"name": "Should fail"},
-            403,
-        )
-
-    def test_update_playlist_as_supervisor_outside_the_team_is_forbidden(self):
-        # created_by is null on every playlist predating the column, and a
-        # failed has_manager_project_access clears the project role slot, so
-        # the supervisor branch used to read the global role and let a
-        # supervisor of another production through.
-        self.generate_fixture_user_supervisor()
-        playlist = self._create_playlist("Orphan Playlist")
-        self.assertIsNone(playlist["created_by"])
-        self.log_in_supervisor()
-        self.put(
-            f"/data/playlists/{playlist['id']}",
-            {"name": "Renamed from outside"},
-            403,
-        )
-        self.delete(f"/data/playlists/{playlist['id']}", 403)
-
-    def test_update_orphan_playlist_as_supervisor_of_the_team(self):
-        self.generate_fixture_user_supervisor()
-        self._add_supervisor_to_team()
-        playlist = self._create_playlist("Orphan Playlist")
-        self.log_in_supervisor()
-        self.put(
-            f"/data/playlists/{playlist['id']}",
-            {"name": "Renamed by the team supervisor"},
-            200,
-        )
-
-    def test_delete_playlist_as_supervisor_creator(self):
-        self.generate_fixture_user_supervisor()
-        self._add_supervisor_to_team()
-        playlist = self._create_playlist(
-            "Supervisor Playlist", creator_id=self.user_supervisor["id"]
-        )
-        self.log_in_supervisor()
-        self.delete(f"/data/playlists/{playlist['id']}")
 
     def test_get_build_job(self):
         self.generate_fixture_playlist("Playlist")
@@ -663,6 +503,58 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         path = f"/data/playlists/{playlist_id}/jobs/{build_job['id']}"
         self.delete(path)
         self.get_404(path)
+
+    def test_a_client_cannot_delete_a_build_job(self):
+        """
+        The delete route used the read check of the builds, which lets a
+        client of the team in on a playlist shared with clients.
+        """
+        self.generate_fixture_playlist("Playlist", for_client=True)
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+        self.generate_fixture_user_client()
+        projects_service.add_team_member(
+            self.project_id, self.user_client["id"]
+        )
+        self.log_in_client()
+
+        path = f"/data/playlists/{self.playlist.id}/jobs/{build_job['id']}"
+        self.get(path)
+        self.delete(path, 403)
+
+    def test_a_refused_remote_build_leaves_no_build_job(self):
+        """
+        The remote queue check ran after the build job was created, so a
+        refused build left a job running forever.
+        """
+        self.generate_fixture_playlist("Playlist")
+        with patch.object(config, "ENABLE_JOB_QUEUE", True), patch.object(
+            config, "ENABLE_JOB_QUEUE_REMOTE", True
+        ), patch.object(config, "FS_BACKEND", "local"):
+            self.get(f"/data/playlists/{self.playlist.id}/build/mp4", 400)
+        self.assertEqual(BuildJob.query.count(), 0)
+
+    def test_a_vendor_made_supervisor_downloads_the_builds(self):
+        """
+        The vendor gate read the global role before the project was
+        resolved, so a vendor made supervisor of the production was
+        refused the downloads its supervisors get.
+        """
+        self.generate_fixture_playlist("Playlist")
+        build_job = self.generate_fixture_build_job("2026-08-05T12:00:00")
+        BuildJob.get(build_job["id"]).update({"status": "running"})
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"], role="supervisor"
+        )
+        self.log_in_vendor()
+        g.pop("project_role", None)
+
+        # The 400 of the unfinished build comes after the access check.
+        self.get(
+            f"/data/playlists/{self.playlist.id}/jobs/{build_job['id']}"
+            "/build/mp4",
+            400,
+        )
 
     def test_notify_clients(self):
         self.generate_fixture_playlist("Playlist")

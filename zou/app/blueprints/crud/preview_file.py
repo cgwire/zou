@@ -2,17 +2,18 @@ from flask import current_app
 from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import (
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
-from zou.app.models.project_status import ProjectStatus
-from zou.app.models.task import Task
 from zou.app.services import (
     deletion_service,
+    files_service,
     permissions_service,
     persons_service,
-    projects_service,
     tasks_service,
     user_service,
 )
@@ -43,41 +44,28 @@ class PreviewFilesResource(BaseModelsResource):
         return super().post()
 
     def apply_filters(self, query, options):
-        # A preview file has no project_id column, so the generic filters
-        # drop the parameter and answer for every production: scope the
-        # rows to that project through their task. A subquery rather than
-        # a join, the permission filter already joins the task table.
+        # A preview file has no project_id column. Thus the generic filters
+        # ignore the parameter and answer for all productions. Limit the rows
+        # to that project through their task. Use a subquery, not a join,
+        # because the permission filter already joins the task table.
         query = super().apply_filters(query, options)
         if "project_id" in options:
             if not fields.is_valid_id(options["project_id"]):
                 raise WrongParameterException("Invalid project_id.")
-            query = query.filter(
-                PreviewFile.task_id.in_(
-                    Task.query.with_entities(Task.id).filter(
-                        Task.project_id == options["project_id"]
-                    )
-                )
+            query = files_service.filter_preview_files_by_project(
+                query, options["project_id"]
             )
         return query
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            query = (
-                query.join(Task)
-                .join(Project)
-                .join(
-                    ProjectStatus,
-                    Project.project_status_id == ProjectStatus.id,
-                )
-                .filter(projects_service.build_open_project_filter())
-            )
             if permissions.has_vendor_permissions():
-                query = query.filter(persons_service.build_assignee_filter())
+                access_filter = persons_service.build_assignee_filter()
             else:
-                query = query.filter(
-                    user_service.build_related_projects_filter()
-                )
-
+                access_filter = user_service.build_related_projects_filter()
+            query = files_service.filter_preview_files_by_open_projects(
+                query, access_filter
+            )
         return query
 
     def check_read_permissions(self, options=None):
@@ -87,13 +75,13 @@ class PreviewFilesResource(BaseModelsResource):
 class PreviewFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, PreviewFile)
-        # The update check reads the project off the stored task.
+        # The update check reads the project from the stored task.
         self.protected_fields.append("task_id")
 
     def check_read_permissions(self, preview_file):
         """
-        The preview file must belong to a project of the user, and a vendor
-        must also be working on its task.
+        Make sure that the preview file is in a project of the user. A vendor
+        must also work on its task.
         """
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_project_access(task["project_id"])
@@ -134,10 +122,10 @@ class PreviewFileResource(BaseModelResource):
 
     def pre_update(self, instance_dict, data):
         """
-        Check revision uniqueness before updating a preview file.
-        Only applies to main previews (position 1).
-        When updating a main preview's revision, all extra previews
-        with the same revision are updated too.
+        Make sure that the revision is unique before the update of a preview
+        file. This applies only to main previews (position 1). When the update
+        changes the revision of a main preview, it also updates all the extra
+        previews with the same revision.
         """
         if "revision" in data and instance_dict.get("position") == 1:
             new_revision = data["revision"]
@@ -148,12 +136,11 @@ class PreviewFileResource(BaseModelResource):
                     new_revision,
                     exclude_preview_id=instance_dict["id"],
                 )
-                # Update all extra previews with the same revision
-                PreviewFile.query.filter_by(
-                    task_id=instance_dict["task_id"],
-                    revision=current_revision,
-                ).filter(PreviewFile.id != instance_dict["id"]).update(
-                    {"revision": new_revision}
+                files_service.update_extra_preview_revisions_no_commit(
+                    instance_dict["task_id"],
+                    current_revision,
+                    new_revision,
+                    instance_dict["id"],
                 )
         return instance_dict
 
@@ -180,12 +167,8 @@ class PreviewFileResource(BaseModelResource):
             self.emit_delete_event(instance_dict)
             self.post_delete(instance_dict)
 
-        except IntegrityError as exception:
+        except (IntegrityError, StatementError) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
         return "", 204

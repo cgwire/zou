@@ -18,7 +18,6 @@ PERSONAL_CRUD_ROUTES = [
     "data/news",
     "data/notifications",
     "data/plugins",
-    "data/production-schedule-version-task-links",
     "data/subscriptions",
 ]
 

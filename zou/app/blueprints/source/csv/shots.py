@@ -2,7 +2,6 @@ from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.exceptions import WrongParameterException
 from zou.app.services import (
     entities_service,
     entity_types_service,
@@ -11,13 +10,11 @@ from zou.app.services import (
     projects_service,
     shots_service,
 )
-from zou.app.services.comments_service import create_comment
 from zou.app.services.task_types_service import (
     get_task_statuses,
     get_task_type,
 )
 from zou.app.services.tasks_service import (
-    assign_task,
     create_task,
     create_tasks,
     get_tasks_for_shot,
@@ -43,8 +40,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
-        # Serialized once: a query would run again on every row, and model
-        # instances would be expired by every row commit.
+        # Serialized once: otherwise a query would run again for each row, and
+        # each row commit would expire the active records.
         self.task_types_in_project_for_shots = [
             task_type.serialize()
             for task_type in projects_service.get_project_task_types_raw(
@@ -56,43 +53,6 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             for status in get_task_statuses()
         }
         self.current_user_id = persons_service.get_current_user()["id"]
-
-    def get_tasks_update(self, row):
-        tasks_update = []
-        for task_type in self.task_types_in_project_for_shots:
-            task_status_name = row.get(task_type["name"], None)
-            task_status_id = None
-            if task_status_name not in [None, ""]:
-                for status_id, status_names in self.task_statuses.items():
-                    if task_status_name.lower() in status_names:
-                        task_status_id = status_id
-                        break
-                if task_status_id is None:
-                    raise RowException(
-                        f"Task status not found for {task_status_name}"
-                    )
-
-            # An empty cell holds no comment, as a missing column does.
-            task_comment_text = (
-                row.get(f"{task_type['name']} comment", None) or None
-            )
-            task_assignees = self.get_assignation_ids(row, task_type["name"])
-
-            if (
-                task_status_id is not None
-                or task_comment_text is not None
-                or task_assignees
-            ):
-                tasks_update.append(
-                    {
-                        "task_type_id": task_type["id"],
-                        "task_status_id": task_status_id,
-                        "comment": task_comment_text,
-                        "assignees": task_assignees,
-                    }
-                )
-
-        return tasks_update
 
     def create_and_update_tasks(
         self, tasks_update, entity, shot_creation=False
@@ -116,37 +76,12 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         entity.serialize(),
                     )
                 task = tasks_map[task_update["task_type_id"]]
-                already_assigned = set(task.get("assignees") or [])
-                for person_id in task_update["assignees"]:
-                    if person_id not in already_assigned:
-                        assign_task(
-                            task["id"], person_id, self.current_user_id
-                        )
-                # The status guard needs the explicit None check: an entry
-                # created for its assignations alone must not post an
-                # empty comment at the default status.
-                if task_update["comment"] is not None or (
-                    task_update["task_status_id"] is not None
-                    and task_update["task_status_id"] != task["task_status_id"]
-                ):
-                    try:
-                        create_comment(
-                            self.current_user_id,
-                            task["id"],
-                            task_update["task_status_id"]
-                            or task["task_status_id"],
-                            task_update["comment"] or "",
-                            [],
-                            {},
-                            "",
-                        )
-                    except WrongParameterException:
-                        pass
+                self.apply_task_update(task, task_update)
         elif shot_creation:
             self.created_shots.append(entity.serialize())
 
     def import_row(self, row, project_id):
-        # An empty cell used to create a sequence or a shot named "", from a
+        # An empty cell would create a sequence or a shot named "", from a
         # spreadsheet total row for instance.
         required_columns = ["Sequence", "Name"]
         if self.is_tv_show:
@@ -238,8 +173,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     f"frame_out must be an integer, got '{frame_out}'"
                 )
 
-        # Keep the frame count consistent with an imported frame range when
-        # the CSV doesn't provide it explicitly.
+        # If the CSV does not give the frame count, compute it from the
+        # imported frame range.
         if "nb_frames" not in shot_new_values:
             try:
                 frame_in_value = int(shot_new_values["data"]["frame_in"])
@@ -263,7 +198,9 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             row, shot_new_values["data"]
         )
 
-        tasks_update = self.get_tasks_update(row)
+        tasks_update = self.get_tasks_update(
+            row, self.task_types_in_project_for_shots
+        )
 
         if entity is None:
             shot = shots_service.create_shot(
@@ -303,8 +240,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         try:
             return super().run_import(file_path, project_id)
         finally:
-            # Indexed at the end, without waiting for the indexer on every
-            # row, the rows committed before a failing one included.
+            # Index at the end, so that each row does not wait for the indexer.
+            # The index also gets the rows committed before a failing row.
             index_service.index_shots(self.shot_ids_to_index)
             # The shots created before a failing line stay imported, and a
             # new import would not create their tasks: they get them here.

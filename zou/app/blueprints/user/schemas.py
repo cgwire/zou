@@ -20,7 +20,7 @@ FilterPosition = Annotated[int, Field(ge=0, le=2**31 - 1)]
 
 class SubscribeTasksSchema(BaseSchema):
     """
-    Body for subscribing to or unsubscribing from several tasks at once.
+    Body to subscribe to several tasks at once, or to unsubscribe from them.
     """
 
     task_ids: List[str] = Field(..., min_length=1)
@@ -28,7 +28,7 @@ class SubscribeTasksSchema(BaseSchema):
 
 class CreateSearchFilterSchema(BaseSchema):
     """
-    Body for creating a search filter.
+    Body to create a search filter.
     """
 
     name: FilterName
@@ -43,7 +43,7 @@ class CreateSearchFilterSchema(BaseSchema):
 
 class UpdateSearchFilterSchema(BaseSchema):
     """
-    Body for updating a search filter.
+    Body to update a search filter.
     """
 
     name: Optional[FilterName] = None
@@ -56,7 +56,7 @@ class UpdateSearchFilterSchema(BaseSchema):
 
 class CreateSearchFilterGroupSchema(BaseSchema):
     """
-    Body for creating a search filter group.
+    Body to create a search filter group.
     """
 
     name: FilterName
@@ -70,7 +70,7 @@ class CreateSearchFilterGroupSchema(BaseSchema):
 
 class UpdateSearchFilterGroupSchema(BaseSchema):
     """
-    Body for updating a search filter group.
+    Body to update a search filter group.
     """
 
     name: Optional[FilterName] = None
@@ -82,7 +82,7 @@ class UpdateSearchFilterGroupSchema(BaseSchema):
 
 class NotificationUpdateSchema(BaseSchema):
     """
-    Body for updating a notification.
+    Body to update a notification.
     """
 
     read: Optional[bool] = None

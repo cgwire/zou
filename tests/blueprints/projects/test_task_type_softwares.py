@@ -1,8 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.department import Department
-from zou.app.models.project import ProjectTaskTypeSoftwareLink
 from zou.app.services import (
-    cascade_deletion_service,
     persons_service,
     projects_service,
 )
@@ -78,13 +76,6 @@ class TaskTypeSoftwaresTestCase(ApiDBTestCase):
         self.assertEqual(self.get(self.list_path), [])
         self.assertEqual(len(self.events), 2)
 
-    def test_remove_returns_the_deleted_link(self):
-        self.add_link()
-        args = (self.project_id, self.task_type_id, self.software_id)
-        removed = projects_service.remove_task_type_software(*args)
-        self.assertEqual(removed, self.link)
-        self.assertIsNone(projects_service.remove_task_type_software(*args))
-
     def test_the_list_is_scoped_to_the_project(self):
         self.add_link()
         self.generate_fixture_project_standard()
@@ -132,8 +123,3 @@ class TaskTypeSoftwaresTestCase(ApiDBTestCase):
         self.add_link()
         self.delete(f"data/task-types/{self.task_type_id}?force=true")
         self.assertEqual(self.get(self.list_path), [])
-
-    def test_the_links_go_with_the_project(self):
-        self.add_link()
-        cascade_deletion_service.remove_project(self.project_id)
-        self.assertEqual(ProjectTaskTypeSoftwareLink.query.count(), 0)

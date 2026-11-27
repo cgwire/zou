@@ -86,7 +86,7 @@ class NewsMixin(ArgsMixin):
         )
 
 
-class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
+class ProjectNewsResource(MethodView, NewsMixin):
 
     @jwt_required()
     @swag_from(SPECS["ProjectNewsResource_get"])
@@ -100,7 +100,7 @@ class ProjectNewsResource(MethodView, NewsMixin, ArgsMixin):
         return self.get_news([project_id])
 
 
-class NewsResource(MethodView, NewsMixin, ArgsMixin):
+class NewsResource(MethodView, NewsMixin):
 
     @jwt_required()
     @swag_from(SPECS["NewsResource_get"])
@@ -115,7 +115,9 @@ class NewsResource(MethodView, NewsMixin, ArgsMixin):
             open_project_ids = user_service.get_open_project_ids()
 
         project_id = self.get_text_parameter("project_id")
-        if project_id is not None and project_id in open_project_ids:
+        if project_id is not None:
+            if project_id not in open_project_ids:
+                raise permissions.PermissionDenied
             permissions_service.resolve_project_role(project_id)
             open_project_ids = [project_id]
         permissions_service.block_access_to_client()

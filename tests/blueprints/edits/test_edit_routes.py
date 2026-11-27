@@ -33,11 +33,6 @@ class EditRoutesTestCase(BaseEditTestCase):
         self.assertEqual(len(versions), 1)
         self.assertEqual(versions[0]["name"], "Edit")
 
-    def test_get_edits_with_tasks(self):
-        result = self.get("/data/edits/with-tasks")
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "Edit")
-
     def test_get_edits_with_tasks_include_task_data(self):
         self.task.update({"data": {"render_layer": "bg"}})
         result = self.get("/data/edits/with-tasks")

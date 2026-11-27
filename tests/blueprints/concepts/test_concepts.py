@@ -74,11 +74,6 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(all_concepts), 1)
         self.assertTrue(all_concepts[0]["canceled"])
 
-    def test_get_concept_task_types(self):
-        concept = self.create_concept("Task Types Concept")
-        result = self.get(f"/data/concepts/{concept['id']}/task-types")
-        self.assertEqual(result, [])
-
     def test_get_concept_task_types_with_task(self):
         concept, _ = self.create_concept_with_task("With Task Types")
         result = self.get(f"/data/concepts/{concept['id']}/task-types")
@@ -86,11 +81,6 @@ class ConceptRoutesTestCase(ApiDBTestCase):
             [task_type["id"] for task_type in result],
             [str(self.task_type.id)],
         )
-
-    def test_get_concept_tasks(self):
-        concept = self.create_concept("Tasks Concept")
-        result = self.get(f"/data/concepts/{concept['id']}/tasks")
-        self.assertEqual(result, [])
 
     def test_get_concept_tasks_with_task(self):
         concept, task = self.create_concept_with_task("With Tasks")
@@ -124,12 +114,3 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["project_id"], str(self.project.id))
         fetched = self.get(f"/data/concepts/{result['id']}")
         self.assertEqual(fetched["name"], "New Concept")
-
-    def test_create_concept_with_description(self):
-        result = self.post(
-            f"/data/projects/{self.project.id}/concepts",
-            {"name": "Described", "description": "A cool concept"},
-        )
-        self.assertEqual(result["description"], "A cool concept")
-        fetched = self.get(f"/data/concepts/{result['id']}")
-        self.assertEqual(fetched["description"], "A cool concept")

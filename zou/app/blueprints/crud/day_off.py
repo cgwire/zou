@@ -3,31 +3,14 @@ from flask_jwt_extended import jwt_required
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
 from zou.app.models.day_off import DayOff
-from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
     permissions_service,
     time_spents_service,
-    user_service,
 )
 from zou.app.utils import permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/day_off.yml")
-
-
-def _remove_time_spents_covered_by(day_off):
-    """
-    A day off wipes the hours logged on the days it covers. Both bounds
-    are read from the column: writing them the other way round, as
-    `day_off.date >= TimeSpent.date`, makes Python fall back to the
-    reflected operator and silently inverts the interval, which then
-    matches nothing beyond a one day long day off.
-    """
-    TimeSpent.delete_all_by(
-        TimeSpent.date >= day_off.date,
-        TimeSpent.date <= day_off.end_date,
-        person_id=day_off.person_id,
-    )
 
 
 class DayOffsResource(BaseModelsResource):
@@ -63,7 +46,7 @@ class DayOffsResource(BaseModelsResource):
         return data
 
     def post_creation(self, instance):
-        _remove_time_spents_covered_by(instance)
+        time_spents_service.remove_time_spents_covered_by_day_off(instance)
         return instance.serialize(relations=True)
 
 
@@ -100,10 +83,10 @@ class DayOffResource(BaseModelResource):
         return permissions_service.check_day_off_access(instance_dict)
 
     def check_read_permissions(self, instance_dict):
-        # Reading follows the person routes: admins, the person and the
-        # managers of a production they are part of get the whole record,
-        # the supervisors of such a production the dates only. Writing
-        # stays between the person and the admins.
+        # Read access is the same as for the person routes. Admins, the person
+        # and the managers of a production of the person get the full record.
+        # The supervisors of such a production get only the dates. Only the
+        # person and the admins can write.
         self.with_description = permissions_service.check_day_off_read_access(
             instance_dict["person_id"]
         )
@@ -124,7 +107,9 @@ class DayOffResource(BaseModelResource):
         return permissions_service.check_day_off_access(instance_dict)
 
     def post_update(self, instance_dict, data):
-        _remove_time_spents_covered_by(self.instance)
+        time_spents_service.remove_time_spents_covered_by_day_off(
+            self.instance
+        )
         return instance_dict
 
     def pre_update(self, instance_dict, data):

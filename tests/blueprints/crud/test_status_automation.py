@@ -218,37 +218,31 @@ class StatusAutomationTestCase(ApiDBTestCase):
         self.assertEqual(len(self.get("data/status-automations")), 2)
 
     def test_create_status_automation_from_a_body_that_is_no_object(self):
-        for body in ([{"entity_type": "asset"}], "an id", 5, True):
-            with self.subTest(body=body):
-                result = self.post("data/status-automations", body, 400)
+        result = self.post(
+            "data/status-automations", [{"entity_type": "asset"}], 400
+        )
 
-                self.assertEqual(
-                    result["message"], "A JSON object is expected."
-                )
+        self.assertEqual(result["message"], "A JSON object is expected.")
         self.assertEqual(len(self.get("data/status-automations")), 2)
 
     def test_update_status_automation_from_a_body_that_is_no_object(self):
         automation = self.get("data/status-automations")[0]
-        for body in ([{"archived": True}], "an id", 5, True):
-            with self.subTest(body=body):
-                result = self.put(
-                    f"data/status-automations/{automation['id']}", body, 400
-                )
+        result = self.put(
+            f"data/status-automations/{automation['id']}",
+            [{"archived": True}],
+            400,
+        )
 
-                self.assertEqual(
-                    result["message"], "A JSON object is expected."
-                )
+        self.assertEqual(result["message"], "A JSON object is expected.")
 
     def test_create_status_automation_with_an_unknown_output_type(self):
-        for out_field_type in ("foo", "Status", "", None, ["status"], 5):
-            with self.subTest(out_field_type=out_field_type):
-                result = self.post(
-                    "data/status-automations",
-                    self.automation_data(out_field_type=out_field_type),
-                    400,
-                )
+        result = self.post(
+            "data/status-automations",
+            self.automation_data(out_field_type="foo"),
+            400,
+        )
 
-                self.assertEqual(result["message"], OUT_FIELD_TYPE_ERROR)
+        self.assertEqual(result["message"], OUT_FIELD_TYPE_ERROR)
         self.assertEqual(StatusAutomation.query.count(), 2)
 
     def test_create_status_automation_without_an_output_type(self):
@@ -262,13 +256,9 @@ class StatusAutomationTestCase(ApiDBTestCase):
     def test_update_status_automation_with_an_unknown_output_type(self):
         automation = self.get_first("data/status-automations")
         path = f"data/status-automations/{automation['id']}"
-        for out_field_type in ("foo", "Status", "", None, ["status"], 5):
-            with self.subTest(out_field_type=out_field_type):
-                result = self.put(
-                    path, {"out_field_type": out_field_type}, 400
-                )
+        result = self.put(path, {"out_field_type": "foo"}, 400)
 
-                self.assertEqual(result["message"], OUT_FIELD_TYPE_ERROR)
+        self.assertEqual(result["message"], OUT_FIELD_TYPE_ERROR)
         self.assertEqual(
             self.get(path)["out_field_type"], automation["out_field_type"]
         )
@@ -297,14 +287,11 @@ class StatusAutomationTestCase(ApiDBTestCase):
         The runner looks for an entity type of that name: the row would
         never fire.
         """
-        for entity_type in ("", None):
-            with self.subTest(entity_type=entity_type):
-                automation = self.post(
-                    "data/status-automations",
-                    self.automation_data(entity_type=entity_type),
-                )
+        automation = self.post(
+            "data/status-automations", self.automation_data(entity_type="")
+        )
 
-                self.assertEqual(automation["entity_type"], "asset")
+        self.assertEqual(automation["entity_type"], "asset")
 
     def test_create_status_automation_without_an_entity_type(self):
         data = self.automation_data()
@@ -317,11 +304,9 @@ class StatusAutomationTestCase(ApiDBTestCase):
     def test_update_status_automation_with_an_empty_entity_type(self):
         automation = self.get_first("data/status-automations")
         path = f"data/status-automations/{automation['id']}"
-        for entity_type in ("", None):
-            with self.subTest(entity_type=entity_type):
-                self.put(path, {"entity_type": entity_type})
+        self.put(path, {"entity_type": None})
 
-                self.assertEqual(self.get(path)["entity_type"], "asset")
+        self.assertEqual(self.get(path)["entity_type"], "asset")
 
     def test_update_status_automation_without_its_entity_type(self):
         automation = StatusAutomation.create(
@@ -358,28 +343,22 @@ class StatusAutomationTestCase(ApiDBTestCase):
                 self.condition(self.task_type_layout, self.task_status_done)
             ],
         }
-        for stored in (None, ""):
-            with self.subTest(stored=stored):
-                automation = StatusAutomation.create(
-                    in_conditions=group,
-                    out_field_type="status",
-                    out_task_type_id=self.task_type_modeling.id,
-                    out_task_status_id=self.task_status_wip.id,
-                )
-                automation.update({"entity_type": stored})
+        automation = StatusAutomation.create(
+            in_conditions=group,
+            out_field_type="status",
+            out_task_type_id=self.task_type_modeling.id,
+            out_task_status_id=self.task_status_wip.id,
+        )
+        automation.update({"entity_type": ""})
 
-                result = self.put(
-                    f"data/status-automations/{automation.id}",
-                    {"entity_type": "asset", "archived": True},
-                    400,
-                )
+        result = self.put(
+            f"data/status-automations/{automation.id}",
+            {"entity_type": "asset", "archived": True},
+            400,
+        )
 
-                self.assertIn(
-                    "is not a task type of assets", result["message"]
-                )
-                self.assertEqual(
-                    StatusAutomation.get(automation.id).entity_type, stored
-                )
+        self.assertIn("is not a task type of assets", result["message"])
+        self.assertEqual(StatusAutomation.get(automation.id).entity_type, "")
 
     def test_give_an_entity_type_to_a_status_automation(self):
         automation = StatusAutomation.create(

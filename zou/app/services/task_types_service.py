@@ -5,6 +5,9 @@ from zou.app.exceptions import (
     TaskTypeNotFoundException,
     WrongParameterException,
 )
+from zou.app.models.department import Department
+from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.studio import Studio
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
@@ -66,6 +69,16 @@ def get_task_types():
     return fields.serialize_models(TaskType.get_all())
 
 
+def get_task_types_with_department_names_query():
+    """
+    Return a query on the task types joined with the name of their
+    department, sorted by department name and task type name.
+    """
+    query = TaskType.query.order_by(Department.name, TaskType.name)
+    query = query.join(Department, TaskType.department_id == Department.id)
+    return query.add_columns(Department.name)
+
+
 @cache.memoize_function(120)
 def get_task_statuses():
     """
@@ -99,6 +112,25 @@ def get_default_task_status(for_concept=False):
         return get_or_create_task_status(
             "Todo", "todo", "#f5f5f5", is_default=True
         )
+
+
+def unset_default_task_status_no_commit(for_concept, task_status_id=None):
+    """
+    Set is_default=False on the default task status of the given kind
+    (concept or task), except the status that has the given ID. This
+    function does not commit: the caller commits it with the write that
+    sets the new default, so a failed write keeps the old default. Return
+    the IDs of the statuses that are not the default anymore.
+    """
+    query = TaskStatus.query.filter(
+        TaskStatus.is_default == True,
+        TaskStatus.for_concept == bool(for_concept),
+    )
+    if task_status_id is not None:
+        query = query.filter(TaskStatus.id != task_status_id)
+    unset_ids = [str(row[0]) for row in query.with_entities(TaskStatus.id)]
+    query.update({"is_default": False})
+    return unset_ids
 
 
 def get_task_status_raw(task_status_id):
@@ -174,6 +206,49 @@ def check_task_type_name_is_unique(name, exclude_task_type_id=None):
         raise WrongParameterException(
             "A task type with similar name already exists"
         )
+
+
+def is_task_type_scheduled(task_type_id):
+    """
+    Return True if schedule items use the given task type.
+    """
+    return bool(
+        ScheduleItem.query.filter_by(task_type_id=task_type_id).count()
+    )
+
+
+def is_task_type_in_projects(task_type_id):
+    """
+    Return True if projects use the given task type.
+    """
+    return bool(
+        ProjectTaskTypeLink.query.filter_by(task_type_id=task_type_id).count()
+    )
+
+
+def detach_task_type_no_commit(task_type_id):
+    """
+    Delete the schedule items and the project links of the given task type.
+    Do not commit: the caller commits.
+    """
+    ScheduleItem.query.filter_by(task_type_id=task_type_id).delete()
+    ProjectTaskTypeLink.query.filter_by(task_type_id=task_type_id).delete()
+
+
+def reorder_task_types(task_type_ids):
+    """
+    Set the priority of the given task types from their order in the list,
+    from 1. Ignore the IDs of task types that do not exist. Return the
+    updated task types as dicts.
+    """
+    updated = []
+    for priority, task_type_id in enumerate(task_type_ids, start=1):
+        task_type = TaskType.get(task_type_id)
+        if task_type is not None:
+            task_type.update({"priority": priority})
+            clear_task_type_cache(str(task_type.id))
+            updated.append(task_type.serialize())
+    return updated
 
 
 def get_or_create_task_status(

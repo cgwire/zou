@@ -9,6 +9,7 @@ from zou.app.blueprints.source.shotgun.exception import (
 from zou.app.exceptions import (
     AssetNotFoundException,
     EpisodeNotFoundException,
+    ModelWithRelationsDeletionException,
     SceneNotFoundException,
     SequenceNotFoundException,
     ShotNotFoundException,
@@ -185,13 +186,18 @@ class ImportRemoveShotgunBaseResource(MethodView):
 
     def delete_instance(self, instance):
         is_success = True
+        # The rollback of a failed delete expires the instance: read the ID
+        # before the delete.
+        sg_id = instance.shotgun_id
         try:
             if self.delete_func is not None:
                 self.delete_func(instance)
             else:
                 instance.delete()
-        except IntegrityError as exception:
-            sg_id = instance.shotgun_id
+        except (
+            IntegrityError,
+            ModelWithRelationsDeletionException,
+        ) as exception:
             current_app.logger.error(str(exception))
             current_app.logger.error(
                 f"An error occured while deleting model {sg_id}."

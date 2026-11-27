@@ -32,7 +32,6 @@ from zou.app.exceptions import (
     WrongParameterException,
 )
 from zou.app.mixin import ArgsMixin
-from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 from zou.app.services import (
     budget_service,
     metadata_descriptors_service,
@@ -62,8 +61,8 @@ VALID_METADATA_ENTITY_TYPES = [
 
 class OpenProjectsResource(MethodView, ArgsMixin):
     """
-    Return the list of projects currently running. Most of the time, past
-    projects are not needed.
+    Return the list of the open projects. Most of the time, users do not need
+    the past projects. A non-admin gets only the open projects of their teams.
     """
 
     @jwt_required()
@@ -81,8 +80,8 @@ class OpenProjectsResource(MethodView, ArgsMixin):
 
 class AllProjectsResource(MethodView, ArgsMixin):
     """
-    Return all projects listed in database. Ensure that user has at least
-    the manager level before that.
+    Return all the projects of the database to an admin. The other users get
+    only the projects of their teams.
     """
 
     @jwt_required()
@@ -108,7 +107,7 @@ class AllProjectsResource(MethodView, ArgsMixin):
 
 class ProductionTeamResource(MethodView, ArgsMixin):
     """
-    Allow to manage the people listed in a production team.
+    Manage the people of a production team.
     """
 
     @jwt_required()
@@ -225,7 +224,7 @@ class ProductionPreviewAccountResource(MethodView):
 
 class ProductionAssetTypeResource(MethodView, ArgsMixin):
     """
-    Allow to add an asset type linked to a production.
+    Add an asset type to a production.
     """
 
     @jwt_required()
@@ -273,7 +272,7 @@ class ProductionAssetTypeWorkflowResource(MethodView):
 
 class ProductionTaskTypesResource(MethodView, ArgsMixin):
     """
-    Retrieve task types linked to the production
+    Return the task types linked to the production.
     """
 
     @jwt_required()
@@ -288,7 +287,7 @@ class ProductionTaskTypesResource(MethodView, ArgsMixin):
 
 class ProductionTaskTypeResource(MethodView, ArgsMixin):
     """
-    Allow to add a task type linked to a production.
+    Add a task type to a production.
     """
 
     @jwt_required()
@@ -312,7 +311,7 @@ class ProductionTaskTypeResource(MethodView, ArgsMixin):
 
 class ProductionTaskTypeRemoveResource(MethodView):
     """
-    Allow to remove a task type linked to a production.
+    Remove a task type from a production.
     """
 
     @jwt_required()
@@ -328,7 +327,7 @@ class ProductionTaskTypeRemoveResource(MethodView):
 
 class ProductionTaskTypeSoftwaresResource(MethodView):
     """
-    Allow to list the softwares set for the task types of a production.
+    List the softwares linked to the task types of a production.
     """
 
     @jwt_required()
@@ -343,7 +342,7 @@ class ProductionTaskTypeSoftwaresResource(MethodView):
 
 class ProductionTaskTypeSoftwareResource(MethodView):
     """
-    Allow to link a software to a task type of a production.
+    Link a software to a task type of a production.
     """
 
     @jwt_required()
@@ -364,7 +363,7 @@ class ProductionTaskTypeSoftwareResource(MethodView):
 
 class ProductionTaskTypeSoftwareRemoveResource(MethodView):
     """
-    Allow to unlink a software from a task type of a production.
+    Unlink a software from a task type of a production.
     """
 
     @jwt_required()
@@ -384,7 +383,7 @@ class ProductionTaskTypeSoftwareRemoveResource(MethodView):
 
 class ProductionTaskStatusResource(MethodView, ArgsMixin):
     """
-    Allow to add a task type linked to a production.
+    List or add the task statuses linked to a production.
     """
 
     @jwt_required()
@@ -413,7 +412,7 @@ class ProductionTaskStatusResource(MethodView, ArgsMixin):
 
 class ProductionTaskStatusRemoveResource(MethodView):
     """
-    Allow to update or remove a task status linked to a production.
+    Update or remove a task status linked to a production.
     """
 
     @jwt_required()
@@ -443,8 +442,8 @@ class ProductionTaskStatusRemoveResource(MethodView):
 
 class ProductionSettingsBatchResource(MethodView):
     """
-    Allow to add several task types, task statuses and asset types to a
-    production in a single request.
+    Add several task types, task statuses and asset types to a production in
+    one request.
     """
 
     @jwt_required()
@@ -466,7 +465,7 @@ class ProductionSettingsBatchResource(MethodView):
 
 class ProductionStatusAutomationResource(MethodView, ArgsMixin):
     """
-    Allow to add a status automation linked to a production.
+    List or add the status automations linked to a production.
     """
 
     @jwt_required()
@@ -495,7 +494,7 @@ class ProductionStatusAutomationResource(MethodView, ArgsMixin):
 
 class ProductionStatusAutomationRemoveResource(MethodView):
     """
-    Allow to remove a status automation linked to a production.
+    Remove a status automation linked to a production.
     """
 
     @jwt_required()
@@ -513,7 +512,7 @@ class ProductionStatusAutomationRemoveResource(MethodView):
 
 class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
     """
-    Allow to add a preview background file linked to a production.
+    List or add the preview background files linked to a production.
     """
 
     @jwt_required()
@@ -544,7 +543,7 @@ class ProductionPreviewBackgroundFileResource(MethodView, ArgsMixin):
 
 class ProductionPreviewBackgroundFileRemoveResource(MethodView):
     """
-    Allow to remove a preview background file linked to a production.
+    Remove a preview background file linked to a production.
     """
 
     @jwt_required()
@@ -562,8 +561,8 @@ class ProductionPreviewBackgroundFileRemoveResource(MethodView):
 
 class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
     """
-    Resource to get and create metadata descriptors. It serves to describe
-    extra fields listed in the data attribute of entities.
+    Get and create metadata descriptors. A descriptor describes an extra field
+    of the data attribute of the entities.
     """
 
     @jwt_required()
@@ -622,9 +621,9 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
                 "task_type_id only applies to Task metadata descriptors."
             )
 
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_data_type(
+            body.data_type
+        )
 
         return (
             metadata_descriptors_service.add_metadata_descriptor(
@@ -643,8 +642,8 @@ class ProductionMetadataDescriptorsResource(MethodView, ArgsMixin):
 
 class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
     """
-    Resource to get, update or delete a metadata descriptor. Descriptors serve
-    to describe extra fields listed in the data attribute of entities.
+    Get, update or delete a metadata descriptor. A descriptor describes an
+    extra field of the data attribute of the entities.
     """
 
     @jwt_required()
@@ -669,8 +668,8 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         Update metadata descriptor
         """
         body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
-        # The rights are checked on the project of the path: a descriptor of
-        # another project must not be reachable through it.
+        # The route checks the rights on the project of the path: a descriptor
+        # of another project must not be reachable through that path.
         descriptor = (
             metadata_descriptors_service.get_project_metadata_descriptor(
                 project_id, metadata_descriptor_id
@@ -690,9 +689,9 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         if body.name is not None and len(body.name) == 0:
             raise WrongParameterException("Name cannot be empty.")
 
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_data_type(
+            body.data_type
+        )
 
         return metadata_descriptors_service.update_metadata_descriptor(
             metadata_descriptor_id, args
@@ -704,8 +703,8 @@ class ProductionMetadataDescriptorResource(MethodView, ArgsMixin):
         """
         Delete metadata descriptor
         """
-        # The rights are checked on the project of the path: a descriptor of
-        # another project must not be reachable through it.
+        # The route checks the rights on the project of the path: a descriptor
+        # of another project must not be reachable through that path.
         descriptor = (
             metadata_descriptors_service.get_project_metadata_descriptor(
                 project_id, metadata_descriptor_id
@@ -753,13 +752,14 @@ class ProductionMetadataDescriptorsReorderResource(MethodView, ArgsMixin):
 
 def _accessible_open_project_ids():
     """
-    Open projects the current user may manage: every open project for an
-    admin, otherwise the team ones where their effective role is manager.
+    Return the IDs of the open projects that the current user can manage. For
+    an admin, return all the open projects. For the other users, return the
+    team projects where their effective role is manager.
 
-    Membership alone is not enough. A role set on the team link replaces
-    the global one, so someone holding manager globally and user on a
-    production would otherwise reshape its metadata through these routes,
-    which the per project ones refuse.
+    Membership alone is not enough. A role on the team link replaces the global
+    role. Without this check, a person who is manager globally and user on a
+    production can change its metadata through these routes. The routes of one
+    project refuse this.
     """
     if permissions.has_admin_permissions():
         return projects_service.open_project_ids()
@@ -791,9 +791,9 @@ class AllProjectsMetadataDescriptorsResource(MethodView):
         permissions.check_manager_permissions()
         body = validation.validate_request_body(MetadataDescriptorSchema)
         _check_metadata_entity_type(body.entity_type)
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
+        metadata_descriptors_service.check_metadata_descriptor_data_type(
+            body.data_type
+        )
         return (
             metadata_descriptors_service.add_metadata_descriptor_to_projects(
                 _accessible_open_project_ids(),
@@ -821,18 +821,11 @@ class AllProjectsMetadataDescriptorResource(MethodView, ArgsMixin):
             AllProjectsMetadataDescriptorUpdateSchema
         )
         _check_metadata_entity_type(body.entity_type)
-        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if body.data_type not in types:
-            raise WrongParameterException("Invalid data_type")
-        changes = {
-            "for_client": body.for_client,
-            "data_type": body.data_type,
-            "choices": body.choices,
-            "departments": body.departments,
-        }
-        # Keep the field name untouched when the name is not being changed.
-        if body.name:
-            changes["name"] = body.name
+        changes = body.model_dump(exclude_unset=True, exclude={"entity_type"})
+        if "data_type" in changes:
+            metadata_descriptors_service.check_metadata_descriptor_data_type(
+                changes["data_type"]
+            )
         return metadata_descriptors_service.update_metadata_descriptor_on_projects(
             _accessible_open_project_ids(),
             body.entity_type,
@@ -876,7 +869,7 @@ class AllProjectsMetadataDescriptorsReorderResource(MethodView):
 
 class ProductionTimeSpentsResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve time spents for given production.
+    Get the time spents of the given production.
     """
 
     @jwt_required()
@@ -895,7 +888,7 @@ class ProductionTimeSpentsResource(MethodView, ArgsMixin):
 
 class ProductionMilestonesResource(MethodView):
     """
-    Resource to retrieve milestones for given production.
+    Get the milestones of the given production.
     """
 
     @jwt_required()
@@ -911,7 +904,7 @@ class ProductionMilestonesResource(MethodView):
 
 class ProductionScheduleItemsResource(MethodView):
     """
-    Resource to retrieve schedule items for given production.
+    Get the schedule items of the given production.
     """
 
     @jwt_required()
@@ -928,7 +921,7 @@ class ProductionScheduleItemsResource(MethodView):
 
 class ProductionTaskTypeScheduleItemsResource(MethodView):
     """
-    Resource to retrieve schedule items for given production.
+    Get the schedule items of the task types of the given production.
     """
 
     @jwt_required()
@@ -944,7 +937,7 @@ class ProductionTaskTypeScheduleItemsResource(MethodView):
 
 class ProductionAssetTypesScheduleItemsResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve asset types schedule items for given task type.
+    Get the schedule items of the asset types for the given task type.
     """
 
     @jwt_required()
@@ -965,7 +958,7 @@ class ProductionAssetTypesScheduleItemsResource(MethodView, ArgsMixin):
 
 class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve episodes schedule items for given task type.
+    Get the schedule items of the episodes for the given task type.
     """
 
     @jwt_required()
@@ -986,7 +979,7 @@ class ProductionEpisodesScheduleItemsResource(MethodView, ArgsMixin):
 
 class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve sequences schedule items for given task type.
+    Get the schedule items of the sequences for the given task type.
     """
 
     @jwt_required()
@@ -1007,7 +1000,7 @@ class ProductionSequencesScheduleItemsResource(MethodView, ArgsMixin):
 
 class ProductionEditsScheduleItemsResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve edits schedule items for given task type.
+    Get the schedule items of the edits for the given task type.
     """
 
     @jwt_required()
@@ -1054,7 +1047,7 @@ class ProductionBudgetsResource(MethodView, ArgsMixin):
 
 class ProductionBudgetResource(MethodView, ArgsMixin):
     """
-    Resource to retrieve a budget for given production.
+    Get, update or delete a budget of the given production.
     """
 
     @jwt_required()
@@ -1162,7 +1155,9 @@ class ProductionBudgetEntryResource(MethodView, ArgsMixin):
         budget_service.get_budget(budget_id, project_id)
         budget_service.get_budget_entry(entry_id, budget_id)
         body = validation.validate_request_body(BudgetEntryUpdateSchema)
-        return budget_service.update_budget_entry(entry_id, body.model_dump())
+        return budget_service.update_budget_entry(
+            entry_id, body.model_dump(exclude_unset=True)
+        )
 
     @jwt_required()
     @swag_from(SPECS["ProductionBudgetEntryResource_delete"])
@@ -1333,7 +1328,7 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
 
 class ProductionTaskTypesTimeSpentsResource(MethodView, ArgsMixin):
     """
-    Retrieve time spents for a task type in the production
+    Get the time spents for a task type of the production.
     """
 
     @jwt_required()
@@ -1358,7 +1353,7 @@ class ProductionTaskTypesTimeSpentsResource(MethodView, ArgsMixin):
 
 class ProductionDayOffsResource(MethodView, ArgsMixin):
     """
-    Retrieve all day offs for a production
+    Get all the day offs of a production.
     """
 
     @jwt_required()

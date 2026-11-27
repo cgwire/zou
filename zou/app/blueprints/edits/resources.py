@@ -196,7 +196,7 @@ class ProjectEditsResource(MethodView, ArgsMixin):
 
 class EditVersionsResource(MethodView):
     """
-    Retrieve data versions of given edit.
+    Get the data versions of the given edit.
     """
 
     @jwt_required()

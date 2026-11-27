@@ -8,6 +8,7 @@ from zou.app.blueprints.source.shotgun.base import (
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.services import (
+    cascade_deletion_service,
     entity_types_service,
     persons_service,
     shots_service,
@@ -111,11 +112,8 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
             current_app.logger.info(f"Shot created: {shot}")
 
         else:
-            if shot.data is None:
-                shot.data = {}
+            data["data"] = {**(shot.data or {}), **data["data"]}
             shot.update(data)
-            shot.data.update(data["data"])
-            shot.save()
             shots_service.clear_shot_cache(str(shot.id))
             current_app.logger.info(f"Shot updated: {shot}")
 
@@ -127,6 +125,7 @@ class ImportRemoveShotgunShotResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self,
             Entity,
+            lambda shot: cascade_deletion_service.remove_shot(str(shot.id)),
             entity_type_id=entity_types_service.get_shot_type()["id"],
         )
 

@@ -1,12 +1,8 @@
-from flask import current_app
 from flask_jwt_extended import jwt_required
-from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.entity import Entity
 from zou.app.models.output_file import QUALITIES, OutputFile
-from zou.app.models.project import Project
 from zou.app.services import (
     entities_service,
     files_service,
@@ -50,20 +46,13 @@ class OutputFilesResource(BaseModelsResource):
         if permissions.has_admin_permissions():
             return query
         else:
-            query = (
-                query.join(Entity, OutputFile.entity_id == Entity.id)
-                .join(Project)
-                .filter(user_service.build_related_projects_filter())
+            # A vendor cannot read output files on the projects where the user
+            # is a vendor.
+            return files_service.filter_output_files_by_projects(
+                query,
+                user_service.build_related_projects_filter(),
+                user_service.get_project_ids_with_roles("vendor"),
             )
-            # A vendor reads no output file, on the projects they are one.
-            vendor_project_ids = user_service.get_project_ids_with_roles(
-                "vendor"
-            )
-            if vendor_project_ids:
-                query = query.filter(
-                    Entity.project_id.not_in(vendor_project_ids)
-                )
-            return query
 
     def emit_create_event(self, instance_dict):
         entity = entities_service.get_entity(instance_dict["entity_id"])
@@ -77,9 +66,9 @@ class OutputFilesResource(BaseModelsResource):
 class OutputFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, OutputFile)
-        # An output file stays on its entity and temporal entity: the update
-        # checks the access on the stored ones. Its instance and source file
-        # stay too: the update does not check the access to them.
+        # An output file stays on its entity and temporal entity, because the
+        # update checks the access to the stored ones. Its instance and source
+        # file also stay, because the update does not check the access to them.
         self.protected_fields += [
             "entity_id",
             "temporal_entity_id",
@@ -114,10 +103,6 @@ class OutputFileResource(BaseModelResource):
             self.check_read_permissions(output_file)
             return self.clean_get_result(output_file)
 
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
         except ValueError:
             raise WrongParameterException("Invalid value.")
 
@@ -139,8 +124,8 @@ class OutputFileResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        # Only a manager of the project changes the author: the update check
-        # resolved the project role.
+        # Only a manager of the project can change the author. The update check
+        # found the project role before.
         if not permissions.has_manager_permissions():
             data.pop("person_id", None)
         check_quality(data)

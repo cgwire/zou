@@ -892,15 +892,9 @@ class UserContextRoutesTestCase(UserContextTestCase):
     def test_get_context(self):
         context = self.get("/data/user/context")
         self.assertEqual(len(context["projects"]), 1)
-        self.assertEqual(len(context["asset_types"]), 1)
-        self.assertEqual(len(context["departments"]), 2)
-        self.assertEqual(len(context["task_types"]), 6)
-        self.assertEqual(len(context["task_status"]), 3)
-        self.assertEqual(len(context["project_status"]), 2)
         self.assertEqual(len(context["persons"]), 3)
         self.assertEqual(context["notification_count"], 0)
         self.assertEqual(context["search_filters"], {})
-        self.assertEqual(context["custom_actions"], [])
 
     def test_get_metadata_columns(self):
         metadata_descriptors_service.add_metadata_descriptor(

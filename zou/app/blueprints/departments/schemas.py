@@ -11,7 +11,7 @@ from zou.app.utils.validation import BaseSchema
 
 class AddSoftwareToDepartmentSchema(BaseSchema):
     """
-    Body for adding a software license to a department.
+    Body to add a software license to a department.
     """
 
     software_id: UUID = Field(
@@ -21,7 +21,7 @@ class AddSoftwareToDepartmentSchema(BaseSchema):
 
 class AddHardwareToDepartmentSchema(BaseSchema):
     """
-    Body for adding a hardware item to a department.
+    Body to add a hardware item to a department.
     """
 
     hardware_item_id: UUID = Field(

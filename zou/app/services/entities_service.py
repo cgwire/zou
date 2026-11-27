@@ -1,6 +1,6 @@
 import copy
 
-from sqlalchemy import Text, cast, func
+from sqlalchemy import Text, cast, func, or_
 
 from zou.app import db
 from zou.app.exceptions import (
@@ -297,6 +297,40 @@ def find_entity_raw(**lookup):
     return Entity.get_by(**lookup)
 
 
+def is_entity_name_taken(
+    name, project_id, entity_type_id, parent_id, exclude_id
+):
+    """
+    Return True if an entity other than the given one has the given name,
+    project, entity type and parent. A None parent matches the entities
+    without a parent.
+    """
+    query = Entity.query.filter(
+        Entity.name == name,
+        Entity.project_id == project_id,
+        Entity.entity_type_id == entity_type_id,
+        Entity.id != exclude_id,
+    )
+    if parent_id is None:
+        query = query.filter(Entity.parent_id.is_(None))
+    else:
+        query = query.filter(Entity.parent_id == parent_id)
+    return query.first() is not None
+
+
+def remove_entity_links_no_commit(entity):
+    """
+    Delete the links of the given entity dict, and the subscriptions of a
+    sequence. Do not commit: the caller commits.
+    """
+    if entity_types_service.is_sequence(entity):
+        Subscription.delete_all_by_no_commit(entity_id=entity["id"])
+    EntityLink.delete_all_by_no_commit(entity_in_id=entity["id"])
+    EntityLink.delete_all_by_no_commit(entity_out_id=entity["id"])
+    EntityConceptLink.delete_all_by_no_commit(entity_in_id=entity["id"])
+    EntityConceptLink.delete_all_by_no_commit(entity_out_id=entity["id"])
+
+
 def get_entity_raw(entity_id):
     """
     Return the entity that has the given ID, as an active record. If the entity
@@ -351,6 +385,26 @@ def build_assigned_task_filter():
         .filter(persons_service.build_assignee_filter())
         .exists()
     )
+
+
+def filter_entities_by_projects(query, projects_filter, vendor_project_ids):
+    """
+    Return the given entity query limited by the given project filter. On
+    the given vendor projects, keep only the entities with a task assigned
+    to the current user.
+    """
+    query = query.join(Project).filter(projects_filter)
+    if vendor_project_ids:
+        assigned_entity_ids = Task.query.with_entities(Task.entity_id).filter(
+            persons_service.build_assignee_filter()
+        )
+        query = query.filter(
+            or_(
+                Entity.project_id.not_in(vendor_project_ids),
+                Entity.id.in_(assigned_entity_ids),
+            )
+        )
+    return query
 
 
 def build_assigned_child_query(Child):

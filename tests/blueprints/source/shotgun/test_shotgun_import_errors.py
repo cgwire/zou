@@ -41,10 +41,12 @@ class DataImportErrorTestCase(ShotgunTestCase):
         self.post("/import/shotgun/errors", event)
         errors = self.get("/import/shotgun/errors")
         self.assertEqual(len(errors), 2)
-        self.error = DataImportError.get(self.error_id)
-        self.assertEqual(errors[1]["source"], "shotgun")
+        new_error = next(
+            error for error in errors if error["id"] != str(self.error_id)
+        )
+        self.assertEqual(new_error["source"], "shotgun")
         self.assertEqual(
-            errors[1]["event_data"]["project"]["name"],
+            new_error["event_data"]["project"]["name"],
             event["project"]["name"],
         )
 

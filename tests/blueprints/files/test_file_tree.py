@@ -1,4 +1,7 @@
+import copy
+
 from tests.base import ApiDBTestCase
+from zou.app.models.software import Software
 from zou.app.services import files_service
 
 
@@ -98,7 +101,9 @@ class FolderPathTestCase(ApiDBTestCase):
             "shaders/3ds_max",
         )
 
-    def instance_output_file_path(self, entity, output_type, task_type):
+    def instance_output_file_path(
+        self, entity, output_type, task_type, code=200
+    ):
         """
         Ask for the path of an output published on an asset instance seen
         through given entity.
@@ -114,7 +119,7 @@ class FolderPathTestCase(ApiDBTestCase):
                 "representation": "abc",
                 "revision": 3,
             },
-            200,
+            code,
         )
 
     def test_get_path_shot_asset_instance(self):
@@ -136,6 +141,20 @@ class FolderPathTestCase(ApiDBTestCase):
         self.assertEqual(
             result["file_name"],
             "cosmos_landromat_s01_p01_animation_cache_main_tree_0001_v003",
+        )
+
+    def test_instance_output_file_path_stays_in_the_project(self):
+        """
+        A temporal entity of another project does not leak its file tree.
+        """
+        output_type = files_service.get_or_create_output_type("Cache")
+        self.generate_fixture_scene_asset_instance()
+
+        self.instance_output_file_path(
+            self.generate_fixture_shot_standard(),
+            output_type,
+            self.task_type_animation,
+            403,
         )
 
     def test_get_path_scene_asset_instance(self):
@@ -228,6 +247,12 @@ class FolderPathTestCase(ApiDBTestCase):
         )
         self.assertNotIn("\\", result["name"])
 
+    def test_an_outsider_creates_no_default_software(self):
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        self.post(f"/data/tasks/{self.task.id}/working-file-path", {}, 403)
+        self.assertIsNone(Software.get_by(name="3ds Max"))
+
     def test_get_path_wrong_task_id(self):
         data = {}
         self.post(
@@ -277,4 +302,25 @@ class FolderPathTestCase(ApiDBTestCase):
         )
         self.assertTrue(
             result["file_name"].endswith("_v001"), result["file_name"]
+        )
+
+    def test_entity_output_folder_path_takes_the_next_revision(self):
+        tree = copy.deepcopy(self.project.file_tree)
+        tree["output"]["folder_path"][
+            "asset"
+        ] = "<Project>/assets/<Asset>/<OutputType>/v<Revision>"
+        self.project.update({"file_tree": tree})
+        output_type = files_service.get_or_create_output_type("Cache")
+        result = self.post(
+            f"/data/entities/{self.asset.id}/output-file-path",
+            {
+                "name": "main",
+                "output_type_id": output_type["id"],
+                "task_type_id": str(self.task_type.id),
+                "revision": 0,
+            },
+            200,
+        )
+        self.assertTrue(
+            result["folder_path"].endswith("/v001"), result["folder_path"]
         )

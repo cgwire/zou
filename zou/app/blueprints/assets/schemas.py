@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request body validation in the assets blueprint.
+Pydantic schemas that validate the request bodies of the assets blueprint.
 """
 
 from typing import List, Optional
@@ -12,7 +12,7 @@ from zou.app.utils.validation import BaseSchema
 
 class NewAssetSchema(BaseSchema):
     """
-    Body for creating a new asset.
+    Body to create an asset.
     """
 
     name: str = Field(
@@ -26,7 +26,7 @@ class NewAssetSchema(BaseSchema):
 
 class AssetInstanceSchema(BaseSchema):
     """
-    Body for creating an asset instance on an asset.
+    Body to create an asset instance on an asset.
     """
 
     asset_to_instantiate_id: UUID = Field(
@@ -47,7 +47,7 @@ class CastingEntrySchema(BaseSchema):
 
 class SetSharedAssetsSchema(BaseSchema):
     """
-    Body for setting shared status on assets.
+    Body to set the shared status of assets.
     """
 
     is_shared: Optional[bool] = True

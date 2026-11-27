@@ -11,7 +11,7 @@ from zou.app.utils.validation import BaseSchema
 
 class WorkingFilePathSchema(BaseSchema):
     """
-    Body for generating a working file path.
+    Body to generate a working file path.
     """
 
     name: str = "main"
@@ -24,7 +24,7 @@ class WorkingFilePathSchema(BaseSchema):
 
 class OutputFilePathSchema(BaseSchema):
     """
-    Body for generating an output file path.
+    Body to generate an output file path.
     """
 
     name: str = "main"
@@ -39,7 +39,7 @@ class OutputFilePathSchema(BaseSchema):
 
 class NewWorkingFileSchema(BaseSchema):
     """
-    Body for creating a new working file revision.
+    Body to create a new revision of a working file.
     """
 
     name: str = Field(..., min_length=1, description="The file name")
@@ -54,7 +54,7 @@ class NewWorkingFileSchema(BaseSchema):
 
 class WorkingFileCommentSchema(BaseSchema):
     """
-    Body for updating a working file comment.
+    Body to update the comment of a working file.
     """
 
     comment: str = Field(
@@ -64,7 +64,7 @@ class WorkingFileCommentSchema(BaseSchema):
 
 class NewOutputFileSchema(BaseSchema):
     """
-    Body for creating a new entity output file.
+    Body to create a new output file for an entity or an asset instance.
     """
 
     name: str = "main"
@@ -84,7 +84,7 @@ class NewOutputFileSchema(BaseSchema):
 
 class NextRevisionSchema(BaseSchema):
     """
-    Body for getting next output file revision number.
+    Body to get the next revision number of an output file.
     """
 
     name: str = "main"
@@ -94,7 +94,7 @@ class NextRevisionSchema(BaseSchema):
 
 class GuessFilePathSchema(BaseSchema):
     """
-    Body for guessing file tree template from path.
+    Body to guess the file tree template from a path.
     """
 
     project_id: str = Field(..., min_length=1)

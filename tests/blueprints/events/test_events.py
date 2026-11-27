@@ -342,11 +342,6 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
     def test_get_last_login_logs_invalid_person_ids(self):
         self.get("/data/events/login-logs/last?person_ids=invalid", 400)
 
-    def test_get_last_login_logs_permissions(self):
-        self.generate_fixture_user_cg_artist()
-        self.log_in_cg_artist()
-        self.get("/data/events/login-logs/last", 403)
-
     def test_get_last_login_logs_are_admin_only(self):
         # Login logs expose everyone's IP address: managers are denied.
         self.generate_fixture_user_manager()

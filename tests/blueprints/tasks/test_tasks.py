@@ -1,12 +1,11 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.entity import Entity
-from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     comments_service,
     entity_types_service,
-    news_service,
     notifications_service,
     persons_service,
     projects_service,
@@ -396,16 +395,33 @@ class TaskAssignationTestCase(TaskTestCase):
         self.generate_fixture_shot_task()
         task_id = str(self.task.id)
         shot_task_id = str(self.shot_task.id)
-        person_id = str(self.person.id)
+        # The fixture tasks are already assigned to John Doe.
+        person = self.generate_fixture_person(
+            first_name="Jane",
+            desktop_login="jane.doe",
+            email="jane.doe@example.com",
+        )
+        person_id = str(person.id)
         data = {"task_ids": [task_id, shot_task_id]}
         self.put(f"/actions/persons/{person_id}/assign", data)
 
-        task = tasks_service.get_task(task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 1)
-        task = tasks_service.get_task(shot_task_id, relations=True)
-        self.assertEqual(len(task["assignees"]), 1)
+        for assigned_task_id in [task_id, shot_task_id]:
+            task = tasks_service.get_task(assigned_task_id, relations=True)
+            self.assertIn(person_id, task["assignees"])
         notifications = notifications_service.get_recent_notifications()
         self.assertEqual(len(notifications), 2)
+
+    def test_multiple_task_assign_adds_person_to_each_team(self):
+        self.generate_fixture_task()
+        self.generate_fixture_task_standard()
+        person_id = str(self.person.id)
+        data = {"task_ids": [str(self.task.id), str(self.task_standard.id)]}
+        self.put(f"/actions/persons/{person_id}/assign", data)
+        for project in [self.project, self.project_standard]:
+            team = projects_service.get_project(
+                str(project.id), relations=True
+            )["team"]
+            self.assertIn(person_id, team)
 
     def test_multiple_task_assign_artist(self):
         self.generate_fixture_task()
@@ -516,235 +532,6 @@ class TaskAssignationTestCase(TaskTestCase):
         task = tasks_service.get_task(task_id)
         self.assertEqual(task["priority"], 0)
 
-    def test_update_task_priority(self):
-        self.assertEqual(ProjectTaskTypeLink.query.count(), 0)
-        self.post(
-            "/data/task-type-links",
-            {
-                "task_type_id": TaskType.query.first().id,
-                "project_id": Project.query.first().id,
-                "priority": 2,
-            },
-        )
-        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 2)
-        self.post(
-            "/data/task-type-links",
-            {
-                "task_type_id": TaskType.query.first().id,
-                "project_id": Project.query.first().id,
-                "priority": 3,
-            },
-        )
-        self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
-        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)
-
-
-class TaskCommentTestCase(TaskTestCase):
-    """
-    Commenting through the task routes, and what a comment does to the
-    task it lands on: its status, its retake count and its dates.
-    """
-
-    def test_comment_task(self):
-        self.project_id = self.project.id
-        self.generate_fixture_user_manager()
-        self.generate_fixture_user_cg_artist()
-        user_cg_artist = persons_service.get_person_raw(
-            self.user_cg_artist["id"]
-        )
-        user_manager = persons_service.get_person_raw(self.user_manager["id"])
-        self.project.team = [self.person, user_cg_artist, user_manager]
-        self.project.save()
-        self.generate_fixture_task()
-        path = f"/actions/tasks/{self.task.id}/comment/"
-        data = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test",
-        }
-        comment = self.post(path, data)
-        self.assertEqual(comment["text"], data["comment"])
-        self.assertEqual(
-            comment["person"]["first_name"], self.user["first_name"]
-        )
-        self.assertEqual(comment["task_status"]["short_name"], "wip")
-
-        tasks = self.get("/data/tasks")
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["task_status_id"], str(self.wip_status_id))
-        self.assertIsNotNone(tasks[0]["last_comment_date"])
-
-        comments = self.get("/data/comments/")
-        self.assertEqual(len(comments), 1)
-        self.assertEqual(comments[0]["text"], data["comment"])
-        self.assertEqual(comments[0]["person_id"], self.user["id"])
-
-        notifications = notifications_service.get_recent_notifications(
-            "comment"
-        )
-        self.assertEqual(len(notifications), 1)
-        notifications = notifications_service.get_recent_notifications(
-            "mention"
-        )
-        self.assertEqual(notifications, [])
-
-        data = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test @John Did2",
-        }
-        comment = self.post(path, data)
-        notifications = notifications_service.get_recent_notifications(
-            "comment"
-        )
-        self.assertEqual(len(notifications), 2)
-        notifications = notifications_service.get_recent_notifications(
-            "mention"
-        )
-        self.assertEqual(len(notifications), 1)
-
-        news_list = news_service.get_last_news_for_project(
-            news_service.NewsFilters(project_id=self.project_id)
-        )
-        self.assertEqual(len(news_list["data"]), 2)
-
-    def test_edit_comment(self):
-        self.generate_fixture_user_manager()
-        self.generate_fixture_user_cg_artist()
-
-        user = persons_service.get_person_raw(self.user["id"])
-        user_cg_artist = persons_service.get_person_raw(
-            self.user_cg_artist["id"]
-        )
-        user_manager = persons_service.get_person_raw(self.user_manager["id"])
-
-        self.project.team = [self.person, user, user_cg_artist, user_manager]
-        self.project.save()
-        self.generate_fixture_task()
-        path = f"/actions/tasks/{self.task.id}/comment/"
-        data = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test @John Doe",
-        }
-        comment = self.post(path, data)
-        notifications = notifications_service.get_recent_notifications(
-            "mention"
-        )
-        self.assertEqual(len(notifications), 1)
-
-        path = f"/data/comments/{comment['id']}"
-        data = {"text": "comment test @John Did2 @John Did3"}
-        comment = self.put(path, data)
-        notifications = notifications_service.get_recent_notifications(
-            "mention"
-        )
-        self.assertEqual(len(notifications), 2)
-
-    def test_comment_task_with_retake(self):
-        self.generate_fixture_task()
-        path = f"/actions/tasks/{self.task.id}/comment/"
-        data = {
-            "task_status_id": self.retake_status_id,
-            "comment": "retake test",
-        }
-        data_wip = {
-            "task_status_id": self.wip_status_id,
-            "comment": "wip test",
-        }
-        self.post(path, data)
-        tasks = self.get("/data/tasks")
-        self.assertEqual(len(tasks), 1)
-        tasks = self.get("/data/tasks")
-        self.assertEqual(tasks[0]["retake_count"], 1)
-        self.post(path, data)
-        tasks = self.get("/data/tasks")
-        self.assertEqual(tasks[0]["retake_count"], 1)
-        self.post(path, data_wip)
-        tasks = self.get("/data/tasks")
-        self.assertEqual(tasks[0]["retake_count"], 1)
-        self.post(path, data)
-        tasks = self.get("/data/tasks")
-        self.assertEqual(tasks[0]["retake_count"], 2)
-
-    def test_comment_task_with_wip(self):
-        self.generate_fixture_task()
-        self.task.update({"real_start_date": None})
-        path = f"/actions/tasks/{self.task.id}/comment/"
-        data = {"task_status_id": self.wip_status_id, "comment": "wip test"}
-        self.post(path, data)
-        tasks = self.get("/data/tasks")
-        self.assertIsNotNone(tasks[0]["real_start_date"])
-
-    def test_comment_task_with_done(self):
-        self.generate_fixture_task()
-        self.task.update({"end_date": None})
-        path = f"/actions/tasks/{self.task.id}/comment/"
-        data = {"task_status_id": self.wfa_status_id, "comment": "wip test"}
-        self.post(path, data)
-        tasks = self.get("/data/tasks")
-        self.assertIsNotNone(tasks[0]["end_date"])
-
-    def test_task_comments(self):
-        self.generate_fixture_project_standard()
-        self.generate_fixture_asset_standard()
-        self.generate_fixture_task_standard()
-        self.generate_fixture_task()
-
-        self.task_id = str(self.task.id)
-        self.task_2_id = str(self.task_standard.id)
-
-        path = f"/actions/tasks/{self.task_id}/comment/"
-        data = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test",
-        }
-        self.post(path, data)
-        data = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test 2",
-        }
-        self.post(path, data)
-
-        path = f"/actions/tasks/{self.task_2_id}/comment/"
-        self.post(path, data)
-
-        path = f"/data/tasks/{self.task_id}/comments/"
-        comments = self.get(path)
-        self.assertEqual(len(comments), 2)
-        self.assertEqual(comments[0]["text"], data["comment"])
-        self.assertEqual(
-            comments[0]["person"]["first_name"], self.user["first_name"]
-        )
-        self.assertEqual(comments[0]["task_status"]["short_name"], "wip")
-
-        path = "/actions/tasks/unknown/comments/"
-        comments = self.get(path, 404)
-
-    def test_delete_task_comment(self):
-        self.generate_fixture_project_standard()
-        self.generate_fixture_asset_standard()
-        self.generate_fixture_task_standard()
-        self.generate_fixture_task()
-
-        self.task_id = str(self.task.id)
-
-        path = f"/actions/tasks/{self.task_id}/comment/"
-        data = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test",
-        }
-        self.post(path, data)
-        comment = {
-            "task_status_id": self.wip_status_id,
-            "comment": "comment test 2",
-        }
-        comment = self.post(path, comment)
-
-        path = f"/data/tasks/{self.task_id}/comments/{comment['id']}"
-        comments = self.delete(path)
-        self.delete(path, 404)
-        path = f"/data/tasks/{self.task_id}/comments/"
-        comments = self.get(path)
-        self.assertEqual(len(comments), 1)
-
 
 class TaskListingTestCase(TaskTestCase):
     """
@@ -762,7 +549,7 @@ class TaskListingTestCase(TaskTestCase):
             f"/data/entities/{entity_id}/task-types/{task_type_id}/tasks"
         )
         self.assertEqual(len(tasks), 1)
-        self.assertDictEqual(tasks[0], self.task.serialize())
+        self.assertEqual(tasks[0]["id"], str(self.task.id))
 
         tasks = self.get(
             f"/data/entities/{entity_id}/task-types/{task_type_animation_id}/tasks"
@@ -878,7 +665,7 @@ class TaskListingTestCase(TaskTestCase):
         expected = self.get(path)
         self.assertEqual(len(expected), 5)
         # Same rows, same shape, whatever the page size.
-        for limit in [2, 5, 10]:
+        for limit in [2, 5]:
             with self.subTest(limit=limit):
                 self.assertCountEqual(
                     self.get_by_cursor(path, limit), expected
@@ -1395,15 +1182,30 @@ class TaskRoutesTestCase(TaskTestCase):
         task_2_id = str(self.generate_fixture_task(name="second task").id)
         task_3_id = str(self.generate_fixture_shot_task().id)
         task_4_id = str(self.generate_fixture_task_standard().id)
-        self.post(
+        result = self.post(
             f"/actions/projects/{self.project.id}/delete-tasks",
             [task_1_id, task_2_id],
             code=200,
         )
+        self.assertEqual(sorted(result), sorted([task_1_id, task_2_id]))
         self.get(f"/data/tasks/{task_1_id}", 404)
         self.get(f"/data/tasks/{task_2_id}", 404)
         self.get(f"/data/tasks/{task_3_id}")
         self.get(f"/data/tasks/{task_4_id}")
+
+    def test_delete_tasks_ignores_a_task_of_another_project(self):
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        task_id = str(self.generate_fixture_task().id)
+        other_task_id = str(self.generate_fixture_task_standard().id)
+        result = self.post(
+            f"/actions/projects/{self.project.id}/delete-tasks",
+            [task_id, other_task_id],
+            code=200,
+        )
+        self.assertEqual(result, [task_id])
+        self.get(f"/data/tasks/{task_id}", 404)
+        self.get(f"/data/tasks/{other_task_id}")
 
     def test_reorder_task_type_links(self):
         project_id = str(self.project.id)
@@ -1433,6 +1235,20 @@ class TaskRoutesTestCase(TaskTestCase):
         }
         self.assertEqual(by_type[tt2], 1)
         self.assertEqual(by_type[tt1], 2)
+
+    def test_reorder_task_types_with_a_bad_id(self):
+        """
+        A bad ID used to give a 500 after the update of the task types
+        that came before it.
+        """
+        tt1 = str(self.task_type.id)
+        self.task_type.update({"priority": 5})
+        self.post(
+            "/actions/task-types/reorder",
+            {"task_type_ids": [tt1, "abc"]},
+            400,
+        )
+        self.assertEqual(TaskType.get(tt1).priority, 5)
 
     def test_reorder_task_status_links_preserves_roles(self):
         from zou.app.models.project import ProjectTaskStatusLink

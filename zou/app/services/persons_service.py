@@ -8,6 +8,7 @@ from calendar import monthrange
 
 from dateutil import relativedelta
 from flask_jwt_extended import create_access_token, current_user, get_jti
+from sqlalchemy import func
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import selectinload
 
@@ -264,6 +265,26 @@ def get_persons_raw():
     return Person.query.all()
 
 
+def get_studio_team_persons_query():
+    """
+    Return a query on the persons who are not bots, guests or preview
+    accounts, with their departments, sorted by first name and last name
+    (case is ignored).
+    """
+    return (
+        Person.query.options(selectinload(Person.departments))
+        .filter(
+            Person.is_bot.isnot(True),
+            Person.is_guest.isnot(True),
+            Person.preview_project_id.is_(None),
+        )
+        .order_by(
+            func.lower(Person.first_name),
+            func.lower(Person.last_name),
+        )
+    )
+
+
 def count_active_users():
     """
     Return the number of active human accounts. The user limit applies to
@@ -275,6 +296,13 @@ def count_active_users():
         Person.is_guest.isnot(True),
         Person.preview_project_id.is_(None),
     ).count()
+
+
+def get_studio_raw(studio_id):
+    """
+    Return the studio that has the given ID as an active record, or None.
+    """
+    return Studio.get(studio_id)
 
 
 def get_studio_raw_by_name(name):
@@ -362,6 +390,20 @@ def get_person_by_email(email, unsafe=False, relations=False):
         return person.serialize(relations=relations)
     else:
         return person.serialize_safe(relations=relations)
+
+
+def is_email_used(email, exclude_id=None):
+    """
+    Return True if a person that is not a bot has the given email. Do not
+    count the person that has the given exclude ID.
+    """
+    query = Person.query.filter(
+        Person.email == email,
+        Person.is_bot.isnot(True),
+    )
+    if exclude_id is not None:
+        query = query.filter(Person.id != exclude_id)
+    return query.first() is not None
 
 
 def get_person_by_sso_identity(protocol, issuer, subject):

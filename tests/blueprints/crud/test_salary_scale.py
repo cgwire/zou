@@ -74,7 +74,7 @@ class SalaryScaleTestCase(ApiDBTestCase):
             SalaryScale.query.filter_by(department_id=department.id).count(), 2
         )
 
-        department.delete()
+        self.delete(f"data/departments/{department.id}")
 
         self.assertIsNone(Department.get(department.id))
         self.assertEqual(

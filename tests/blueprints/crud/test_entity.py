@@ -1,11 +1,11 @@
 from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
-from zou.app.models.entity import Entity, EntityConceptLink
 from zou.app.exceptions import (
     AssetNotFoundException,
     SequenceNotFoundException,
 )
+from zou.app.models.entity import Entity, EntityConceptLink
 from zou.app.services import (
     assets_service,
     concepts_service,
@@ -255,15 +255,3 @@ class EntityTestCase(ApiDBTestCase):
                 self.user["id"], sequence_id, task_type_id
             )
         )
-
-    def test_delete_entity_link(self):
-        entity_link = {
-            "entity_in_id": self.asset_1_id,
-            "entity_out_id": self.asset_2_id,
-        }
-        entity_link = self.post("data/entity-links", entity_link)
-        entity_links = self.get("data/entity-links")
-        self.assertEqual(len(entity_links), 1)
-        self.delete(f"data/entity-links/{entity_link['id']}")
-        entity_links = self.get("data/entity-links")
-        self.assertEqual(entity_links, [])

@@ -322,11 +322,11 @@ class ShotsAndTasksResource(MethodView):
         Get shots and tasks
         """
         criterions = query.get_query_criterions_from_request(request)
-        # Kitsu-oriented options for full-project views: compact halves
-        # the payload (positional rows, field names in the header) and
-        # stream sends NDJSON without holding the response in memory.
-        # They are response options, not filters: pop them before the
-        # criterions reach the service.
+        # Kitsu options for the views of a full project. The compact option
+        # makes the payload half the size: positional rows, and the field names
+        # in the header. The stream option sends NDJSON and does not keep the
+        # response in memory. These are response options, not filters: pop them
+        # before the criterions reach the service.
         stream = criterions.pop("stream", "false") == "true"
         compact = criterions.pop("compact", "false") == "true"
         query.check_criterion_id_format(criterions)
@@ -352,7 +352,8 @@ class ShotsAndTasksResource(MethodView):
             header["task_fields"] = shots_service.SHOTS_AND_TASKS_TASK_FIELDS
         response = flask_utils.rows_response(header, rows, stream)
         if etag is not None:
-            # rows_response returns a plain dict when not streaming.
+            # If the response is not a stream, rows_response returns a plain
+            # dict.
             if stream:
                 http_cache.mark(response, etag)
             else:
@@ -400,8 +401,9 @@ class SequenceAndTasksResource(MethodView):
             entity_types_service.get_sequence_type()["id"]
         )
         if permissions.has_vendor_permissions():
-            # Vendors only see sequences holding a shot with a task assigned
-            # to them, and only their own tasks on those sequences.
+            # Vendors see only the sequences that contain a shot with a task
+            # assigned to them. They see only their own tasks on those
+            # sequences.
             if criterions.get("episode_id") not in (None, "all", "main"):
                 sequences = shots_service.get_sequences_for_episode(
                     criterions["episode_id"], only_assigned=True
@@ -441,8 +443,9 @@ class EpisodeAndTasksResource(MethodView):
             "id"
         ]
         if permissions.has_vendor_permissions():
-            # Vendors only see episodes holding a shot with a task assigned
-            # to them, and only their own tasks on those episodes.
+            # Vendors see only the episodes that contain a shot with a task
+            # assigned to them. They see only their own tasks on those
+            # episodes.
             episodes = shots_service.get_episodes_for_project(
                 criterions["project_id"], only_assigned=True
             )
@@ -910,7 +913,7 @@ class RemoveShotFromSceneResource(MethodView):
 
 class ShotVersionsResource(MethodView):
     """
-    Get shot versions
+    Get the versions of a shot.
     """
 
     @jwt_required()
@@ -925,6 +928,38 @@ class ShotVersionsResource(MethodView):
         return shots_service.get_shot_versions(shot_id)
 
 
+def get_quotas(resource, project_id, task_type_id=None, person_id=None):
+    """
+    Read the `count_mode` and `studio_id` query parameters of the request
+    and return the matching quotas: weighted or raw, from the feedback
+    dates or from the done dates.
+    """
+    args = resource.get_args(
+        [
+            ("count_mode", "weighted", False, str),
+            ("studio_id", None, False, str),
+        ]
+    )
+    count_mode = args["count_mode"]
+    if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
+        raise WrongParameterException(
+            "count_mode must be equal to weighted, weigtheddone, feedback"
+            ", or done"
+        )
+
+    if "weighted" in count_mode:
+        get_quotas_for_mode = quotas_service.get_weighted_quotas
+    else:
+        get_quotas_for_mode = quotas_service.get_raw_quotas
+    return get_quotas_for_mode(
+        project_id,
+        task_type_id=task_type_id,
+        person_id=person_id,
+        studio_id=args["studio_id"],
+        feedback="done" not in count_mode,
+    )
+
+
 class ProjectQuotasResource(MethodView, ArgsMixin):
 
     @jwt_required()
@@ -936,38 +971,7 @@ class ProjectQuotasResource(MethodView, ArgsMixin):
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
         permissions_service.block_access_to_client()
-        args = self.get_args(
-            [
-                ("count_mode", "weighted", False, str),
-                ("studio_id", None, False, str),
-            ]
-        )
-        count_mode = args["count_mode"]
-        studio_id = args["studio_id"]
-
-        if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
-            raise WrongParameterException(
-                "count_mode must be equal to weighted, weigtheddone, feedback"
-                ", or done"
-            )
-
-        feedback = "done" not in count_mode
-        weighted = "weighted" in count_mode
-
-        if weighted:
-            return quotas_service.get_weighted_quotas(
-                project_id,
-                task_type_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
-        else:
-            return quotas_service.get_raw_quotas(
-                project_id,
-                task_type_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
+        return get_quotas(self, project_id, task_type_id=task_type_id)
 
 
 class ProjectPersonQuotasResource(MethodView, ArgsMixin):
@@ -988,38 +992,7 @@ class ProjectPersonQuotasResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(project_id)
         else:
             permissions_service.check_person_access(person_id)
-        args = self.get_args(
-            [
-                ("count_mode", "weighted", False, str),
-                ("studio_id", None, False, str),
-            ]
-        )
-        count_mode = args["count_mode"]
-        studio_id = args["studio_id"]
-
-        if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
-            raise WrongParameterException(
-                "count_mode must be equal to weighted, weigtheddone, feedback"
-                ", or done"
-            )
-
-        feedback = "done" not in count_mode
-        weighted = "weighted" in count_mode
-
-        if weighted:
-            return quotas_service.get_weighted_quotas(
-                project_id,
-                person_id=person_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
-        else:
-            return quotas_service.get_raw_quotas(
-                project_id,
-                person_id=person_id,
-                feedback=feedback,
-                studio_id=studio_id,
-            )
+        return get_quotas(self, project_id, person_id=person_id)
 
 
 class SetShotsFramesResource(MethodView, ArgsMixin):

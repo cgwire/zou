@@ -1,8 +1,7 @@
 """
-Pydantic schemas for request body validation in the shared playlist
-blueprint. Use them with `validate_request_body()` to surface clear
-field-level errors and keep the routes aligned with the rest of the
-codebase.
+Pydantic schemas that validate the request bodies of the shared playlist
+blueprint. Use them with `validate_request_body()`. Then each error names
+its field, and the routes work as the other routes of the codebase do.
 """
 
 from typing import Any, List, Optional
@@ -15,7 +14,8 @@ from zou.app.utils.validation import BaseSchema
 
 class CreateGuestSchema(BaseSchema):
     """
-    Body for creating or reusing a guest on a shared playlist.
+    Body to create a guest on a shared playlist, or to use an existing guest
+    again.
     """
 
     first_name: Optional[str] = Field(
@@ -44,7 +44,7 @@ class CreateGuestSchema(BaseSchema):
 
 class CreateGuestCommentSchema(BaseSchema):
     """
-    Body for posting a comment as a guest.
+    Body to post a comment as a guest.
     """
 
     guest_id: UUID = Field(..., description="Guest unique identifier")
@@ -68,12 +68,11 @@ class CreateGuestCommentSchema(BaseSchema):
 
 class EditGuestCommentSchema(BaseSchema):
     """
-    Body for editing a guest-owned comment.
+    Body to edit a comment that a guest owns.
 
-    Only the fields the service consumes (``text``, ``checklist``,
-    ``task_status_id``) are accepted; ``guest_id`` identifies the guest
-    on whose behalf the edit runs.
-
+    The schema accepts only the fields that the service uses: ``text``,
+    ``checklist`` and ``task_status_id``. ``guest_id`` identifies the guest
+    who makes the edit.
     """
 
     guest_id: UUID = Field(..., description="Guest unique identifier")
@@ -92,8 +91,8 @@ class EditGuestCommentSchema(BaseSchema):
 
 class GuestActionSchema(BaseSchema):
     """
-    Lightweight schema for delete-style endpoints that only carry a
-    `guest_id` (sent as JSON body or as a query string).
+    Small schema for the delete endpoints that carry only a `guest_id`.
+    The `guest_id` comes in the JSON body or in the query string.
     """
 
     guest_id: UUID = Field(
@@ -104,7 +103,8 @@ class GuestActionSchema(BaseSchema):
 
 class UpdateGuestAnnotationsSchema(BaseSchema):
     """
-    Body for the shared playlist annotation diff endpoint.
+    Body for the endpoint that applies an annotation diff to a preview
+    file of a shared playlist.
     """
 
     guest_id: UUID = Field(..., description="Guest unique identifier")

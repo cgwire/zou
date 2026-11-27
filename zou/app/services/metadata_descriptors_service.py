@@ -11,7 +11,10 @@ from zou.app.exceptions import (
 )
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
-from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.metadata_descriptor import (
+    METADATA_DESCRIPTOR_TYPES,
+    MetadataDescriptor,
+)
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
@@ -181,6 +184,17 @@ def build_metadata_descriptors_filter(descriptor_visibilities):
     if not criteria:
         return false()
     return or_(*criteria)
+
+
+def check_metadata_descriptor_data_type(data_type):
+    """
+    Raise WrongParameterException if the given data type is not a metadata
+    descriptor type.
+    """
+    if data_type not in [
+        type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES
+    ]:
+        raise WrongParameterException("Invalid data_type")
 
 
 def check_metadata_descriptor_field_name(entity_type, field_name):

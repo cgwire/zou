@@ -1,5 +1,3 @@
-import datetime
-
 from flask import request
 from flask.views import MethodView
 from flask_jwt_extended import jwt_required
@@ -46,7 +44,6 @@ from zou.app.services import (
 )
 from zou.app.utils import (
     date_helpers,
-    events,
     fields,
     http_cache,
     permissions,
@@ -70,8 +67,8 @@ class AddPreviewResource(MethodView, ArgsMixin):
 
         permissions_service.check_task_work_access(task_id)
         comment = comments_service.get_task_comment(task_id, comment_id)
-        # What a client writes stays hidden from an artist and from a vendor,
-        # who add no revision to it either.
+        # What a client writes stays hidden from an artist and from a vendor.
+        # They do not add a revision to it either.
         permissions_service.check_comment_access(comment_id, comment=comment)
 
         person = persons_service.get_current_user()
@@ -93,8 +90,8 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         related_preview_file = comments_service.get_comment_preview_file(
             task_id, comment_id, preview_file_id
         )
-        # What a client writes stays hidden from an artist and from a vendor,
-        # who add no preview to it either.
+        # What a client writes stays hidden from an artist and from a vendor.
+        # They do not add a preview to it either.
         permissions_service.check_comment_access(comment_id)
 
         person = persons_service.get_current_user()
@@ -117,13 +114,13 @@ class AddExtraPreviewResource(MethodView, ArgsMixin):
         comments_service.get_comment_preview_file(
             task_id, comment_id, preview_file_id
         )
-        # A client keeps out of the comments hidden from it, as an internal
-        # revision.
+        # A client cannot get to a comment hidden from it, for example an
+        # internal revision.
         permissions_service.check_comment_access(comment_id)
         force = self.get_force()
         if force:
-            # Force purges the stored files at once, a right the preview file
-            # route keeps to the managers.
+            # Force purges the stored files immediately. The preview file route
+            # gives this right only to the managers.
             permissions_service.check_manager_project_access(
                 task["project_id"]
             )
@@ -183,27 +180,6 @@ class TaskCommentResource(MethodView):
         )
         return comment
 
-    def pre_delete(self, comment):
-        task = tasks_service.get_task(comment["object_id"])
-        self.previous_task_status_id = task["task_status_id"]
-        return comment
-
-    def post_delete(self, comment):
-        task = tasks_service.get_task(comment["object_id"])
-        self.new_task_status_id = task["task_status_id"]
-        if self.previous_task_status_id != self.new_task_status_id:
-            events.emit(
-                "task:status-changed",
-                {
-                    "task_id": task["id"],
-                    "new_task_status_id": self.new_task_status_id,
-                    "previous_task_status_id": self.previous_task_status_id,
-                    "person_id": comment["person_id"],
-                },
-                project_id=task["project_id"],
-            )
-        return comment
-
     @jwt_required()
     @swag_from(SPECS["TaskCommentResource_delete"])
     def delete(self, task_id, comment_id):
@@ -211,26 +187,26 @@ class TaskCommentResource(MethodView):
         Delete comment
         """
         comment = comments_service.get_comment(comment_id)
+        if comment["object_id"] != task_id:
+            raise CommentNotFoundException
         task = tasks_service.get_task(comment["object_id"])
         permissions_service.resolve_project_role(task["project_id"])
         if permissions.has_manager_permissions():
             permissions_service.check_project_access(task["project_id"])
         else:
             permissions_service.check_person_access(comment["person_id"])
-        self.pre_delete(comment)
-        deletion_service.remove_comment(comment_id)
-        tasks_service.reset_task_data(comment["object_id"])
-        comments_service.clear_comment_cache(comment_id)
-        self.post_delete(comment)
+        comments_service.remove_task_comment(
+            comment_id, comment["object_id"], comment["person_id"]
+        )
         return "", 204
 
 
 def get_person_tasks_projects(person_id):
     """
-    Return the projects in which the current user may list the tasks of
-    given person: the open ones for an admin, the user's own open ones for
-    the other roles, and none for clients and vendors. A vendor may only
-    ask about themselves.
+    Return the projects where the current user can list the tasks of the given
+    person. An admin gets the open projects. The other roles get their own open
+    projects. Clients and vendors get none. A vendor can only ask about
+    themselves. If the person is a bot, raise PermissionDenied.
     """
     permissions_service.check_person_is_not_bot(person_id)
     current_user = persons_service.get_current_user()
@@ -294,6 +270,24 @@ class PersonDoneTasksResource(MethodView):
         return todos_service.get_person_done_tasks(person_id, projects)
 
 
+def get_entities_from_request(project_id, get_entity, get_entities):
+    """
+    Return the entities of the project that the ID list of the request body
+    gives. Skip the IDs of other projects silently. If the body gives no ID,
+    return the result of `get_entities` for the query criterions of the
+    request, limited to the project.
+    """
+    entity_ids = validation.validate_id_list(required=False)
+    if isinstance(entity_ids, list) and len(entity_ids) > 0:
+        entities = [get_entity(entity_id) for entity_id in entity_ids]
+        return [
+            entity for entity in entities if entity["project_id"] == project_id
+        ]
+    criterions = query.get_query_criterions_from_request(request)
+    criterions["project_id"] = project_id
+    return get_entities(criterions)
+
+
 class CreateShotTasksResource(MethodView):
 
     @jwt_required()
@@ -305,17 +299,9 @@ class CreateShotTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_type = task_types_service.get_task_type(task_type_id)
 
-        shot_ids = validation.validate_id_list(required=False)
-        shots = []
-        if isinstance(shot_ids, list) and len(shot_ids) > 0:
-            for shot_id in shot_ids:
-                shot = shots_service.get_shot(shot_id)
-                if shot["project_id"] == project_id:
-                    shots.append(shot)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            shots = shots_service.get_shots(criterions)
+        shots = get_entities_from_request(
+            project_id, shots_service.get_shot, shots_service.get_shots
+        )
 
         tasks = tasks_service.create_tasks(task_type, shots)
         return tasks, 201
@@ -337,17 +323,11 @@ class CreateConceptTasksResource(MethodView):
             raise permissions.PermissionDenied
         task_type = task_types_service.get_task_type(task_type_id)
 
-        concept_ids = validation.validate_id_list(required=False)
-        concepts = []
-        if isinstance(concept_ids, list) and len(concept_ids) > 0:
-            for concept_id in concept_ids:
-                concept = concepts_service.get_concept(concept_id)
-                if concept["project_id"] == project_id:
-                    concepts.append(concept)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            concepts = concepts_service.get_concepts(criterions)
+        concepts = get_entities_from_request(
+            project_id,
+            concepts_service.get_concept,
+            concepts_service.get_concepts,
+        )
 
         for concept in concepts:
             permissions_service.check_entity_access(concept["id"])
@@ -372,19 +352,15 @@ class CreateEntityTasksResource(MethodView):
             )
         )
 
-        entity_ids = validation.validate_id_list(required=False)
-        entities = []
-        if isinstance(entity_ids, list) and len(entity_ids) > 0:
-            for entity_id in entity_ids:
-                entity = entities_service.get_entity(entity_id)
-                if entity["project_id"] == project_id:
-                    entities.append(entity)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            episode_id = criterions.get("episode_id", None)
-            entities = entities_service.get_entities_for_project(
-                project_id, entity_type_dict["id"], episode_id=episode_id
-            )
+        entities = get_entities_from_request(
+            project_id,
+            entities_service.get_entity,
+            lambda criterions: entities_service.get_entities_for_project(
+                project_id,
+                entity_type_dict["id"],
+                episode_id=criterions.get("episode_id", None),
+            ),
+        )
 
         if entity_types_service.is_asset_type(entity_type_dict):
             entities = projects_service.filter_assets_in_workflow(
@@ -405,17 +381,9 @@ class CreateAssetTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_type = task_types_service.get_task_type(task_type_id)
 
-        asset_ids = validation.validate_id_list(required=False)
-        assets = []
-        if isinstance(asset_ids, list) and len(asset_ids) > 0:
-            for asset_id in asset_ids:
-                asset = assets_service.get_asset(asset_id)
-                if asset["project_id"] == project_id:
-                    assets.append(asset)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            assets = assets_service.get_assets(criterions)
+        assets = get_entities_from_request(
+            project_id, assets_service.get_asset, assets_service.get_assets
+        )
 
         assets = projects_service.filter_assets_in_workflow(
             project_id, task_type_id, assets
@@ -435,17 +403,9 @@ class CreateEditTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_type = task_types_service.get_task_type(task_type_id)
 
-        edit_ids = validation.validate_id_list(required=False)
-        edits = []
-        if isinstance(edit_ids, list) and len(edit_ids) > 0:
-            for edit_id in edit_ids:
-                edit = edits_service.get_edit(edit_id)
-                if edit["project_id"] == project_id:
-                    edits.append(edit)
-        else:
-            criterions = query.get_query_criterions_from_request(request)
-            criterions["project_id"] = project_id
-            edits = edits_service.get_edits(criterions)
+        edits = get_entities_from_request(
+            project_id, edits_service.get_edit, edits_service.get_edits
+        )
 
         tasks = tasks_service.create_tasks(task_type, edits)
         return tasks, 201
@@ -538,8 +498,8 @@ class TasksAssignResource(MethodView, ArgsMixin):
                 pass
             except PersonNotFoundException:
                 return {"error": "Assignee doesn't exist in database."}, 400
-        if len(tasks) > 0:
-            projects_service.add_team_member(tasks[0]["project_id"], person_id)
+        for project_id in {task["project_id"] for task in tasks}:
+            projects_service.add_team_member(project_id, person_id)
 
         return tasks
 
@@ -582,7 +542,8 @@ class TaskFullResource(MethodView):
         """
         Get task full
         """
-        # Resolves the role on the project, which shapes the persons.
+        # Resolve the role on the project. The role changes the shape of the
+        # persons.
         permissions_service.check_task_access(task_id)
         task = tasks_service.get_full_task(
             task_id,
@@ -643,13 +604,14 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
         """
         Delete time spent
         """
-        permissions_service.check_person_is_not_bot(person_id)
+        project_id = tasks_service.get_task(task_id)["project_id"]
+        permissions_service.check_person_is_not_bot(person_id, project_id)
         try:
             permissions_service.check_time_spent_access(task_id, person_id)
             time_spent = time_spents_service.delete_time_spent(
                 task_id,
                 person_id,
-                datetime.datetime.strptime(date, "%Y-%m-%d"),
+                date_helpers.get_date_from_string(date),
             )
             return time_spent, 200
         except ValueError:
@@ -724,11 +686,9 @@ class DeleteAllTasksForTaskTypeResource(MethodView):
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
-        task_ids = deletion_service.remove_tasks_for_project_and_task_type(
+        deletion_service.remove_tasks_for_project_and_task_type(
             project_id, task_type_id
         )
-        for task_id in task_ids:
-            tasks_service.clear_task_cache(task_id)
         return "", 204
 
 
@@ -743,8 +703,6 @@ class DeleteTasksResource(MethodView):
         permissions_service.check_manager_project_access(project_id)
         task_ids = validation.validate_id_list()
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
-        for task_id in task_ids:
-            tasks_service.clear_task_cache(task_id)
         return task_ids, 200
 
 
@@ -786,10 +744,10 @@ class ProjectTasksResource(MethodView, ArgsMixin):
         """
         projects_service.get_project(project_id)
         permissions_service.check_project_access(project_id)
-        # The validator hashes everything that shapes the response: the
-        # tasks freshness signal, plus the caller and its effective role
-        # so a role change or an account switch on the same browser
-        # never validates a payload shaped for someone else.
+        # The validator hashes all the data that changes the response: the
+        # freshness signal of the tasks, the caller and its effective role.
+        # Thus, after a role change or an account switch in the same browser, a
+        # payload made for another person never validates.
         current_user = persons_service.get_current_user()
         etag = http_cache.build_etag(
             tasks_service.get_project_tasks_fingerprint(project_id),
@@ -861,8 +819,8 @@ class SetTaskMainPreviewResource(MethodView):
         task = tasks_service.get_task(task_id)
         permissions_service.check_project_access(task["project_id"])
         permissions_service.check_entity_access(task["entity_id"])
-        # Clients review content but must not redefine how an entity is
-        # illustrated.
+        # Clients review the content, but they must not change the illustration
+        # of an entity.
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         preview_file = preview_files_service.get_last_preview_file_for_task(
@@ -890,11 +848,12 @@ class SetTasksMainPreviewResource(MethodView):
             task = tasks_service.get_task(task_id)
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
-            # Clients review content but must not redefine how an entity is
-            # illustrated. The test comes after check_project_access, which
-            # resolves the project role: before it, it reads the global one
-            # and a client on this production goes through. The single task
-            # route already orders it this way.
+            # Clients review the content, but they must not change the
+            # illustration of an entity. The test comes after
+            # check_project_access, which resolves the project role. Before
+            # that call, the test reads the global role, and a client on this
+            # production gets through. The route of one task uses the same
+            # order.
             if permissions.has_client_permissions():
                 raise permissions.PermissionDenied
             preview_file = (
@@ -917,20 +876,20 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
         """
         Get persons tasks dates
         """
-        # Normalise the `project_id` filter once, before branching on the
-        # caller's role. An empty or whitespace-only `?project_id=` is treated
-        # as an absent filter; any other non-UUID value is rejected with a 400
-        # rather than reaching the query as an invalid UUID (which used to 500
-        # for admins and 404 for managers).
+        # Normalize the `project_id` filter one time, before the branches on
+        # the role of the caller. If `?project_id=` is empty or only
+        # whitespace, the route uses no filter. Any other value that is not a
+        # UUID gets a 400 and does not reach the query as an invalid UUID.
         project_id = (self.get_project_id() or "").strip() or None
         if project_id is not None and not fields.is_valid_id(project_id):
             raise WrongParameterException("Invalid project_id.")
         project_ids = None
         busy_project_ids = None
         if not permissions.has_admin_permissions():
-            # Supervisors reach the team schedule page too: like managers,
-            # they only see the projects of their own teams. A named
-            # project resolves the role held on it before the check.
+            # Supervisors also get to the team schedule page. Like managers,
+            # they see only the projects of their teams. If the call names a
+            # project, the route resolves the role on that project before the
+            # check.
             if project_id is not None:
                 if not permissions_service.check_belong_to_project(project_id):
                     raise permissions.PermissionDenied
@@ -939,9 +898,9 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
                 permissions.check_at_least_supervisor_permissions()
                 project_ids = user_service.get_open_project_ids()
                 # The other open productions come back as anonymous busy
-                # periods: date pairs only, so the schedule can show a
-                # person is taken without naming the production or the
-                # task.
+                # periods: only pairs of dates. Thus, the schedule can show
+                # that a person is busy, but it does not show the production or
+                # the task.
                 own_project_ids = set(project_ids)
                 busy_project_ids = [
                     open_project_id
@@ -957,8 +916,8 @@ class PersonsTasksDatesResource(MethodView, ArgsMixin):
 
 def check_open_tasks_filter_args(resource, args):
     """
-    Reject malformed open tasks filter values with a 400 before they
-    reach the SQL layer as invalid UUID or date binds.
+    Reject the malformed filter values of the open tasks with a 400. Thus, they
+    do not reach the SQL layer as invalid UUID or date binds.
     """
     for field in (
         "project_id",
@@ -978,9 +937,9 @@ def check_open_tasks_filter_args(resource, args):
 
 def check_open_tasks_access(project_id):
     """
-    Refuse the open tasks pool to clients and vendors. When the call names
-    a project, its access check runs first, so the role read is the one
-    held there.
+    Refuse the open tasks pool to clients and vendors. If the call names a
+    project, the access check of that project runs first. Thus, the check reads
+    the role on that project.
     """
     if project_id is not None:
         permissions_service.check_project_access(project_id)

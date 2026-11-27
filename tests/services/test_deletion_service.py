@@ -287,7 +287,7 @@ class RemoveTaskTestCase(DeletionTestCase):
                 str(self.project.id), task_ids
             )
 
-        self.assertEqual(result, task_ids)
+        self.assertCountEqual(result, task_ids)
         for task_id in task_ids:
             self.assertIsNone(Task.get(task_id))
 

@@ -13,11 +13,10 @@ from zou.app.indexer import indexing
 from zou.app.services import (
     organisation_service,
     preview_accounts_service,
-    projects_service,
     stats_service,
 )
-from zou.app.stores import redis_client
-from zou.app.utils import date_helpers, permissions
+from zou.app.stores import queue_store, redis_client
+from zou.app.utils import date_helpers, dbhelpers, permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi.yml")
@@ -53,7 +52,7 @@ class BaseStatusResource(MethodView):
 
     def _check_database(self):
         try:
-            projects_service.get_or_create_project_status("Open")
+            dbhelpers.ping()
             return True
         except Exception:
             app.logger.warning("Database probe failed.", exc_info=1)
@@ -61,12 +60,8 @@ class BaseStatusResource(MethodView):
 
     def _check_key_value_store(self):
         try:
-            store = redis.StrictRedis(
-                host=config.KEY_VALUE_STORE["host"],
-                port=config.KEY_VALUE_STORE["port"],
-                db=config.AUTH_TOKEN_BLACKLIST_KV_INDEX,
-                password=config.KEY_VALUE_STORE["password"],
-                decode_responses=True,
+            store = redis_client.get_client(
+                config.AUTH_TOKEN_BLACKLIST_KV_INDEX
             )
             store.get("test")
             return True
@@ -85,18 +80,8 @@ class BaseStatusResource(MethodView):
             return False
 
     def _check_job_queue(self):
-        # Count the workers in-process rather than shelling out to `rq info
-        # --url redis://:<password>@...`: that put the Redis password in the
-        # argv of a subprocess any local user can read in ps, and this probe
-        # is reachable without authentication, so its timing was the
-        # attacker's to choose.
         try:
-            from rq import Worker
-
-            connection = redis_client.get_client(
-                config.KV_JOB_DB_INDEX, decode_responses=False
-            )
-            return Worker.count(connection=connection) > 0
+            return queue_store.count_workers() > 0
         except Exception:
             app.logger.error("Job queue is not accessible", exc_info=1)
             return False
@@ -176,10 +161,7 @@ class StatusResourcesResource(BaseStatusResource):
     def _get_job_stats(self):
         nb_jobs = 0
         if config.ENABLE_JOB_QUEUE:
-            from zou.app.stores.queue_store import job_queue
-
-            registry = job_queue.started_job_registry
-            nb_jobs = registry.count
+            nb_jobs = queue_store.count_started_jobs()
         return {"running_jobs": nb_jobs}
 
 

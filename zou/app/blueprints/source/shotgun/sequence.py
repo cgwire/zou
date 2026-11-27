@@ -11,6 +11,7 @@ from zou.app.blueprints.source.shotgun.exception import (
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.services import (
+    cascade_deletion_service,
     entity_types_service,
     persons_service,
 )
@@ -34,12 +35,11 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
         self.current_user_id = persons_service.get_current_user()["id"]
 
     def get_episode(self, sg_sequence):
-        sg_episode = sg_sequence.get("episode", {"id": None})
-        if sg_episode is not None:
-            episode_sg_id = sg_episode.get("id", None)
-            return self.get_episode_id(episode_sg_id)
-        else:
+        # A None ID would match the episodes created in Kitsu.
+        episode_sg_id = (sg_sequence.get("episode") or {}).get("id")
+        if episode_sg_id is None:
             return None
+        return self.get_episode_id(episode_sg_id)
 
     def extract_data(self, sg_sequence):
         project_id = self.get_project(sg_sequence)
@@ -101,6 +101,9 @@ class ImportRemoveShotgunSequenceResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self,
             Entity,
+            lambda sequence: cascade_deletion_service.remove_sequence(
+                str(sequence.id)
+            ),
             entity_type_id=entity_types_service.get_sequence_type()["id"],
         )
 

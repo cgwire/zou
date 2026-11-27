@@ -1,9 +1,9 @@
 """
 Pydantic schemas for request body validation in the playlists blueprint.
 
-Use these schemas with validate_request_body() to ensure incoming JSON bodies
-match the expected format and to return clear validation errors (400 with
-field-level messages).
+Use these schemas with validate_request_body(). They make sure that the
+JSON bodies of the requests match the expected format. They also return
+clear validation errors (400 with messages per field).
 """
 
 from typing import List, Optional
@@ -16,7 +16,7 @@ from zou.app.utils.validation import BaseSchema
 
 class AddEntityToPlaylistSchema(BaseSchema):
     """
-    Body for adding an entity to a playlist.
+    Body to add an entity to a playlist.
     """
 
     entity_id: UUID = Field(..., description="Entity unique identifier to add")
@@ -35,9 +35,9 @@ class AddEntityToPlaylistSchema(BaseSchema):
 
 class PlaylistEntitySchema(BaseSchema):
     """
-    An (entity, preview) couple to add to a playlist. The same entity may
-    appear several times with different previews; the playlist forbids the
-    same couple twice, not the same entity twice.
+    An (entity, preview) couple to add to a playlist. The same entity can
+    appear more than one time with different previews. The playlist forbids
+    the same couple twice, not the same entity twice.
     """
 
     entity_id: UUID = Field(..., description="Entity unique identifier to add")
@@ -57,7 +57,8 @@ class PlaylistEntitySchema(BaseSchema):
 
 class AddEntitiesToPlaylistSchema(BaseSchema):
     """
-    Body for adding several (entity, preview) couples to a playlist at once.
+    Body to add several (entity, preview) couples to a playlist in one
+    request.
     """
 
     entities: List[PlaylistEntitySchema] = Field(
@@ -69,8 +70,8 @@ class AddEntitiesToPlaylistSchema(BaseSchema):
 
 class TempPlaylistCreateSchema(BaseSchema):
     """
-    Body for generating a temporary playlist from task IDs, or from entity
-    IDs, each entity contributing one of its tasks.
+    Body to generate a temporary playlist from task IDs, or from entity
+    IDs. Each entity gives one of its tasks.
     """
 
     task_ids: List[UUID] = Field(
@@ -85,7 +86,7 @@ class TempPlaylistCreateSchema(BaseSchema):
 
 class NotifyClientsPlaylistSchema(BaseSchema):
     """
-    Optional body for notifying clients that a playlist is ready.
+    Optional body to notify clients that a playlist is ready.
     """
 
     studio_id: Optional[UUID] = Field(
@@ -107,7 +108,7 @@ class NotifyClientsPlaylistSchema(BaseSchema):
 
 class CreatePlaylistShareLinkSchema(BaseSchema):
     """
-    Body for creating a playlist share link.
+    Body to create a playlist share link.
     """
 
     expiration_date: Optional[str] = Field(
@@ -137,7 +138,7 @@ class CreatePlaylistShareLinkSchema(BaseSchema):
 
 class InviteShareLinkSchema(BaseSchema):
     """
-    Body for emailing a share link to one or more recipients.
+    Body to send a share link by email to one or more recipients.
     """
 
     emails: Optional[List[str]] = Field(

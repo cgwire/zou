@@ -30,7 +30,8 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
 
         self.persons = self.get("data/persons")
         self.assertEqual(len(self.persons), 3)
-        self.assertEqual(self.persons[0]["active"], True)
+        person = next(p for p in self.persons if p["shotgun_id"] == 1)
+        self.assertEqual(person["active"], True)
 
     def test_import_persons_twice(self):
         self.persons = self.load_fixture("persons")
@@ -87,5 +88,23 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
         self.persons = self.get("data/persons")
         self.assertEqual(len(self.persons), 2)
 
-        person = self.persons[1]
+        person = next(p for p in self.persons if p["shotgun_id"] == 3)
         self.assertEqual(person["role"], "admin")
+
+    def test_import_person_matched_by_email(self):
+        person = Person.create(
+            first_name="James",
+            last_name="Doe",
+            email="james.doe@example.com",
+        )
+        sg_person = {
+            "email": "james.doe@example.com",
+            "firstname": "James",
+            "lastname": "Doe",
+            "login": "jamie",
+            "id": 3,
+            "type": "HumanUser",
+        }
+        self.post("/import/shotgun/persons", [sg_person], 200)
+        self.assertEqual(Person.get(person.id).shotgun_id, 3)
+        self.assertEqual(len(self.get("data/persons")), 2)

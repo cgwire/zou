@@ -38,6 +38,7 @@ from zou.app.services import (
     assets_service,
     attachment_files_service,
     breakdown_service,
+    deletion_service,
     entities_service,
     entity_types_service,
     files_service,
@@ -1245,6 +1246,30 @@ def clear_comment_cache(comment_id):
     """
     cache.cache.delete_memoized(get_comment, comment_id)
     cache.cache.delete_memoized(get_comment, comment_id, True)
+
+
+def remove_task_comment(comment_id, task_id, person_id):
+    """
+    Remove the given comment of the given task and reset the task data.
+    If the task status changes, emit a task:status-changed event for the
+    given person.
+    """
+    previous_status_id = tasks_service.get_task(task_id)["task_status_id"]
+    deletion_service.remove_comment(comment_id)
+    tasks_service.reset_task_data(task_id)
+    clear_comment_cache(comment_id)
+    task = tasks_service.get_task(task_id)
+    if previous_status_id != task["task_status_id"]:
+        events.emit(
+            "task:status-changed",
+            {
+                "task_id": task["id"],
+                "new_task_status_id": task["task_status_id"],
+                "previous_task_status_id": previous_status_id,
+                "person_id": person_id,
+            },
+            project_id=task["project_id"],
+        )
 
 
 def get_comments(task_id, is_client=False, is_manager=False):

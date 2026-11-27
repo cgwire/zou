@@ -2,7 +2,6 @@ import os
 import tempfile
 
 from tests.base import ApiDBTestCase
-from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import projects_service, shots_service
@@ -173,40 +172,6 @@ class ImportCsvSequencesTestCase(ApiDBTestCase):
 
         self.assertEqual(
             self.get_sequences()[0]["data"], {"contractor": "value 1"}
-        )
-
-    def test_import_sets_the_status_comment_and_assignees_of_a_task(self):
-        task_type = TaskType.create(
-            name="Storyboard",
-            short_name="sb",
-            color="#FFFFFF",
-            for_entity="Sequence",
-        )
-        projects_service.add_task_type_setting(self.project.id, task_type.id)
-        self.generate_fixture_task_status_wip()
-        self.generate_fixture_person()
-        self.upload_file(
-            self.path,
-            self.write_csv(
-                "Name,Storyboard,Storyboard comment,Storyboard assignations\n"
-                "SQ01,wip,First pass,John Doe\n"
-                "SQ02,,,\n"
-            ),
-        )
-
-        tasks = {
-            shots_service.get_sequence(str(task.entity_id))["name"]: task
-            for task in Task.query.all()
-        }
-        self.assertEqual(sorted(tasks), ["SQ01", "SQ02"])
-        self.assertEqual(tasks["SQ01"].task_type_id, task_type.id)
-        self.assertEqual(tasks["SQ01"].task_status_id, self.task_status_wip.id)
-        self.assertEqual(
-            [person.id for person in tasks["SQ01"].assignees],
-            [self.person.id],
-        )
-        self.assertEqual(
-            [comment.text for comment in Comment.query.all()], ["First pass"]
         )
 
     def test_an_update_assigns_only_the_people_not_yet_assigned(self):

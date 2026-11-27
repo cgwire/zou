@@ -799,8 +799,8 @@ DeleteTasksResource_post:
           description: List of task identifiers to delete
   responses:
     200:
-      description: The identifiers you sent. The tasks of another project are
-        not deleted but stay in the list.
+      description: The identifiers of the deleted tasks. The tasks of another
+        project are not deleted and are not in the list.
       content:
         application/json:
           schema:

@@ -1,10 +1,7 @@
 from flask_jwt_extended import jwt_required
-from sqlalchemy import func
-from sqlalchemy.orm import selectinload
 
 from zou.app.blueprints.export.csv.base import BaseCsvExport
-from zou.app.models.person import Person
-from zou.app.models.studio import Studio
+from zou.app.services import persons_service
 from zou.app.utils import permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
@@ -46,31 +43,23 @@ class PersonsCsvExport(BaseCsvExport):
 
     def keep_salary_for_admins(self, row):
         """
-        The export is open to the managers, the daily salary is not.
+        The managers can get the export, but only the admins get the daily
+        salary.
         """
         if not permissions.has_admin_permissions():
             del row[SALARY_COLUMN]
         return row
 
     def build_query(self):
-        return (
-            Person.query.options(selectinload(Person.departments))
-            .filter(
-                Person.is_bot.isnot(True),
-                Person.is_guest.isnot(True),
-                Person.preview_project_id.is_(None),
-            )
-            .order_by(
-                func.lower(Person.first_name),
-                func.lower(Person.last_name),
-            )
-        )
+        return persons_service.get_studio_team_persons_query()
 
     def get_studio_name(self, studio_id):
         if studio_id is None:
             return ""
         if studio_id not in self.studio_cache:
-            self.studio_cache[studio_id] = Studio.get(studio_id)
+            self.studio_cache[studio_id] = persons_service.get_studio_raw(
+                studio_id
+            )
         studio = self.studio_cache[studio_id]
         return studio.name if studio is not None else ""
 

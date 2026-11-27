@@ -44,3 +44,12 @@ def is_init():
         inspect(db.engine).has_table("person")
         and db.session.query(ProjectStatus).count() > 0
     )
+
+
+def ping():
+    """
+    Run a query that reads nothing, to check that the database answers.
+    """
+    from zou.app import db
+
+    db.session.execute(text("SELECT 1"))

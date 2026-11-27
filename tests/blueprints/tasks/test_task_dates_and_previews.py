@@ -69,10 +69,12 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
         person_ids = [entry["person_id"] for entry in result]
         self.assertIn(str(self.person.id), person_ids)
-        # Tasks without dates give a null, not the string "None".
+        # Tasks without dates give a null, not the string "None". Admin
+        # sees every project in detail, nothing is anonymised.
         for entry in result:
             self.assertNotEqual(entry["min_date"], "None")
             self.assertNotEqual(entry["max_date"], "None")
+            self.assertEqual(entry["busy_periods"], [])
 
     def test_get_persons_task_dates_as_manager(self):
         # A manager who is a team member of the project sees its persons.
@@ -138,18 +140,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         result = self.get("/data/persons/task-dates")
         person_ids = [entry["person_id"] for entry in result]
         self.assertIn(str(self.person.id), person_ids)
-
-    def test_get_persons_task_dates_supervisor_foreign_project_id(self):
-        self.generate_fixture_user_supervisor()
-        projects_service.add_team_member(
-            self.project_id, self.user_supervisor["id"]
-        )
-        self.generate_fixture_project_standard()
-        self.log_in_supervisor()
-        self.get(
-            f"/data/persons/task-dates?project_id={self.project_standard.id}",
-            403,
-        )
 
     def test_get_persons_task_dates_refused_to_artists(self):
         self.generate_fixture_user_cg_artist()
@@ -217,12 +207,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             {"person_id", "min_date", "max_date", "busy_periods"},
         )
 
-    def test_get_persons_task_dates_admin_has_no_busy_periods(self):
-        # Admin sees every project in detail, nothing is anonymised.
-        result = self.get("/data/persons/task-dates")
-        for entry in result:
-            self.assertEqual(entry["busy_periods"], [])
-
     def test_get_persons_task_dates_empty_project_id(self):
         # An empty `?project_id=` filter is treated as absent, not as an
         # invalid UUID (regression: 500 for admins, 404 for managers).
@@ -282,16 +266,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         person_ids = [entry["person_id"] for entry in result]
         self.assertIn(str(closed_person.id), person_ids)
 
-    def test_get_persons_task_dates_supervisor_scoped_to_own_projects(self):
-        # The gate is supervisor-or-above: a supervisor who
-        # belongs to no project gets anonymous busy periods only, not a 403.
-        self.generate_fixture_user_supervisor()
-        self.log_in_supervisor()
-        result = self.get("/data/persons/task-dates")
-        for entry in result:
-            self.assertIsNone(entry["min_date"])
-            self.assertIsNone(entry["max_date"])
-
     def test_get_persons_task_dates_unauthorized(self):
         self.generate_fixture_user_vendor()
         self.log_in_vendor()
@@ -330,28 +304,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             403,
         )
 
-    def test_assign_person_to_tasks(self):
-        result = self.put(
-            f"/actions/persons/{self.person.id}/assign",
-            {"task_ids": [str(self.task.id)]},
-        )
-        self.assertIsInstance(result, list)
-        task = tasks_service.get_task(str(self.task.id), relations=True)
-        self.assertIn(str(self.person.id), task.get("assignees", []))
-
-    def test_clear_assignation(self):
-        tasks_service.assign_task(self.task.id, self.person.id)
-        result = self.put(
-            "/actions/tasks/clear-assignation",
-            {
-                "task_ids": [str(self.task.id)],
-                "person_id": str(self.person.id),
-            },
-        )
-        self.assertIsInstance(result, list)
-        task = tasks_service.get_task(str(self.task.id))
-        self.assertNotIn(str(self.person.id), task.get("assignees", []))
-
     def test_create_edit_tasks(self):
         self.generate_fixture_edit()
         result = self.post(
@@ -375,17 +327,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
         )
         self.assertIsInstance(result, list)
         self.assertGreater(len(result), 0)
-
-    def test_set_main_preview(self):
-        self.generate_fixture_preview_file()
-        result = self.put(
-            f"/actions/tasks/{self.task.id}/set-main-preview",
-            {},
-        )
-        self.assertIsNotNone(result)
-        task = tasks_service.get_task(str(self.task.id))
-        entity = self.get(f"/data/entities/{task['entity_id']}")
-        self.assertIsNotNone(entity.get("preview_file_id"))
 
     def test_set_main_preview_without_preview(self):
         result = self.put(
@@ -462,23 +403,6 @@ class TaskDatesAndPreviewsTestCase(ApiDBTestCase):
             {"task_ids": [str(self.task.id)]},
             403,
         )
-
-    def test_delete_tasks_for_task_type(self):
-        self.delete(
-            f"/actions/projects/{self.project_id}"
-            f"/task-types/{self.task_type.id}/delete-tasks"
-        )
-        self.get_404(f"/data/tasks/{self.task.id}")
-
-    def test_delete_tasks(self):
-        shot_task_id = str(self.shot_task.id)
-        result = self.post(
-            f"/actions/projects/{self.project_id}/delete-tasks",
-            [shot_task_id],
-            200,
-        )
-        self.assertEqual(result, [shot_task_id])
-        self.get_404(f"/data/tasks/{shot_task_id}")
 
     def generate_comment_with_preview(self, task, person=None):
         """

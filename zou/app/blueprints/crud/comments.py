@@ -1,9 +1,9 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.services import (
+    attachment_files_service,
     comments_service,
     deletion_service,
     news_service,
@@ -49,8 +49,9 @@ class CommentsResource(BaseModelsResource):
         return super().post()
 
     def emit_create_event(self, instance_dict):
-        # The generic event names the comment only: the task panels of Kitsu
-        # reload it from its task, and a client skips what it cannot read.
+        # The generic event gives only the comment. The task panels of Kitsu
+        # load the comment again from its task. A client ignores the events
+        # that it cannot read.
         return events.emit(
             "comment:new",
             {
@@ -66,7 +67,7 @@ class CommentsResource(BaseModelsResource):
 class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
-        # The update check reads the task off the stored comment.
+        # The update check reads the task from the stored comment.
         self.protected_fields += [
             "mentions",
             "department_mentions",
@@ -94,7 +95,8 @@ class CommentResource(BaseModelResource):
 
     def clean_get_result(self, result):
         is_client = permissions.has_client_permissions()
-        # Embed the author so guest commenters render with a name and avatar.
+        # Embed the author. Thus the client shows guest commenters with a name
+        # and an avatar.
         if result.get("person_id"):
             result["person"] = persons_service.get_short_person(
                 result["person_id"]
@@ -104,12 +106,11 @@ class CommentResource(BaseModelResource):
             "attachment_files" in result
             and len(result["attachment_files"]) > 0
         ):
-            attachment_file_objs = AttachmentFile.query.filter(
-                AttachmentFile.id.in_(result["attachment_files"])
-            ).all()
-            result["attachment_files"] = [
-                af.present() for af in attachment_file_objs
-            ]
+            result["attachment_files"] = (
+                attachment_files_service.get_attachment_files_by_ids(
+                    result["attachment_files"]
+                )
+            )
 
         with_previews = self.get_bool_parameter("with_previews", "false")
         if (
@@ -134,13 +135,14 @@ class CommentResource(BaseModelResource):
         ] != data.get("task_status_id", None):
             self.task_status_change = True
             self.previous_task_status_id = instance_dict["task_status_id"]
-        # By value: the edit form of Kitsu always sends the text back.
+        # Compare by value: the edit form of Kitsu always sends the text again.
         self.text_changed = (
             data.get("text", instance_dict["text"]) != instance_dict["text"]
         )
         if self.text_changed:
-            # Those of the text before the edit, read like those of the new
-            # one: the stored mentions follow the team at every update.
+            # Get the mentions of the text before the edit, the same way as the
+            # mentions of the new text. The stored mentions follow the team at
+            # each update.
             self.previous_mentions = comments_service.get_text_mentions(
                 tasks_service.get_task(instance_dict["object_id"])[
                     "project_id"
@@ -153,9 +155,9 @@ class CommentResource(BaseModelResource):
         comment = comments_service.reset_mentions(instance_dict)
         task_id = comment["object_id"]
         if self.task_status_change:
-            # Before the task:update of reset_task_data: the feeds reload
-            # the news of the comment on it. The status is all the news
-            # shows of its comment.
+            # Do this before the task:update event of reset_task_data, because
+            # the feeds load the news of the comment again on that event. The
+            # news shows only the status of its comment.
             news_service.clear_comment_news_cache(
                 comment["id"], tasks_service.get_task(task_id)["project_id"]
             )
@@ -181,8 +183,8 @@ class CommentResource(BaseModelResource):
         return comment
 
     def emit_update_event(self, instance_dict):
-        # The generic event names the comment only, with no production:
-        # Kitsu finds the comment through its task, and a client skips what
+        # The generic event gives only the comment, with no production. Kitsu
+        # finds the comment through its task. A client ignores the events that
         # it cannot read.
         task = tasks_service.get_task(instance_dict["object_id"])
         return events.emit(
@@ -218,8 +220,8 @@ class CommentResource(BaseModelResource):
             if permissions.has_manager_permissions():
                 return True
 
-            # The update answers with the whole comment and records its
-            # editor, so a comment out of reading reach stays out of reach.
+            # The update returns the full comment and records its editor. Thus,
+            # if the user cannot read a comment, the user cannot edit it.
             permissions_service.check_comment_access(
                 instance["id"], comment=instance
             )
@@ -236,7 +238,7 @@ class CommentResource(BaseModelResource):
                 "for_client"
             ] != instance.get("for_client", False)
             if change_for_client:
-                # Only managers (handled above) may toggle for_client.
+                # Only managers (see above) can change for_client.
                 raise permissions.PermissionDenied
             is_supervisor = permissions.has_supervisor_permissions()
             is_supervisor_in_department = (
@@ -288,10 +290,10 @@ class CommentResource(BaseModelResource):
                     str(data["task_status_id"]).lower()
                     != str(instance["task_status_id"]).lower()
                 ):
-                    # Writing in a task and steering it are different
-                    # rights: a mentioned person may author a comment, but
-                    # moving the status through an update of it requires
-                    # full task action access.
+                    # To write in a task and to control a task are different
+                    # rights. A mentioned person can write a comment. But to
+                    # change the status through a comment update, the user must
+                    # have full action access to the task.
                     permissions_service.check_task_action_access(
                         instance["object_id"]
                     )

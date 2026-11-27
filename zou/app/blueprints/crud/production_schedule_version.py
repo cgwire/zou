@@ -10,7 +10,6 @@ from zou.app.services import (
     permissions_service,
     schedule_service,
     tasks_service,
-    user_service,
 )
 from zou.app.utils import fields, permissions
 from zou.app.utils.openapi import load_specs, swag_from
@@ -139,20 +138,15 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
             raise permissions.PermissionDenied
 
     def apply_filters(self, query, options):
-        # A task link has no project_id column, so the generic filters drop
-        # the parameter the read check was granted on: scope the rows to
-        # that project through their version.
+        # A task link has no project_id column. Thus the generic filters ignore
+        # the parameter that the read check accepted. Limit the rows to that
+        # project through their version.
         query = super().apply_filters(query, options)
         if "project_id" in options:
             if not fields.is_valid_id(options["project_id"]):
                 raise WrongParameterException("Invalid project_id.")
-            link = ProductionScheduleVersionTaskLink
-            query = query.join(
-                ProductionScheduleVersion,
-                ProductionScheduleVersion.id
-                == link.production_schedule_version_id,
-            ).filter(
-                ProductionScheduleVersion.project_id == options["project_id"]
+            query = schedule_service.filter_version_task_links_by_project(
+                query, options["project_id"]
             )
         return query
 

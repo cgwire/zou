@@ -29,6 +29,7 @@ from zou.app.models.project import (
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.software import Software
 from zou.app.models.status_automation import StatusAutomation
+from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
@@ -362,12 +363,32 @@ def get_projects():
     )
 
 
+def get_projects_with_status_names_query():
+    """
+    Return a query on the projects joined with the name of their status,
+    sorted by project name.
+    """
+    query = Project.query.join(
+        ProjectStatus, Project.project_status_id == ProjectStatus.id
+    )
+    query = query.add_columns(ProjectStatus.name)
+    return query.order_by(Project.name)
+
+
 @cache.memoize_function(480)
 def get_project_statuses():
     """
     Return all the project statuses.
     """
     return fields.serialize_models(ProjectStatus.get_all())
+
+
+def get_project_status_raw(project_status_id):
+    """
+    Return the project status that has the given ID as an active record, or
+    None.
+    """
+    return ProjectStatus.get(project_status_id)
 
 
 def get_or_create_open_status():
@@ -1005,6 +1026,16 @@ def is_open(project):
     """
     open_status = get_open_status()
     return project["project_status_id"] == open_status["id"]
+
+
+def has_tasks_or_entities(project_id):
+    """
+    Return True if the given project owns at least one task or one entity.
+    """
+    return (
+        Task.query.filter_by(project_id=project_id).first() is not None
+        or Entity.query.filter_by(project_id=project_id).first() is not None
+    )
 
 
 def _notify_project_settings_change(project_id):

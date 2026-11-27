@@ -24,6 +24,7 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    deletion_service,
     entities_service,
     files_service,
     news_service,
@@ -889,13 +890,7 @@ def _build_thumbnails_and_tile(preview_file_id, movie_path, size, temp_files):
 
     try:
         tile_path = movie.generate_tile(movie_path)
-        file_store.add_picture("tiles", preview_file_id, tile_path)
-        preview_file_states_service.record_file_state(
-            preview_file_id,
-            "pictures",
-            "tiles",
-            preview_file_states_service.OK,
-        )
+        store_tile(preview_file_id, tile_path)
         # The tile is stored. A failure to remove the local temporary
         # copy is not a generation failure and must not undo the
         # "ok" that was recorded above.
@@ -1065,6 +1060,107 @@ def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
             fs.get_cache_file_path(config, prefix, preview_file_id, extension)
         )
     return preview_file_id
+
+
+def store_preview_file_content(preview_file_id, file_path):
+    """
+    Save the given local file in the file storage as the content of the
+    given preview file. Record it as ok and set the file size of the preview
+    file.
+    """
+    file_store.add_file("previews", preview_file_id, file_path)
+    preview_file_states_service.record_file_state(
+        preview_file_id,
+        "files",
+        "previews",
+        preview_file_states_service.OK,
+    )
+    file_size = fs.get_file_size(file_path)
+    update_preview_file(preview_file_id, {"file_size": file_size}, silent=True)
+
+
+def store_thumbnail(instance_id, picture_path, size):
+    """
+    Turn the given local picture into a thumbnail of the given size and save
+    it in the file storage as the thumbnail of the given instance. Always
+    remove the local picture.
+    """
+    try:
+        picture_path = thumbnail_utils.turn_into_thumbnail(
+            picture_path, size=size
+        )
+        file_store.add_picture("thumbnails", instance_id, picture_path)
+    finally:
+        if os.path.exists(picture_path):
+            os.remove(picture_path)
+
+
+def store_tile(preview_file_id, tile_path):
+    """
+    Save the given local tile sheet in the file storage as the tile of the
+    given preview file and record it as ok.
+    """
+    file_store.add_picture("tiles", preview_file_id, tile_path)
+    preview_file_states_service.record_file_state(
+        preview_file_id,
+        "pictures",
+        "tiles",
+        preview_file_states_service.OK,
+    )
+
+
+def save_preview_background_file(
+    preview_background_file_id, uploaded_file, extension
+):
+    """
+    Save the uploaded preview background file and, for an HDR file, its
+    thumbnail in the file storage and clear their cached copies. Return its
+    size in a dict. On a failure, remove the preview background file and
+    raise WrongParameterException.
+    """
+    from zou.app import app as current_app
+
+    instance_id = preview_background_file_id
+    thumbnail_path = None
+    try:
+        tmp_folder = config.TMP_DIR
+        file_name = f"{instance_id}.{extension}"
+        preview_background_path = os.path.join(tmp_folder, file_name)
+        uploaded_file.save(preview_background_path)
+        file_size = fs.get_file_size(preview_background_path)
+        file_store.add_picture(
+            "preview-backgrounds", instance_id, preview_background_path
+        )
+        clear_variant_from_cache(instance_id, "preview-backgrounds", extension)
+        if extension == "hdr":
+            thumbnail_path = thumbnail_utils.turn_hdr_into_thumbnail(
+                preview_background_path
+            )
+            file_store.add_picture("thumbnails", instance_id, thumbnail_path)
+            clear_variant_from_cache(instance_id, "thumbnails")
+
+        return {
+            "preview_file_id": instance_id,
+            "file_size": file_size,
+        }
+    except Exception:
+        current_app.logger.error(
+            f"Error while saving preview background file and thumbnail: {instance_id}"
+        )
+        deletion_service.remove_preview_background_file_by_id(
+            instance_id, force=True
+        )
+        raise WrongParameterException(
+            f"Error while saving preview background file and thumbnail: {instance_id}"
+        )
+    finally:
+        try:
+            if os.path.exists(preview_background_path):
+                os.remove(preview_background_path)
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                os.remove(thumbnail_path)
+        except OSError:
+            pass
 
 
 def update_preview_file_position(preview_file_id, position):
@@ -1436,13 +1532,7 @@ def generate_tiles(
             or not file_store.exists_picture("tiles", str(preview_file.id))
         ):
             tile_path = movie.generate_tile(preview_file_path)
-            file_store.add_picture("tiles", preview_file.id, tile_path)
-            preview_file_states_service.record_file_state(
-                preview_file.id,
-                "pictures",
-                "tiles",
-                preview_file_states_service.OK,
-            )
+            store_tile(preview_file.id, tile_path)
             # The tile is stored. A failure to remove the local temporary
             # copy is not a generation failure and must not undo the
             # "ok" that was recorded above.

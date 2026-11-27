@@ -1,5 +1,5 @@
 from tests.base import ApiDBTestCase
-from zou.app.services import breakdown_service, projects_service
+from zou.app.services import projects_service
 
 
 class BreakdownRoutesTestCase(ApiDBTestCase):
@@ -142,8 +142,8 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
     def test_get_episodes_casting(self):
         self._set_shot_casting()
         result = self.get(f"/data/projects/{self.project_id}/episodes/casting")
-        self.assertIsInstance(result, dict)
-        self.assertGreater(len(result), 0)
+        # The shot casting is mirrored on the episode of the shot.
+        self.assertIn(self.episode_id, result)
 
     def test_get_sequence_casting(self):
         self._set_shot_casting()
@@ -160,16 +160,14 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/episodes/{self.episode_id}/sequences/all/casting"
         )
-        self.assertIsInstance(result, dict)
-        self.assertGreater(len(result), 0)
+        self.assertEqual(list(result), [self.shot_id])
 
     def test_get_sequences_all_casting(self):
         self._set_shot_casting()
         result = self.get(
             f"/data/projects/{self.project_id}/sequences/all/casting"
         )
-        self.assertIsInstance(result, dict)
-        self.assertGreater(len(result), 0)
+        self.assertEqual(list(result), [self.shot_id])
 
     def test_delete_entity_link(self):
         self._set_shot_casting()
@@ -221,61 +219,29 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(result[self.asset_id]), 1)
 
-    def test_create_scene_asset_instance(self):
-        result = self.post(
-            f"/data/scenes/{self.scene_id}/asset-instances",
-            {
-                "asset_id": self.asset_id,
-                "description": "Test instance",
-            },
+    def test_an_instance_of_another_project_is_not_added_to_a_shot(self):
+        other_project = self.generate_fixture_project_standard()
+        scene = self.generate_fixture_scene(
+            "SC02", project_id=other_project.id
         )
-        self.assertIsNotNone(result.get("id"))
-        instances = self.get(f"/data/scenes/{self.scene_id}/asset-instances")
-        self.assertIn(self.asset_id, instances)
+        instance = self.generate_fixture_scene_asset_instance(scene=scene)
 
-    def test_get_scene_camera_instances(self):
-        """
-        The same listing narrowed to cameras: an instance of an ordinary
-        asset has no business here.
-        """
-        self.generate_fixture_asset_camera()
-        for asset in [self.asset, self.asset_camera]:
-            self.post(
-                f"/data/scenes/{self.scene_id}/asset-instances",
-                {"asset_id": str(asset.id)},
-            )
-
-        result = self.get(f"/data/scenes/{self.scene_id}/camera-instances")
-
-        self.assertEqual(list(result.keys()), [str(self.asset_camera.id)])
-
-    def test_get_shot_asset_instances(self):
-        """
-        A shot lists the instances cast into it, which are scene instances
-        added to the shot rather than instances of its own.
-        """
-        instance = self.generate_fixture_scene_asset_instance()
         self.post(
             f"/data/shots/{self.shot_id}/asset-instances",
             {"asset_instance_id": str(instance.id)},
+            400,
         )
-
-        result = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-
-        self.assertEqual(list(result.keys()), [self.asset_id])
         self.assertEqual(
-            [held["id"] for held in result[self.asset_id]], [str(instance.id)]
+            self.get(f"/data/shots/{self.shot_id}/asset-instances"), {}
         )
 
-    def test_add_asset_instance_to_shot(self):
+    def test_remove_an_instance_not_cast_in_the_shot(self):
         self.generate_fixture_scene_asset_instance()
-        result = self.post(
-            f"/data/shots/{self.shot_id}/asset-instances",
-            {"asset_instance_id": str(self.asset_instance.id)},
+        self.delete(
+            f"/data/shots/{self.shot_id}/asset-instances"
+            f"/{self.asset_instance.id}",
+            400,
         )
-        self.assertIsNotNone(result.get("id"))
-        instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-        self.assertGreater(len(instances), 0)
 
     def test_a_client_edits_no_asset_instance(self):
         self.generate_fixture_scene_asset_instance()
@@ -301,16 +267,3 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             {"asset_to_instantiate_id": self.asset_character_id},
             403,
         )
-
-    def test_remove_asset_instance_from_shot(self):
-        self.generate_fixture_scene_asset_instance()
-        self.post(
-            f"/data/shots/{self.shot_id}/asset-instances",
-            {"asset_instance_id": str(self.asset_instance.id)},
-        )
-        self.delete(
-            f"/data/shots/{self.shot_id}"
-            f"/asset-instances/{self.asset_instance.id}"
-        )
-        instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
-        self.assertEqual(instances, {})

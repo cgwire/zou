@@ -2,7 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.models.asset_instance import AssetInstance
-from zou.app.services import assets_service, permissions_service, user_service
+from zou.app.services import assets_service, permissions_service
 from zou.app.utils import permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
@@ -33,7 +33,7 @@ class AssetInstancesResource(BaseModelsResource):
 class AssetInstanceResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, AssetInstance)
-        # The update check reads the project off the stored asset.
+        # The update check reads the project from the stored asset.
         self.protected_fields += [
             "number",
             "asset_id",
@@ -69,8 +69,7 @@ class AssetInstanceResource(BaseModelResource):
         if permissions.has_admin_permissions():
             return True
         else:
-            asset_instance = self.get_model_or_404(instance["id"])
-            asset = assets_service.get_asset(asset_instance.asset_id)
+            asset = assets_service.get_asset(instance["asset_id"])
             permissions_service.check_project_access(asset["project_id"])
             permissions_service.check_entity_access(asset["id"])
             return True

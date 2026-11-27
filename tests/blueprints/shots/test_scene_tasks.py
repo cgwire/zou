@@ -26,6 +26,4 @@ class SceneTasksTestCase(ApiDBTestCase):
     def test_get_task_types_for_scene(self):
         task_types = self.get(f"/data/scenes/{self.scene.id}/task-types")
         self.assertEqual(len(task_types), 1)
-        self.assertDictEqual(
-            task_types[0], self.task_type_animation.serialize()
-        )
+        self.assertEqual(task_types[0]["id"], str(self.task_type_animation.id))

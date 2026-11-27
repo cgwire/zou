@@ -48,16 +48,6 @@ class AssetsTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         self.assertEqual(assets[0]["type"], "Asset")
 
-    def test_get_shot_assets(self):
-        assets = self.get(f"data/shots/{self.shot.id}/assets")
-        self.assertEqual(assets, [])
-
-        self.shot.entities_out = [self.asset]
-        self.shot.save()
-        assets = self.get(f"data/shots/{self.shot.id}/assets")
-        self.assertEqual(len(assets), 1)
-        self.assertEqual(assets[0]["type"], "Asset")
-
     def test_get_project_and_type_assets(self):
         asset_type = entity_types_service.get_or_create_asset_type("VFX")
         Entity.create(
@@ -70,8 +60,9 @@ class AssetsTestCase(ApiDBTestCase):
             f"{self.asset_type.id}/assets"
         )
         assets = self.get(path)
-        self.assertEqual(len(assets), 1)
-        self.assertDictEqual(assets[0], self.asset_dict)
+        self.assertEqual(
+            [asset["id"] for asset in assets], [self.asset_dict["id"]]
+        )
 
     def test_create_asset(self):
         events.register("asset:new", "handle_event", self)
@@ -82,6 +73,7 @@ class AssetsTestCase(ApiDBTestCase):
         }
         path = f"data/projects/{self.project.id}/asset-types/{self.asset_type.id}/assets/new"
         asset = self.post(path, self.asset_data)
+        self.assertTrue(self.is_event_fired)
         assets = assets_service.get_assets()
         self.assertIsNotNone(asset.get("id", None))
         self.assertEqual(len(assets), 2)

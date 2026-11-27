@@ -17,6 +17,7 @@ def get_file_md5hash(file_path):
         file_hash = hashlib.md5()
         while chunk := f.read(8192):
             file_hash.update(chunk)
+    return file_hash.hexdigest()
 
 
 class RouteThumbnailTestCase(ApiDBTestCase):
@@ -185,9 +186,9 @@ class RouteThumbnailTestCase(ApiDBTestCase):
 
     def test_project_thumbnail_needs_project_access(self):
         """
-        A project avatar is only readable by a manager or by someone on the
-        production. Uploading one is stricter still, it takes a manager of
-        that production.
+        A project avatar is only readable by someone on the production, a
+        manager included. Uploading one is stricter still, it takes a
+        manager of that production.
         """
         path = f"/pictures/thumbnails/projects/{self.project.id}"
         self._upload_thumbnail(path)
@@ -200,6 +201,10 @@ class RouteThumbnailTestCase(ApiDBTestCase):
             self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
             code=403,
         )
+
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        self.get(f"{path}.png", 403)
 
     def test_add_organisation_thumbnail(self):
         """

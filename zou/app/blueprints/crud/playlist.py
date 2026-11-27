@@ -20,7 +20,7 @@ SPECS = load_specs(__file__, "openapi/playlist.yml")
 
 def _check_for_entity(data):
     """
-    Reject unknown for_entity values at the CRUD boundary.
+    Reject unknown for_entity values at the CRUD level.
     """
     if "for_entity" in data and data["for_entity"] is not None:
         if data["for_entity"] not in playlists_service.VALID_FOR_ENTITY_VALUES:
@@ -43,11 +43,11 @@ class PlaylistsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
             return query
-        # Each playlist follows the role held on its own project: on the
-        # ones where the user is a client, only the playlists shared with
-        # clients are listed, as the playlists route of a production does,
-        # and on the ones where they are a vendor, none, as a playlist read
-        # refuses them there.
+        # Each playlist uses the role of the user on its project. On projects
+        # where the user is a client, the list has only the playlists shared
+        # with clients, as in the playlists route of a production. On projects
+        # where the user is a vendor, the list has no playlists, as the
+        # playlist read refuses them there.
         project_roles = user_service.get_team_project_roles()
         client_project_ids = [
             project_id
@@ -150,8 +150,8 @@ class PlaylistResource(BaseModelResource):
     def pre_update(self, instance_dict, data):
         _check_for_entity(data)
         if "shots" in data:
-            # An entry without preview is served without the key, and the
-            # client saves it back that way: keep it, with no preview.
+            # The API sends an entry with no preview without the key, and the
+            # client saves it again that way. Keep the entry, with no preview.
             shots = [
                 {
                     "entity_id": shot.get("entity_id") or shot.get("id"),

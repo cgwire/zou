@@ -3,7 +3,6 @@ import os
 from tests.base import ApiDBTestCase
 from zou.app.services import (
     assets_service,
-    persons_service,
     projects_service,
     tasks_service,
 )
@@ -14,33 +13,10 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         super().setUp()
 
         self.generate_fixture_project()
-        self.generate_fixture_asset()
-        self.generate_fixture_sequence()
-        self.generate_fixture_shot()
-        self.generate_fixture_task_status()
         self.generate_fixture_task_status_wip()
-        self.generate_fixture_task_status_retake()
-        self.generate_fixture_task_status_done()
-        self.generate_fixture_person()
         self.generate_fixture_task()
 
-        self.open_status_id = str(self.task_status.id)
         self.wip_status_id = str(self.task_status_wip.id)
-        self.retake_status_id = str(self.task_status_retake.id)
-        self.done_status_id = str(self.task_status_done.id)
-
-    def generate_team(self):
-        self.generate_fixture_user_manager()
-        self.generate_fixture_user_cg_artist()
-        user_cg_artist = persons_service.get_person_raw(
-            self.user_cg_artist["id"]
-        )
-        user_manager = persons_service.get_person_raw(self.user_manager["id"])
-        self.project.team = [self.person, user_cg_artist, user_manager]
-        self.project.save()
-
-    def assert_event_is_fired(self):
-        self.assertTrue(self.is_event_fired)
 
     def test_add_preview_to_comment(self):
         # Comment

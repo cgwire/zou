@@ -81,36 +81,6 @@ class AssetTasksTestCase(ApiDBTestCase):
         )
         self.assertEqual(rebuilt, reference)
 
-    def test_get_assets_and_tasks_episode_filter(self):
-        """
-        An asset both sourced from an episode and cast in it through an
-        entity link must come back exactly once with its tasks, and an
-        asset unrelated to the episode must not come back at all.
-        """
-        self.generate_fixture_episode("E01")
-        episode_id = str(self.episode.id)
-        self.asset.update({"source_id": self.episode.id})
-        EntityLink.create(
-            entity_in_id=self.episode.id, entity_out_id=self.asset.id
-        )
-        self.generate_fixture_asset_character()
-
-        assets = assets_service.get_assets_and_tasks(
-            {"episode_id": episode_id}
-        )
-        self.assertEqual(len(assets), 1)
-        self.assertEqual(assets[0]["id"], str(self.asset_id))
-        self.assertEqual(len(assets[0]["tasks"]), 1)
-        self.assertEqual(
-            assets[0]["tasks"][0]["assignees"], [str(self.person_id)]
-        )
-
-        main_assets = assets_service.get_assets_and_tasks(
-            {"episode_id": "main"}
-        )
-        self.assertEqual(len(main_assets), 1)
-        self.assertEqual(main_assets[0]["id"], str(self.asset_character.id))
-
     def _add_asset_in_another_project(self, name="Elsewhere"):
         self.generate_fixture_project_standard()
         return self.generate_fixture_asset(
@@ -154,50 +124,71 @@ class AssetTasksTestCase(ApiDBTestCase):
         names = [asset["name"] for asset in self.get(path)]
         self.assertNotIn("Elsewhere", names)
 
-    def test_get_assets_and_tasks_vendor(self):
+    def vendor_on_the_team(self, assigned=False):
+        """
+        Log in a vendor of the production, assigned to the asset task if
+        asked, and return the listing path of the production.
+        """
         self.generate_fixture_task(name="Secondary")
         self.generate_fixture_user_vendor()
-        task_id = self.task.id
         project_id = self.project.id
         person_id = self.user_vendor["id"]
-        self.log_in_vendor()
-        assets = self.get(
-            f"data/assets/with-tasks?project_id={project_id}", 403
-        )
         projects_service.add_team_member(project_id, person_id)
         projects_service.clear_project_cache(str(project_id))
-        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
-        self.assertEqual(assets, [])
-        tasks_service.assign_task(task_id, person_id)
-        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
+        if assigned:
+            tasks_service.assign_task(self.task.id, person_id)
+        self.log_in_vendor()
+        return f"data/assets/with-tasks?project_id={project_id}"
+
+    def test_get_assets_and_tasks_vendor_needs_the_team(self):
+        self.generate_fixture_user_vendor()
+        project_id = self.project.id
+        self.log_in_vendor()
+        path = f"data/assets/with-tasks?project_id={project_id}"
+        self.get(path, 403)
+        projects_service.add_team_member(project_id, self.user_vendor["id"])
+        projects_service.clear_project_cache(str(project_id))
+        self.get(path)
+
+    def test_get_assets_and_tasks_vendor_reads_their_tasks_only(self):
+        path = self.vendor_on_the_team()
+        self.assertEqual(self.get(path), [])
+        tasks_service.assign_task(self.task.id, self.user_vendor["id"])
+        assets = self.get(path)
         self.assertEqual(len(assets), 1)
         self.assertEqual(len(assets[0]["tasks"]), 1)
-        self.assertIn(str(person_id), assets[0]["tasks"][0]["assignees"])
+        self.assertIn(
+            str(self.user_vendor["id"]), assets[0]["tasks"][0]["assignees"]
+        )
 
+    def test_get_assets_and_tasks_vendor_metadata_masking(self):
+        path = self.vendor_on_the_team(assigned=True)
+        person_id = self.user_vendor["id"]
         assets_service.update_asset(
             self.asset_id, {"data": {"contractor": "test"}}
         )
-        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
+        assets = self.get(path)
         self.assertEqual(assets[0]["data"]["contractor"], "test")
 
         metadata_descriptors_service.update_metadata_descriptor(
             self.meta_descriptor_id, {"departments": [self.department_id]}
         )
         persons_service.add_to_department(str(self.department_id), person_id)
-        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
+        assets = self.get(path)
         self.assertEqual(assets[0]["data"]["contractor"], "test")
 
         persons_service.remove_from_department(
             str(self.department_id), person_id
         )
-        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
+        assets = self.get(path)
         self.assertNotIn("contractor", assets[0]["data"])
 
         # The listings without the tasks answer the same production, so they
         # hide the same descriptor.
-        for path in ["data/assets", "data/assets/all"]:
-            with self.subTest(path=path):
-                assets = self.get(f"{path}?project_id={project_id}")
+        project_id = self.project.id
+        for listing in ["data/assets", "data/assets/all"]:
+            with self.subTest(path=listing):
+                assets = self.get(f"{listing}?project_id={project_id}")
                 self.assertNotIn("contractor", assets[0]["data"])
 
     def test_get_task_types_for_asset(self):

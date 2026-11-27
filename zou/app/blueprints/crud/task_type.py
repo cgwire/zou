@@ -4,14 +4,12 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     status_automations_service,
     task_types_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import fields, permissions
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/task_type.yml")
@@ -83,27 +81,22 @@ class TaskTypeResource(BaseModelResource):
 
     def pre_delete(self, instance_dict):
         """
-        Refuse the delete with a clean 400 when the task type still has
-        scheduled items or is attached to projects, unless ``force`` is
-        set. With force, those rows are purged first so the deletion is
-        not blocked by their foreign keys. A status automation using the
-        task type refuses it even with force.
+        If the task type has scheduled items or is linked to projects, refuse
+        the delete with a clear 400, unless ``force`` is set. With force, the
+        function deletes those rows first, so that their foreign keys do not
+        block the deletion. If a status automation uses the task type, the
+        delete fails, also with force.
         """
         status_automations_service.guard_task_type_deletion(instance_dict)
         task_type_id = instance_dict["id"]
         if self.get_force():
-            ScheduleItem.query.filter_by(task_type_id=task_type_id).delete()
-            ProjectTaskTypeLink.query.filter_by(
-                task_type_id=task_type_id
-            ).delete()
+            task_types_service.detach_task_type_no_commit(task_type_id)
             return instance_dict
 
         blockers = []
-        if ScheduleItem.query.filter_by(task_type_id=task_type_id).count():
+        if task_types_service.is_task_type_scheduled(task_type_id):
             blockers.append("schedule items")
-        if ProjectTaskTypeLink.query.filter_by(
-            task_type_id=task_type_id
-        ).count():
+        if task_types_service.is_task_type_in_projects(task_type_id):
             blockers.append("projects")
         if blockers:
             raise WrongParameterException(
@@ -114,9 +107,9 @@ class TaskTypeResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        # only a change of name is checked: the clients send the whole
-        # form on every update, so a row already carrying a case twin
-        # must stay editable (colour, department) without renaming it
+        # Check only a change of name. The clients send the full form at each
+        # update. Thus users must be able to change the color or the department
+        # of a row that already has a case twin, and keep its name.
         name = data.get("name", None)
         if name is not None and name != self.instance.name:
             task_types_service.check_task_type_name_is_unique(
@@ -142,20 +135,13 @@ class TaskTypesReorderResource(MethodView):
         """
         permissions.check_admin_permissions()
         body = request.json
-        if not isinstance(body, dict) or not isinstance(
-            body.get("task_type_ids"), list
+        if (
+            not isinstance(body, dict)
+            or not isinstance(body.get("task_type_ids"), list)
+            or not all(map(fields.is_valid_id, body["task_type_ids"]))
         ):
             raise WrongParameterException(
                 "Request body must be a JSON object with a "
-                "'task_type_ids' list."
+                "'task_type_ids' list of task type IDs."
             )
-        updated = []
-        for priority, task_type_id in enumerate(
-            body["task_type_ids"], start=1
-        ):
-            task_type = TaskType.get(task_type_id)
-            if task_type is not None:
-                task_type.update({"priority": priority})
-                task_types_service.clear_task_type_cache(str(task_type.id))
-                updated.append(task_type.serialize())
-        return updated
+        return task_types_service.reorder_task_types(body["task_type_ids"])

@@ -12,7 +12,6 @@ class PersonDepartmentTestCase(ApiDBTestCase):
     def test_add_to_department(self):
         person = self.person
         department = self.department
-        persons_service.add_to_department(department["id"], person["id"])
         self.post(self.path + "/add", {"department_id": department["id"]})
         person = persons_service.get_person(person["id"])
         self.assertEqual(person["departments"][0], department["id"])

@@ -1,6 +1,7 @@
 import datetime
 
 from tests.base import ApiDBTestCase
+from zou.app.models.software import Software
 from zou.app.models.task import Task
 from zou.app.services import projects_service
 
@@ -74,6 +75,18 @@ class WorkingFilesTestCase(ApiDBTestCase):
             client_id, [str(person.id) for person in task.assignees]
         )
 
+    def test_a_client_creates_no_default_software(self):
+        Software.get_by(name="Blender").update({"name": "Blender 4"})
+        client_id = self.generate_fixture_user_cg_artist()["id"]
+        projects_service.add_team_member(self.project.id, client_id, "client")
+        self.log_in_cg_artist()
+        self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "theirs"},
+            403,
+        )
+        self.assertIsNone(Software.get_by(name="Blender"))
+
     def test_new_working_file(self):
         task = Task.get(self.task_id)
         self.assertEqual(len(task.assignees), 1)
@@ -89,6 +102,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
             },
         )
         self.assertEqual(working_file["revision"], 1)
+        self.assertEqual(working_file["description"], "description test")
         task = Task.get(self.task_id)
 
         assignees = [person.serialize() for person in task.assignees]
@@ -137,6 +151,17 @@ class WorkingFilesTestCase(ApiDBTestCase):
             working_file["path"],
             "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
             "blender/cosmos_landromat_props_tree_shaders_main_v066",
+        )
+
+    def test_new_working_file_with_a_separator(self):
+        working_file = self.post(
+            f"/data/tasks/{self.task_id}/working-files/new",
+            {"name": "main", "sep": "\\"},
+        )
+        self.assertEqual(
+            working_file["path"],
+            "/simple\\productions\\cosmos_landromat\\assets\\props\\tree\\"
+            "shaders\\blender\\cosmos_landromat_props_tree_shaders_main_v001",
         )
 
     def test_create_same_working_file(self):

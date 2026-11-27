@@ -4,6 +4,9 @@ from zou.app.exceptions import (
 )
 from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
+from zou.app.models.department import Department
+from zou.app.models.person import POSITION_TYPES, SENIORITY_TYPES
+from zou.app.models.salary_scale import SalaryScale
 from zou.app.services import base_service
 from zou.app.utils import events, fields
 
@@ -24,6 +27,41 @@ def _clean_exceptions(data):
                 if v is not None and int(v) > 0
             }
     return data
+
+
+def create_missing_salary_scales():
+    """
+    Create a salary scale for each combination of department, position and
+    seniority that has no salary scale.
+    """
+    position_types = [position for position, _ in POSITION_TYPES]
+    seniority_types = [seniority for seniority, _ in SENIORITY_TYPES]
+
+    departments = Department.query.all()
+    salary_scales = SalaryScale.query.all()
+    salary_scale_map = {}
+    for salary_scale in salary_scales:
+        key = (
+            f"{salary_scale.department_id}-"
+            + f"{salary_scale.position.value.lower()}-"
+            + f"{salary_scale.seniority.value.lower()}"
+        )
+        salary_scale_map[key] = True
+
+    for department in departments:
+        for position in position_types:
+            for seniority in seniority_types:
+                key = (
+                    f"{department.id}-"
+                    + f"{position.lower()}-"
+                    + f"{seniority.lower()}"
+                )
+                if key not in salary_scale_map:
+                    SalaryScale.create(
+                        department_id=department.id,
+                        position=position,
+                        seniority=seniority,
+                    )
 
 
 def get_budget_raw(budget_id):

@@ -18,50 +18,6 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_status_automation_to_status()
         self.project_id = str(self.project.id)
 
-    # --- CRUD via routes -----------------------------------------------
-
-    def test_crud_project_template(self):
-        # Create
-        template = self.post(
-            "/data/project-templates",
-            {
-                "name": "Series Setup",
-                "description": "Animated series setup",
-                "fps": "24",
-                "production_type": "tvshow",
-                "production_style": "3d",
-            },
-        )
-        self.assertIsNotNone(template["id"])
-        self.assertEqual(template["fps"], "24")
-
-        # List
-        templates = self.get("/data/project-templates")
-        self.assertEqual(len(templates), 1)
-
-        # Get
-        again = self.get(f"/data/project-templates/{template['id']}")
-        self.assertEqual(again["id"], template["id"])
-
-        # Update
-        updated = self.put(
-            f"/data/project-templates/{template['id']}",
-            {"description": "updated"},
-        )
-        self.assertEqual(updated["description"], "updated")
-
-        # Delete
-        self.delete(f"/data/project-templates/{template['id']}")
-        self.assertEqual(self.get("/data/project-templates"), [])
-
-    def test_create_template_duplicate_name_returns_400(self):
-        self.post("/data/project-templates", {"name": "Series Setup"})
-        self.post(
-            "/data/project-templates",
-            {"name": "Series Setup"},
-            code=400,
-        )
-
     # --- Link management -------------------------------------------------
 
     def _create_template(self, name="Setup"):

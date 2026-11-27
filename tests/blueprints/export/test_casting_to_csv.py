@@ -9,6 +9,14 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_asset_type()
         self.generate_fixture_asset_types()
 
+    def test_main_pack_of_a_project_that_is_not_a_tv_show(self):
+        self.project.update({"production_type": "short"})
+        self.get_raw(
+            f"/export/csv/projects/{self.project.id}/casting.csv"
+            "?episode_id=main",
+            400,
+        )
+
     def test_import_casting(self):
         for name, asset_type_id in [
             ("Lake", self.asset_type_environment.id),

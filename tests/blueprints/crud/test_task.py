@@ -1,6 +1,10 @@
+import datetime
+import json
+
 from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.models.task import Task
+from zou.app.models.time_spent import TimeSpent
 from zou.app.services import projects_service, tasks_service
 from zou.app.utils import fields
 
@@ -100,6 +104,41 @@ class TaskTestCase(ApiDBTestCase):
         data["assignees"] = str(self.person.id)
         self.post("data/tasks", data, 400)
 
+    def test_create_task_with_bad_references(self):
+        """
+        Assignees that are not IDs used to give a 500, and every database
+        refusal, a missing status included, answered "Task already exists."
+        """
+        data = {
+            "name": "Modeling arbre",
+            "task_type_id": self.task_type.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+            "assignees": ["abc"],
+        }
+        result = self.post("data/tasks", data, 400)
+        self.assertEqual(
+            result["message"], "assignees must be a list of person IDs."
+        )
+        del data["assignees"]
+        data["task_status_id"] = fields.gen_uuid()
+        result = self.post("data/tasks", data, 400)
+        self.assertEqual(
+            result["message"],
+            "The change conflicts with records referencing this one.",
+        )
+
+    def test_create_task_twice(self):
+        data = {
+            "name": "Modeling arbre",
+            "task_type_id": self.task_type.id,
+            "task_status_id": self.task_status.id,
+            "entity_id": self.asset.id,
+        }
+        self.post("data/tasks", data)
+        result = self.post("data/tasks", data, 400)
+        self.assertEqual(result["message"], "Task already exists.")
+
     def test_create_task_requires_a_manager_of_the_entity_project(self):
         data = {
             "task_type_id": self.task_type.id,
@@ -142,15 +181,24 @@ class TaskTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 2)
         self.delete_404(f"data/tasks/{fields.gen_uuid()}")
 
+    def test_delete_task_with_time_spents_without_force(self):
+        """
+        The refusal of the database used to reach the client raw, SQL
+        statement and values included.
+        """
+        task_id = str(self.tasks[0].id)
+        TimeSpent.create(
+            task_id=task_id,
+            person_id=self.person.id,
+            date=datetime.date(2024, 1, 1),
+            duration=60,
+        )
+        result = json.loads(self.delete(f"data/tasks/{task_id}", 400))
+        self.assertEqual(
+            result["message"],
+            "The change conflicts with records referencing this one.",
+        )
+
     def test_filter_by_assignee(self):
         tasks = self.get(f"data/tasks?assignees={self.person.id}")
         self.assertEqual(len(tasks), 3)
-
-    def test_full_task(self):
-        task = self.get(f"data/tasks/{self.tasks[0].id}/full")
-        self.assertEqual(task["task_type"]["name"], "Shaders")
-        self.assertEqual(task["persons"][0]["first_name"], "John")
-        self.assertEqual(task["task_status"]["name"], "Open")
-        self.assertEqual(task["project"]["name"], "Cosmos Landromat")
-        self.assertEqual(task["entity"]["name"], "Tree")
-        self.assertEqual(task["assigner"]["first_name"], "Ema")

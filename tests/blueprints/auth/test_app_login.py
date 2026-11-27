@@ -1,13 +1,13 @@
 import base64
 import hashlib
 import secrets
-import time
 from unittest import mock
 
 from tests.base import ApiDBTestCase
 from zou.app.models.login_log import LoginLog
 from zou.app.models.person import Person
 from zou.app.services import auth_service, persons_service
+from zou.app.stores import auth_tokens_store
 
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)"
@@ -79,7 +79,11 @@ class AppLoginTestCase(ApiDBTestCase):
     def test_code_expires(self):
         with mock.patch.object(auth_service, "APP_LOGIN_CODE_TTL", 1):
             code = self.mint()
-        time.sleep(1.5)
+        key = f"app-login-code-{code}"
+        pttl = auth_tokens_store.revoked_tokens_store.pttl(key)
+        self.assertTrue(0 < pttl <= 1000)
+        # Redis drops the key at the end of the TTL: delete it, not wait.
+        auth_tokens_store.delete(key)
         self.assertEqual(self.exchange(code).status_code, 400)
 
     def test_unknown_code(self):

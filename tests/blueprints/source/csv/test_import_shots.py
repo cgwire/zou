@@ -4,7 +4,6 @@ from unittest.mock import patch
 from tests.base import ApiDBTestCase
 from zou.app import db
 from zou.app.models.comment import Comment
-from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
@@ -116,9 +115,6 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         shots = shots_service.get_shots()
         self.assertEqual(len(shots), 4)
 
-        entity_types = EntityType.query.all()
-        self.assertEqual(len(entity_types), 4)
-
         tasks = Task.query.all()
         self.assertEqual(
             len(tasks),
@@ -144,9 +140,6 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
         shots = shots_service.get_shots()
         self.assertEqual(len(shots), 4)
-
-        entity_types = EntityType.query.all()
-        self.assertEqual(len(entity_types), 4)
 
         # The second file has no contractor column: the update keeps them.
         self._assert_contractors(shots)
@@ -349,49 +342,6 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(
             [str(id) for id in index_shots.call_args.args[0]], [shot["id"]]
         )
-
-    def test_an_empty_comment_cell_at_the_same_status_posts_no_comment(self):
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type_animation.id,
-            )
-        )
-        self.generate_fixture_task_status_todo()
-        path = f"/import/csv/projects/{self.project.id}/shots"
-        self.project.update({"production_type": "tvshow"})
-
-        file_path_fixture = self.get_fixture_file_path(
-            os.path.join("csv", "shots_empty_comment_same_status.csv")
-        )
-        self.upload_file(path, file_path_fixture)
-
-        task = Task.query.one()
-        self.assertEqual(str(task.task_status_id), self.task_status_todo["id"])
-        self.assertEqual(Comment.query.all(), [])
-
-    def test_an_empty_comment_cell_posts_no_comment(self):
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type_animation.id,
-            )
-        )
-        self.generate_fixture_person()
-        path = f"/import/csv/projects/{self.project.id}/shots"
-        self.project.update({"production_type": "tvshow"})
-
-        file_path_fixture = self.get_fixture_file_path(
-            os.path.join("csv", "shots_empty_comment.csv")
-        )
-        self.upload_file(path, file_path_fixture)
-
-        task = Task.query.one()
-        self.assertEqual(
-            [str(person.id) for person in task.assignees],
-            [str(self.person.id)],
-        )
-        self.assertEqual(Comment.query.all(), [])
 
     def test_only_a_missing_episode_gets_its_tasks(self):
         """

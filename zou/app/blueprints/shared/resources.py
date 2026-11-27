@@ -67,9 +67,9 @@ class SharedPlaylistGuestResource(MethodView):
         """
         body = validation.validate_request_body(CreateGuestSchema)
 
-        # If a guest_id is provided, try to reuse it — but only if it was
-        # created from this same share link. A guest UUID leaked from
-        # another link must not grant access here.
+        # If the body gives a guest_id, use that guest again, but only if
+        # this share link created it. A guest UUID that leaked from another
+        # link must not give access here.
         if body.guest_id is not None:
             try:
                 guest = playlist_sharing_service.get_guest_for_share_link(
@@ -80,7 +80,8 @@ class SharedPlaylistGuestResource(MethodView):
                 PersonNotFoundException,
                 PlaylistShareLinkNotFoundException,
             ):
-                # Unknown, or created from another link: a new guest then.
+                # If the guest is unknown or comes from another link,
+                # create a new guest.
                 pass
 
         guest = playlist_sharing_service.create_guest(
@@ -165,7 +166,7 @@ class SharedPlaylistCommentsResource(MethodView):
 
 class SharedPlaylistCommentResource(MethodView):
     """
-    Edit or delete a single comment authored by a guest.
+    Edit or delete one comment that a guest wrote.
     """
 
     @require_valid_playlist_share_link()
@@ -179,9 +180,9 @@ class SharedPlaylistCommentResource(MethodView):
             return {"error": "Comments are disabled for this link"}, 403
 
         body = validation.validate_request_body(EditGuestCommentSchema)
-        # Build the trimmed dict the service expects, dropping unset
-        # fields so its `if "text" in data` / `if "checklist" in data`
-        # branches don't overwrite the existing value with None.
+        # Make the dict that the service expects, without the unset fields.
+        # Then the `if "text" in data` and `if "checklist" in data` branches
+        # of the service do not replace the existing value with None.
         update_data = {"guest_id": str(body.guest_id)}
         if body.text is not None:
             update_data["text"] = body.text
@@ -222,7 +223,7 @@ class SharedPlaylistCommentResource(MethodView):
 
 class SharedPlaylistCommentAttachmentsResource(MethodView):
     """
-    Add an attachment file to a guest-owned comment.
+    Add an attachment file to a comment that a guest owns.
     """
 
     @require_valid_playlist_share_link()
@@ -251,7 +252,7 @@ class SharedPlaylistCommentAttachmentsResource(MethodView):
 
 class SharedPlaylistCommentAttachmentResource(MethodView):
     """
-    Delete one attachment from a guest-owned comment.
+    Delete one attachment from a comment that a guest owns.
     """
 
     @require_valid_playlist_share_link()
@@ -342,9 +343,9 @@ class SharedPlaylistAnnotationsResource(MethodView):
 
 def _is_task_in_playlist(playlist, task_id):
     """
-    Ensure the given task id is the preview task of one of the playlist's
-    shots. Used to scope guest mutations (comments, status changes) to the
-    playlist exposed by the share token.
+    Tell whether the given task ID is the preview task of a shot of the
+    playlist. The guest routes use it to limit the guest changes (comments,
+    status changes) to the playlist of the share token.
     """
     tid = str(task_id)
     for shot in playlist.get("shots", []) or []:

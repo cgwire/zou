@@ -32,7 +32,9 @@ class ShotTestCase(ApiDBTestCase):
     def test_get_shots(self):
         shots = self.get("data/shots/all")
         self.assertEqual(len(shots), 3)
-        self.assertDictEqual(shots[0], self.shot_dict)
+        self.assertEqual(shots[0]["id"], self.shot_dict["id"])
+        self.assertEqual(shots[0]["project_name"], self.project.name)
+        self.assertEqual(shots[0]["sequence_name"], self.sequence.name)
 
     def test_remove_shot(self):
         self.generate_fixture_asset()
@@ -134,7 +136,7 @@ class ShotTestCase(ApiDBTestCase):
         self.generate_fixture_shot_standard("SH02")
         shots = self.get(f"data/projects/{self.project.id}/shots")
         self.assertEqual(len(shots), 3)
-        self.assertDictEqual(shots[0], self.serialized_shot)
+        self.assertEqual(shots[0]["id"], self.serialized_shot["id"])
 
     def test_get_shots_for_project_404(self):
         self.get("data/projects/unknown/shots", 404)

@@ -46,11 +46,11 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 def _get_project_scope_for_person_access(person_id):
     """
-    Returns (project_ids, scope) for the current user when accessing the
-    given person_id. For admin or when person_id is the current user,
-    returns (None, None). For manager/supervisor returns the ids of these
-    projects and the task filter their roles grant. Raises PermissionDenied
-    otherwise.
+    Return (project_ids, scope) for an access of the current user to the
+    given person_id. If the caller is an admin or the given person, return
+    (None, None). For a manager or a supervisor, return the IDs of the
+    projects where the caller has one of these roles, and the task filter
+    that these roles give. Otherwise, raise PermissionDenied.
     """
     if permissions.has_admin_permissions():
         return (None, None)
@@ -64,8 +64,8 @@ def _get_project_scope_for_person_access(person_id):
         for project_id, role in roles.items()
         if role in ("manager", "supervisor")
     ]
-    # A global manager or supervisor on no team yet is allowed, and scoped
-    # to nothing.
+    # Allow a global manager or supervisor who is not on a team yet, with
+    # an empty scope.
     if not project_ids and not (
         permissions.has_manager_permissions()
         or permissions.has_supervisor_permissions()
@@ -82,18 +82,33 @@ def _get_project_scope_for_person_access(person_id):
 
 def _check_day_off_read_access(person_id):
     """
-    Guard a day off read of given person, the rule being
-    permissions_service.check_day_off_read_access: return whether the
-    description is part of what the caller gets.
+    Check the read access to the day offs of the given person, with the
+    rule of permissions_service.check_day_off_read_access. Tell whether the
+    caller gets the description.
     """
     permissions_service.check_person_is_not_bot(person_id)
     return permissions_service.check_day_off_read_access(person_id)
 
 
+def _get_forwarded_ip():
+    """
+    Return the first address of the X-Forwarded-For header, or None if it
+    is not a valid IP address.
+    """
+    person_IP = request.headers.get("X-Forwarded-For", None)
+    if person_IP:
+        person_IP = person_IP.split(",")[0].strip()
+        try:
+            ipaddress.ip_address(person_IP)
+        except ValueError:
+            return None
+    return person_IP
+
+
 def _dates_only(day_off):
     """
-    Given serialized day off without its description, what a supervisor
-    gets to see of it.
+    Return the given day off dict without its description: the data that a
+    supervisor can see.
     """
     return {
         key: value for key, value in day_off.items() if key != "description"
@@ -102,14 +117,15 @@ def _dates_only(day_off):
 
 def _shape_day_offs(day_offs, with_description):
     """
-    Serialized day offs as the caller gets them: whole, or the dates only.
+    Return the day off dicts as the caller gets them: whole, or the dates
+    only.
     """
     if with_description:
         return day_offs
     return [_dates_only(day_off) for day_off in day_offs]
 
 
-class DesktopLoginsResource(MethodView, ArgsMixin):
+class DesktopLoginsResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["DesktopLoginsResource_get"])
@@ -382,9 +398,9 @@ class PersonQuotaMixin(ArgsMixin):
 
     def check_permissions(self, person_id, project_id=None):
         permissions_service.resolve_project_role(project_id)
-        # Without a production there is no project to clear a manager or a
-        # supervisor on, so they fall back to their own quotas, like an
-        # artist.
+        # If there is no production, there is no project on which to clear
+        # a manager or a supervisor. Thus they get only their own quotas,
+        # like an artist.
         if project_id is not None and (
             permissions.has_manager_permissions()
             or permissions.has_supervisor_permissions()
@@ -393,10 +409,6 @@ class PersonQuotaMixin(ArgsMixin):
         else:
             permissions_service.check_person_access(person_id)
 
-    def get_person_quotas(self):
-        pass
-
-    @jwt_required()
     def get(self, person_id, *args, **kwargs):
         permissions_service.check_person_is_not_bot(person_id)
         project_id, task_type_id, feedback, weighted = (
@@ -468,7 +480,7 @@ class PersonDayQuotaShotsResource(MethodView, PersonQuotaMixin):
 
 class TimeSpentDurationResource(MethodView, ArgsMixin):
     """
-    Parent class for all durations time spents resource.
+    Parent class of all the resources for time spent durations.
     """
 
     def get_person_project_department_arguments(self):
@@ -618,7 +630,7 @@ class ResetPasswordLinkResource(MethodView):
             return {"error": True, "message": exception.description}, 400
 
 
-class DayOffForMonthResource(MethodView, ArgsMixin):
+class DayOffForMonthResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["DayOffForMonthResource_get"])
@@ -631,7 +643,7 @@ class DayOffForMonthResource(MethodView, ArgsMixin):
         )
 
 
-class DayOffForYearResource(MethodView, ArgsMixin):
+class DayOffForYearResource(MethodView):
     @jwt_required()
     @swag_from(SPECS["DayOffForYearResource_get"])
     def get(self, year):
@@ -645,8 +657,9 @@ class DayOffForYearResource(MethodView, ArgsMixin):
 
 def _readable_day_offs(list_period, *period):
     """
-    The day offs of the period, scoped to the persons the caller may read,
-    with the descriptions of the ones the caller may read in full.
+    Return the day offs of the period for the persons that the caller can
+    read. The day offs that the caller can read in full keep their
+    descriptions.
     """
     readable = permissions_service.get_day_off_readable_person_ids()
     try:
@@ -663,8 +676,8 @@ def _readable_day_offs(list_period, *period):
 
 def _person_day_offs(list_period, person_id, *period):
     """
-    The day offs of the person for the period, with their descriptions when
-    the caller may read them.
+    Return the day offs of the person for the period. If the caller can
+    read the descriptions, the day offs keep them.
     """
     with_description = _check_day_off_read_access(person_id)
     try:
@@ -674,7 +687,7 @@ def _person_day_offs(list_period, person_id, *period):
     return _shape_day_offs(day_offs, with_description)
 
 
-class PersonWeekDayOffResource(MethodView, ArgsMixin):
+class PersonWeekDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonWeekDayOffResource_get"])
@@ -690,7 +703,7 @@ class PersonWeekDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class PersonMonthDayOffResource(MethodView, ArgsMixin):
+class PersonMonthDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonMonthDayOffResource_get"])
@@ -706,7 +719,7 @@ class PersonMonthDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class PersonYearDayOffResource(MethodView, ArgsMixin):
+class PersonYearDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonYearDayOffResource_get"])
@@ -719,7 +732,7 @@ class PersonYearDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class PersonDayOffResource(MethodView, ArgsMixin):
+class PersonDayOffResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["PersonDayOffResource_get"])
@@ -734,7 +747,7 @@ class PersonDayOffResource(MethodView, ArgsMixin):
         )
 
 
-class AddToDepartmentResource(MethodView, ArgsMixin):
+class AddToDepartmentResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["AddToDepartmentResource_post"])
@@ -756,7 +769,7 @@ class AddToDepartmentResource(MethodView, ArgsMixin):
         return person, 201
 
 
-class RemoveFromDepartmentResource(MethodView, ArgsMixin):
+class RemoveFromDepartmentResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["RemoveFromDepartmentResource_delete"])
@@ -775,7 +788,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
         return "", 204
 
 
-class ChangePasswordForPersonResource(MethodView, ArgsMixin):
+class ChangePasswordForPersonResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["ChangePasswordForPersonResource_post"])
@@ -796,26 +809,11 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
             current_app.logger.warning(
                 f'User {current_user["email"]} has changed the password of {person["email"]}'
             )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            if person_IP:
-                try:
-                    ipaddress.ip_address(person_IP.split(",")[0].strip())
-                    person_IP = person_IP.split(",")[0].strip()
-                except ValueError:
-                    person_IP = None
             emails_service.send_password_changed_by_admin_email(
-                person, person_IP=person_IP
+                person, person_IP=_get_forwarded_ip()
             )
             return {"success": True}
 
-        except auth.PasswordsNoMatchException:
-            return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
-                400,
-            )
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
         except InactiveUserException:
@@ -830,7 +828,7 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
             )
 
 
-class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
+class DisableTwoFactorAuthenticationPersonResource(MethodView):
 
     @jwt_required()
     @swag_from(SPECS["DisableTwoFactorAuthenticationPersonResource_delete"])
@@ -855,15 +853,8 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
             current_app.logger.warning(
                 f'User {current_user["email"]} has disabled the two factor authentication of {person["email"]}'
             )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            if person_IP:
-                try:
-                    ipaddress.ip_address(person_IP.split(",")[0].strip())
-                    person_IP = person_IP.split(",")[0].strip()
-                except ValueError:
-                    person_IP = None
             emails_service.send_2fa_disabled_by_admin_email(
-                person, person_IP=person_IP
+                person, person_IP=_get_forwarded_ip()
             )
             return {"success": True}
 

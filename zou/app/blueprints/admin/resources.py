@@ -1,3 +1,5 @@
+import hmac
+
 from flask import abort, current_app, request
 from flask.views import MethodView
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -18,7 +20,9 @@ class ConfigCheckResource(MethodView):
         Compare the environment and the stored configuration
         """
         token = request.headers.get("Authorization", "")
-        if not token.startswith("Bearer ") or token[7:] != config.ADMIN_TOKEN:
+        if not token.startswith("Bearer ") or not hmac.compare_digest(
+            token[7:].encode(), config.ADMIN_TOKEN.encode()
+        ):
             abort(403)
 
         comparison = config_store.get_config_comparison()

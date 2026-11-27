@@ -1,6 +1,4 @@
-from flask import current_app
 from flask_jwt_extended import jwt_required
-from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
@@ -36,10 +34,6 @@ class SoftwareResource(BaseModelResource):
             software = files_service.get_software(instance_id)
             self.check_read_permissions(software)
             return self.clean_get_result(software)
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
 
         except ValueError:
             raise WrongParameterException("Invalid value.")

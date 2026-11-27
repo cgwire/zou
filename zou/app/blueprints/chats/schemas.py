@@ -9,7 +9,7 @@ from zou.app.utils.validation import BaseSchema
 
 class ChatMessageSchema(BaseSchema):
     """
-    Body for posting a message in an entity chat.
+    Body to post a message in an entity chat.
     """
 
     message: str = Field(..., description="Message text content")

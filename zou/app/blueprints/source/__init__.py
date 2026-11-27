@@ -1,6 +1,6 @@
 """
-This module is named source instead of import because import is a Python
-keyword.
+The name of this module is source, not import, because import is a
+Python keyword.
 """
 
 from flask import Blueprint
@@ -118,7 +118,7 @@ routes = [
         "/import/shotgun/project-connections",
         ImportShotgunProjectConnectionsResource,
     ),
-    # Deprecated alias without hyphen, kept for old sync scripts.
+    # Deprecated alias without a hyphen. Old sync scripts use it.
     (
         "/import/shotgun/projectconnections",
         ImportShotgunProjectConnectionsResource,
@@ -135,7 +135,7 @@ routes = [
         "/import/shotgun/remove/project-connection",
         ImportRemoveShotgunProjectConnectionResource,
     ),
-    # Deprecated alias without hyphen, kept for old sync scripts.
+    # Deprecated alias without a hyphen. Old sync scripts use it.
     (
         "/import/shotgun/remove/projectconnection",
         ImportRemoveShotgunProjectConnectionResource,

@@ -220,7 +220,7 @@ class RemoveShotAssetInstanceResource(MethodView, ArgsMixin):
         """
         shot = shots_service.get_shot(shot_id)
         permissions_service.check_project_edition_access(shot["project_id"])
-        shot = breakdown_service.remove_asset_instance_for_shot(
+        breakdown_service.remove_asset_instance_for_shot(
             shot_id, asset_instance_id
         )
         return "", 204

@@ -16,7 +16,6 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
-    user_service,
 )
 from zou.app.services.tasks_service import (
     create_tasks,
@@ -40,11 +39,12 @@ mapping_substitutions_to_regex = {
 
 def get_timecode_rate(fps):
     """
-    OTIO reads timecodes at SMPTE rates only, and a production stores an
-    NTSC rate rounded: 29.97 for 30000/1001, 23.976 or 23.98 for
-    24000/1001. A rate within a hundredth of an SMPTE rate is read at it.
-    Any other rate stays as is and OTIO refuses it: reading it at the
-    nearest SMPTE rate would count its frames at another rate.
+    Return the rate at which OTIO reads the timecodes. OTIO reads timecodes at
+    SMPTE rates only, but a production stores a rounded NTSC rate: 29.97 for
+    30000/1001, 23.976 or 23.98 for 24000/1001. If the rate is within a
+    hundredth of an SMPTE rate, return the SMPTE rate. Otherwise, return the
+    rate as is, and OTIO refuses it. A read at the nearest SMPTE rate would
+    count the frames at another rate.
     """
     import opentimelineio as otio
 
@@ -54,10 +54,12 @@ def get_timecode_rate(fps):
 
 def check_drop_frame_separators(file_path, rate):
     """
-    OTIO skips the FCM line of an EDL and counts drop-frame timecodes from
-    their ';' separator only: at 30000/1001 or 60000/1001 fps, the drop-frame
-    rates, a drop-frame EDL written with ':' would be read as non-drop-frame,
-    18 frames off every 10 minutes at 29.97 fps.
+    If a drop-frame EDL at a drop-frame rate has no ';' timecode, raise
+    ValueError. OTIO skips the FCM line of an EDL. It finds drop-frame
+    timecodes only from their ';' separator. The drop-frame rates are
+    30000/1001 and 60000/1001 fps. At these rates, OTIO would read a drop-frame
+    EDL with ':' as non-drop-frame. At 29.97 fps, the error is 18 frames every
+    10 minutes.
     """
     if rate not in (30000 / 1001, 60000 / 1001):
         return
@@ -80,6 +82,14 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         """
         args = self.post_args()
         permissions_service.check_manager_project_access(project_id)
+        if (
+            episode_id is not None
+            and shots_service.get_episode(episode_id)["project_id"]
+            != project_id
+        ):
+            raise WrongParameterException(
+                "The episode is not an episode of the project."
+            )
         uploaded_file = request.files["file"]
         # run_import selects the OTIO adapter from the extension.
         extension = os.path.splitext(uploaded_file.filename or "")[1]
@@ -97,12 +107,12 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                 args["match_case"],
             )
         except WrongParameterException:
-            # User input error (unsupported or unparseable file): the global
-            # handler answers 400, no server-error log.
+            # This is a user input error (unsupported or unparseable file). The
+            # global handler answers 400 and writes no server error log.
             raise
         except Exception as e:
-            # An unparseable timeline is client input: warn and answer 400
-            # rather than reporting it as a server error.
+            # An unparseable timeline is client input: write a warning and
+            # answer 400. Do not report it as a server error.
             current_app.logger.warning(
                 f"Import OTIO failed: {type(e).__name__}: {str(e)}"
             )
@@ -120,6 +130,11 @@ class OTIOBaseResource(MethodView, ArgsMixin):
     def prepare_import(
         self, project_id, episode_id, naming_convention, match_case
     ):
+        """
+        Load the project, its sequences and its shots (the shots of the episode
+        in a TV show). Map each shot name that the naming convention gives to
+        the shot ID.
+        """
         self.sequence_map = {}
         self.shot_map = {}
         self.project_id = project_id
@@ -139,13 +154,20 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         self.match_case = match_case
 
         if self.is_tv_show:
-            self.episode_id = episode_id
             self.episode = shots_service.get_episode(episode_id)
             sequences = shots_service.get_sequences_for_episode(episode_id)
             shots = shots_service.get_shots_for_episode(episode_id)
         else:
             sequences = shots_service.get_sequences({"project_id": project_id})
             shots = shots_service.get_shots({"project_id": project_id})
+        # Same lookup as the one of create_sequence, so that a sequence
+        # found here is the one create_sequence would return.
+        self.sequence_ids_by_name = {
+            sequence["name"]: sequence["id"]
+            for sequence in sequences
+            if sequence["parent_id"] == episode_id
+            and sequence["project_id"] == project_id
+        }
         for sequence in sequences:
             self.sequence_map[sequence["id"]] = sequence["name"]
 
@@ -172,6 +194,13 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         naming_convention,
         match_case,
     ):
+        """
+        Read the timeline file, then create or update the shot of each clip.
+        Index the saved shots and create the tasks of the new shots, also if a
+        clip fails. Return the created and updated shots. If the file type is
+        not supported or the file does not parse, raise
+        WrongParameterException.
+        """
         result = {"updated_shots": [], "created_shots": []}
         import opentimelineio as otio
 
@@ -206,9 +235,9 @@ class OTIOBaseResource(MethodView, ArgsMixin):
         try:
             self.import_clips(timeline, result)
         finally:
-            # Indexed at the end, without waiting for the indexer on every
-            # clip. The shots saved before a failing clip stay imported:
-            # they are indexed too.
+            # Index at the end, so that each clip does not wait for the
+            # indexer. The shots saved before a failing clip stay imported: the
+            # index gets them too.
             index_service.index_shots(self.shot_ids_to_index)
             # A new import would not create the tasks of the shots created
             # before a failing clip: they get them here.
@@ -264,7 +293,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 "No shot name found while extracting shot informations."
                             )
 
-                        sequence_id = self.sequence_map.get(
+                        sequence_id = self.sequence_ids_by_name.get(
                             shot_infos_extracted["sequence_name"]
                         )
                         if sequence_id is None:
@@ -274,7 +303,7 @@ class OTIOBaseResource(MethodView, ArgsMixin):
                                 shot_infos_extracted["sequence_name"],
                                 created_by=self.current_user_id,
                             )["id"]
-                            self.sequence_map[
+                            self.sequence_ids_by_name[
                                 shot_infos_extracted["sequence_name"]
                             ] = sequence_id
 

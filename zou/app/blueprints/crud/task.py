@@ -1,18 +1,18 @@
 from flask import current_app, request
 from flask_jwt_extended import jwt_required
-from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
+from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import (
+    UNIQUE_VIOLATION_MESSAGE,
+    BaseModelResource,
+    BaseModelsResource,
+    build_db_error_message,
+)
 from zou.app.exceptions import (
     WrongParameterException,
     WrongTaskTypeForEntityException,
 )
 from zou.app.mixin import ArgsMixin
-from zou.app.models.entity import Entity
-from zou.app.models.person import Person
-from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import (
     deletion_service,
@@ -37,9 +37,9 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
     def get_relations_eager_load(self):
         """
-        Batch-load assignees when the client asks for relations. Replaces
-        the previous lazy="selectin" default on Task.assignees so that Task
-        loads that don't need assignees (~70-80% of them) pay nothing.
+        Load the assignees in batch when the client asks for relations.
+        By default, Task.assignees does not use selectin. Thus the Task loads
+        that do not need assignees (about 70-80% of them) cost nothing.
         """
         return [Task.assignees]
 
@@ -56,20 +56,12 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            query = query.join(Project).filter(
-                user_service.build_related_projects_filter()
+            # Each task uses the role of the user on its project.
+            query = tasks_service.filter_tasks_by_projects(
+                query,
+                user_service.build_related_projects_filter(),
+                user_service.get_project_ids_with_roles("vendor"),
             )
-            # Each task follows the role held on its own project.
-            vendor_project_ids = user_service.get_project_ids_with_roles(
-                "vendor"
-            )
-            if vendor_project_ids:
-                query = query.filter(
-                    or_(
-                        Task.project_id.not_in(vendor_project_ids),
-                        persons_service.build_assignee_filter(),
-                    )
-                )
         return query
 
     def serialize_list(self, entries, relations=False):
@@ -109,18 +101,13 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
         episode_id = options.get("episode_id", None)
         if episode_id is not None:
-            # Bound as a raw value into the join below: the driver would
-            # reject a malformed id on execution, as a 500.
+            # The join below uses this raw value. On execution, the driver
+            # would reject a malformed ID with a generic message.
             if not fields.is_valid_id(episode_id):
                 raise WrongParameterException(
                     f"Invalid UUID format for episode_id: {episode_id}"
                 )
-            Sequence = aliased(Entity)
-            query = (
-                query.join(Entity, Task.entity_id == Entity.id)
-                .join(Sequence, Entity.parent_id == Sequence.id)
-                .filter(Sequence.parent_id == episode_id)
-            )
+            query = tasks_service.filter_tasks_by_episode(query, episode_id)
 
         return query
 
@@ -139,20 +126,27 @@ class TasksResource(BaseModelsResource, ArgsMixin):
                     raise WrongParameterException(
                         f"A valid {key} is required."
                     )
-            # task.name is NOT NULL; default it like create_task() does so a
-            # client omitting it gets a task instead of an IntegrityError.
+            # task.name is NOT NULL. Give it a default value, as create_task()
+            # does. Thus, if a client does not send it, the client gets a task,
+            # not an IntegrityError.
             data["name"] = data.get("name") or "main"
             is_assignees = "assignees" in data
             assignees = None
-            if is_assignees and not isinstance(data["assignees"], list):
-                raise WrongParameterException("assignees must be a list.")
+            if is_assignees and (
+                not isinstance(data["assignees"], list)
+                or not all(map(fields.is_valid_id, data["assignees"]))
+            ):
+                raise WrongParameterException(
+                    "assignees must be a list of person IDs."
+                )
 
             task_type = task_types_service.get_task_type(data["task_type_id"])
             entity = entities_service.get_entity(data["entity_id"])
             permissions_service.check_manager_project_access(
                 entity["project_id"]
             )
-            # The body project_id is not trusted: the task follows its entity.
+            # Do not trust the project_id of the body: the task uses the
+            # project of its entity.
             data["project_id"] = entity["project_id"]
             if task_type["for_entity"] == "Asset":
                 if not entity_types_service.is_asset_dict(entity):
@@ -172,13 +166,9 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             if is_assignees:
                 assignees = data["assignees"]
                 tasks_service.check_no_preview_assignee(assignees)
-                persons = Person.query.filter(Person.id.in_(assignees)).all()
                 del data["assignees"]
 
-            instance = self.model(**data)
-            if assignees is not None:
-                instance.assignees = persons
-            instance.save()
+            instance = tasks_service.create_task_raw_from_data(data, assignees)
             self.emit_create_event(instance.serialize())
 
             return (
@@ -190,9 +180,12 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
-        except IntegrityError as exception:
+        except (IntegrityError, StatementError) as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": "Task already exists."}, 400
+            message = build_db_error_message(exception)
+            if message == UNIQUE_VIOLATION_MESSAGE:
+                message = "Task already exists."
+            return {"message": message}, 400
 
 
 class TaskResource(BaseModelResource, ArgsMixin):
@@ -204,7 +197,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         permissions_service.check_entity_access(task["entity_id"])
 
     def clean_get_result(self, task):
-        # Runs after the read check resolved the role on the project.
+        # This runs after the read check found the role on the project.
         if permissions.has_client_permissions():
             return entities_service.blank_task_for_client(task)
         return task
@@ -237,17 +230,17 @@ class TaskResource(BaseModelResource, ArgsMixin):
             self._previous_assignees = {
                 str(person.id) for person in self.instance.assignees
             }
-        # Metadata values pile up in the JSONB bag: merge the incoming
-        # dict instead of replacing the whole field, like entities do.
+        # Metadata values accumulate in the JSONB field. Merge the incoming
+        # dict, as entities do. Do not replace the full field.
         if data.get("data"):
             data["data"] = {**(self.instance.data or {}), **data["data"]}
         return instance_dict
 
     def post_update(self, instance_dict, data):
         tasks_service.clear_task_cache(instance_dict["id"])
-        # Assignees set through the generic update emit the same events and
-        # assignation notifications as the assign/clear-assignation routes
-        # so that listeners and assignees stay in sync.
+        # If the generic update sets assignees, it emits the same events and
+        # assignation notifications as the assign/clear-assignation routes.
+        # Thus listeners and assignees stay in sync.
         if "assignees" in data:
             new_assignees = {
                 str(person.id) for person in self.instance.assignees
@@ -291,6 +284,6 @@ class TaskResource(BaseModelResource, ArgsMixin):
 
         except IntegrityError as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return {"message": build_db_error_message(exception)}, 400
 
         return "", 204

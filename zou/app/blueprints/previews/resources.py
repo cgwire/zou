@@ -125,6 +125,10 @@ def send_standard_file(
     as_attachment=False,
     last_modified=None,
 ):
+    """
+    Send the stored file of a preview that is not a picture or a movie,
+    with send_storage_file.
+    """
     return send_storage_file(
         file_store.get_local_file_path,
         file_store.open_file,
@@ -139,9 +143,9 @@ def send_standard_file(
 
 class SeekableFileWrapper(WerkzeugFileWrapper):
     """
-    Werkzeug's file wrapper (it seeks, gunicorn's does not) with the
-    attribute gunicorn's sendfile path reads on a response that is an
-    instance of the wrapper found in wsgi.file_wrapper.
+    Werkzeug's file wrapper, which can seek (the gunicorn wrapper cannot).
+    It adds the attribute that the sendfile path of gunicorn reads, on a
+    response that is an instance of the wrapper in wsgi.file_wrapper.
     """
 
     @property
@@ -151,9 +155,9 @@ class SeekableFileWrapper(WerkzeugFileWrapper):
 
 def get_single_byte_range():
     """
-    The request's Range header when it asks for one byte range, the way
-    a movie player does. None otherwise: a multipart range gets the whole
-    file, like no range at all.
+    Return the Range header of the request if it asks for one byte range,
+    as a movie player does. Else return None: a multipart range gets the
+    full file, as a request with no range.
     """
     byte_range = request.range
     if (
@@ -175,9 +179,9 @@ def stream_movie_from_storage(
     max_age,
 ):
     """
-    Serve a movie that is not in the local cache yet straight from the
-    object storage, so the first play does not wait for the whole file to
-    land on the disk.
+    Serve a movie that is not in the local cache yet directly from the
+    object storage. Thus the first play does not wait until the full file
+    is on the disk.
     """
     content_length, content_range, generator = file_store.read_movie_range(
         prefix, preview_file_id, range_header
@@ -193,8 +197,8 @@ def stream_movie_from_storage(
     if content_range:
         response.headers["Content-Range"] = content_range
     if as_attachment:
-        # Same folding as werkzeug's send_file on the warm path: a raw
-        # non-ASCII name is an invalid header value for gunicorn.
+        # Same folding as werkzeug's send_file on the warm path: for gunicorn,
+        # a raw non-ASCII name is not a valid header value.
         try:
             download_name.encode("ascii")
             names = {"filename": download_name}
@@ -213,10 +217,10 @@ def stream_movie_from_storage(
 
 def wants_json_over_picture():
     """
-    Whether the client would rather read JSON than an image. A browser
-    asks for image/* explicitly and keeps the 404 it knows how to
-    handle; a client that says Accept: application/json is told the file
-    is on its way.
+    Tell whether the client prefers JSON to an image. A browser asks for
+    image/* explicitly and keeps the 404 that it can handle. If a client
+    sends Accept: application/json, the response tells it that the file is
+    in preparation.
     """
     accept = request.accept_mimetypes
     return accept["application/json"] > accept["image/png"]
@@ -224,8 +228,8 @@ def wants_json_over_picture():
 
 def preview_processing_response(preview_file_id):
     """
-    The answer for a preview file whose files are still being built: not
-    an error, and never cached.
+    Return the response for a preview file whose files are still in
+    preparation. This response is not an error, and it has no cache.
     """
     response = jsonify(
         {"status": "processing", "preview_file_id": preview_file_id}
@@ -238,24 +242,25 @@ def preview_processing_response(preview_file_id):
 
 def _processing_answer(preview_file_id):
     """
-    The answer to give for a preview file being processed, or None when
-    it is not. A JSON client is told to come back; everyone else gets the
-    404 they already handle. No storage state is recorded either way: an
-    absence that is expected is not an absence.
+    Return the response for a preview file in processing, or None if the
+    preview file is not in processing. A JSON client gets a request to come
+    back later. All other clients get the 404 that they already handle. In
+    the two cases, the function records no storage state: an expected
+    absence is not a real absence.
 
-    The 404 case is built and returned here, rather than raised as
-    FileNotFound, so it carries Cache-Control: no-store. Raising it would
-    let it surface as a bare werkzeug 404 (via PreviewFileNotFoundException
-    in the caller), which a browser is free to cache heuristically and
-    keep showing once the preview turns ready.
+    The function builds and returns the 404 response, and does not raise
+    FileNotFound, so that the response has Cache-Control: no-store. If it
+    raises FileNotFound, the caller changes it into a bare werkzeug 404
+    (through PreviewFileNotFoundException). A browser can cache that 404
+    heuristically and continue to show it after the preview is ready.
     """
     preview_file = files_service.get_preview_file_for_access(preview_file_id)
-    # .get: an entry memoized by a version predating "status" survives a
-    # deploy for the cache TTL.
+    # .get: if a version before "status" memoized an entry, that entry
+    # stays in the cache after a deploy, for the cache TTL.
     if preview_file.get("status") == "processing":
-        # The memoized status can outlive the job that made the preview
-        # ready: a cache local to this process, or a read racing the
-        # clear that followed the job's update.
+        # The memoized status can stay after the job that made the preview
+        # ready. The causes are a cache local to this process, or a read that
+        # races the clear after the update of the job.
         files_service.clear_preview_file_cache(preview_file_id)
         preview_file = files_service.get_preview_file_for_access(
             preview_file_id
@@ -278,20 +283,22 @@ def send_movie_file(
     preview_file=None,
 ):
     """
-    Send the requested movie version, falling back on the other stored ones.
-    A setup skipping part of the normalization (SKIP_NORMALIZATION_FULL,
-    SKIP_NORMALIZATION_HIGHDEF) stores a single version, and the uploaded
-    source is the last resort. Note that the source is served as video/mp4
-    whatever its real container, and carries no faststart flag.
+    Send the requested movie version. If it is not available, try the other
+    stored versions. A configuration that skips part of the normalization
+    (SKIP_NORMALIZATION_FULL, SKIP_NORMALIZATION_HIGHDEF) stores only one
+    version. The uploaded source is the last option. The function serves
+    the source as video/mp4, whatever its real container is, and the source
+    has no faststart flag.
 
-    The versions actually stored come first: a missing object costs a
-    round trip on the object storage, and a movie player asks for the same
-    file once per range. They are read from the access lookup the route
-    already did (`preview_file`). A preview file that predates the record
-    is served in the default order, and the record is probed and written
-    back after the response starts: the probe costs one round trip per
-    version, more than the movie read itself. Versions known missing are
-    skipped until the recheck delay has elapsed.
+    The versions that are really stored come first. A missing object costs
+    a round trip on the object storage, and a movie player asks for the
+    same file once per range. The function reads these versions from the
+    access lookup that the route already did (`preview_file`). If a preview
+    file predates the record, the function serves the versions in the
+    default order. Then it probes the record and writes it back after the
+    response starts: the probe costs one round trip per version, more than
+    the movie read. The function skips the versions known as missing until
+    the recheck delay is over.
     """
     if preview_file is None:
         preview_file = files_service.get_preview_file_for_access(
@@ -300,7 +307,7 @@ def send_movie_file(
     processing = _processing_answer(preview_file_id)
     if processing is not None:
         return processing
-    # .get: a dict memoized by the previous release has no such key.
+    # .get: if the previous release memoized a dict, it has no such key.
     recorded_prefixes = preview_file.get("movie_prefixes")
     prefixes = files_service.get_movie_prefixes(
         recorded_prefixes or [], lowdef
@@ -340,8 +347,9 @@ def send_movie_file(
             preview_file_id, "movies", prefix, preview_file_states_service.OK
         )
         if recorded_prefixes is None or prefix != prefixes[0]:
-            # No record yet, or one lagging behind the storage (a version
-            # removed, a row imported from another instance).
+            # No record yet, or a record that is not up to date with the
+            # storage (a removed version, a row imported from another
+            # instance).
             files_service.record_movie_prefixes_later(
                 preview_file_id, prefix, recorded_prefixes
             )
@@ -350,8 +358,8 @@ def send_movie_file(
 
 def send_source_movie_file(preview_file_id, last_modified=None):
     """
-    Send the uploaded source movie, and only that one: the sync between two
-    instances has to tell it apart from the encoded versions.
+    Send the uploaded source movie, and only that one. The sync between two
+    instances must distinguish it from the encoded versions.
     """
     return send_storage_file(
         file_store.get_local_movie_path,
@@ -372,6 +380,10 @@ def send_picture_file(
     download_name="",
     last_modified=None,
 ):
+    """
+    Send a stored picture through send_storage_file. The mimetype follows
+    the extension: PNG, Radiance HDR, or binary for the other extensions.
+    """
     if extension == "png":
         mimetype = "image/png"
     elif extension == "hdr":
@@ -393,9 +405,10 @@ def send_picture_file(
 
 def send_preview_picture_file(prefix, preview_file_id, **kwargs):
     """
-    send_picture_file for a picture of a preview file, keeping its storage
-    state: a file known missing is answered 404 without asking the
-    storage, a confirmed 404 is recorded, a successful read too.
+    Call send_picture_file for a picture of a preview file, and keep its
+    storage state up to date. If the file is known as missing, answer 404
+    and do not ask the storage. Record a confirmed 404, and also a
+    successful read.
     """
     return _send_preview_variant(
         "pictures",
@@ -407,8 +420,9 @@ def send_preview_picture_file(prefix, preview_file_id, **kwargs):
 
 def send_preview_standard_file(preview_file_id, extension, **kwargs):
     """
-    send_standard_file for a non picture, non movie preview file, keeping
-    its storage state like send_preview_picture_file.
+    Call send_standard_file for a preview file that is not a picture or a
+    movie. Keep its storage state up to date, as send_preview_picture_file
+    does.
     """
     return _send_preview_variant(
         "files",
@@ -438,8 +452,9 @@ def _send_preview_variant(bucket, prefix, preview_file_id, send):
 
 def _record_confirmed_missing(states, bucket, prefix, preview_file_id):
     """
-    A file that failed to be generated stays failed; the date is always
-    refreshed, so the short-circuit applies for another delay.
+    Record a confirmed missing file. If the generation of the file failed,
+    the file stays in the failed state. The function always refreshes the
+    date, so the short-circuit applies for one more delay.
     """
     current = preview_file_states_service.get_state(states, bucket, prefix)
     state = (
@@ -466,23 +481,25 @@ def send_storage_file(
     stream_cold=False,
 ):
     """
-    Send file from storage. If it's not a local storage, cache the file in
-    a temporary folder before sending it. It accepts conditional headers.
+    Send a file from the storage. If the storage is not local, put the file
+    in a temporary cache folder before the send. The function accepts
+    conditional headers.
 
-    With ``stream_cold``, a movie missing from that cache is streamed from
-    the storage right away while a background download fills the cache.
-    Only a ranged request (a player) is served that way: a whole-file
-    request would cost two full storage reads and lose the validators.
+    With ``stream_cold``, if a movie is not in that cache, the function
+    streams it from the storage immediately, and a background download
+    fills the cache. Only a ranged request (a player) gets this behavior: a
+    request for the full file would cost two full storage reads and lose
+    the validators.
     """
     file_size = None
     try:
-        # The recorded file_size is the one of the normalized movie, the
-        # "previews" version (a "movies" prefix never existed): the low
-        # def and source versions have their own sizes. For a movie it
-        # only guards the cache copy of an object store: the local store
-        # has no copy to go stale, and the size lags behind the file
-        # while a movie is renormalized, which would flag the high def
-        # version as missing.
+        # The recorded file_size is the size of the normalized movie, the
+        # "previews" version (a "movies" prefix never existed). The low def
+        # and source versions have their own sizes. For a movie, the check
+        # only protects the cache copy of an object store. The local store
+        # has no copy that can become stale. Also, during the renormalization
+        # of a movie, the size is not up to date with the file: the check
+        # would flag the high def version as missing.
         is_cached_movie = (
             prefix == "previews"
             and extension == "mp4"
@@ -508,8 +525,8 @@ def send_storage_file(
             preview_file_id
         )
 
-    # Werkzeug never starts the body generator of a HEAD response: a
-    # storage stream opened for it would only be closed by refcount.
+    # Werkzeug never starts the body generator of a HEAD response: if
+    # the code opens a storage stream for it, only the refcount closes it.
     range_header = (
         get_single_byte_range()
         if stream_cold and request.method != "HEAD"
@@ -520,10 +537,10 @@ def send_storage_file(
             config, prefix, preview_file_id, extension
         )
         if fs.is_invalid_file(cache_path, file_size):
-            # No ETag or Last-Modified on purpose: a browser that got one
-            # here would send it back as If-Range once the cache is warm,
-            # where send_file computes a different validator and would
-            # answer the whole file. The bytes are the same either way.
+            # No ETag or Last-Modified on purpose: if a browser gets one here,
+            # it sends it back as If-Range after the cache is warm. There,
+            # send_file computes a different validator and would answer with
+            # the full file. The bytes are the same in the two cases.
             response = stream_movie_from_storage(
                 prefix,
                 preview_file_id,
@@ -533,9 +550,10 @@ def send_storage_file(
                 download_name,
                 max_age,
             )
-            # Only once the range read proved the storage holds this
-            # prefix: the fallback tries prefixes it may not, and a fill
-            # started for a missing one is a wasted download.
+            # Do this only after the range read proved that the storage
+            # holds this prefix. The fallback tries prefixes that the storage
+            # possibly does not hold, and a fill for a missing prefix wastes a
+            # download.
             fs.fill_cache_in_background(
                 cache_path, open_file, prefix, preview_file_id
             )
@@ -551,13 +569,13 @@ def send_storage_file(
         file_size=file_size,
     )
 
-    # send_file wraps the file in whatever the WSGI server put in
-    # wsgi.file_wrapper, and Werkzeug's range wrapper only seeks when that
-    # wrapper has a seekable() method. gunicorn's FileWrapper has none, so
-    # every Range request read and discarded the file from byte 0 up to the
-    # range: linear in the offset, seconds per request at the end of a long
-    # movie, blocking the worker. Swap in a seekable wrapper for this
-    # response.
+    # send_file wraps the file in the wrapper that the WSGI server put in
+    # wsgi.file_wrapper. The range wrapper of Werkzeug seeks only if that
+    # wrapper has a seekable() method. The FileWrapper of gunicorn has no
+    # such method. Thus each Range request read and discarded the file
+    # from byte 0 to the range. The time was linear in the offset, some
+    # seconds per request at the end of a long movie, and it blocked the
+    # worker. Use a seekable wrapper for this response.
     request.environ["wsgi.file_wrapper"] = SeekableFileWrapper
     try:
         response = flask_send_file(
@@ -572,10 +590,10 @@ def send_storage_file(
     except IOError as e:
         current_app.logger.error(e)
         raise FileNotFound
-    # Preview bytes are gated by JWT / share-link token: never let a
-    # shared proxy store them. Flip Werkzeug's default `public,
-    # max-age=N` to `private, max-age=N` so the browser keeps caching
-    # but intermediaries don't.
+    # A JWT or a share link token protects the preview bytes: do not let
+    # a shared proxy store them. Change the Werkzeug default `public,
+    # max-age=N` to `private, max-age=N`. Thus the browser continues to
+    # cache them, but intermediaries do not.
     response.cache_control.public = False
     response.cache_control.private = True
     return response
@@ -588,8 +606,8 @@ class BaseNewPreviewFilePicture:
 
     def save_picture_preview(self, instance_id, uploaded_file):
         """
-        Get uploaded picture, read the metadata the response carries and
-        hand the variants over to the job queue.
+        Get the uploaded picture, read the metadata that the response
+        carries, and give the variants to the job queue.
         """
         tmp_folder = config.TMP_DIR
         original_tmp_path = thumbnail_utils.save_file(
@@ -612,8 +630,8 @@ class BaseNewPreviewFilePicture:
     @staticmethod
     def _get_upload_stream_size(uploaded_file):
         """
-        Return the byte size of the uploaded file stream, or None when the
-        stream is not seekable.
+        Return the size in bytes of the uploaded file stream, or None if
+        the stream is not seekable.
         """
         try:
             stream = uploaded_file.stream
@@ -629,8 +647,11 @@ class BaseNewPreviewFilePicture:
         self, preview_file_id, uploaded_file, normalize=True
     ):
         """
-        Get uploaded movie, normalize it then build thumbnails then save
-        everything in the file storage.
+        Save the uploaded movie in the temporary folder. Then give the
+        normalization, the thumbnails and the storage to
+        dispatch_movie_processing. If the file is empty, raise
+        WrongParameterException. If the write is partial, raise
+        PreviewProcessingFailedException. Return the preview file ID.
         """
         no_job = self.get_no_job()
         tmp_folder = config.TMP_DIR
@@ -654,9 +675,9 @@ class BaseNewPreviewFilePicture:
                 f"storage ({written_size}/{expected_size} bytes); the "
                 f"temporary disk may be full."
             )
-        # The remote worker reads the movie from the object storage, and
-        # without normalization that source is the only movie stored: it has
-        # to be uploaded whatever PREVIEW_SAVE_SOURCE_FILE says.
+        # The remote worker reads the movie from the object storage. Without
+        # normalization, that source is the only stored movie: upload it,
+        # whatever PREVIEW_SAVE_SOURCE_FILE says.
         save_source_file = (
             config.PREVIEW_SAVE_SOURCE_FILE
             or preview_files_service.is_remote_normalization_enabled()
@@ -672,23 +693,17 @@ class BaseNewPreviewFilePicture:
 
     def save_file_preview(self, instance_id, uploaded_file, extension):
         """
-        Get uploaded file then save it in the file storage.
+        Save the uploaded file in the file storage. Record its storage state
+        and its size on the preview file, then remove the temporary copy.
+        Return the path of that temporary copy.
         """
         tmp_folder = config.TMP_DIR
         file_name = f"{instance_id}.{extension}"
         file_path = os.path.join(tmp_folder, file_name)
         uploaded_file.save(file_path)
         try:
-            file_store.add_file("previews", instance_id, file_path)
-            preview_file_states_service.record_file_state(
-                instance_id,
-                "files",
-                "previews",
-                preview_file_states_service.OK,
-            )
-            file_size = fs.get_file_size(file_path)
-            preview_files_service.update_preview_file(
-                instance_id, {"file_size": file_size}, silent=True
+            preview_files_service.store_preview_file_content(
+                instance_id, file_path
             )
         finally:
             if os.path.exists(file_path):
@@ -697,7 +712,8 @@ class BaseNewPreviewFilePicture:
 
     def emit_app_preview_event(self, preview_file_id):
         """
-        Emit an event, each time a preview is added.
+        If the preview is attached to a comment, clear the news cache of
+        that comment and emit comment:update and preview-file:add-file.
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         comment = tasks_service.get_comment_by_preview_file_id(preview_file_id)
@@ -734,6 +750,13 @@ class BaseNewPreviewFilePicture:
     def process_uploaded_file(
         self, instance_id, uploaded_file, abort_on_failed=False
     ):
+        """
+        Store the uploaded picture, movie or file for the given preview file
+        and update the preview file. If the extension is wrong or the movie
+        fails, remove the preview file. Then, if abort_on_failed is true,
+        raise, else return None. If the store succeeds, emit the preview
+        events.
+        """
         file_name_parts = uploaded_file.filename.split(".")
         extension = file_name_parts.pop().lower()
         original_file_name = ".".join(file_name_parts)
@@ -757,8 +780,9 @@ class BaseNewPreviewFilePicture:
             try:
                 self.save_movie_preview(instance_id, uploaded_file, normalize)
             except WrongParameterException:
-                # Invalid upload (e.g. empty or corrupted transfer): the file
-                # itself is the problem, so keep the original 400 message.
+                # Upload that is not valid (for example, an empty or corrupted
+                # transfer): the problem is the file, so keep the original 400
+                # message.
                 deletion_service.remove_preview_file_by_id(
                     instance_id, force=True
                 )
@@ -766,10 +790,9 @@ class BaseNewPreviewFilePicture:
                     raise
                 return None
             except Exception as e:
-                # Genuine server-side processing failure (ffmpeg, storage,
-                # normalization...): this is not the client's fault. Report it
-                # as a 500 and keep the underlying error so it can be
-                # diagnosed.
+                # Real processing failure on the server (ffmpeg, storage,
+                # normalization...): the client is not the cause. Report it as
+                # a 500 and keep the underlying error for diagnosis.
                 current_app.logger.error(e, exc_info=1)
                 if normalize:
                     message = "Movie preview normalization failed."
@@ -840,7 +863,10 @@ class CreatePreviewFilePictureResource(
 
     def is_allowed(self, preview_file_id):
         """
-        Return true if user is allowed to add a preview.
+        Make sure that the user can work on the task of the preview file,
+        and return True. If the preview file already has an uploaded file,
+        raise PreviewFileReuploadNotAllowedException. If the user cannot
+        work on the task, raise PermissionDenied.
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         if preview_file["original_name"]:
@@ -855,12 +881,12 @@ class CreatePreviewFilePictureResource(
 
 class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
     """
-    Base class to add comments/previews/attachments.
+    Base class to add comments, previews and attachments.
     """
 
     def get_comments_args(self):
         """
-        Return comments arguments.
+        Return the arguments of the comments.
         """
         if request.is_json:
             return self.get_args(
@@ -891,7 +917,9 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
 
     def process_comments(self, task_id=None):
         """
-        Process comments.
+        Create the comments of the request, with their attachments and their
+        previews from the uploaded files. Return the new comments and the 201
+        status.
         """
         args = self.get_comments_args()
 
@@ -991,6 +1019,10 @@ class BasePreviewFileResource(MethodView):
         self.last_modified = None
 
     def is_allowed(self, preview_file_id):
+        """
+        Load the preview file and its last modification date. If the user
+        cannot access its task, raise PermissionDenied.
+        """
         self.preview_file = files_service.get_preview_file_for_access(
             preview_file_id
         )
@@ -1002,7 +1034,7 @@ class BasePreviewFileResource(MethodView):
 
 class PreviewFileMovieResource(BasePreviewFileResource):
     """
-    Allow to download a movie preview.
+    Download a movie preview.
     """
 
     @jwt_required()
@@ -1029,7 +1061,7 @@ class PreviewFileMovieResource(BasePreviewFileResource):
 
 class PreviewFileLowMovieResource(BasePreviewFileResource):
     """
-    Allow to download a lowdef movie preview.
+    Download the low definition version of a movie preview.
     """
 
     @jwt_required()
@@ -1041,8 +1073,8 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
         self.is_allowed(instance_id)
 
         try:
-            # send_movie_file already falls back on the full quality version
-            # then on the source.
+            # If this version is missing, send_movie_file already tries the
+            # full quality version, then the source.
             return send_movie_file(
                 instance_id,
                 lowdef=True,
@@ -1059,7 +1091,7 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
 
 class PreviewFileSourceMovieResource(BasePreviewFileResource):
     """
-    Allow to download the source movie of a preview.
+    Download the source movie of a preview.
     """
 
     @jwt_required()
@@ -1084,7 +1116,7 @@ class PreviewFileSourceMovieResource(BasePreviewFileResource):
 
 class PreviewFileMovieDownloadResource(BasePreviewFileResource):
     """
-    Allow to download a movie preview.
+    Download a movie preview.
     """
 
     @jwt_required()
@@ -1112,7 +1144,7 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
 
 class PreviewFileResource(BasePreviewFileResource):
     """
-    Allow to download a generic file preview.
+    Download a generic preview file.
     """
 
     @jwt_required()
@@ -1159,7 +1191,7 @@ class PreviewFileResource(BasePreviewFileResource):
 
 class PreviewFileDownloadResource(BasePreviewFileResource):
     """
-    Allow to download a generic file preview as attachment.
+    Download a generic preview file as an attachment.
     """
 
     @jwt_required()
@@ -1293,7 +1325,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
 
 class BasePreviewFileThumbnailResource(BasePreviewPictureResource):
     """
-    Base class to download a thumbnail for a preview file.
+    Base class to download the thumbnail of a preview file.
     """
 
     def is_allowed(self, preview_file_id):
@@ -1340,7 +1372,7 @@ class PreviewFileTileResource(BasePreviewPictureResource):
 
 class PreviewFilePreviewResource(BasePreviewPictureResource):
     """
-    Smaller version of uploaded image.
+    Download the smaller version of the uploaded image.
     """
 
     def __init__(self):
@@ -1414,18 +1446,13 @@ class BaseThumbnailResource(MethodView):
         thumbnail_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
         )
-        try:
-            thumbnail_path = thumbnail_utils.turn_into_thumbnail(
-                thumbnail_path, size=self.size
-            )
-            file_store.add_picture("thumbnails", instance_id, thumbnail_path)
-        finally:
-            if os.path.exists(thumbnail_path):
-                os.remove(thumbnail_path)
+        preview_files_service.store_thumbnail(
+            instance_id, thumbnail_path, self.size
+        )
 
-        # Mark the avatar as present only once the thumbnail is stored, so a
-        # missing/invalid file or a storage failure cannot leave has_avatar
-        # set with no picture behind it (which would 404 every read).
+        # Mark the avatar as present only after the storage of the thumbnail.
+        # Thus a missing or invalid file, or a storage failure, cannot leave
+        # has_avatar set without a picture. Each read would then get a 404.
         self.prepare_creation(instance_id)
         preview_files_service.clear_variant_from_cache(
             instance_id, "thumbnails"
@@ -1512,8 +1539,7 @@ class ProjectThumbnailResource(BaseThumbnailResource):
 
     def check_allowed_to_get(self, instance_id):
         super().check_allowed_to_get(instance_id)
-        if not permissions.has_manager_permissions():
-            permissions_service.check_project_access(instance_id)
+        permissions_service.check_project_access(instance_id)
 
     def check_allowed_to_post(self, instance_id):
         return permissions_service.check_manager_project_access(instance_id)
@@ -1521,13 +1547,13 @@ class ProjectThumbnailResource(BaseThumbnailResource):
 
 class ReadOnlyProjectThumbnailResource(ProjectThumbnailResource):
     """
-    Display url of the project thumbnail. Uploads go to the path without
-    extension, so this one serves reads only and the upload permission is
-    described in a single place. A post answers 405 with a pointer instead
-    of falling through the routing to a misleading 404.
+    Serve the thumbnail of a project at its display URL. Uploads go to the
+    path without extension. Thus this resource serves only reads, and only
+    one place describes the upload permission. A POST gets a 405 with a
+    pointer, and not a misleading 404 from the routing.
     """
 
-    # flasgger only accepts a set here, a list makes /openapi.json crash
+    # flasgger accepts only a set here. A list makes /openapi.json crash.
     methods = {"GET", "POST"}
 
     @jwt_required()
@@ -1544,8 +1570,8 @@ class ReadOnlyProjectThumbnailResource(ProjectThumbnailResource):
 
 class SetMainPreviewResource(MethodView, ArgsMixin):
     """
-    Set given preview as main preview of the related entity. This preview will
-    be used to illustrate the entity.
+    Set the given preview as the main preview of the related entity. The
+    entity uses this preview as its illustration.
     """
 
     @jwt_required()
@@ -1560,8 +1586,8 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_project_access(task["project_id"])
         permissions_service.check_entity_access(task["entity_id"])
-        # Clients review content but must not redefine how an entity is
-        # illustrated.
+        # Clients review content but must not change the illustration of an
+        # entity.
         if permissions.has_client_permissions():
             raise permissions.PermissionDenied
         if frame_number is not None:
@@ -1581,7 +1607,7 @@ class SetMainPreviewResource(MethodView, ArgsMixin):
 
 class UpdatePreviewPositionResource(MethodView, ArgsMixin):
     """
-    Allow to change orders of previews for a single revision.
+    Change the order of the previews of one revision.
     """
 
     @jwt_required()
@@ -1603,8 +1629,8 @@ class UpdatePreviewPositionResource(MethodView, ArgsMixin):
 class UpdatePreviewTrimResource(MethodView, ArgsMixin):
     """
     Set the in/out handles of a preview file. The extra previews of a
-    revision have their own timeline, so they carry their own trim, while
-    the main preview uses the trim of the shot.
+    revision have their own timeline, so they have their own trim. The main
+    preview uses the trim of the shot.
     """
 
     @jwt_required()
@@ -1618,8 +1644,9 @@ class UpdatePreviewTrimResource(MethodView, ArgsMixin):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         entity = entities_service.get_entity(task["entity_id"])
-        # Same rule as the trim of the shot, saved in its data: managers
-        # and supervisors without departments.
+        # Same rule as for the trim of the shot (saved in the shot data):
+        # managers, the creator of the entity and supervisors without
+        # departments.
         permissions_service.check_metadata_department_access(
             entity, {"data": trim}
         )
@@ -1672,8 +1699,8 @@ class UpdateAnnotationsResource(MethodView, ArgsMixin):
 
 class RunningPreviewFiles(MethodView, ArgsMixin):
     """
-    Retrieve all preview files from open productions with states equals
-    to processing or broken
+    Get all the preview files of open productions with the processing,
+    broken or missing state.
     """
 
     @jwt_required()
@@ -1707,7 +1734,7 @@ class RunningPreviewFiles(MethodView, ArgsMixin):
 
 class ExtractFrameFromPreview(MethodView, ArgsMixin):
     """
-    Extract the current frame of the preview
+    Extract the current frame of the preview.
     """
 
     @jwt_required()
@@ -1778,9 +1805,12 @@ def _serve_annotated_frames_bundle(
     preview_file_id, build_bundle, mimetype, file_extension
 ):
     """
-    Common flow for the zip and pdf bulk-download resources: check
-    permissions, build the bundle via the service, send it as an
-    attachment named `{preview_base_name}_annotated_frames.{ext}`.
+    Run the common flow of the two bulk download resources (zip and PDF):
+
+    - check the permissions,
+    - build the bundle with the service,
+    - send it as an attachment named
+      `{preview_base_name}_annotated_frames.{ext}`.
     """
     preview_file = files_service.get_preview_file(preview_file_id)
     task = tasks_service.get_task(preview_file["task_id"])
@@ -1806,8 +1836,8 @@ def _serve_annotated_frames_bundle(
 
 class ExtractAllAnnotatedFramesFromPreview(MethodView):
     """
-    Build a zip archive containing every annotated frame (movie) or
-    every annotated copy of the picture preview.
+    Build a zip archive that contains all the annotated frames (movie) or
+    all the annotated copies of the picture preview.
     """
 
     @jwt_required()
@@ -1826,8 +1856,8 @@ class ExtractAllAnnotatedFramesFromPreview(MethodView):
 
 class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
     """
-    Build a multi-page PDF containing every annotated frame (movie) or
-    every annotated copy of the picture preview.
+    Build a multi-page PDF that contains all the annotated frames (movie)
+    or all the annotated copies of the picture preview.
     """
 
     @jwt_required()
@@ -1846,7 +1876,7 @@ class ExtractAllAnnotatedFramesAsPdfFromPreview(MethodView):
 
 class ExtractTileFromPreview(MethodView):
     """
-    Extract a tile from a preview_file
+    Extract a tile from a preview file.
     """
 
     @jwt_required()
@@ -1862,13 +1892,7 @@ class ExtractTileFromPreview(MethodView):
         )
         if extracted_tile_path is None:
             return {"error": "preview file binary is not available"}, 404
-        file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
-        preview_file_states_service.record_file_state(
-            preview_file_id,
-            "pictures",
-            "tiles",
-            preview_file_states_service.OK,
-        )
+        preview_files_service.store_tile(preview_file_id, extracted_tile_path)
         try:
             return flask_send_file(
                 extracted_tile_path,
@@ -1883,8 +1907,8 @@ class ExtractTileFromPreview(MethodView):
 
 class CreatePreviewBackgroundFileResource(MethodView):
     """
-    Main resource to add a preview background file. It stores the preview background
-    file and generates a rectangle thumbnail.
+    Main resource to add a preview background file. It stores the file and
+    generates a PNG thumbnail.
     """
 
     @jwt_required()
@@ -1909,7 +1933,7 @@ class CreatePreviewBackgroundFileResource(MethodView):
         original_file_name = ".".join(file_name_parts)
 
         if extension in ALLOWED_PREVIEW_BACKGROUND_EXTENSION:
-            metadata = self.save_preview_background_file(
+            metadata = preview_files_service.save_preview_background_file(
                 instance_id, uploaded_file, extension
             )
             preview_background_file = (
@@ -1939,67 +1963,14 @@ class CreatePreviewBackgroundFileResource(MethodView):
 
     def check_permissions(self, instance_id):
         """
-        Check if user has permissions to add a preview background file.
+        Make sure that the user has the permissions to add a preview
+        background file.
         """
         return permissions.check_admin_permissions()
 
-    def save_preview_background_file(
-        self, instance_id, uploaded_file, extension
-    ):
-        """
-        Get uploaded preview background file, build thumbnail then save
-        everything in the file storage.
-        """
-        thumbnail_path = None
-        try:
-            tmp_folder = config.TMP_DIR
-            file_name = f"{instance_id}.{extension}"
-            preview_background_path = os.path.join(tmp_folder, file_name)
-            uploaded_file.save(preview_background_path)
-            file_size = fs.get_file_size(preview_background_path)
-            file_store.add_picture(
-                "preview-backgrounds", instance_id, preview_background_path
-            )
-            preview_files_service.clear_variant_from_cache(
-                instance_id, "preview-backgrounds", extension
-            )
-            if extension == "hdr":
-                thumbnail_path = thumbnail_utils.turn_hdr_into_thumbnail(
-                    preview_background_path
-                )
-                file_store.add_picture(
-                    "thumbnails", instance_id, thumbnail_path
-                )
-                preview_files_service.clear_variant_from_cache(
-                    instance_id, "thumbnails"
-                )
-
-            return {
-                "preview_file_id": instance_id,
-                "file_size": file_size,
-            }
-        except Exception:
-            current_app.logger.error(
-                f"Error while saving preview background file and thumbnail: {instance_id}"
-            )
-            deletion_service.remove_preview_background_file_by_id(
-                instance_id, force=True
-            )
-            raise WrongParameterException(
-                f"Error while saving preview background file and thumbnail: {instance_id}"
-            )
-        finally:
-            try:
-                if os.path.exists(preview_background_path):
-                    os.remove(preview_background_path)
-                if thumbnail_path and os.path.exists(thumbnail_path):
-                    os.remove(thumbnail_path)
-            except OSError:
-                pass
-
     def emit_preview_background_file_event(self, preview_background_file):
         """
-        Emit an event, each time a preview background file is added.
+        Emit an event for each new preview background file.
         """
         events.emit(
             "preview-background-file:update",
@@ -2068,7 +2039,6 @@ class PreviewBackgroundFileThumbnailResource(BaseThumbnailResource):
         """
         Uploads are not allowed on the display url.
         """
-        # Raising AttributeError here used to surface as an anonymous 500.
         return {
             "error": True,
             "message": "Preview backgrounds are uploaded through "

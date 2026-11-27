@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase, ApiTestCase
 from zou import __version__
-from zou.app import app, config
+from zou.app import app, config, db
+from zou.app.models.project_status import ProjectStatus
 
 
 class VersionTestCase(ApiTestCase):
@@ -39,6 +40,15 @@ class VersionTestCase(ApiTestCase):
             subprocess.Popen = original_popen
 
         self.assertEqual(spawned, [])
+
+
+class StatusRouteDBTestCase(ApiDBTestCase):
+    def test_status_route_writes_nothing(self):
+        ProjectStatus.query.delete()
+        db.session.commit()
+        data = self.get("/status")
+        self.assertTrue(data["database-up"])
+        self.assertEqual(ProjectStatus.query.count(), 0)
 
 
 class StatsRouteTestCase(ApiDBTestCase):

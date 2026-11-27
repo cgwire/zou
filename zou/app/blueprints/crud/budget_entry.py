@@ -33,8 +33,8 @@ class BudgetEntryResource(BaseModelResource):
 
     def __init__(self):
         BaseModelResource.__init__(self, BudgetEntry)
-        # BudgetEntry has no project_id, so the base class protects nothing
-        # here: budget_id is what ties the entry to a production.
+        # BudgetEntry has no project_id. Thus the base class protects nothing
+        # here. The budget_id links the entry to a production.
         self.protected_fields.append("budget_id")
 
     @jwt_required()

@@ -145,7 +145,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
         self.assertEqual(len(persons), 1)
         self.delete(f"data/persons/{person['id']}")
-        persons = self.post("data/search", {"query": "girafe"}, 200)["persons"]
+        persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
         self.assertEqual(persons, [])
 
     def test_search_shots_exact(self):
@@ -164,8 +164,10 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def test_search_shots_after_creation(self):
         shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
-        shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
         self.assertEqual(shots, [])
+        self.create_shot_pl004()
+        shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
+        self.assertEqual(len(shots), 1)
 
     def test_search_offset(self):
         for i in range(1, 11):

@@ -19,6 +19,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
@@ -74,6 +75,19 @@ def _apply_time_spent_filters(
     return query
 
 
+def filter_time_spents_between(query, start_date, end_date):
+    """
+    Return the given time spent query limited to the dates between the
+    given start date and end date, both included.
+    """
+    return query.filter(
+        TimeSpent.date.between(
+            func.cast(start_date, TimeSpent.date.type),
+            func.cast(end_date, TimeSpent.date.type),
+        )
+    )
+
+
 def _get_interval_time_spents(
     person_id, start, end, project_id=None, department_ids=None, scope=None
 ):
@@ -102,6 +116,38 @@ def get_time_spents_for_entity(entity_id):
         .order_by(TimeSpent.date.desc())
     )
     return TimeSpent.serialize_list(query.all())
+
+
+def get_open_projects_time_spents_query(project_ids):
+    """
+    Return a query on the time spents of the given open projects, joined with
+    the names of their project, entity type, entity, task type and person.
+    """
+    return (
+        TimeSpent.query.order_by(
+            TimeSpent.date,
+            Person.last_name,
+            Project.name,
+            EntityType.name,
+            Entity.name,
+        )
+        .join(Task, TimeSpent.task_id == Task.id)
+        .join(Entity, Task.entity_id == Entity.id)
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
+        .join(Project, Task.project_id == Project.id)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(Person, TimeSpent.person_id == Person.id)
+        .add_columns(Project.name)
+        .add_columns(EntityType.name)
+        .add_columns(Entity.id)
+        .add_columns(Entity.name)
+        .add_columns(TaskType.name)
+        .add_columns(Person.first_name)
+        .add_columns(Person.last_name)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(Project.id.in_(project_ids))
+    )
 
 
 def get_year_table(
@@ -670,6 +716,21 @@ def get_day_offs_between(
     return DayOff.serialize_list(query.all())
 
 
+def remove_time_spents_covered_by_day_off(day_off):
+    """
+    Delete the time spents of the person of the given day off, on the days
+    that the day off covers. Both bounds are read from the column: writing
+    them the other way round, as `day_off.date >= TimeSpent.date`, makes
+    Python fall back to the reflected operator and silently inverts the
+    interval, which then matches nothing beyond a one day long day off.
+    """
+    TimeSpent.delete_all_by(
+        TimeSpent.date >= day_off.date,
+        TimeSpent.date <= day_off.end_date,
+        person_id=day_off.person_id,
+    )
+
+
 def get_timezoned_interval(start, end):
     """
     Return the time intervals adapted to the timezone of the user.
@@ -805,6 +866,23 @@ def _apply_time_spent_duration(time_spent, duration, add, project_id):
     )
 
 
+def update_task_duration(task_id):
+    """
+    Set the duration of the given task to the sum of the durations of its
+    time spents. Then clear the task cache and emit task:update.
+    """
+    task = tasks_service.get_task_raw(task_id)
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
+    task.save()
+    tasks_service.clear_task_cache(task_id)
+    events.emit(
+        "task:update", {"task_id": task_id}, project_id=str(task.project_id)
+    )
+
+
 def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
     Create a time spent if it does not exist. If it exists, set its duration,
@@ -857,13 +935,7 @@ def _create_or_update_time_spent(task_id, person_id, date, duration, add):
                 raise
             _apply_time_spent_duration(time_spent, duration, add, project_id)
 
-    task.duration = sum(
-        time_spent.duration
-        for time_spent in TimeSpent.get_all_by(task_id=task_id)
-    )
-    task.save()
-    tasks_service.clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+    update_task_duration(task_id)
 
     return time_spent.serialize()
 
@@ -888,13 +960,7 @@ def delete_time_spent(task_id, person_id, date):
         project_id=project_id,
     )
 
-    task.duration = sum(
-        time_spent.duration
-        for time_spent in TimeSpent.get_all_by(task_id=task_id)
-    )
-    task.save()
-    tasks_service.clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+    update_task_duration(task_id)
 
     return time_spent.serialize()
 

@@ -22,9 +22,9 @@ from zou.app.blueprints.files.resources import (
     NewEntityOutputFileResource,
     NewInstanceOutputFileResource,
     NewWorkingFileResource,
+    OutputFileFileResource,
     ProjectOutputFilesResource,
     TaskWorkingFilesResource,
-    OutputFileFileResource,
     WorkingFileFileResource,
     WorkingFilePathResource,
 )
@@ -99,7 +99,7 @@ routes = [
         EntityOutputFilePathResource,
     ),
     ("/data/entities/guess-from-path", GuessFromPathResource),
-    # Deprecated snake_case alias, kept because gazu still posts it.
+    # Deprecated snake_case alias. It stays because gazu still posts to it.
     ("/data/entities/guess_from_path", GuessFromPathResource),
     (
         "/data/working-files/<working_file_id>/file",

@@ -1,8 +1,9 @@
 """
-Pydantic schemas for request/response validation in the persons blueprint.
+Pydantic schemas for request body validation in the persons blueprint.
 
-Use these schemas to ensure incoming JSON bodies match the expected format
-and to return clear validation errors (e.g. 400 with field-level messages).
+Use these schemas to make sure that the received JSON bodies match the
+expected format, and to return clear validation errors (for example 400 with
+field-level messages).
 """
 
 from datetime import datetime
@@ -17,7 +18,7 @@ from zou.app.utils.validation import BaseSchema
 
 def _parse_datetime(v):
     """
-    Parse date string (YYYY-MM-DD or ISO datetime) to datetime.
+    Parse a date string (YYYY-MM-DD or ISO datetime) into a datetime.
     """
     if v is None or isinstance(v, datetime):
         return v
@@ -34,7 +35,7 @@ def _parse_datetime(v):
 
 class DesktopLoginCreateSchema(BaseSchema):
     """
-    Body for creating a desktop login log. Date is optional (default: now).
+    Body to create a desktop login log. The date is optional (default: now).
     """
 
     date: Optional[datetime] = None
@@ -47,7 +48,7 @@ class DesktopLoginCreateSchema(BaseSchema):
 
 class AddToDepartmentSchema(BaseSchema):
     """
-    Body for adding a person to a department.
+    Body to add a person to a department.
     """
 
     department_id: UUID = Field(
@@ -57,7 +58,7 @@ class AddToDepartmentSchema(BaseSchema):
 
 class ChangePasswordSchema(BaseSchema):
     """
-    Body for changing a person's password (admin).
+    Body to change the password of a person (admin).
     """
 
     password: str = Field(..., min_length=1, description="New password")

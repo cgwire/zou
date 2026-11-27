@@ -2,6 +2,8 @@ import re
 import urllib.parse
 from unittest import mock
 
+import pytest
+
 from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.day_off import DayOff
@@ -114,7 +116,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         result = self.get(
             f"/data/persons/{self.person_id}/day-offs/2024-06-10"
         )
-        self.assertIsNotNone(result)
+        self.assertEqual(result["date"], "2024-06-10")
 
     def test_reading_the_day_offs_of_somebody_else(self):
         """
@@ -400,6 +402,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     # --- Actions ---
 
+    @pytest.mark.real_bcrypt
     def test_change_password(self):
         result = self.post(
             f"/actions/persons/{self.person_id}/change-password",
@@ -407,6 +410,11 @@ class PersonRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertTrue(result.get("success"))
+        self.post(
+            "auth/login",
+            {"email": self.person.email, "password": "newpassword123"},
+            200,
+        )
 
     def test_change_password_for_new_admin(self):
         new_admin = self.another_admin()
@@ -416,6 +424,11 @@ class PersonRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertTrue(result.get("success"))
+        self.post(
+            "auth/login",
+            {"email": new_admin.email, "password": "newpassword123"},
+            200,
+        )
 
     def another_admin(self, **overrides):
         """
@@ -567,6 +580,10 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assert_the_route_refuses_another_admin("reset-password-link", {})
 
     def test_clear_avatar(self):
+        persons_service.update_person(self.person_id, {"has_avatar": True})
+        self.assertTrue(
+            persons_service.get_person(self.person_id)["has_avatar"]
+        )
         self.delete(f"/actions/persons/{self.person_id}/clear-avatar")
         person = self.get(f"/data/persons/{self.person_id}")
         self.assertFalse(person.get("has_avatar", False))

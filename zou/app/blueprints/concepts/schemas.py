@@ -1,5 +1,6 @@
 """
-Pydantic schemas for request body validation in the concepts blueprint.
+Pydantic schemas that validate the request bodies of the concepts
+blueprint.
 """
 
 from typing import Annotated, List, Optional
@@ -21,7 +22,7 @@ IdStr = Annotated[str, AfterValidator(_check_id)]
 
 class NewConceptSchema(BaseSchema):
     """
-    Body for creating a new concept.
+    Body to create a concept.
     """
 
     name: str = Field(..., min_length=1, description="The concept name")
@@ -35,7 +36,7 @@ class NewConceptSchema(BaseSchema):
 
 class ConceptFolderSchema(BaseSchema):
     """
-    Body for creating or renaming a concept folder.
+    Body to create or rename a concept folder.
     """
 
     name: str = Field(
@@ -45,8 +46,8 @@ class ConceptFolderSchema(BaseSchema):
 
 class MoveConceptsSchema(BaseSchema):
     """
-    Body for moving concepts to a concept folder, or back to the root of the
-    project when no folder is named.
+    Body to move concepts to a concept folder. If the body names no folder,
+    the concepts go back to the root of the project.
     """
 
     concept_ids: List[IdStr] = Field(..., description="The concepts to move")

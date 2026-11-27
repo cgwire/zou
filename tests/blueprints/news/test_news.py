@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.services import comments_service, news_service
+from zou.app.utils import fields
 
 
 class NewsRoutesTestCase(ApiDBTestCase):
@@ -12,7 +13,7 @@ class NewsRoutesTestCase(ApiDBTestCase):
 
     def test_get_last_news_for_project(self):
         self.generate_commented_shot_task()
-        for i in range(1, 81):
+        for i in range(1, 52):
             comment = comments_service.new_comment(
                 self.task.id,
                 self.task_status.id,
@@ -34,7 +35,7 @@ class NewsRoutesTestCase(ApiDBTestCase):
         news_list = self.get(
             f"/data/projects/{self.task_dict['project_id']}/news?page=2"
         )
-        self.assertEqual(len(news_list["data"]), 30)
+        self.assertEqual(len(news_list["data"]), 1)
 
         news = self.get(
             f"/data/projects/{self.task_dict['project_id']}/news/{news['id']}"
@@ -48,6 +49,9 @@ class NewsRoutesTestCase(ApiDBTestCase):
         )
         news_list = self.get("/data/projects/news")
         self.assertEqual(len(news_list["data"]), 1)
+
+    def test_get_global_news_of_a_project_outside_open_projects(self):
+        self.get(f"/data/projects/news?project_id={fields.gen_uuid()}", 403)
 
     def test_news_embeds_author(self):
         self.generate_commented_shot_task()

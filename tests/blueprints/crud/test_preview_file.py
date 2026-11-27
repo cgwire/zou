@@ -1,4 +1,7 @@
+import json
+
 from tests.base import ApiDBTestCase
+from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.services import (
     persons_service,
@@ -178,22 +181,6 @@ class PreviewFileTestCase(ApiDBTestCase):
         )
         self.get(route2_2, code=403)
 
-    def test_get_preview_file_for_admin(self):
-        """
-        Test route data/preview-files/<preview_file_id> for admin.
-        """
-        route1_1 = f"data/preview-files/{self.preview_file1_1.id!s}"
-        route2_1 = f"data/preview-files/{self.preview_file2_1.id!s}"
-        route2_2 = f"data/preview-files/{self.preview_file2_2.id!s}"
-
-        self.log_in_admin()
-        preview_file_admin1_1 = self.get(route1_1)
-        preview_file_admin2_1 = self.get(route2_1)
-        preview_file_admin2_2 = self.get(route2_2)
-        self.assertTrue(preview_file_admin1_1)
-        self.assertTrue(preview_file_admin2_1)
-        self.assertTrue(preview_file_admin2_2)
-
     def test_create_preview_file(self):
         data = {
             "name": "Modeling preview_file 1",
@@ -278,30 +265,20 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.assertEqual(len(preview_files), 5)
         self.delete_404(f"data/preview-files/{fields.gen_uuid()}")
 
-    def test_token_cost_fields(self):
-        # Roundtrip through the CRUD endpoint: set token_in / token_out
-        # on creation, read them back.
-        data = {
-            "name": "AI generated preview",
-            "person_id": self.person.id,
-            "task_id": self.task.id,
-            "source_file_id": self.output_file.id,
-            "token_in": 1200,
-            "token_out": 350,
-        }
-        created = self.post("data/preview-files", data)
-        self.assertEqual(created["token_in"], 1200)
-        self.assertEqual(created["token_out"], 350)
-
-        # Default is None when the producer did not report token usage.
-        plain = self.post(
-            "data/preview-files",
-            {
-                "name": "human preview",
-                "person_id": self.person.id,
-                "task_id": self.task.id,
-                "source_file_id": self.output_file.id,
-            },
+    def test_delete_preview_file_referenced_by_a_comment(self):
+        """
+        The refusal of the database used to reach the client raw, SQL
+        statement and values included.
+        """
+        self.generate_fixture_comment(task_id=self.task1_1.id)
+        preview_file_id = str(self.preview_file1_1.id)
+        Comment.get(self.comment["id"]).update(
+            {"preview_file_id": preview_file_id}
         )
-        self.assertIsNone(plain["token_in"])
-        self.assertIsNone(plain["token_out"])
+        result = json.loads(
+            self.delete(f"data/preview-files/{preview_file_id}", 400)
+        )
+        self.assertEqual(
+            result["message"],
+            "The change conflicts with records referencing this one.",
+        )

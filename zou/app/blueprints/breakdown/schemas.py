@@ -12,7 +12,7 @@ from zou.app.utils.validation import BaseSchema
 
 class AddAssetInstanceSchema(BaseSchema):
     """
-    Body for adding an asset instance to a shot.
+    Body to add an asset instance to a shot.
     """
 
     asset_instance_id: UUID = Field(
@@ -22,7 +22,7 @@ class AddAssetInstanceSchema(BaseSchema):
 
 class AddSceneAssetInstanceSchema(BaseSchema):
     """
-    Body for adding an asset instance to a scene.
+    Body to add an asset instance to a scene.
     """
 
     asset_id: UUID = Field(..., description="Asset unique identifier")
@@ -31,7 +31,7 @@ class AddSceneAssetInstanceSchema(BaseSchema):
 
 class CastAssetSchema(BaseSchema):
     """
-    Body for casting one asset in several entities at once.
+    Body to cast one asset in several entities at the same time.
     """
 
     entity_ids: list[UUID] = Field(

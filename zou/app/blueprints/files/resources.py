@@ -21,6 +21,7 @@ from zou.app.exceptions import (
     OutputTypeNotFoundException,
     PersonNotFoundException,
     WorkingFileNotFoundException,
+    WrongParameterException,
 )
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -49,8 +50,9 @@ def send_storage_file(
     prefix="working",
 ):
     """
-    Send file from storage. If it's not a local storage, cache the file in
-    a temporary folder before sending it. It accepts conditional headers.
+    Send a file from the storage. If the storage is not local, put the file
+    in a temporary cache folder before the send. The function accepts
+    conditional headers.
     """
     extension = "tmp"
     get_local_path = file_store.get_local_file_path
@@ -62,8 +64,8 @@ def send_storage_file(
         download_name = working_file_id
 
     try:
-        # The lookup is what raises FileNotFound: it has to sit inside
-        # the try, or a missing binary is a 500 instead of a 404.
+        # The lookup raises FileNotFound: it must be inside the try. Else a
+        # missing binary gives a 500 and not a 404.
         file_path = fs.get_file_path_and_file(
             config,
             get_local_path,
@@ -103,6 +105,9 @@ def send_storage_file(
 class WorkingFileFileResource(MethodView):
 
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
+        """
+        Save the uploaded file in the temporary folder and return its path.
+        """
         uploaded_file = request.files["file"]
         tmp_folder = current_app.config["TMP_DIR"]
         file_name = f"working-file-{working_file_id}"
@@ -138,30 +143,19 @@ class WorkingFileFileResource(MethodView):
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
         )
-        try:
-            file_store.add_file("working", working_file_id, file_path)
-            size = os.path.getsize(file_path)
-        finally:
-            os.remove(file_path)
-        working_file = files_service.update_working_file(
-            working_file_id, uploaded_data(size)
+        working_file = files_service.store_working_file_content(
+            working_file_id, file_path
         )
         return working_file, 201
-
-
-def uploaded_data(size):
-    """
-    The fields that an upload sets on a working file or an output file.
-    """
-    return {
-        "uploaded_at": date_helpers.get_utc_now_datetime(),
-        "size": size,
-    }
 
 
 class OutputFileFileResource(MethodView):
 
     def check_access(self, output_file_id):
+        """
+        If the user has no access to the project of the output file, raise
+        PermissionDenied. Return the output file and its entity.
+        """
         output_file = files_service.get_output_file(output_file_id)
         entity = entities_service.get_entity(output_file["entity_id"])
         permissions_service.check_project_access(entity["project_id"])
@@ -169,8 +163,9 @@ class OutputFileFileResource(MethodView):
 
     def check_upload_access(self, output_file_id):
         """
-        A manager of the project, or an assignee of the entity, stores the
-        content of an output file. A client never does.
+        Make sure that the user can store the content of an output file. A
+        manager of the project or an assignee of the entity can do it. A
+        client never can.
         """
         _, entity = self.check_access(output_file_id)
         if permissions.has_client_permissions():
@@ -208,13 +203,8 @@ class OutputFileFileResource(MethodView):
             current_app.config["TMP_DIR"], f"output-file-{output_file_id}"
         )
         uploaded_file.save(file_path)
-        try:
-            file_store.add_file("output", output_file_id, file_path)
-            size = os.path.getsize(file_path)
-        finally:
-            os.remove(file_path)
-        output_file = files_service.update_output_file(
-            output_file_id, uploaded_data(size)
+        output_file = files_service.store_output_file_content(
+            output_file_id, file_path
         )
         return output_file, 201
 
@@ -231,7 +221,6 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
             name,
             mode,
             software_id,
-            comment,
             revision,
             separator,
         ) = self.get_arguments()
@@ -241,6 +230,10 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
 
+            if not software_id:
+                software_id = files_service.get_or_create_software(
+                    "3ds Max", "max", ".max"
+                )["id"]
             software = files_service.get_software(software_id)
             is_revision_set_by_user = revision != 0
             if not is_revision_set_by_user:
@@ -271,17 +264,11 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
         return {"path": file_path, "name": file_name}, 200
 
     def get_arguments(self):
-        maxsoft = files_service.get_or_create_software(
-            "3ds Max", "max", ".max"
-        )
         body = validation.validate_request_body(WorkingFilePathSchema)
-        software_id = body.software_id if body.software_id else maxsoft["id"]
-
         return (
             body.name,
             body.mode,
-            software_id,
-            body.comment,
+            body.software_id,
             body.revision,
             body.sep,
         )
@@ -321,7 +308,7 @@ class EntityOutputFilePathResource(MethodView, ArgsMixin):
                 name=args["name"],
                 representation=args["representation"],
                 sep=args["separator"],
-                revision=args["revision"],
+                revision=revision,
             )
             file_name = file_tree_service.get_output_file_name(
                 entity,
@@ -363,6 +350,9 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
             permissions_service.check_project_access(asset["project_id"])
+            permissions_service.check_entities_belong_to_project(
+                [entity["id"]], asset["project_id"]
+            )
             permissions_service.check_entity_access(asset["id"])
 
             folder_path = file_tree_service.get_instance_folder_path(
@@ -406,7 +396,6 @@ class LastWorkingFilesResource(MethodView):
         """
         Get last working files
         """
-        result = {}
         permissions_service.check_task_access(task_id)
         result = files_service.get_last_working_files_for_task(task_id)
 
@@ -421,7 +410,6 @@ class TaskWorkingFilesResource(MethodView):
         """
         Get task working files
         """
-        result = {}
         permissions_service.check_task_access(task_id)
         result = files_service.get_working_files_for_task(task_id)
 
@@ -452,9 +440,14 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
             permissions_service.block_access_to_client()
-            # Only a manager of the project files on behalf of someone else.
+            # Only a manager of the project can create a file for another
+            # person.
             if not permissions.has_manager_permissions():
                 person_id = persons_service.get_current_user()["id"]
+            if software_id is None:
+                software_id = files_service.get_or_create_software(
+                    "Blender", "blender", ".blend"
+                )["id"]
             software = files_service.get_software(software_id)
             tasks_service.assign_task(
                 task_id, persons_service.get_current_user()["id"]
@@ -475,6 +468,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
                 path=path,
                 comment=comment,
                 revision=revision,
+                description=description,
             )
         except EntryAlreadyExistsException:
             return {"error": "The given working file already exists."}, 400
@@ -483,7 +477,12 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
 
     def build_path(self, task, name, revision, software, sep, mode):
         folder_path = file_tree_service.get_working_folder_path(
-            task, name=name, software=software, mode=mode, revision=revision
+            task,
+            name=name,
+            software=software,
+            mode=mode,
+            revision=revision,
+            sep=sep,
         )
         file_name = file_tree_service.get_working_file_name(
             task, name=name, software=software, revision=revision, mode=mode
@@ -495,12 +494,6 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
         body = validation.validate_request_body(NewWorkingFileSchema)
 
         person_id = body.person_id if body.person_id else person["id"]
-        software_id = body.software_id
-        if software_id is None:
-            default_soft = files_service.get_or_create_software(
-                "Blender", "blender", ".blend"
-            )
-            software_id = default_soft["id"]
 
         return (
             body.name,
@@ -508,7 +501,7 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             body.description,
             body.comment,
             person_id,
-            software_id,
+            body.software_id,
             body.revision,
             body.sep,
         )
@@ -543,14 +536,9 @@ class CommentWorkingFileResource(MethodView, ArgsMixin):
 
         working_file = files_service.get_working_file(working_file_id)
         permissions_service.check_task_work_access(working_file["task_id"])
-        working_file = self.update_comment(working_file_id, body.comment)
-        return working_file
-
-    def update_comment(self, working_file_id, comment):
-        working_file = files_service.update_working_file(
-            working_file_id, {"comment": comment}
+        return files_service.update_working_file(
+            working_file_id, {"comment": body.comment}
         )
-        return working_file
 
 
 class NewEntityOutputFileResource(MethodView, ArgsMixin):
@@ -578,10 +566,18 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(entity["project_id"])
             permissions_service.block_access_to_client()
             permissions_service.check_entity_access(entity_id)
+            if (
+                working_file_id is not None
+                and working_file["entity_id"] != entity["id"]
+            ):
+                raise WrongParameterException(
+                    "The working file does not belong to this entity."
+                )
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
 
-            # Only a manager of the project files on behalf of someone else.
+            # Only a manager of the project can create a file for another
+            # person.
             if not permissions.has_manager_permissions():
                 args["person_id"] = None
             if args["person_id"] is None:
@@ -710,10 +706,22 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             permissions_service.check_vendor_asset_instance_access(
                 asset_instance, temporal_entity["id"]
             )
+            # The source is a file of the asset, or of the shot, scene or asset
+            # that contains the instance.
+            source_entity_ids = (entity["id"], temporal_entity["id"])
+            if (
+                working_file_id is not None
+                and working_file["entity_id"] not in source_entity_ids
+            ):
+                raise WrongParameterException(
+                    "The working file does not belong to this asset "
+                    "instance."
+                )
 
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
-            # Only a manager of the project files on behalf of someone else.
+            # Only a manager of the project can create a file for another
+            # person.
             if not permissions.has_manager_permissions():
                 args["person_id"] = None
             if args["person_id"] is None:
@@ -849,6 +857,9 @@ class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
         output_type = files_service.get_output_type(body.output_type_id)
         task_type = task_types_service.get_task_type(body.task_type_id)
         permissions_service.check_project_access(asset["project_id"])
+        permissions_service.check_entities_belong_to_project(
+            [temporal_entity_id], asset["project_id"]
+        )
 
         next_revision_number = files_service.get_next_output_file_revision(
             asset["id"],

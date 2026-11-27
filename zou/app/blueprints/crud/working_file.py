@@ -1,12 +1,8 @@
-from flask import current_app
 from flask_jwt_extended import jwt_required
-from sqlalchemy.exc import StatementError
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.exceptions import WrongParameterException
-from zou.app.models.entity import Entity
 from zou.app.models.preview_file import VALIDATION_STATUSES
-from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import files_service, permissions_service, user_service
 from zou.app.utils import permissions
@@ -31,8 +27,9 @@ class WorkingFilesResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         """
-        Overriding so that people without admin credentials can still access
-        this resource.
+        Let all roles but vendors list the working files.
+        add_project_permission_filter keeps only the files of the projects of
+        the team of the user.
         """
         permissions_service.block_access_to_vendor()
         return True
@@ -60,37 +57,32 @@ class WorkingFilesResource(BaseModelsResource):
 
     def add_project_permission_filter(self, query):
         """
-        Filtering to keep only the files from projects available to the user's
-        team. Allows projects that are no longer open.
+        Filter the query to keep only the files of the projects of the team of
+        the user. Closed projects stay in the result.
         """
         if permissions.has_admin_permissions():
             return query
         else:
-            query = (
-                query.join(Entity, WorkingFile.entity_id == Entity.id)
-                .join(Project)
-                .filter(user_service.build_team_filter())
+            return files_service.filter_working_files_by_projects(
+                query, user_service.build_team_filter()
             )
-            return query
 
 
 class WorkingFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, WorkingFile)
-        # A working file stays on its task and entity: the update checks the
-        # access on the stored ones. Output files keep their source: the
-        # update would move any output file, of any project, without checking
-        # the access to it.
+        # A working file stays on its task and entity, because the update
+        # checks the access to the stored ones. Output files keep their source,
+        # because the update would move each output file, of all projects, with
+        # no access check.
         self.protected_fields += ["task_id", "entity_id", "outputs"]
 
     def check_read_permissions(self, instance):
-        working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_access(working_file["task_id"])
+        permissions_service.check_task_access(instance["task_id"])
         return True
 
     def check_update_permissions(self, instance, data):
-        working_file = files_service.get_working_file(instance["id"])
-        permissions_service.check_task_work_access(working_file["task_id"])
+        permissions_service.check_task_work_access(instance["task_id"])
         return True
 
     @jwt_required()
@@ -120,17 +112,13 @@ class WorkingFileResource(BaseModelResource):
             self.check_read_permissions(working_file)
             return self.clean_get_result(working_file)
 
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
         except ValueError:
             raise WrongParameterException("Invalid value.")
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        # Only a manager of the project changes the author: the update check
-        # resolved the project role.
+        # Only a manager of the project can change the author. The update check
+        # found the project role before.
         if not permissions.has_manager_permissions():
             data.pop("person_id", None)
         check_validation_status(data)

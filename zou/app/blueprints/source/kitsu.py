@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.blueprints.crud.base import build_db_error_message
 from zou.app.blueprints.crud.milestone import check_milestone_fields
-from zou.app.exceptions import WrongParameterException
+from zou.app.exceptions import (
+    CommentNotFoundException,
+    PlaylistNotFoundException,
+    TaskNotFoundException,
+    WrongParameterException,
+)
 from zou.app.mixin import ArgsMixin
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
@@ -23,8 +28,10 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.services import (
+    comments_service,
     entities_service,
     entity_types_service,
+    playlists_service,
     tasks_service,
 )
 from zou.app.utils import events, fields, permissions
@@ -35,25 +42,27 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 def _project_id_from_task(entry):
     task_id = entry.get("task_id")
-    task = Task.get(task_id) if task_id else None
-    return str(task.project_id) if task is not None else None
+    try:
+        return str(tasks_service.get_task_raw(task_id).project_id)
+    except TaskNotFoundException:
+        return None
 
 
 def _project_id_from_playlist(entry):
     playlist_id = entry.get("playlist_id")
-    playlist = Playlist.get(playlist_id) if playlist_id else None
-    return str(playlist.project_id) if playlist is not None else None
+    try:
+        return str(playlists_service.get_playlist_raw(playlist_id).project_id)
+    except PlaylistNotFoundException:
+        return None
 
 
 def _project_id_from_attachment(entry):
     comment_id = entry.get("comment_id")
-    if comment_id:
-        comment = Comment.get(comment_id)
-        if comment is not None and comment.object_id is not None:
-            task = Task.get(comment.object_id)
-            if task is not None:
-                return str(task.project_id)
-    return None
+    try:
+        comment = comments_service.get_comment_raw(comment_id)
+        return _project_id_from_task({"task_id": comment.object_id})
+    except CommentNotFoundException:
+        return None
 
 
 class BaseImportKitsuResource(MethodView, ArgsMixin):
@@ -72,11 +81,11 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
         if not isinstance(kitsu_entries, list):
             raise WrongParameterException("A list of entities is expected.")
 
-        # Bulk imports (sync-push) pass ?silent=true to skip per-row
-        # event emission: each emit persists an api_event row and triggers
-        # a Redis PUBLISH, which adds up to thousands of writes on a
-        # project-wide import. Connected UIs miss the live updates but
-        # the target instance stays responsive.
+        # Bulk imports (sync-push) send ?silent=true to emit no event for each
+        # row. Each emit writes an api_event row and starts a Redis PUBLISH. On
+        # the import of a full project, this makes thousands of writes.
+        # Connected UIs do not get the live updates, but the target instance
+        # stays responsive.
         silent = request.args.get("silent", "").lower() in ("1", "true", "yes")
 
         instances = []
@@ -116,7 +125,7 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
     def emit_event(self, event_type, entry):
         task = tasks_service.get_task(str(entry["object_id"]))
         # As stored: an imported update may leave the client flag out.
-        comment = Comment.get(entry["id"]).serialize()
+        comment = comments_service.get_comment_raw(entry["id"]).serialize()
         events.emit(
             f"comment:{event_type}",
             {
@@ -203,9 +212,9 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
 
 class _ProjectScopedImportResource(BaseImportKitsuResource):
     """
-    Import resource whose entries carry a ``project_id`` directly.
+    Import resource for the entries that have a ``project_id`` directly.
 
-    Admin-only by inheritance (BaseImportKitsuResource.post).
+    It is admin-only: it inherits BaseImportKitsuResource.post.
 
     """
 
@@ -227,9 +236,9 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
 
 class _TaskScopedImportResource(BaseImportKitsuResource):
     """
-    Import resource whose entries derive their project via ``task_id``.
+    Import resource for the entries that get their project through ``task_id``.
 
-    Admin-only by inheritance (BaseImportKitsuResource.post).
+    It is admin-only: it inherits BaseImportKitsuResource.post.
 
     """
 
@@ -259,9 +268,9 @@ class ImportKitsuPreviewFilesResource(_TaskScopedImportResource):
     @jwt_required()
     @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
-        # Flag every imported entry as binary-not-available so downstream
-        # services (thumbnail regen, frame extraction) know not to touch
-        # the local filesystem. The push only transfers metadata.
+        # Flag each imported entry as binary-not-available. Thus the downstream
+        # services (thumbnail regen, frame extraction) do not touch the local
+        # filesystem. The push transfers only metadata.
         entries = request.json
         if isinstance(entries, list):
             for entry in entries:
@@ -342,7 +351,7 @@ class ImportKitsuMilestonesResource(_ProjectScopedImportResource):
 
 class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
     """
-    Admin-only by inheritance.
+    It is admin-only by inheritance.
     """
 
     def __init__(self):
@@ -363,7 +372,7 @@ class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
 
 class ImportKitsuAttachmentFilesResource(BaseImportKitsuResource):
     """
-    Admin-only by inheritance.
+    It is admin-only by inheritance.
     """
 
     def __init__(self):

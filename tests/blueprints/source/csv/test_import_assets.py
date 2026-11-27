@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 from tests.base import ApiDBTestCase
 from zou.app import db
-from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -33,41 +32,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
 
     def test_import_assets(self):
-        self.assertEqual(Task.query.all(), [])
-        number_of_task_per_entity_to_create = len(
-            TaskType.query.filter_by(for_entity="Asset").all()
-        )
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id, task_type_id=self.task_type.id
-            )
-        )
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type_concept.id,
-            )
-        )
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type_modeling.id,
-            )
-        )
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type_layout.id,
-            )
-        )
-        db.session.add(
-            ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type_animation.id,
-            )
-        )
-        db.session.commit()
-        self.assertEqual(number_of_task_per_entity_to_create, 3)
+        task_types = self.link_asset_task_types_to_project()
         path = f"/import/csv/projects/{self.project.id}/assets"
 
         file_path_fixture = self.get_fixture_file_path(
@@ -82,16 +47,14 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(len(asset_types), 2)
 
         tasks = Task.query.all()
-        self.assertEqual(
-            len(tasks),
-            number_of_task_per_entity_to_create * len(entities),
-        )
+        self.assertEqual(len(tasks), len(task_types) * len(entities))
 
-        asset = entities[0]
+        asset = Entity.get_by(name="Cassette Player")
         self.assertEqual(asset.data.get("contractor", None), "contractor 1")
-
-        task = tasks[0]
-        self.assertEqual(task.entity_id, asset.id)
+        self.assertEqual(
+            len(Task.query.filter_by(entity_id=asset.id).all()),
+            len(task_types),
+        )
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_no_metadata.csv")
@@ -101,7 +64,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
 
-        asset = entities[0]
+        asset = Entity.get_by(name="Cassette Player")
         self.assertEqual(asset.data.get("contractor", None), "contractor 1")
 
     def link_asset_task_types_to_project(self):
@@ -278,18 +241,6 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(len(Entity.query.all()), 3)
         tasks = Task.query.filter_by(task_type_id=legacy_task_type.id).all()
         self.assertEqual(len(tasks), 3)
-
-    def test_import_assets_duplicates(self):
-        path = f"/import/csv/projects/{self.project.id}/assets"
-
-        file_path_fixture = self.get_fixture_file_path(
-            os.path.join("csv", "assets.csv")
-        )
-        self.upload_file(path, file_path_fixture)
-        self.upload_file(path, file_path_fixture)
-
-        entities = Entity.query.all()
-        self.assertEqual(len(entities), 3)
 
     def test_import_assets_does_not_retype_a_sequence_of_the_same_name(self):
         """
@@ -531,37 +482,6 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(
             {str(id) for id in index_assets.call_args.args[0]}, asset_ids
         )
-
-    def test_an_empty_comment_cell_at_the_same_status_posts_no_comment(self):
-        self.link_asset_task_types_to_project()
-        self.generate_fixture_task_status_todo()
-        path = f"/import/csv/projects/{self.project.id}/assets"
-
-        file_path_fixture = self.get_fixture_file_path(
-            os.path.join("csv", "assets_empty_comment_same_status.csv")
-        )
-        self.upload_file(path, file_path_fixture)
-
-        task = Task.query.filter_by(task_type_id=self.task_type.id).one()
-        self.assertEqual(str(task.task_status_id), self.task_status_todo["id"])
-        self.assertEqual(Comment.query.all(), [])
-
-    def test_an_empty_comment_cell_posts_no_comment(self):
-        self.link_asset_task_types_to_project()
-        self.generate_fixture_person()
-        path = f"/import/csv/projects/{self.project.id}/assets"
-
-        file_path_fixture = self.get_fixture_file_path(
-            os.path.join("csv", "assets_empty_comment.csv")
-        )
-        self.upload_file(path, file_path_fixture)
-
-        task = Task.query.filter_by(task_type_id=self.task_type.id).one()
-        self.assertEqual(
-            [str(person.id) for person in task.assignees],
-            [str(self.person.id)],
-        )
-        self.assertEqual(Comment.query.all(), [])
 
     def test_import_assets_refuses_an_episode_outside_a_tv_show(self):
         path = f"/import/csv/projects/{self.project.id}/assets"

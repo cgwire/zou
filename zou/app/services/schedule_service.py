@@ -56,6 +56,18 @@ def get_schedule_items(project_id):
     return fields.serialize_list(schedule_items)
 
 
+def find_schedule_item_raw(project_id, task_type_id, object_id):
+    """
+    Return the schedule item of the given project, task type and object as
+    an active record, or None.
+    """
+    return ScheduleItem.get_by(
+        project_id=project_id,
+        task_type_id=task_type_id,
+        object_id=object_id,
+    )
+
+
 def get_task_types_schedule_items(project_id):
     """
     Return the schedule items of the task types that have tasks in the
@@ -399,6 +411,18 @@ def get_production_schedule_version_task_links(
         )
 
     return fields.serialize_models(query.all(), relations=relations)
+
+
+def filter_version_task_links_by_project(query, project_id):
+    """
+    Return the given production schedule version task link query limited to
+    the task links of the versions of the given project.
+    """
+    return query.join(
+        ProductionScheduleVersion,
+        ProductionScheduleVersion.id
+        == ProductionScheduleVersionTaskLink.production_schedule_version_id,
+    ).filter(ProductionScheduleVersion.project_id == project_id)
 
 
 def detach_production_schedule_version(production_schedule_version_id):

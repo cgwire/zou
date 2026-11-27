@@ -53,49 +53,23 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         project = self.get(f"data/projects/{self.project_id}")
         self.assertIsNone((project.get("data") or {}).get("ship_code"))
 
-    def test_add_date_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Due date",
-                "data_type": "date",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "date")
-
-    def test_add_url_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Brief link",
-                "data_type": "url",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "url")
-
-    def test_add_textarea_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Notes",
-                "data_type": "textarea",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "textarea")
-
-    def test_add_person_metadata_descriptor(self):
-        descriptor = self.post(
-            self.descriptors_path(),
-            {
-                "entity_type": "Asset",
-                "name": "Reviewer",
-                "data_type": "person",
-            },
-        )
-        self.assertEqual(descriptor["data_type"], "person")
+    def test_add_metadata_descriptor_of_each_data_type(self):
+        for name, data_type in [
+            ("Due date", "date"),
+            ("Brief link", "url"),
+            ("Notes", "textarea"),
+            ("Reviewer", "person"),
+        ]:
+            with self.subTest(data_type=data_type):
+                descriptor = self.post(
+                    self.descriptors_path(),
+                    {
+                        "entity_type": "Asset",
+                        "name": name,
+                        "data_type": data_type,
+                    },
+                )
+                self.assertEqual(descriptor["data_type"], data_type)
 
     def test_all_projects_metadata_descriptor(self):
         first_project_id = str(self.project_id)
@@ -404,6 +378,20 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.assertIn(
                 "delivery_code", [d["field_name"] for d in descriptors]
             )
+
+    def test_all_projects_partial_update_keeps_the_other_fields(self):
+        metadata_descriptors_service.add_metadata_descriptor(
+            self.project_id, "Project", "Stage", "list", ["a", "b"], True
+        )
+        updated = self.put(
+            "data/metadata-descriptors/all-projects/stage",
+            {"entity_type": "Project", "name": "Step"},
+        )
+        self.assertEqual(len(updated), 1)
+        self.assertEqual(updated[0]["field_name"], "step")
+        self.assertEqual(updated[0]["data_type"], "list")
+        self.assertEqual(updated[0]["choices"], ["a", "b"])
+        self.assertTrue(updated[0]["for_client"])
 
     def test_unallowed_update_metadata_descriptor(self):
         descriptor = metadata_descriptors_service.add_metadata_descriptor(

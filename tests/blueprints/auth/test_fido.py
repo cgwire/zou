@@ -57,9 +57,6 @@ class FidoRoutesTestCase(ApiDBTestCase):
         known = self.get(f"auth/fido?email={self.user['email']}", 400)
         self.assertEqual(unknown, known)
 
-    def test_get_challenge_fido_not_enabled(self):
-        self.get(f"auth/fido?email={self.user['email']}", 400)
-
     def test_get_challenge_unactive_user(self):
         self._register_device()
         person = Person.get(self.user["id"])

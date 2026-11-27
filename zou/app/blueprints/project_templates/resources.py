@@ -349,7 +349,7 @@ class ProjectTemplateMetadataDescriptorsResource(MethodView):
         permissions.check_admin_permissions()
         body = request.get_json(silent=True)
         if isinstance(body, list):
-            # Legacy shape: the descriptors sent as a bare JSON array.
+            # Old format: the body is a bare JSON array of descriptors.
             descriptors = body
         else:
             descriptors = validation.validate_request_body(

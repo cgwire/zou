@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     entity_types_service,
@@ -42,7 +41,6 @@ class EntityTypeTestCase(ApiDBTestCase):
         self.department_id = self.department.id
         self.generate_fixture_task_type()
 
-        task_types = [str(task_type.id) for task_type in TaskType.query.all()]
         task_types = [
             str(self.task_type_concept.id),
             str(self.task_type_modeling.id),
@@ -58,15 +56,6 @@ class EntityTypeTestCase(ApiDBTestCase):
 
         asset_types = self.get("data/entity-types")
         self.assertEqual(len(asset_types), 4)
-
-        created_asset_type = EntityType.get(self.asset_type["id"])
-        self.assertEqual(
-            set(
-                str(task_type.id)
-                for task_type in created_asset_type.task_types
-            ),
-            set(task_types),
-        )
 
     def test_update_entity_types(self):
         entity_types = self.get_first("data/entity-types")

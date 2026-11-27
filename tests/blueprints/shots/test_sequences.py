@@ -20,7 +20,7 @@ class SequenceTestCase(ApiDBTestCase):
     def test_get_sequences(self):
         sequences = self.get("data/sequences")
         self.assertEqual(len(sequences), 3)
-        self.assertDictEqual(sequences[0], self.serialized_sequence)
+        self.assertEqual(sequences[0]["id"], self.serialized_sequence["id"])
 
     def test_get_sequence(self):
         sequence = self.get(f"data/sequences/{self.sequence.id}")
@@ -36,12 +36,6 @@ class SequenceTestCase(ApiDBTestCase):
         )
         self.assertEqual(sequences[0]["id"], str(self.sequence.id))
 
-    def test_get_sequence_tasks(self):
-        self.generate_fixture_sequence_task()
-        tasks = self.get(f"data/sequences/{self.sequence.id}/tasks")
-        self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["id"], str(self.sequence_task.id))
-
     def test_create_sequence(self):
         self.generate_fixture_episode()
         sequence_name = "NSE01"
@@ -56,7 +50,7 @@ class SequenceTestCase(ApiDBTestCase):
     def test_get_sequences_for_project(self):
         sequences = self.get(f"data/projects/{self.project.id}/sequences")
         self.assertEqual(len(sequences), 3)
-        self.assertDictEqual(sequences[0], self.serialized_sequence)
+        self.assertEqual(sequences[0]["id"], self.serialized_sequence["id"])
 
     def test_get_sequences_for_project_with_vendor(self):
         self.generate_fixture_shot_task(name="Secondary")

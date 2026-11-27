@@ -8,7 +8,7 @@ from zou.app.models.milestone import (
     MILESTONE_TYPES,
     Milestone,
 )
-from zou.app.services import permissions_service, user_service
+from zou.app.services import permissions_service
 from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/milestone.yml")
@@ -19,9 +19,9 @@ MILESTONE_TYPE_CODES = [code for code, _ in MILESTONE_TYPES]
 
 def check_milestone_fields(data):
     """
-    Reject a color that is not #RRGGBB and a type outside the allowed
-    choices. ChoiceType would store an unknown code and fail only
-    when the row is read back.
+    Reject a color that is not #RRGGBB and a type that is not one of the
+    allowed choices. ChoiceType would store an unknown code and fail only
+    when it reads the row again.
     """
     color = data.get("color")
     if color is not None and (

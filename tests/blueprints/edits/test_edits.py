@@ -64,6 +64,7 @@ class EditsTestCase(BaseEditTestCase):
 
         edit = self.post(path, new_edit_data)
 
+        self.assertTrue(self.is_event_fired)
         edits = edits_service.get_edits()
         self.assertIsNotNone(edit.get("id", None))
         self.assertEqual(len(edits), 2)
@@ -77,6 +78,16 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(edit["description"], new_edit_data["description"])
         self.assertDictEqual(edit["data"], new_edit_data["data"])
 
+    def test_create_edit_refuses_a_parent_that_is_no_episode_here(self):
+        path = f"data/projects/{self.project.id}/edits"
+        other_project = self.generate_fixture_project_standard()
+        other_episode = self.generate_fixture_episode(
+            "E02", project_id=other_project.id
+        )
+        for parent_id in (self.asset.id, other_episode.id):
+            self.post(path, {"name": "Cut", "episode_id": str(parent_id)}, 400)
+        self.assertEqual(len(edits_service.get_edits()), 1)
+
     def test_remove_edit(self):
         edit = self.generate_fixture_edit()
         edits = edits_service.get_edits()
@@ -87,16 +98,6 @@ class EditsTestCase(BaseEditTestCase):
 
         edits = edits_service.get_edits()
         self.assertEqual(len(edits), 1)
-        self.get(path, 404)
-
-    def test_remove_edit_force(self):
-        edit = self.generate_fixture_edit()
-        self.assertEqual(len(edits_service.get_edits()), 2)
-        path = f"data/edits/{edit.id}?force=true"
-
-        self.delete(path)
-
-        self.assertEqual(len(edits_service.get_edits()), 1)
         self.get(path, 404)
 
     def test_remove_edit_with_tasks(self):
