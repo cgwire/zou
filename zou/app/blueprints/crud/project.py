@@ -26,15 +26,17 @@ SPECS = load_specs(__file__, "openapi/project.yml")
 class ProjectsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Project)
-        # Stash template state between update_data() and post_creation()
-        # so we know what to apply after the project is inserted, and which
-        # explicit fields the caller passed (those override template values).
+        # Keep the template state between update_data() and post_creation().
+        # Thus post_creation() knows what to apply after the project insert,
+        # and which fields the caller gave. These fields override the template
+        # values.
         self._template_id_to_apply = None
         self._template_overrides = {}
 
     def all_entries(self, query=None, relations=False):
-        # A listed project is the one read by its id, extra data included,
-        # whatever relations asks: gazu reads both and expects one shape.
+        # A project in the list is the same as the project read by its ID, with
+        # the extra data, for all values of relations. gazu reads both and
+        # expects one shape.
         if query is None:
             query = self.model.query
         return user_service.serialize_projects(query)
@@ -66,8 +68,8 @@ class ProjectsResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         """
-        Check that the project has a valid production_style, resolution and
-        movie bitrates. A null production_style becomes 2d3d.
+        Make sure that the project has a valid production_style, resolution
+        and movie bitrates. A null production_style becomes 2d3d.
         """
         if "production_style" in data:
             if data["production_style"] is None:
@@ -84,9 +86,9 @@ class ProjectsResource(BaseModelsResource):
     def update_data(self, data):
         data = super().update_data(data)
 
-        # Pull project_template_id out of the payload before it reaches the
-        # Project model, but remember which fields the caller provided so
-        # apply_template_to_project() can skip them (explicit > template).
+        # Remove project_template_id from the payload before the Project model
+        # gets it. Keep the names of the fields that the caller gave, so that
+        # apply_template_to_project() can ignore them (explicit > template).
         self._template_id_to_apply = data.pop("project_template_id", None)
         if self._template_id_to_apply:
             self._template_overrides = {
@@ -142,10 +144,10 @@ class ProjectsResource(BaseModelsResource):
             project_dict["first_episode_id"] = fields.serialize_value(
                 episode["id"]
             )
-        # The all-projects metadata columns are one Project descriptor row
-        # per project: copy them onto the new project so its cells are
-        # editable right away, instead of one create request per descriptor
-        # from the client.
+        # Each metadata column for all projects is one Project descriptor row
+        # for each project. Copy them to the new project. Thus users can edit
+        # its cells immediately, and the client does not send one create
+        # request for each descriptor.
         metadata_descriptors_service.copy_project_metadata_descriptors(
             str(project.id)
         )
@@ -163,16 +165,16 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return permissions_service.check_project_access(project["id"])
 
     def get_serialized_instance(self, instance_id, relations=True):
-        # With its relations, the project is the one the open projects
-        # listing serves, extra data included: a closed project, read by
-        # its id since it is out of that listing, gets its metadata
-        # descriptors, task type priorities, and task status links too.
+        # With its relations, the project is the same as in the list of open
+        # projects, with the extra data. A closed project is not in that list,
+        # thus the client reads it by its ID. It also gets its metadata
+        # descriptors, task type priorities, and task status links.
         if not relations:
             return super().get_serialized_instance(instance_id, relations)
         project = self.get_model_or_404(instance_id)
-        # The read is serialized before check_read_permissions runs, and the
-        # descriptors are narrowed on a role that can be set per project:
-        # the access check comes first, it resolves that role.
+        # The serialization of the read occurs before check_read_permissions.
+        # The descriptors depend on a role that can be different for each
+        # project. Thus do the access check first, because it finds that role.
         permissions_service.check_project_access(str(project.id))
         for_client, vendor_departments = (
             permissions_service.get_descriptor_visibility(
@@ -267,7 +269,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     def update_data(self, data, instance_id):
         """
-        Check that the project has a valid production_style. A null
+        Make sure that the project has a valid production_style. A null
         production_style becomes 2d3d.
         """
         data = super().update_data(data, instance_id)
@@ -297,8 +299,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             }, 400
         else:
             self.check_delete_permissions(project_dict)
-            # Without force, the delete fails on the foreign keys of the
-            # tasks and entities: refuse it before anything is removed.
+            # Without force, the delete fails on the foreign keys of the tasks
+            # and entities. Refuse it before the removal of data.
             if not force and projects_service.has_tasks_or_entities(
                 instance_id
             ):

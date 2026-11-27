@@ -11,7 +11,7 @@ from zou.app.utils.validation import BaseSchema
 
 class PreviewFileUploadSchema(BaseSchema):
     """
-    Body for setting a preview as main preview.
+    Body to set a preview as the main preview.
     """
 
     frame_number: Optional[int] = None
@@ -19,7 +19,7 @@ class PreviewFileUploadSchema(BaseSchema):
 
 class PreviewFilePositionSchema(BaseSchema):
     """
-    Body for updating preview file position.
+    Body to update the position of a preview file.
     """
 
     position: int = Field(0, ge=0)
@@ -27,9 +27,9 @@ class PreviewFilePositionSchema(BaseSchema):
 
 class ExtractAnnotatedFrameSchema(BaseSchema):
     """
-    Query args for extracting an annotated frame from a preview.
-    Required for movies (identifies the frame); ignored for pictures
-    where the first annotation entry is used.
+    Query arguments to extract an annotated frame from a preview. They are
+    necessary for movies (they identify the frame). For pictures, the
+    function ignores them and uses the first annotation entry.
     """
 
     frame_number: Optional[int] = Field(None, ge=1)
@@ -37,7 +37,7 @@ class ExtractAnnotatedFrameSchema(BaseSchema):
 
 class AnnotationsUpdateSchema(BaseSchema):
     """
-    Body for updating the annotations of a preview file.
+    Body to update the annotations of a preview file.
     """
 
     additions: list = Field(default_factory=list)
@@ -47,8 +47,8 @@ class AnnotationsUpdateSchema(BaseSchema):
 
 class PreviewFileTrimSchema(BaseSchema):
     """
-    Body for setting the in/out handles of a preview file. Only the sent
-    keys change, null clears a handle.
+    Body to set the in/out handles of a preview file. Only the keys in the
+    body change. A null value clears a handle.
     """
 
     handle_in: Optional[int] = Field(None, ge=0)

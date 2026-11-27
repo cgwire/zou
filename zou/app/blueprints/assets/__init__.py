@@ -31,7 +31,8 @@ routes = [
     ("/data/asset-types", AssetTypesResource),
     ("/data/asset-types/<asset_type_id>", AssetTypeResource),
     ("/data/assets", AllAssetsResource),
-    # Same listing, second path kept because gazu queries assets/all.
+    # Same list on a second path, because gazu sends its queries to
+    # assets/all.
     ("/data/assets/all", AllAssetsResource),
     ("/data/assets/with-tasks", AssetsAndTasksResource),
     ("/data/assets/<asset_id>", AssetResource),

@@ -81,11 +81,11 @@ class BaseImportKitsuResource(MethodView, ArgsMixin):
         if not isinstance(kitsu_entries, list):
             raise WrongParameterException("A list of entities is expected.")
 
-        # Bulk imports (sync-push) pass ?silent=true to skip per-row
-        # event emission: each emit persists an api_event row and triggers
-        # a Redis PUBLISH, which adds up to thousands of writes on a
-        # project-wide import. Connected UIs miss the live updates but
-        # the target instance stays responsive.
+        # Bulk imports (sync-push) send ?silent=true to emit no event for each
+        # row. Each emit writes an api_event row and starts a Redis PUBLISH. On
+        # the import of a full project, this makes thousands of writes.
+        # Connected UIs do not get the live updates, but the target instance
+        # stays responsive.
         silent = request.args.get("silent", "").lower() in ("1", "true", "yes")
 
         instances = []
@@ -212,9 +212,9 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
 
 class _ProjectScopedImportResource(BaseImportKitsuResource):
     """
-    Import resource whose entries carry a ``project_id`` directly.
+    Import resource for the entries that have a ``project_id`` directly.
 
-    Admin-only by inheritance (BaseImportKitsuResource.post).
+    It is admin-only: it inherits BaseImportKitsuResource.post.
 
     """
 
@@ -236,9 +236,9 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
 
 class _TaskScopedImportResource(BaseImportKitsuResource):
     """
-    Import resource whose entries derive their project via ``task_id``.
+    Import resource for the entries that get their project through ``task_id``.
 
-    Admin-only by inheritance (BaseImportKitsuResource.post).
+    It is admin-only: it inherits BaseImportKitsuResource.post.
 
     """
 
@@ -268,9 +268,9 @@ class ImportKitsuPreviewFilesResource(_TaskScopedImportResource):
     @jwt_required()
     @swag_from(SPECS["BaseImportKitsuResource_post"])
     def post(self):
-        # Flag every imported entry as binary-not-available so downstream
-        # services (thumbnail regen, frame extraction) know not to touch
-        # the local filesystem. The push only transfers metadata.
+        # Flag each imported entry as binary-not-available. Thus the downstream
+        # services (thumbnail regen, frame extraction) do not touch the local
+        # filesystem. The push transfers only metadata.
         entries = request.json
         if isinstance(entries, list):
             for entry in entries:
@@ -351,7 +351,7 @@ class ImportKitsuMilestonesResource(_ProjectScopedImportResource):
 
 class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
     """
-    Admin-only by inheritance.
+    It is admin-only by inheritance.
     """
 
     def __init__(self):
@@ -372,7 +372,7 @@ class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
 
 class ImportKitsuAttachmentFilesResource(BaseImportKitsuResource):
     """
-    Admin-only by inheritance.
+    It is admin-only by inheritance.
     """
 
     def __init__(self):

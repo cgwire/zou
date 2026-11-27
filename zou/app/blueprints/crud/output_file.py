@@ -46,7 +46,8 @@ class OutputFilesResource(BaseModelsResource):
         if permissions.has_admin_permissions():
             return query
         else:
-            # A vendor reads no output file, on the projects they are one.
+            # A vendor cannot read output files on the projects where the user
+            # is a vendor.
             return files_service.filter_output_files_by_projects(
                 query,
                 user_service.build_related_projects_filter(),
@@ -65,9 +66,9 @@ class OutputFilesResource(BaseModelsResource):
 class OutputFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, OutputFile)
-        # An output file stays on its entity and temporal entity: the update
-        # checks the access on the stored ones. Its instance and source file
-        # stay too: the update does not check the access to them.
+        # An output file stays on its entity and temporal entity, because the
+        # update checks the access to the stored ones. Its instance and source
+        # file also stay, because the update does not check the access to them.
         self.protected_fields += [
             "entity_id",
             "temporal_entity_id",
@@ -123,8 +124,8 @@ class OutputFileResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        # Only a manager of the project changes the author: the update check
-        # resolved the project role.
+        # Only a manager of the project can change the author. The update check
+        # found the project role before.
         if not permissions.has_manager_permissions():
             data.pop("person_id", None)
         check_quality(data)

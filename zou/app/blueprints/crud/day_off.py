@@ -83,10 +83,10 @@ class DayOffResource(BaseModelResource):
         return permissions_service.check_day_off_access(instance_dict)
 
     def check_read_permissions(self, instance_dict):
-        # Reading follows the person routes: admins, the person and the
-        # managers of a production they are part of get the whole record,
-        # the supervisors of such a production the dates only. Writing
-        # stays between the person and the admins.
+        # Read access is the same as for the person routes. Admins, the person
+        # and the managers of a production of the person get the full record.
+        # The supervisors of such a production get only the dates. Only the
+        # person and the admins can write.
         self.with_description = permissions_service.check_day_off_read_access(
             instance_dict["person_id"]
         )

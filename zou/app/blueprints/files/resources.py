@@ -50,8 +50,9 @@ def send_storage_file(
     prefix="working",
 ):
     """
-    Send file from storage. If it's not a local storage, cache the file in
-    a temporary folder before sending it. It accepts conditional headers.
+    Send a file from the storage. If the storage is not local, put the file
+    in a temporary cache folder before the send. The function accepts
+    conditional headers.
     """
     extension = "tmp"
     get_local_path = file_store.get_local_file_path
@@ -63,8 +64,8 @@ def send_storage_file(
         download_name = working_file_id
 
     try:
-        # The lookup is what raises FileNotFound: it has to sit inside
-        # the try, or a missing binary is a 500 instead of a 404.
+        # The lookup raises FileNotFound: it must be inside the try. Else a
+        # missing binary gives a 500 and not a 404.
         file_path = fs.get_file_path_and_file(
             config,
             get_local_path,
@@ -152,8 +153,8 @@ class OutputFileFileResource(MethodView):
 
     def check_access(self, output_file_id):
         """
-        Raise PermissionDenied if the user has no access to the project of
-        the output file. Return the output file and its entity.
+        If the user has no access to the project of the output file, raise
+        PermissionDenied. Return the output file and its entity.
         """
         output_file = files_service.get_output_file(output_file_id)
         entity = entities_service.get_entity(output_file["entity_id"])
@@ -162,8 +163,9 @@ class OutputFileFileResource(MethodView):
 
     def check_upload_access(self, output_file_id):
         """
-        A manager of the project, or an assignee of the entity, stores the
-        content of an output file. A client never does.
+        Make sure that the user can store the content of an output file. A
+        manager of the project or an assignee of the entity can do it. A
+        client never can.
         """
         _, entity = self.check_access(output_file_id)
         if permissions.has_client_permissions():
@@ -438,7 +440,8 @@ class NewWorkingFileResource(MethodView, ArgsMixin):
             permissions_service.check_project_access(task["project_id"])
             permissions_service.check_entity_access(task["entity_id"])
             permissions_service.block_access_to_client()
-            # Only a manager of the project files on behalf of someone else.
+            # Only a manager of the project can create a file for another
+            # person.
             if not permissions.has_manager_permissions():
                 person_id = persons_service.get_current_user()["id"]
             if software_id is None:
@@ -573,7 +576,8 @@ class NewEntityOutputFileResource(MethodView, ArgsMixin):
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
 
-            # Only a manager of the project files on behalf of someone else.
+            # Only a manager of the project can create a file for another
+            # person.
             if not permissions.has_manager_permissions():
                 args["person_id"] = None
             if args["person_id"] is None:
@@ -702,8 +706,8 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
             permissions_service.check_vendor_asset_instance_access(
                 asset_instance, temporal_entity["id"]
             )
-            # The source is a file of the asset or of the shot, scene or
-            # asset the instance is placed in.
+            # The source is a file of the asset, or of the shot, scene or asset
+            # that contains the instance.
             source_entity_ids = (entity["id"], temporal_entity["id"])
             if (
                 working_file_id is not None
@@ -716,7 +720,8 @@ class NewInstanceOutputFileResource(MethodView, ArgsMixin):
 
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = task_types_service.get_task_type(args["task_type_id"])
-            # Only a manager of the project files on behalf of someone else.
+            # Only a manager of the project can create a file for another
+            # person.
             if not permissions.has_manager_permissions():
                 args["person_id"] = None
             if args["person_id"] is None:

@@ -41,12 +41,13 @@ class EventsResource(MethodView, ArgsMixin):
                 "The project_id parameter is not a valid id"
             )
 
-        # A manager role can be held per production, so resolve it before the
-        # role check reads it, otherwise the global role silently wins. An
-        # unknown project is reported as a denial rather than a 404: the
-        # caller has no right to learn whether it exists. The check stays
-        # ahead of every other parameter so an unauthorized caller never
-        # gets a validation error instead of a denial.
+        # A person can have a manager role per production. Thus, resolve the
+        # role before the role check reads it. Otherwise the global role
+        # applies without a warning. For an unknown project, send a denial,
+        # not a 404: the caller has no right to know if the project exists.
+        # Keep this check before all the other parameters. Then an
+        # unauthorized caller always gets a denial, never a validation
+        # error.
         if (
             project_id is not None
             and not permissions.has_manager_permissions()
@@ -70,9 +71,9 @@ class EventsResource(MethodView, ArgsMixin):
                 "The cursor_event_id parameter is not a valid id"
             )
 
-        # Admins read the whole log. Managers are scoped to the productions
-        # they belong to, which also hides the events carrying no project at
-        # all (persons, organisation, settings).
+        # Admins read the full log. Managers only read the productions that
+        # they belong to. This scope also hides the events without a project
+        # (persons, organisation, settings).
         project_ids = None
         if not permissions.has_admin_permissions():
             project_ids = user_service.get_project_ids()
@@ -111,8 +112,9 @@ class LoginLogsResource(MethodView, ArgsMixin):
             ],
         )
 
-        # Login logs carry the IP address of every person and cover the whole
-        # studio, with no production to scope them on: admins only.
+        # Login logs contain the IP address of each person and cover all the
+        # studio. They have no production for a scope, so only admins can
+        # read them.
         permissions.check_admin_permissions()
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])

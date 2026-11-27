@@ -42,10 +42,10 @@ class BaseCsvExport(MethodView):
 
 class EntityCsvExportMixin:
     """
-    Columns shared by the asset, shot and edit exports: the time spent,
-    the metadata and a status and assignees pair for each task type.
-    The subclass sets `entity_type` and `entity_headers`, and implements
-    `build_entity_columns`.
+    Make the columns that the asset, shot and edit exports share: the time
+    spent, the metadata, and a status column and an assignees column for
+    each task type. The subclass sets `entity_type` and `entity_headers`,
+    and implements `build_entity_columns`.
     """
 
     entity_type = None

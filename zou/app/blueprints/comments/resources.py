@@ -62,11 +62,11 @@ class DownloadAttachmentResource(MethodView):
                 file_path,
                 conditional=True,
                 mimetype=attachment_file["mimetype"],
-                # Serve safe raster images inline so they display in the
-                # browser; force download for everything else. The mimetype
-                # comes verbatim from the uploader, so serving e.g. HTML/SVG
-                # inline would let an attacker run code in Kitsu's origin
-                # (stored XSS).
+                # Serve the safe raster images inline, so that the
+                # browser shows them. Send all other files as downloads.
+                # The mimetype comes unchanged from the uploader. If the
+                # route served an HTML or SVG file inline, an attacker
+                # could run code in the origin of Kitsu (stored XSS).
                 as_attachment=not comments_service.is_inline_safe_mimetype(
                     attachment_file["mimetype"]
                 ),
@@ -118,10 +118,10 @@ class CommentTaskResource(MethodView):
         try:
             permissions_service.check_task_action_access(task_id)
         except permissions.PermissionDenied:
-            # Being mentioned pulls someone into the conversation, so let
-            # them answer in it. Nothing else: the status has to stay as it
-            # is, and previews keep going through the preview routes, which
-            # still require the full task action access.
+            # A mention pulls a person into the conversation, so let them
+            # answer in it. Do not give more: the status must stay the same.
+            # The previews still go through the preview routes, and these
+            # routes still require full access to the task actions.
             permissions_service.check_task_mention_access(task_id)
             task = tasks_service.get_task(task_id)
             if (
@@ -177,9 +177,9 @@ class AttachmentResource(MethodView):
         comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
-        # The checks below go through the comment, so the attachment must be
-        # tied to it too: otherwise pointing at one's own comment deletes
-        # any attachment whose id the caller knows.
+        # The checks below go through the comment, so the attachment must
+        # also belong to that comment. If not, a caller can give their own
+        # comment and delete any attachment whose ID they know.
         attachment_file = attachment_files_service.get_attachment_file(
             attachment_file_id
         )
@@ -249,14 +249,14 @@ class CommentManyTasksResource(MethodView):
             and "object_id" in comment
             and "comment" in comment
         ]
-        # The hashtags repost a text on no task the batch posts it on, and
-        # only once on any other.
+        # The hashtags do not post the text again on a task that the batch
+        # posts it on. On all other tasks, they post it only once.
         posted_comments = {
             (str(comment["object_id"]), comment["comment"])
             for comment in comments
         }
-        # Check every comment before the first write, so a refused one
-        # leaves no part of the batch posted.
+        # Check all the comments before the first write. Then, if the route
+        # refuses one comment, it posts no part of the batch.
         for comment in comments:
             task = tasks_service.get_task(comment["object_id"])
             if str(task["project_id"]) != str(project_id):
@@ -285,8 +285,9 @@ class CommentManyTasksResource(MethodView):
 
     def get_allowed_comments_only(self, comments, person):
         allowed_comments = []
-        # The person is constant and the comments almost always share one
-        # project: memoize the role lookups instead of querying per comment.
+        # The person does not change and the comments almost always have
+        # the same project: memoize the role queries, do not do one query
+        # for each comment.
         role_cache = {}
         for comment in comments:
             try:
@@ -320,8 +321,9 @@ class CommentManyTasksResource(MethodView):
 
 def _is_client_thread(comment, task_id):
     """
-    Tell whether the client sees the thread of given comment: flagged for
-    them, or written by a client (the guests of a share link are clients).
+    Tell whether the client sees the thread of the given comment. This is
+    true if the comment has the client flag or if a client wrote it. The
+    guests of a share link are clients.
     """
     if comment.get("for_client"):
         return True
@@ -347,16 +349,16 @@ class ReplyCommentResource(MethodView, ArgsMixin):
         comment = comments_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
             raise permissions.PermissionDenied()
-        # The author answers their own thread, as long as they are still on
-        # the project.
+        # If the author is still on the project, they can answer their own
+        # thread.
         permissions_service.check_task_access(task_id)
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
             try:
                 permissions_service.check_task_action_access(task_id)
             except permissions.PermissionDenied:
-                # A reply carries no status and no preview, so answering is
-                # all a mention has to grant here.
+                # A reply has no status and no preview, so a mention must
+                # give only the right to answer here.
                 permissions_service.check_task_mention_access(task_id)
             if permissions.has_client_permissions():
                 author = persons_service.get_person(comment["person_id"])
@@ -370,8 +372,8 @@ class ReplyCommentResource(MethodView, ArgsMixin):
                 ):
                     raise permissions.PermissionDenied()
         else:
-            # The author goes through no access check: resolve their role
-            # on the production for the rule below.
+            # The author does not go through an access check: resolve their
+            # role on the production for the rule below.
             permissions_service.resolve_project_role(
                 tasks_service.get_task(task_id)["project_id"]
             )
@@ -380,8 +382,9 @@ class ReplyCommentResource(MethodView, ArgsMixin):
             and not permissions.has_client_permissions()
             and _is_client_thread(comment, task_id)
         ):
-            # The client sees who answers there, by name and avatar: the
-            # production managers answer for the studio.
+            # The client sees the name and the avatar of each person who
+            # answers there, so the production managers answer for the
+            # studio.
             raise permissions.PermissionDenied()
 
         body = validation.validate_request_body(CommentReplySchema)

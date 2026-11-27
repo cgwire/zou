@@ -106,8 +106,8 @@ routes = [
         "subscribed",
         HasSequenceSubscribedResource,
     ),
-    # Deprecated alias: the resource is sequence-specific, the entities
-    # segment was misleading.
+    # Deprecated alias: the resource is for sequences only, and the
+    # entities segment gave a wrong idea.
     (
         "/data/user/entities/<sequence_id>/task-types/<task_type_id>/subscribed",
         HasSequenceSubscribedResource,

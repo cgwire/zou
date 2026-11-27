@@ -187,7 +187,7 @@ class ImportRemoveShotgunBaseResource(MethodView):
     def delete_instance(self, instance):
         is_success = True
         # The rollback of a failed delete expires the instance: read the ID
-        # before.
+        # before the delete.
         sg_id = instance.shotgun_id
         try:
             if self.delete_func is not None:

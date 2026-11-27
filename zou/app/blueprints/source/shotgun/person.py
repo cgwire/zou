@@ -62,8 +62,8 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
         }
 
     def import_entry(self, data):
-        # remove departments. It needs to be created using the DepartmentLink
-        # table.
+        # Remove the department from the data. The import creates the link
+        # to the department with the DepartmentLink table.
         imported_department = data.pop("department")
 
         if data["email"] != "changeme@email.com":
@@ -77,7 +77,8 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                 data["password"] = None
                 person = Person.create(**data)
                 current_app.logger.info(f"Person created: {person}")
-            # create or update a department/person link if needed
+            # If necessary, create or update the link between the department
+            # and the person.
             if imported_department:
                 department_person_link = (
                     db.session.query(DepartmentLink)

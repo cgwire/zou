@@ -20,14 +20,15 @@ from zou.app.services.tasks_service import (
 
 class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
     """
-    Import of the entities that carry a name, a description, metadata, and
-    tasks: edits, sequences, and episodes. In a TV show, an edit or a
-    sequence hangs under an episode. A subclass names its entity type, and
-    says how to create and update an entity and how to list its tasks.
+    Base resource for the import of the entities that have a name, a
+    description, metadata and tasks: edits, sequences and episodes. In a TV
+    show, an edit or a sequence is under an episode. A subclass gives its
+    entity type. It also tells how to create and update an entity, and how to
+    list its tasks.
     """
 
     entity_type_name = None
-    # An entity of the type hangs under an episode in a TV show.
+    # In a TV show, an entity of this type is under an episode.
     has_episode = True
     # A line of a TV show must name that episode.
     is_episode_required = False
@@ -43,15 +44,15 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
     def get_tasks(self, entity_id):
         """
-        Tasks of the entity with their assignee ids, so an import does not
-        assign again the people a task already has.
+        Return the tasks of the entity with their assignee IDs. Thus an import
+        does not assign again the people that a task already has.
         """
         raise NotImplementedError
 
     def get_extra_values(self, row):
         """
-        Values of the columns only the entity type has, to create or update
-        an entity with.
+        Return the values of the columns that only this entity type has. The
+        import uses them to create or update an entity.
         """
         return {}
 
@@ -70,8 +71,8 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
                 )
             }
         self.entity_type_id = self.get_entity_type()["id"]
-        # Serialized once: a query would run again on every row, and model
-        # instances would be expired by every row commit.
+        # Serialized once: otherwise a query would run again for each row, and
+        # each row commit would expire the active records.
         self.task_types = [
             task_type.serialize()
             for task_type in projects_service.get_project_task_types_raw(
@@ -86,10 +87,12 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
     def create_and_update_tasks(self, tasks_update, entity, creation=False):
         """
-        Apply the task changes of the row: create the missing tasks, add
-        the assignees, and post a comment for a new status or a comment.
-        On creation, create a task for each task type of the project; with
-        no change, leave that to run_import.
+        Apply the task changes of the row:
+        - create the missing tasks,
+        - add the assignees,
+        - post a comment for a new status or a comment.
+        On creation, create a task for each task type of the project. If the
+        row has no task change, do nothing: run_import creates these tasks.
         """
         if tasks_update:
             if creation:
@@ -116,8 +119,8 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
     def get_episode_name(self, row):
         """
-        Name of the episode a line gives, None for no episode, checked
-        against the production.
+        Return the name of the episode that a line gives, or None for no
+        episode. Check the name against the production.
         """
         # An empty cell reads as "" with DictReader: it means no episode,
         # not an episode named "".
@@ -134,8 +137,8 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
     def get_episode_id(self, episode_name, project_id):
         """
-        Id of the episode of given name, created when the production does not
-        have it yet.
+        Return the ID of the episode with the given name. If the production
+        does not have it yet, create it.
         """
         if episode_name not in self.episodes:
             self.episodes[episode_name] = self.get_or_create_episode(
@@ -161,8 +164,8 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
                 parent_id=self.episodes.get(episode_name),
             )
         # Without update=true, the line of an entity that exists changes
-        # nothing: it is not read either, so an assignee renamed since the
-        # export does not stop the import there.
+        # nothing. The import does not read it either, thus an assignee renamed
+        # after the export does not stop the import there.
         if entity is not None and not self.is_update:
             return entity.serialize()
 
@@ -177,8 +180,8 @@ class BaseCsvEntityImportResource(BaseCsvProjectImportResource):
 
         tasks_update = self.get_tasks_update(row, self.task_types)
 
-        # Created once the whole line is read: a line refused as it is read
-        # leaves no episode behind.
+        # Create it after the import reads the full line: if the import refuses
+        # the line, no episode stays behind.
         if entity is None:
             parent_id = None
             if episode_name is not None:

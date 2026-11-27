@@ -16,7 +16,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/edits", AllEditsResource),
-    # Same listing, second path kept because gazu queries edits/all.
+    # Same listing. The second path stays because gazu queries edits/all.
     ("/data/edits/all", AllEditsResource),
     ("/data/edits/with-tasks", EditsAndTasksResource),
     ("/data/edits/<edit_id>", EditResource),

@@ -42,7 +42,7 @@ class StatusAutomationsResource(BaseModelsResource):
         return super().post()
 
     def update_data(self, data):
-        # First: it refuses a body the base method cannot read.
+        # Call this first: it refuses a body that the base method cannot read.
         data = status_automations_service.normalize_trigger(data)
         return super().update_data(data)
 
@@ -72,7 +72,7 @@ class StatusAutomationResource(BaseModelResource):
         return super().put(instance_id)
 
     def update_data(self, data, instance_id):
-        # First: it refuses a body the base method cannot read.
+        # Call this first: it refuses a body that the base method cannot read.
         data = status_automations_service.normalize_trigger(
             data, self.instance.serialize()
         )

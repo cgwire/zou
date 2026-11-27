@@ -322,11 +322,11 @@ class ShotsAndTasksResource(MethodView):
         Get shots and tasks
         """
         criterions = query.get_query_criterions_from_request(request)
-        # Kitsu-oriented options for full-project views: compact halves
-        # the payload (positional rows, field names in the header) and
-        # stream sends NDJSON without holding the response in memory.
-        # They are response options, not filters: pop them before the
-        # criterions reach the service.
+        # Kitsu options for the views of a full project. The compact option
+        # makes the payload half the size: positional rows, and the field names
+        # in the header. The stream option sends NDJSON and does not keep the
+        # response in memory. These are response options, not filters: pop them
+        # before the criterions reach the service.
         stream = criterions.pop("stream", "false") == "true"
         compact = criterions.pop("compact", "false") == "true"
         query.check_criterion_id_format(criterions)
@@ -352,7 +352,8 @@ class ShotsAndTasksResource(MethodView):
             header["task_fields"] = shots_service.SHOTS_AND_TASKS_TASK_FIELDS
         response = flask_utils.rows_response(header, rows, stream)
         if etag is not None:
-            # rows_response returns a plain dict when not streaming.
+            # If the response is not a stream, rows_response returns a plain
+            # dict.
             if stream:
                 http_cache.mark(response, etag)
             else:
@@ -400,8 +401,9 @@ class SequenceAndTasksResource(MethodView):
             entity_types_service.get_sequence_type()["id"]
         )
         if permissions.has_vendor_permissions():
-            # Vendors only see sequences holding a shot with a task assigned
-            # to them, and only their own tasks on those sequences.
+            # Vendors see only the sequences that contain a shot with a task
+            # assigned to them. They see only their own tasks on those
+            # sequences.
             if criterions.get("episode_id") not in (None, "all", "main"):
                 sequences = shots_service.get_sequences_for_episode(
                     criterions["episode_id"], only_assigned=True
@@ -441,8 +443,9 @@ class EpisodeAndTasksResource(MethodView):
             "id"
         ]
         if permissions.has_vendor_permissions():
-            # Vendors only see episodes holding a shot with a task assigned
-            # to them, and only their own tasks on those episodes.
+            # Vendors see only the episodes that contain a shot with a task
+            # assigned to them. They see only their own tasks on those
+            # episodes.
             episodes = shots_service.get_episodes_for_project(
                 criterions["project_id"], only_assigned=True
             )
@@ -910,7 +913,7 @@ class RemoveShotFromSceneResource(MethodView):
 
 class ShotVersionsResource(MethodView):
     """
-    Get shot versions
+    Get the versions of a shot.
     """
 
     @jwt_required()

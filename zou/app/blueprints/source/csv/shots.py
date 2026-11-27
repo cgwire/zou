@@ -40,8 +40,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
-        # Serialized once: a query would run again on every row, and model
-        # instances would be expired by every row commit.
+        # Serialized once: otherwise a query would run again for each row, and
+        # each row commit would expire the active records.
         self.task_types_in_project_for_shots = [
             task_type.serialize()
             for task_type in projects_service.get_project_task_types_raw(
@@ -173,8 +173,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     f"frame_out must be an integer, got '{frame_out}'"
                 )
 
-        # Keep the frame count consistent with an imported frame range when
-        # the CSV doesn't provide it explicitly.
+        # If the CSV does not give the frame count, compute it from the
+        # imported frame range.
         if "nb_frames" not in shot_new_values:
             try:
                 frame_in_value = int(shot_new_values["data"]["frame_in"])
@@ -240,8 +240,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         try:
             return super().run_import(file_path, project_id)
         finally:
-            # Indexed at the end, without waiting for the indexer on every
-            # row, the rows committed before a failing one included.
+            # Index at the end, so that each row does not wait for the indexer.
+            # The index also gets the rows committed before a failing row.
             index_service.index_shots(self.shot_ids_to_index)
             # The shots created before a failing line stay imported, and a
             # new import would not create their tasks: they get them here.

@@ -81,11 +81,11 @@ class TaskTypeResource(BaseModelResource):
 
     def pre_delete(self, instance_dict):
         """
-        Refuse the delete with a clean 400 when the task type still has
-        scheduled items or is attached to projects, unless ``force`` is
-        set. With force, those rows are purged first so the deletion is
-        not blocked by their foreign keys. A status automation using the
-        task type refuses it even with force.
+        If the task type has scheduled items or is linked to projects, refuse
+        the delete with a clear 400, unless ``force`` is set. With force, the
+        function deletes those rows first, so that their foreign keys do not
+        block the deletion. If a status automation uses the task type, the
+        delete fails, also with force.
         """
         status_automations_service.guard_task_type_deletion(instance_dict)
         task_type_id = instance_dict["id"]
@@ -107,9 +107,9 @@ class TaskTypeResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        # only a change of name is checked: the clients send the whole
-        # form on every update, so a row already carrying a case twin
-        # must stay editable (colour, department) without renaming it
+        # Check only a change of name. The clients send the full form at each
+        # update. Thus users must be able to change the color or the department
+        # of a row that already has a case twin, and keep its name.
         name = data.get("name", None)
         if name is not None and name != self.instance.name:
             task_types_service.check_task_type_name_is_unique(

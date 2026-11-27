@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request body validation in the projects blueprint.
+Pydantic schemas that validate the request bodies of the projects blueprint.
 """
 
 from typing import List, Literal, Optional
@@ -8,13 +8,13 @@ from pydantic import Field
 
 from zou.app.utils.validation import BaseSchema
 
-# Mirrors ROLE_TYPES minus admin: admin stays a global-only role.
+# Same as ROLE_TYPES without admin: admin is only a global role.
 ProjectRole = Literal["user", "supervisor", "manager", "client", "vendor"]
 
 
 class ProjectTeamSchema(BaseSchema):
     """
-    Body for adding a person to a project team.
+    Body to add a person to a project team.
     """
 
     person_id: str = Field(..., min_length=1)
@@ -23,8 +23,8 @@ class ProjectTeamSchema(BaseSchema):
 
 class ProjectTeamRoleSchema(BaseSchema):
     """
-    Body for setting the role of a team member on this project only. A null
-    role restores inheritance of the person's global role.
+    Body to set the role of a team member on this project only. A null role
+    restores the inheritance of the global role of the person.
     """
 
     role: Optional[ProjectRole] = None
@@ -32,7 +32,7 @@ class ProjectTeamRoleSchema(BaseSchema):
 
 class ProjectAssetTypeSchema(BaseSchema):
     """
-    Body for adding an asset type to a project.
+    Body to add an asset type to a project.
     """
 
     asset_type_id: str = Field(..., min_length=1)
@@ -40,8 +40,8 @@ class ProjectAssetTypeSchema(BaseSchema):
 
 class ProjectAssetTypeWorkflowSchema(BaseSchema):
     """
-    Body for setting the workflow of an asset type on a project. An empty
-    list restores the studio workflow.
+    Body to set the workflow of an asset type on a project. An empty list
+    restores the studio workflow.
     """
 
     task_type_ids: List[str]
@@ -49,7 +49,7 @@ class ProjectAssetTypeWorkflowSchema(BaseSchema):
 
 class ProjectTaskTypeSoftwareSchema(BaseSchema):
     """
-    Body for linking a software to a task type of a project.
+    Body to link a software to a task type of a project.
     """
 
     software_id: str = Field(..., min_length=1)
@@ -57,7 +57,7 @@ class ProjectTaskTypeSoftwareSchema(BaseSchema):
 
 class ProjectTaskTypeSchema(BaseSchema):
     """
-    Body for adding a task type to a project.
+    Body to add a task type to a project.
     """
 
     task_type_id: str = Field(..., min_length=1)
@@ -68,8 +68,9 @@ class ProjectTaskTypeSchema(BaseSchema):
 
     def bitrates(self):
         """
-        The bitrates to write on the link, or None when the body did not
-        mention them: a priority-only call leaves them as they are.
+        Return the bitrates to write on the link. If the body does not give
+        them, return None: a call that sets only the priority keeps the current
+        bitrates.
         """
         keys = ("hd_bitrate_compression", "ld_bitrate_compression")
         if not self.model_fields_set.intersection(keys):
@@ -79,7 +80,7 @@ class ProjectTaskTypeSchema(BaseSchema):
 
 class ProjectTaskStatusSchema(BaseSchema):
     """
-    Body for adding a task status to a project.
+    Body to add a task status to a project.
     """
 
     task_status_id: str = Field(..., min_length=1)
@@ -87,8 +88,8 @@ class ProjectTaskStatusSchema(BaseSchema):
 
 class ProjectTaskStatusClientAllowedSchema(BaseSchema):
     """
-    Body for overriding whether the clients of a project may set a task
-    status. The field is required, a null reverts to the studio value.
+    Body to override whether the clients of a project may set a task status.
+    The field is required. A null value restores the studio value.
     """
 
     is_client_allowed: Optional[bool] = Field(...)
@@ -96,21 +97,22 @@ class ProjectTaskStatusClientAllowedSchema(BaseSchema):
 
 class ProjectSettingsBatchSchema(BaseSchema):
     """
-    Body for adding several task types, task statuses and asset types to a
-    project in a single request.
+    Body to add several task types, task statuses and asset types to a project
+    in one request.
     """
 
     task_types: List[ProjectTaskTypeSchema] = Field(default=[])
     task_status_ids: List[str] = Field(default=[])
     asset_type_ids: List[str] = Field(default=[])
-    # When set, task_types is the full wanted set: existing task type links
-    # absent from it are removed (used by the import-from-production flow).
+    # If set, task_types is the full set of task types to keep. The existing
+    # task type links that are not in it go away. The import from a production
+    # uses this.
     replace_task_types: bool = False
 
 
 class ProjectStatusAutomationSchema(BaseSchema):
     """
-    Body for adding a status automation to a project.
+    Body to add a status automation to a project.
     """
 
     status_automation_id: str = Field(..., min_length=1)
@@ -118,7 +120,7 @@ class ProjectStatusAutomationSchema(BaseSchema):
 
 class ProjectPreviewBackgroundSchema(BaseSchema):
     """
-    Body for adding a preview background file to a project.
+    Body to add a preview background file to a project.
     """
 
     preview_background_file_id: str = Field(..., min_length=1)
@@ -126,7 +128,7 @@ class ProjectPreviewBackgroundSchema(BaseSchema):
 
 class MetadataDescriptorSchema(BaseSchema):
     """
-    Body for creating a metadata descriptor.
+    Body to create a metadata descriptor.
     """
 
     entity_type: str = "Asset"
@@ -140,7 +142,7 @@ class MetadataDescriptorSchema(BaseSchema):
 
 class MetadataDescriptorUpdateSchema(BaseSchema):
     """
-    Body for updating a metadata descriptor.
+    Body to update a metadata descriptor.
     """
 
     name: Optional[str] = None
@@ -152,7 +154,7 @@ class MetadataDescriptorUpdateSchema(BaseSchema):
 
 class MetadataDescriptorOrderSchema(BaseSchema):
     """
-    Body for reordering metadata descriptors.
+    Body to reorder the metadata descriptors.
     """
 
     entity_type: str = Field(..., min_length=1)
@@ -161,7 +163,7 @@ class MetadataDescriptorOrderSchema(BaseSchema):
 
 class AllProjectsMetadataDescriptorUpdateSchema(BaseSchema):
     """
-    Body for updating a metadata descriptor across all accessible projects.
+    Body to update a metadata descriptor in all the accessible projects.
     """
 
     entity_type: str = Field(..., min_length=1)
@@ -174,8 +176,8 @@ class AllProjectsMetadataDescriptorUpdateSchema(BaseSchema):
 
 class AllProjectsMetadataDescriptorOrderSchema(BaseSchema):
     """
-    Body for reordering metadata descriptors across all accessible projects.
-    The order is given as a list of field names shared by the projects.
+    Body to reorder the metadata descriptors in all the accessible projects.
+    The order is a list of the field names that the projects share.
     """
 
     entity_type: str = Field(..., min_length=1)
@@ -184,7 +186,7 @@ class AllProjectsMetadataDescriptorOrderSchema(BaseSchema):
 
 class BudgetSchema(BaseSchema):
     """
-    Body for creating a budget.
+    Body to create a budget.
     """
 
     name: str = Field(..., min_length=1)
@@ -193,7 +195,7 @@ class BudgetSchema(BaseSchema):
 
 class BudgetUpdateSchema(BaseSchema):
     """
-    Body for updating a budget.
+    Body to update a budget.
     """
 
     name: Optional[str] = None
@@ -202,7 +204,7 @@ class BudgetUpdateSchema(BaseSchema):
 
 class BudgetEntrySchema(BaseSchema):
     """
-    Body for creating a budget entry.
+    Body to create a budget entry.
     """
 
     department_id: str = Field(..., min_length=1)
@@ -216,7 +218,7 @@ class BudgetEntrySchema(BaseSchema):
 
 class BudgetEntryUpdateSchema(BaseSchema):
     """
-    Body for updating a budget entry.
+    Body to update a budget entry.
     """
 
     department_id: Optional[str] = None
@@ -231,7 +233,7 @@ class BudgetEntryUpdateSchema(BaseSchema):
 
 class ScheduleVersionCopySchema(BaseSchema):
     """
-    Body for copying task links from another schedule version.
+    Body to copy the task links from another schedule version.
     """
 
     production_schedule_version_id: str = Field(..., min_length=1)
@@ -239,7 +241,7 @@ class ScheduleVersionCopySchema(BaseSchema):
 
 class PreviewAccountOpenSchema(BaseSchema):
     """
-    Body for opening or closing the access window of a preview account.
+    Body to open or close the access window of a preview account.
     """
 
     is_open: bool

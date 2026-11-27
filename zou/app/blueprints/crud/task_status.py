@@ -99,8 +99,8 @@ class TaskStatusResource(BaseModelResource):
 
     def pre_delete(self, instance_dict):
         """
-        Refuse the delete with a clean 400 while a status automation uses
-        the status, instead of the generic foreign key message.
+        If a status automation uses the status, refuse the delete with a
+        clear 400, not the generic foreign key message.
         """
         status_automations_service.guard_task_status_deletion(instance_dict)
         return instance_dict

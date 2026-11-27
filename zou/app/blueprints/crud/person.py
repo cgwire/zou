@@ -19,12 +19,13 @@ from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/person.yml")
 
-# Columns behind Person.present_minimal, the list payload of every non admin
-# but clients, plus is_guest and email. Email is not in that payload but the
-# lookup is part of the API every studio pipeline builds on
-# (gazu.person.get_person_by_email); matching an address the caller already
-# holds is not the sweep the other hidden columns allow, since equality
-# answers nothing about a value that has not been guessed first.
+# The columns of Person.present_minimal, plus is_guest and email.
+# Person.present_minimal is the list payload for all users who are not admins
+# or clients. Email is not in that payload. But all studio pipelines use the
+# email search (gazu.person.get_person_by_email). A filter on an address that
+# the caller already has does not let the caller read all the values, as a
+# filter on another hidden column does. An equality filter tells nothing about
+# a value that the caller does not guess first.
 MINIMAL_PERSON_FILTER_FIELDS = [
     "id",
     "first_name",
@@ -41,9 +42,9 @@ MINIMAL_PERSON_FILTER_FIELDS = [
     "updated_at",
     "is_guest",
 ]
-# Columns behind Person.present_client, plus is_guest, which Kitsu sends
-# for every role. Any other column would answer which department or studio
-# each member of the team belongs to.
+# The columns of Person.present_client, plus is_guest, which Kitsu sends for
+# all roles. Another column would tell the department or the studio of each
+# member of the team.
 CLIENT_PERSON_FILTER_FIELDS = [
     "id",
     "first_name",
@@ -79,8 +80,9 @@ from zou.app.services import (
 from zou.app.utils import auth, date_helpers, permissions, validation
 from zou.app.utils.fields import serialize_value
 
-# Set only by preview_accounts_service: through CRUD they would turn a
-# regular account into a seat-free one admins can no longer edit.
+# Only preview_accounts_service sets these fields. Through CRUD, they would
+# change a regular account into an account with no seat that admins cannot
+# edit.
 PREVIEW_FIELDS = [
     "preview_project_id",
     "preview_opened_at",
@@ -90,9 +92,9 @@ PREVIEW_FIELDS = [
 
 def check_country(data):
     """
-    Reject an invalid country code with a clean 400. Empty or missing values
-    are treated as "no country" and accepted. The stored value is normalized
-    to uppercase by the Person model.
+    Reject an invalid country code with a clear 400. Accept an empty or
+    missing value as "no country". The Person model stores the value in
+    uppercase.
     """
     is_valid, _ = normalize_country(data.get("country"))
     if not is_valid:
@@ -103,10 +105,10 @@ def check_country(data):
 
 def check_locale(data):
     """
-    Reject a locale that Python Babel cannot parse with a clean 400. Empty or
-    missing values are treated as "no locale" and accepted. Without this guard
-    the raw value would be stored and then break every later read of the
-    person, since the model re-parses the locale through Babel on load.
+    Reject a locale that Python Babel cannot parse with a clear 400.
+    Accept an empty or missing value as "no locale". Without this check, the
+    model stores the raw value. Then each later read of the person fails,
+    because the model parses the locale again through Babel on load.
     """
     is_valid, _ = normalize_locale(data.get("locale"))
     if not is_valid:
@@ -118,9 +120,8 @@ def check_locale(data):
 
 def check_display_date_format(data):
     """
-    Reject a display date format outside the supported list with a clean
-    400. A missing or null value is treated as "use the default" and
-    accepted.
+    Reject a display date format that is not in the supported list with a
+    clear 400. Accept a missing or null value as "use the default".
     """
     value = data.get("display_date_format")
     if value is not None and value not in DISPLAY_DATE_FORMATS:
@@ -132,9 +133,10 @@ def check_display_date_format(data):
 
 def check_current_credentials(email):
     """
-    Reject the request with a 400 unless its body proves again who the
-    caller is: their current password, and one of their second factors when
-    they have any. A failure counts towards the login lockout.
+    Reject the request with a 400 if its body does not prove again the
+    identity of the caller. The body must give the current password, and one
+    second factor if the caller has one. A failure counts for the login
+    lockout.
     """
     body = validation.validate_request_body(CurrentCredentialsSchema)
     try:
@@ -169,8 +171,8 @@ class PersonsResource(BaseModelsResource):
         return [Person.departments]
 
     def add_project_permission_filter(self, query):
-        # Applied before pagination: all_entries gets an already limited
-        # query on paginated calls.
+        # Apply this before pagination: on paginated calls, all_entries gets a
+        # query that is already limited.
         query = query.filter(Person.preview_project_id.is_(None))
         if permissions.has_client_permissions():
             query = query.filter(
@@ -204,10 +206,10 @@ class PersonsResource(BaseModelsResource):
 
         if permissions.has_admin_permissions():
             if self.get_bool_parameter("with_pass_hash"):
-                # Only the password hash is re-added (needed for Kitsu ->
-                # Kitsu migration). Never expose the 2FA secrets
-                # (totp/email OTP/recovery codes/FIDO) that the full
-                # serialize() would otherwise leak.
+                # Add only the password hash again (necessary for a Kitsu ->
+                # Kitsu migration). Do not show the 2FA secrets (totp/email
+                # OTP/recovery codes/FIDO). The full serialize() would show
+                # them.
                 persons = []
                 for person in query.all():
                     person_dict = person.serialize_safe(relations=relations)
@@ -229,10 +231,10 @@ class PersonsResource(BaseModelsResource):
 
     def get_filterable_column_names(self):
         """
-        Mirror what all_entries actually returns, plus the email lookup.
-        Without this, filtering answers questions the response refuses to:
-        ?daily_salary=320 walks the payroll one value at a time, and phone,
-        contract_type or seniority go the same way.
+        Return the same columns as all_entries, plus the email search.
+        Without this, filters answer questions that the response does not
+        answer. ?daily_salary=320 reads the payroll one value at a time. The
+        same occurs for phone, contract_type or seniority.
         """
         if permissions.has_admin_permissions():
             return [
@@ -419,9 +421,9 @@ class PersonResource(BaseModelResource, ArgsMixin):
             except Exception:
                 raise WrongParameterException("Expiration date is not valid.")
 
-            # Reject a past date only when it actually changes. Re-submitting an
-            # already-expired person's own date (e.g. to disable a bot) must
-            # keep working, otherwise expired accounts can never be edited.
+            # Reject a past date only if the date changes. A request that sends
+            # again the date of an expired person (for example, to disable a
+            # bot) must work. If not, nobody can edit expired accounts.
             current_expiration_date = persons_service.get_person_raw(
                 instance_id
             ).expiration_date
@@ -464,18 +466,19 @@ class PersonResource(BaseModelResource, ArgsMixin):
             return instance.present_minimal(relations=relations)
 
     def pre_update(self, instance_dict, data):
-        # Preview accounts are managed by their own routes only, a role or
-        # email change would turn one into a regular account.
+        # Only their own routes manage preview accounts. A change of role or
+        # email would make a preview account a regular account.
         if instance_dict.get("preview_project_id") is not None:
             raise permissions.PermissionDenied
-        # The password reset link and the OTP by mail follow the address:
-        # changing it hands the account over, a session is not enough.
+        # The password reset link and the OTP by mail go to the address. A
+        # change of address gives the account to another person. Thus a session
+        # is not enough.
         if (
             "email" in data
             and data["email"] != instance_dict["email"]
             and instance_dict["id"] == persons_service.get_current_user()["id"]
-            # Read from the token: a bot has no password to give, and the
-            # is_bot flag of the row is one an admin can flip on themselves.
+            # Read the role from the token: a bot has no password to give. An
+            # admin can change the is_bot flag of the row on their own account.
             and permissions.has_person_permissions()
         ):
             check_current_credentials(instance_dict["email"])
@@ -517,13 +520,14 @@ class PersonResource(BaseModelResource, ArgsMixin):
         instance_dict["departments"] = [
             str(department.id) for department in self.instance.departments
         ]
-        # Bots only: for a person this was a token that never expires, issued
-        # without their password and outliving logout and password changes.
+        # For bots only. For a person, this was a token that never expires. It
+        # came with no password and stayed valid after logout and password
+        # changes.
         regenerate_token = self.instance.is_bot and "expiration_date" in data
         if regenerate_token and data["expiration_date"] is not None:
-            # A past date only yields an already-expired token that get_jti()
-            # then rejects (500/401). Skip regeneration so an expired bot
-            # keeps a stable token and stays editable.
+            # A past date gives only an expired token, and get_jti() then
+            # rejects it (500/401). Do not make a new token. Thus an expired
+            # bot keeps the same token and users can edit it.
             regenerate_token = (
                 datetime.datetime.strptime(
                     data["expiration_date"], "%Y-%m-%d"

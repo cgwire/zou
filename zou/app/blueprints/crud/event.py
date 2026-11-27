@@ -26,10 +26,9 @@ class EventsResource(BaseModelsResource):
         if query is None:
             query = self.model.query
 
-        # The cap only applies to the unpaginated listing: paginated_entries
-        # and cursor_entries have already set the page limit and a second
-        # .limit() would replace it, returning up to 1000 rows for a page
-        # of 50.
+        # The cap applies only to the listing with no pages. paginated_entries
+        # and cursor_entries already set the page limit. A second .limit()
+        # would replace it and return up to 1000 rows for a page of 50.
         if not getattr(self, "is_paginated", False):
             query = query.limit(1000)
         return self.serialize_list(query.all(), relations=relations)

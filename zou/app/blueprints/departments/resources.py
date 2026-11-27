@@ -160,8 +160,8 @@ class DepartmentPersonsResource(MethodView, ArgsMixin):
         Get department members
         """
         self.check_id_parameter(department_id)
-        # Who belongs to which department is how the studio is organized,
-        # which present_client keeps from clients.
+        # The members of each department show the organization of the
+        # studio. present_client hides this data from clients.
         permissions_service.block_access_to_client()
         persons = departments_service.get_persons_for_department(
             department_id, minimal=not permissions.has_admin_permissions()

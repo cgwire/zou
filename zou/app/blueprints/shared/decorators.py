@@ -7,8 +7,8 @@ from zou.app.services import playlist_sharing_service
 
 def require_valid_playlist_share_link():
     """
-    Validate the path token, with the ``password`` query parameter when the
-    link is protected, and store the serialized share link on
+    Validate the token of the path. If the link has a password, validate
+    the ``password`` query parameter too. Then store the share link dict on
     ``g.playlist_share_link`` for the request.
     """
 

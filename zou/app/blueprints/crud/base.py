@@ -1,26 +1,27 @@
 """
 Generic CRUD resources shared by every model exposed under /data.
 
-BaseModelsResource handles the collection (GET list, POST create) and
-BaseModelResource the single instance (GET, PUT, DELETE). Per-model
-subclasses in this package customize behaviour through overridable hooks
-rather than by reimplementing the HTTP methods:
+BaseModelsResource handles the collection (GET list, POST create).
+BaseModelResource handles the single instance (GET, PUT, DELETE). The
+subclasses of each model in this package change the behavior through
+hooks. They do not write the HTTP methods again:
 
 - check_read_permissions / check_create_permissions(data) /
   check_update_permissions(instance, data) / check_delete_permissions
-  (instance): raise permissions.PermissionDenied to forbid; the default
-  requires admin.
-- add_project_permission_filter(query): narrow a list query to the
-  projects the caller may see.
-- update_data(data[, instance_id]): last chance to clean or complete the
-  payload before it hits the model. The base method strips the protected
-  fields (and, on update, validates the dates): overrides call it first.
-- pre/post_create, pre/post_update, pre/post_delete: side effects around
-  the mutation (events are emitted by emit_*_event).
+  (instance): raise permissions.PermissionDenied to refuse the request.
+  By default, only an admin has access.
+- add_project_permission_filter(query): limit a list query to the
+  projects that the caller can see.
+- update_data(data[, instance_id]): clean or complete the payload before
+  the model gets it. The base method removes the protected fields. On
+  update, it also validates the dates. Overrides call it first.
+- pre/post_create, pre/post_update, pre/post_delete: side effects before
+  and after the mutation. The emit_*_event methods emit the events.
 
-Hooks run inside the request; raising a domain exception maps to the
-matching error handler. Integrity/statement errors are caught here and
-returned as sanitized 400s (see build_db_error_message).
+Hooks run inside the request. If a hook raises a domain exception, the
+matching error handler answers. This module catches the integrity and
+statement errors and returns them as sanitized 400 responses (see
+build_db_error_message).
 """
 
 import datetime
@@ -51,9 +52,10 @@ UNIQUE_VIOLATION_MESSAGE = (
 
 def build_db_error_message(exception):
     """
-    Client-safe message for database errors: the raw exception text embeds
-    SQL statements and bound parameter values, which must stay in the
-    server logs and never reach the client.
+    Return a message about the database error that is safe for the client.
+    The raw text of the exception contains SQL statements and bound
+    parameter values. These must stay in the server logs and never reach
+    the client.
     """
     if isinstance(exception, IntegrityError):
         origin = str(getattr(exception, "orig", exception)).lower()
@@ -78,9 +80,9 @@ class BaseModelsResource(MethodView, ArgsMixin):
     def get_relations_eager_load(self):
         """
         Return a list of relationship attributes to selectinload when the
-        client requests ?relations=true. Subclasses override this for models
+        client sends ?relations=true. Subclasses override this for models
         that have collection relationships without lazy="selectin" on the
-        model itself, so the bulk list endpoint doesn't fall into N+1.
+        model. Thus the bulk list endpoint does not do N+1 queries.
         """
         return []
 
@@ -140,10 +142,11 @@ class BaseModelsResource(MethodView, ArgsMixin):
 
     def get_filterable_column_names(self):
         """
-        Names accepted as query filters. Filters run before serialization,
-        so a column the resource hides from its response is still queryable
-        by equality unless it is dropped here: subclasses that narrow what
-        they return must narrow this too.
+        Return the names that the query filters accept. Filters run before
+        serialization. Thus, if a column is not removed here, a client can
+        filter on it by equality, also when the response hides it.
+        Subclasses that return fewer columns must also return fewer names
+        here.
         """
         return inspect(self.model).all_orm_descriptors.keys()
 
@@ -160,12 +163,12 @@ class BaseModelsResource(MethodView, ArgsMixin):
                 continue
 
             if key not in column_names:
-                # A column kept out of the filter set must be refused, not
-                # dropped: dropping it answers a broader question than the
-                # one asked, and a client reading the first row as the
-                # match (gazu's fetch_first) then gets an arbitrary record
-                # instead of an error. Names that are not columns at all
-                # stay ignored, resources take their own parameters.
+                # Refuse a column that is not in the filter set. Do not
+                # ignore it: the query then answers a wider question than
+                # the request. A client that reads the first row as the
+                # match (gazu's fetch_first) then gets a random record, not
+                # an error. Names that are not columns stay ignored,
+                # because resources read their own parameters.
                 if key in model_column_names:
                     raise WrongParameterException(
                         f"Filtering on {key} is not allowed."
@@ -300,10 +303,10 @@ class BaseModelsResource(MethodView, ArgsMixin):
                         result = fields.pick_fields(result, field_names)
                     return result
         except StatementError as exception:
-            # A filter value the driver refuses (an int column given a
-            # word, a malformed date) surfaces here, on execution. The raw
-            # text carries the statement and its bound values, so only the
-            # sanitized message reaches the client.
+            # If the driver refuses a filter value (a word for an int
+            # column, a malformed date), the error occurs here, on
+            # execution. The raw text contains the statement and its bound
+            # values. Thus only the sanitized message goes to the client.
             current_app.logger.info(str(exception))
             return (
                 {
@@ -358,11 +361,11 @@ class BaseModelResource(MethodView, ArgsMixin):
         MethodView.__init__(self)
         self.protected_fields = ["id", "created_at", "updated_at"]
         if "project_id" in model.__table__.columns:
-            # check_update_permissions validates the project read from the
-            # stored instance, never the one in the body, so a payload
-            # carrying another project_id moved the row into a production
-            # the caller was never checked against. Creation is unaffected:
-            # BaseModelsResource needs the project to be given.
+            # check_update_permissions validates the project of the stored
+            # instance, never the project of the body. Without this, a
+            # payload with another project_id moved the row into a
+            # production that the check did not examine. This does not
+            # change creation: BaseModelsResource needs the project.
             self.protected_fields.append("project_id")
         self.model = model
         self.instance = None
@@ -402,10 +405,10 @@ class BaseModelResource(MethodView, ArgsMixin):
 
     def _validate_date_fields(self, data):
         """
-        Check that any incoming string destined for a Date / DateTime column
-        can actually be parsed. Raises WrongParameterException with a clean
-        message instead of letting a malformed value like ``"2026-04-"``
-        crash inside PostgreSQL.
+        Make sure that the parser can read each incoming string for a Date
+        or DateTime column. If it cannot, raise WrongParameterException
+        with a clear message. Thus a malformed value like ``"2026-04-"``
+        does not cause a crash in PostgreSQL.
         """
         if data is None:
             return
@@ -417,9 +420,10 @@ class BaseModelResource(MethodView, ArgsMixin):
         for key, value in data.items():
             if key in columns and isinstance(value, str) and value != "":
                 try:
-                    # fromisoformat accepts what PostgreSQL does for ISO
-                    # 8601 (date only, time offsets...), but not a Z after
-                    # a date alone (2026-04-01Z): map Z to +00:00.
+                    # fromisoformat accepts the ISO 8601 values that
+                    # PostgreSQL accepts (date only, time offsets...), but
+                    # not a Z after a date only (2026-04-01Z). Thus, change
+                    # Z to +00:00.
                     datetime.datetime.fromisoformat(
                         value.replace("Z", "+00:00")
                     )

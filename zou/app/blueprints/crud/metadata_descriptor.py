@@ -23,8 +23,9 @@ class MetadataDescriptorsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, MetadataDescriptor)
 
     def check_read_permissions(self, options=None):
-        # Every member of a production reads its descriptors, narrowed on
-        # the role held there by add_project_permission_filter.
+        # Each member of a production can read its descriptors.
+        # add_project_permission_filter limits them to the role of the user in
+        # that production.
         return True
 
     @jwt_required()
@@ -46,9 +47,9 @@ class MetadataDescriptorsResource(BaseModelsResource):
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
             return query
-        # The descriptors of each project are narrowed on the role held on
-        # it, as the descriptors route of a production narrows them: the
-        # filters of the query string cannot reach the ones left out.
+        # The role of the user on each project limits the descriptors of that
+        # project, as in the descriptors route of a production. The filters of
+        # the query string cannot get the descriptors that this removes.
         project_ids = [
             project["id"] for project in user_service.related_projects()
         ]
@@ -60,8 +61,8 @@ class MetadataDescriptorsResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         """
-        Check if the data descriptor has a valid data_type, and a field name
-        that no built-in field uses.
+        Make sure that the data descriptor has a valid data_type, and a field
+        name that no built-in field uses.
         """
         if "data_type" in data:
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
@@ -113,9 +114,9 @@ class MetadataDescriptorResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         """
-        Check if the data descriptor has a valid data_type, and that a new
-        field name is not one a built-in field uses. A descriptor created on
-        one before that check keeps it.
+        Make sure that the data descriptor has a valid data_type, and that no
+        built-in field uses a new field name. If a descriptor got such a name
+        before this check, it keeps that name.
         """
         data = super().update_data(data, instance_id)
         if "data_type" in data:
@@ -135,6 +136,6 @@ class MetadataDescriptorResource(BaseModelResource):
 
     def serialize_update_response(self, instance):
         """
-        List the departments, as the reads do.
+        Return the list of the departments, as the reads do.
         """
         return instance.serialize(relations=True)

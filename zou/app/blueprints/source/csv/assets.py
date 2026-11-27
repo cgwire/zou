@@ -49,8 +49,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         task_types = projects_service.get_project_task_types_raw(
             project_id, "Asset"
         )
-        # Serialized: model instances would be expired by every row commit,
-        # and read again from the database on every row.
+        # Serialized: each row commit would expire the active records, and each
+        # row would read them again from the database.
         self.task_types_in_project_for_assets = [
             task_type.serialize() for task_type in task_types
         ]
@@ -73,10 +73,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
     def create_missing_tasks(self, entity, tasks_map=None):
         """
-        Create the workflow tasks the entity does not have yet, each at the
-        default status, and return the map of task type id to task. This
-        runs for every row, including the ones whose task columns are all
-        empty: those are exactly the tasks the import must initialize.
+        Create the workflow tasks that the entity does not have yet, each at
+        the default status. Return a dict that maps each task type ID to its
+        task. This function runs for every row, also for the rows with only
+        empty task columns: the import must initialize exactly these tasks.
         """
         if tasks_map is None:
             tasks_map = {
@@ -99,8 +99,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         self, tasks_update, entity, asset_creation=False
     ):
         """
-        Create the workflow tasks of the entity, then apply the statuses,
-        comments and assignations read from the row.
+        Create the workflow tasks of the entity. Then apply the statuses,
+        comments and assignations of the row.
         """
         tasks_map = self.create_missing_tasks(
             entity, {} if asset_creation else None
@@ -109,8 +109,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         for task_update in tasks_update:
             task_type_id = task_update["task_type_id"]
             if task_type_id not in tasks_map:
-                # The column names a task type outside the asset type
-                # workflow: a filled cell still creates its task.
+                # The column names a task type that is not in the workflow of
+                # the asset type. A filled cell still creates its task.
                 task = tasks_service.create_task(
                     task_types_service.get_task_type(task_type_id),
                     entity.serialize(),
@@ -145,13 +145,12 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         if self.asset_types_in_project:
-            # An empty project asset type list means every type is allowed,
-            # which is how Kitsu reads it too. A non-empty one is a closed
-            # list, so the import never creates a type here: an unknown
-            # name is a typo, not a new type. A type that exists but is
-            # missing from the list is added to it, otherwise the imported
-            # assets would be absent from the production filters and from
-            # the schedule.
+            # If the list of asset types of the project is empty, the project
+            # allows all types. Kitsu reads it the same way. A list that is not
+            # empty is closed, thus the import never creates a type here: an
+            # unknown name is a typo, not a new type. If a type exists but is
+            # not in the list, the import adds it. Otherwise, the production
+            # filters and the schedule would not show the imported assets.
             entity_type_id = self.asset_types_in_project.get(
                 entity_type_name.lower()
             )
@@ -188,9 +187,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             "source_id": episode_id,
         }
 
-        # The entity table is polymorphic: without the type, a sequence or
-        # an episode with the same name would be taken for the asset and
-        # re-typed on update.
+        # The entity table is polymorphic. Without the type, the query could
+        # find a sequence or an episode with the same name, and the update
+        # would change its type.
         entity = entities_service.find_entity_raw(
             name=asset_values["name"],
             project_id=asset_values["project_id"],
@@ -259,8 +258,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         else:
-            # The asset is left untouched, but a re-import is the documented
-            # way to repair a production whose assets miss their tasks.
+            # The import does not change the asset. But a re-import is the
+            # documented way to repair a production with assets that do not
+            # have their tasks.
             self.create_missing_tasks(entity)
 
         return entity.serialize()
@@ -270,18 +270,19 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         try:
             return super().run_import(file_path, project_id)
         finally:
-            # Indexed at the end, without waiting for the indexer on every
-            # row. The rows committed before a failing one stay imported:
-            # they are indexed too.
+            # Index at the end, so that each row does not wait for the indexer.
+            # The rows committed before a failing row stay imported: the index
+            # gets them too.
             index_service.index_assets(self.asset_ids_to_index)
 
     def get_task_types_for_asset_type(self, asset_type_id):
         """
-        Return the ids of the task types to create for a given asset type:
-        the ones enabled on the project, narrowed by the asset type workflow
-        when it defines one. Memoized on the resource instance only: the
-        result depends on the project being imported, which a cache key
-        built from the arguments alone cannot express.
+        Return the IDs of the task types to create for the given asset type.
+        These are the task types that the project enables. If the asset type
+        has a workflow, keep only the task types of that workflow. The
+        memoization is on the resource instance only. The result depends on the
+        project of the import, and a cache key made from the arguments only
+        cannot show it.
         """
         asset_type_id = str(asset_type_id)
         if asset_type_id not in self.task_types_for_asset_type:

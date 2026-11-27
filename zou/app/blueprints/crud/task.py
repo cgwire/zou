@@ -37,9 +37,9 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
     def get_relations_eager_load(self):
         """
-        Batch-load assignees when the client asks for relations.
-        Task.assignees is not loaded with selectin by default, so the Task
-        loads that don't need assignees (~70-80% of them) pay nothing.
+        Load the assignees in batch when the client asks for relations.
+        By default, Task.assignees does not use selectin. Thus the Task loads
+        that do not need assignees (about 70-80% of them) cost nothing.
         """
         return [Task.assignees]
 
@@ -56,7 +56,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            # Each task follows the role held on its own project.
+            # Each task uses the role of the user on its project.
             query = tasks_service.filter_tasks_by_projects(
                 query,
                 user_service.build_related_projects_filter(),
@@ -101,8 +101,8 @@ class TasksResource(BaseModelsResource, ArgsMixin):
 
         episode_id = options.get("episode_id", None)
         if episode_id is not None:
-            # Bound as a raw value into the join below: the driver would
-            # reject a malformed id on execution with a generic message.
+            # The join below uses this raw value. On execution, the driver
+            # would reject a malformed ID with a generic message.
             if not fields.is_valid_id(episode_id):
                 raise WrongParameterException(
                     f"Invalid UUID format for episode_id: {episode_id}"
@@ -126,8 +126,9 @@ class TasksResource(BaseModelsResource, ArgsMixin):
                     raise WrongParameterException(
                         f"A valid {key} is required."
                     )
-            # task.name is NOT NULL; default it like create_task() does so a
-            # client omitting it gets a task instead of an IntegrityError.
+            # task.name is NOT NULL. Give it a default value, as create_task()
+            # does. Thus, if a client does not send it, the client gets a task,
+            # not an IntegrityError.
             data["name"] = data.get("name") or "main"
             is_assignees = "assignees" in data
             assignees = None
@@ -144,7 +145,8 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             permissions_service.check_manager_project_access(
                 entity["project_id"]
             )
-            # The body project_id is not trusted: the task follows its entity.
+            # Do not trust the project_id of the body: the task uses the
+            # project of its entity.
             data["project_id"] = entity["project_id"]
             if task_type["for_entity"] == "Asset":
                 if not entity_types_service.is_asset_dict(entity):
@@ -195,7 +197,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
         permissions_service.check_entity_access(task["entity_id"])
 
     def clean_get_result(self, task):
-        # Runs after the read check resolved the role on the project.
+        # This runs after the read check found the role on the project.
         if permissions.has_client_permissions():
             return entities_service.blank_task_for_client(task)
         return task
@@ -228,17 +230,17 @@ class TaskResource(BaseModelResource, ArgsMixin):
             self._previous_assignees = {
                 str(person.id) for person in self.instance.assignees
             }
-        # Metadata values pile up in the JSONB bag: merge the incoming
-        # dict instead of replacing the whole field, like entities do.
+        # Metadata values accumulate in the JSONB field. Merge the incoming
+        # dict, as entities do. Do not replace the full field.
         if data.get("data"):
             data["data"] = {**(self.instance.data or {}), **data["data"]}
         return instance_dict
 
     def post_update(self, instance_dict, data):
         tasks_service.clear_task_cache(instance_dict["id"])
-        # Assignees set through the generic update emit the same events and
-        # assignation notifications as the assign/clear-assignation routes
-        # so that listeners and assignees stay in sync.
+        # If the generic update sets assignees, it emits the same events and
+        # assignation notifications as the assign/clear-assignation routes.
+        # Thus listeners and assignees stay in sync.
         if "assignees" in data:
             new_assignees = {
                 str(person.id) for person in self.instance.assignees

@@ -46,8 +46,8 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 def send_playlist_zip(playlist):
     """
-    Build the ZIP file of a playlist, send it as an attachment and remove it
-    once sent.
+    Build the ZIP file of a playlist, send it as an attachment and remove
+    it after the send.
     """
     project = projects_service.get_project(playlist["project_id"])
     zip_file_path = playlist_builds_service.build_playlist_zip_file(playlist)
@@ -134,14 +134,14 @@ class ProjectPlaylistResource(MethodView):
         Get playlist
         """
         permissions_service.check_project_access(project_id)
-        # Refused before the id is looked up, so that a vendor never learns
-        # which playlist ids belong to the production.
+        # The check refuses the request before the lookup of the ID. Thus a
+        # vendor cannot know which playlist IDs belong to the production.
         permissions_service.block_access_to_vendor()
         playlist = playlists_service.get_project_playlist(
             project_id, playlist_id
         )
         permissions_service.check_playlist_read_access(playlist)
-        # The web client loads annotations on demand, so omit the heavy
+        # The web client loads annotations on demand, so remove the large
         # annotation blobs from this payload.
         return playlists_service.get_playlist_with_preview_file_revisions(
             playlist_id, with_annotations=False
@@ -204,7 +204,8 @@ class PlaylistAddEntitiesResource(MethodView, ArgsMixin):
         permissions_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntitiesToPlaylistSchema)
-        # A preview of another entity is replaced by the entity's latest.
+        # If a preview belongs to another entity, use the latest preview of
+        # this entity.
         entities = preview_files_service.unpin_foreign_preview_files(
             [
                 {
@@ -290,7 +291,7 @@ class BuildPlaylistMovieResource(MethodView, ArgsMixin):
         ]
 
         remote = config.ENABLE_JOB_QUEUE and config.ENABLE_JOB_QUEUE_REMOTE
-        # remote worker can not access files local to the web app
+        # The remote worker cannot access the local files of the web app.
         if remote and config.FS_BACKEND not in ["s3", "swift"]:
             return {
                 "error": True,
@@ -458,7 +459,7 @@ class NotifyClientsResource(MethodView, ArgsMixin):
 
 class PlaylistShareLinksResource(MethodView):
     """
-    Manage share links for a playlist (manager+).
+    Manage the share links of a playlist (manager or higher).
     """
 
     @jwt_required()
@@ -500,7 +501,7 @@ class PlaylistShareLinksResource(MethodView):
 
 class PlaylistShareLinkResource(MethodView):
     """
-    Revoke a specific share link (manager+).
+    Revoke a specific share link (manager or higher).
     """
 
     @jwt_required()
@@ -516,9 +517,9 @@ class PlaylistShareLinkResource(MethodView):
         share_link = playlist_sharing_service.get_share_link_by_token_raw(
             token
         )
-        # Path playlist_id must match the share link's own playlist_id;
-        # otherwise a manager who knows any token could revoke it via any
-        # playlist URL they DO have access to.
+        # The playlist_id of the path must match the playlist_id of the share
+        # link. Else, a manager who knows a token can revoke it through any
+        # playlist URL that they DO have access to.
         if str(share_link.playlist_id) != str(playlist_id):
             raise PlaylistShareLinkNotFoundException
         return playlist_sharing_service.revoke_share_link(token)
@@ -526,12 +527,13 @@ class PlaylistShareLinkResource(MethodView):
 
 class PlaylistShareLinkInviteResource(MethodView):
     """
-    Email a share link to one or more recipients (manager+).
+    Send a share link by email to one or more recipients (manager or
+    higher).
 
-    Recipients can be free-form emails and/or existing Person ids
-    (e.g. clients on the project): the server resolves person ids to
-    their email. The endpoint is fire-and-forget: no DB
-    record of the invitation is kept.
+    The recipients can be email addresses in free form, existing Person
+    IDs (for example, clients of the project), or both. The server changes
+    each person ID into the email of that person. The endpoint does not
+    wait for a result, and it keeps no database record of the invitation.
     """
 
     @jwt_required()

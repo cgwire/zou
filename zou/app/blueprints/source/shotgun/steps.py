@@ -72,10 +72,10 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
         data["department_id"] = department.id
         matched_by_name = False
         if task_type is None:
-            # matched regardless of case: a step named after an existing
-            # task type must update it rather than create a twin the
-            # clients cannot tell apart, since they resolve them by name
-            # and lower-case it on the way
+            # Match the task type name in any letter case. A step with the
+            # name of a task type must update it, not create a copy. The
+            # clients cannot tell the two apart: they find task types by name
+            # and change the name to lower case.
             task_type = TaskType.get_by_case_insensitive(
                 name=data["name"], for_entity=data["for_entity"]
             )
@@ -96,8 +96,9 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
                 data.pop("for_entity", None)
                 data.pop("department_id", None)
             elif matched_by_name:
-                # a task type matched in another case keeps its name, even
-                # when the step moves it to another department
+                # If the task type has the name in another case, it keeps its
+                # name. This is also true if the step moves it to another
+                # department.
                 data.pop("name", None)
             task_type.update(data)
             task_types_service.clear_task_type_cache(str(task_type.id))

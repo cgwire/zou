@@ -27,9 +27,9 @@ class WorkingFilesResource(BaseModelsResource):
 
     def check_read_permissions(self, options=None):
         """
-        Let every role but vendors list the working files:
-        add_project_permission_filter keeps the files of the projects of
-        the user's team.
+        Let all roles but vendors list the working files.
+        add_project_permission_filter keeps only the files of the projects of
+        the team of the user.
         """
         permissions_service.block_access_to_vendor()
         return True
@@ -57,8 +57,8 @@ class WorkingFilesResource(BaseModelsResource):
 
     def add_project_permission_filter(self, query):
         """
-        Filtering to keep only the files from projects available to the user's
-        team. Allows projects that are no longer open.
+        Filter the query to keep only the files of the projects of the team of
+        the user. Closed projects stay in the result.
         """
         if permissions.has_admin_permissions():
             return query
@@ -71,10 +71,10 @@ class WorkingFilesResource(BaseModelsResource):
 class WorkingFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, WorkingFile)
-        # A working file stays on its task and entity: the update checks the
-        # access on the stored ones. Output files keep their source: the
-        # update would move any output file, of any project, without checking
-        # the access to it.
+        # A working file stays on its task and entity, because the update
+        # checks the access to the stored ones. Output files keep their source,
+        # because the update would move each output file, of all projects, with
+        # no access check.
         self.protected_fields += ["task_id", "entity_id", "outputs"]
 
     def check_read_permissions(self, instance):
@@ -117,8 +117,8 @@ class WorkingFileResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        # Only a manager of the project changes the author: the update check
-        # resolved the project role.
+        # Only a manager of the project can change the author. The update check
+        # found the project role before.
         if not permissions.has_manager_permissions():
             data.pop("person_id", None)
         check_validation_status(data)

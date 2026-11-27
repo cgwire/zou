@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request body validation in the search blueprint.
+Pydantic schemas that validate the request bodies of the search blueprint.
 """
 
 from typing import List, Optional

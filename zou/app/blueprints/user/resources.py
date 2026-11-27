@@ -71,7 +71,7 @@ class ShotTaskTypesResource(MethodView):
 
 class SceneTaskTypesResource(MethodView):
     """
-    Return task types related to given scene for current user.
+    Return the task types of the given scene for the current user.
     """
 
     @swag_from(SPECS["SceneTaskTypesResource_get"])
@@ -598,8 +598,8 @@ class SequenceUnsubscribeResource(MethodView):
 
 class TimeSpentsResource(MethodView, ArgsMixin):
     """
-    Get all time spents for the current user.
-    Optionnaly can accept date range parameters.
+    Return all the time spents of the current user. It can also take date
+    range parameters.
     """
 
     @swag_from(SPECS["TimeSpentsResource_get"])

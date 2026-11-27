@@ -1,5 +1,6 @@
 """
-Pydantic schemas for request body validation in the comments blueprint.
+Pydantic schemas that validate the request bodies of the comments
+blueprint.
 """
 
 from typing import List, Optional
@@ -13,7 +14,7 @@ from zou.app.utils.validation import BaseSchema
 
 class CopyClientCommentsSchema(BaseSchema):
     """
-    Body for copying the last client comment of each given task.
+    Body to copy the last client comment of each of the given tasks.
     """
 
     task_ids: List[UUID] = Field(..., min_length=1)
@@ -22,9 +23,9 @@ class CopyClientCommentsSchema(BaseSchema):
 
 class BatchCommentItemSchema(BaseSchema):
     """
-    One entry of the batch comment bodies. An entry missing its task,
-    status or text is skipped by the route rather than refused, which is
-    why nothing is required here.
+    One entry of the batch of comment bodies. If an entry has no task, no
+    status or no text, the route skips it and does not refuse it. Thus no
+    field is required here.
     """
 
     object_id: Optional[UUID] = None
@@ -35,7 +36,7 @@ class BatchCommentItemSchema(BaseSchema):
 
 class CommentReplySchema(BaseSchema):
     """
-    Body for replying to a comment.
+    Body to reply to a comment.
     """
 
     text: Optional[str] = Field("", description="Reply text content")
@@ -43,7 +44,7 @@ class CommentReplySchema(BaseSchema):
 
 class MoveCommentSchema(BaseSchema):
     """
-    Body for moving a comment to another task of the same entity.
+    Body to move a comment to another task of the same entity.
     """
 
     target_task_id: str = Field(
@@ -53,9 +54,9 @@ class MoveCommentSchema(BaseSchema):
 
 class CommentCreateSchema(BaseSchema):
     """
-    Body for adding a comment to a task. Sent either as JSON or as a
-    multipart form (when files are attached), where checklist and links
-    arrive as JSON-encoded strings.
+    Body to add a comment to a task. The client sends it as JSON, or as a
+    multipart form when it attaches files. In a multipart form, checklist
+    and links come as JSON-encoded strings.
     """
 
     task_status_id: str = Field(..., description="Task status UUID")
@@ -76,8 +77,8 @@ class CommentCreateSchema(BaseSchema):
     @classmethod
     def decode_json_strings(cls, value):
         """
-        Accept the JSON-encoded strings sent by multipart forms and the
-        explicit nulls sent by Kitsu when the field is empty.
+        Accept the JSON-encoded strings of multipart forms. Also accept the
+        explicit nulls that Kitsu sends when the field is empty.
         """
         if value is None:
             return []

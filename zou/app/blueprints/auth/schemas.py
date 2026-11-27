@@ -24,7 +24,7 @@ class LoginSchema(BaseSchema):
 
 class ChangePasswordSchema(BaseSchema):
     """
-    Body for changing user password.
+    Body to change the password of the user.
     """
 
     old_password: str = Field(
@@ -38,7 +38,7 @@ class ChangePasswordSchema(BaseSchema):
 
 class ResetPasswordSchema(BaseSchema):
     """
-    Body for resetting password with token.
+    Body to reset the password with a token.
     """
 
     email: str = Field(..., min_length=1)
@@ -49,7 +49,7 @@ class ResetPasswordSchema(BaseSchema):
 
 class ResetPasswordCheckSchema(BaseSchema):
     """
-    Body for checking a password reset token.
+    Body to check a password reset token.
     """
 
     email: str = Field(..., min_length=1)
@@ -58,7 +58,7 @@ class ResetPasswordCheckSchema(BaseSchema):
 
 class SendPasswordResetSchema(BaseSchema):
     """
-    Body for requesting a password reset email.
+    Body to ask for a password reset email.
     """
 
     email: str = Field(..., min_length=1)
@@ -66,7 +66,7 @@ class SendPasswordResetSchema(BaseSchema):
 
 class TwoFactorAuthSchema(BaseSchema):
     """
-    Body for two-factor authentication verification.
+    Body to verify a two-factor authentication.
     """
 
     totp: Optional[str] = None
@@ -77,8 +77,8 @@ class TwoFactorAuthSchema(BaseSchema):
 
 class TotpSchema(TwoFactorAuthSchema):
     """
-    Body for enabling TOTP. The inherited fields carry a factor already
-    enabled, asked for when the account has one.
+    Body to enable TOTP. The inherited fields carry a factor that is
+    already enabled. The endpoint asks for it if the account has one.
     """
 
     totp: str = Field(..., min_length=1, description="TOTP verification code")
@@ -86,8 +86,8 @@ class TotpSchema(TwoFactorAuthSchema):
 
 class EmailOtpSchema(TwoFactorAuthSchema):
     """
-    Body for enabling email OTP. The inherited fields carry a factor already
-    enabled, asked for when the account has one.
+    Body to enable email OTP. The inherited fields carry a factor that is
+    already enabled. The endpoint asks for it if the account has one.
     """
 
     email_otp: str = Field(
@@ -97,8 +97,9 @@ class EmailOtpSchema(TwoFactorAuthSchema):
 
 class FidoRegisterSchema(TwoFactorAuthSchema):
     """
-    Body for registering a FIDO device. The inherited fields carry a factor
-    already enabled, asked for when the account has one.
+    Body to register a FIDO device. The inherited fields carry a factor
+    that is already enabled. The endpoint asks for it if the account has
+    one.
     """
 
     registration_response: dict = Field(
@@ -111,7 +112,7 @@ class FidoRegisterSchema(TwoFactorAuthSchema):
 
 class FidoUnregisterSchema(BaseSchema):
     """
-    Body for unregistering a FIDO device.
+    Body to unregister a FIDO device.
     """
 
     device_name: str = Field(
@@ -125,9 +126,9 @@ class FidoUnregisterSchema(BaseSchema):
 
 class CurrentCredentialsSchema(TwoFactorAuthSchema):
     """
-    Body fields proving again who the caller is, before a change a session
-    alone must not allow: the current password, plus a second factor when
-    one is enabled.
+    Body fields that prove again the identity of the caller, before a
+    change that a session alone must not allow. They are the current
+    password, and a second factor if one is enabled.
     """
 
     current_password: str = Field(
@@ -137,7 +138,7 @@ class CurrentCredentialsSchema(TwoFactorAuthSchema):
 
 class AppLoginCodeSchema(BaseSchema):
     """
-    Body for minting a browser login code for a desktop app or a script.
+    Body to create a browser login code for a desktop app or a script.
     """
 
     code_challenge: str = Field(
@@ -149,7 +150,7 @@ class AppLoginCodeSchema(BaseSchema):
 
 class AppLoginTokenSchema(BaseSchema):
     """
-    Body for trading a browser login code for a token pair.
+    Body to exchange a browser login code for a token pair.
     """
 
     code: str = Field(

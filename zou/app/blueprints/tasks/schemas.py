@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request body validation in the tasks blueprint.
+Pydantic schemas that validate the request bodies of the tasks blueprint.
 """
 
 from typing import List, Optional
@@ -11,7 +11,7 @@ from zou.app.utils.validation import BaseSchema
 
 class CommentPreviewSchema(BaseSchema):
     """
-    Body for adding a preview to a comment.
+    Body to add a preview to a comment.
     """
 
     revision: Optional[int] = Field(None, ge=0)
@@ -19,7 +19,7 @@ class CommentPreviewSchema(BaseSchema):
 
 class UnassignTasksSchema(BaseSchema):
     """
-    Body for clearing task assignations.
+    Body to clear the assignations of tasks.
     """
 
     task_ids: List[str] = Field(
@@ -30,7 +30,7 @@ class UnassignTasksSchema(BaseSchema):
 
 class SetTasksPrioritySchema(BaseSchema):
     """
-    Body for setting the priority of several tasks.
+    Body to set the priority of several tasks.
     """
 
     task_ids: List[str] = Field(
@@ -41,7 +41,7 @@ class SetTasksPrioritySchema(BaseSchema):
 
 class SetTasksMainPreviewSchema(BaseSchema):
     """
-    Body for setting the main preview of several tasks' entities.
+    Body to set the main preview of the entities of several tasks.
     """
 
     task_ids: List[str] = Field(
@@ -51,7 +51,7 @@ class SetTasksMainPreviewSchema(BaseSchema):
 
 class AssignTasksSchema(BaseSchema):
     """
-    Body for assigning tasks to a person.
+    Body to assign tasks to a person.
     """
 
     task_ids: List[str] = Field(
@@ -61,7 +61,7 @@ class AssignTasksSchema(BaseSchema):
 
 class AssignPersonSchema(BaseSchema):
     """
-    Body for assigning a single task to a person.
+    Body to assign one task to a person.
     """
 
     person_id: str = Field(
@@ -71,7 +71,7 @@ class AssignPersonSchema(BaseSchema):
 
 class TimeSpentSchema(BaseSchema):
     """
-    Body for creating/updating time spent on a task.
+    Body to create or update the time spent on a task.
     """
 
     duration: float = Field(..., gt=0, description="Duration in minutes")

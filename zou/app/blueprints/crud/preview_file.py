@@ -44,10 +44,10 @@ class PreviewFilesResource(BaseModelsResource):
         return super().post()
 
     def apply_filters(self, query, options):
-        # A preview file has no project_id column, so the generic filters
-        # drop the parameter and answer for every production: scope the
-        # rows to that project through their task. A subquery rather than
-        # a join, the permission filter already joins the task table.
+        # A preview file has no project_id column. Thus the generic filters
+        # ignore the parameter and answer for all productions. Limit the rows
+        # to that project through their task. Use a subquery, not a join,
+        # because the permission filter already joins the task table.
         query = super().apply_filters(query, options)
         if "project_id" in options:
             if not fields.is_valid_id(options["project_id"]):
@@ -75,13 +75,13 @@ class PreviewFilesResource(BaseModelsResource):
 class PreviewFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, PreviewFile)
-        # The update check reads the project off the stored task.
+        # The update check reads the project from the stored task.
         self.protected_fields.append("task_id")
 
     def check_read_permissions(self, preview_file):
         """
-        The preview file must belong to a project of the user, and a vendor
-        must also be working on its task.
+        Make sure that the preview file is in a project of the user. A vendor
+        must also work on its task.
         """
         task = tasks_service.get_task(preview_file["task_id"])
         permissions_service.check_project_access(task["project_id"])
@@ -122,10 +122,10 @@ class PreviewFileResource(BaseModelResource):
 
     def pre_update(self, instance_dict, data):
         """
-        Check revision uniqueness before updating a preview file.
-        Only applies to main previews (position 1).
-        When updating a main preview's revision, all extra previews
-        with the same revision are updated too.
+        Make sure that the revision is unique before the update of a preview
+        file. This applies only to main previews (position 1). When the update
+        changes the revision of a main preview, it also updates all the extra
+        previews with the same revision.
         """
         if "revision" in data and instance_dict.get("position") == 1:
             new_revision = data["revision"]

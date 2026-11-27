@@ -34,12 +34,14 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 def check_criterion_access(criterions):
     """
-    Raise 403 if the caller filters by a project or episode they cannot access.
+    Raise 403 if the caller filters on a project or an episode that they
+    cannot access.
 
-    Resolves ``project_id`` from the criterions (directly, or via the episode)
-    and calls ``permissions_service.check_project_access``. When no
-    project/episode is given, access is not checked here: the asset services
-    already scope the list with ``only_user_projects``.
+    The function gets ``project_id`` from the criterions, directly or
+    through the episode. Then it calls
+    ``permissions_service.check_project_access``. If the criterions give no
+    project and no episode, the function does no access check: the asset
+    services already limit the list with ``only_user_projects``.
     """
     project_id = None
     if "project_id" in criterions:
@@ -108,11 +110,11 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
         Get assets with tasks
         """
         criterions = query.get_query_criterions_from_request(request)
-        # Kitsu-oriented options for full-project views: compact halves
-        # the payload (positional rows, field names in the header) and
-        # stream sends NDJSON without holding the response in memory.
-        # They are response options, not filters: pop them before the
-        # criterions reach the service.
+        # Kitsu uses these options for the views of a full project. compact
+        # makes the payload half as large: the rows are positional and the
+        # header holds the field names. stream sends NDJSON and does not
+        # keep the response in memory. These are response options, not
+        # filters: remove them before the criterions go to the service.
         stream = criterions.pop("stream", "false") == "true"
         compact = criterions.pop("compact", "false") == "true"
         query.check_criterion_id_format(criterions)
@@ -143,7 +145,8 @@ class AssetsAndTasksResource(MethodView, ArgsMixin):
             header["task_fields"] = assets_service.ASSETS_AND_TASKS_TASK_FIELDS
         response = flask_utils.rows_response(header, rows, stream)
         if etag is not None:
-            # rows_response returns a plain dict when not streaming.
+            # If the response is not a stream, rows_response returns a
+            # plain dict.
             if stream:
                 http_cache.mark(response, etag)
             else:

@@ -33,7 +33,7 @@ class AssetInstancesResource(BaseModelsResource):
 class AssetInstanceResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, AssetInstance)
-        # The update check reads the project off the stored asset.
+        # The update check reads the project from the stored asset.
         self.protected_fields += [
             "number",
             "asset_id",

@@ -1,5 +1,5 @@
 """
-Pydantic schemas for request body validation in the shots blueprint.
+Pydantic schemas that validate the request bodies of the shots blueprint.
 """
 
 from typing import Optional
@@ -12,7 +12,7 @@ from zou.app.utils.validation import BaseSchema
 
 class NewShotSchema(BaseSchema):
     """
-    Body for creating a new shot.
+    Body to create a new shot.
     """
 
     name: str = Field(..., min_length=1, description="Shot name")
@@ -24,7 +24,7 @@ class NewShotSchema(BaseSchema):
 
 class NewSequenceSchema(BaseSchema):
     """
-    Body for creating a new sequence.
+    Body to create a new sequence.
     """
 
     name: str = Field(..., min_length=1, description="Sequence name")
@@ -35,7 +35,7 @@ class NewSequenceSchema(BaseSchema):
 
 class NewEpisodeSchema(BaseSchema):
     """
-    Body for creating a new episode.
+    Body to create a new episode.
     """
 
     name: str = Field(..., min_length=1, description="Episode name")
@@ -46,7 +46,7 @@ class NewEpisodeSchema(BaseSchema):
 
 class NewSceneSchema(BaseSchema):
     """
-    Body for creating a new scene.
+    Body to create a new scene.
     """
 
     name: str = Field(..., min_length=1, description="Scene name")
@@ -55,9 +55,9 @@ class NewSceneSchema(BaseSchema):
 
 class UpdateShotSchema(BaseSchema):
     """
-    Body of the shot update route. The typed columns are checked, any
-    other column of the entity passes through; the read only and
-    relation fields are dropped by the route.
+    Body of the route that updates a shot. The schema checks the typed columns,
+    and the other columns of the entity pass through. The route removes the
+    read-only fields and the relation fields.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -72,7 +72,7 @@ class UpdateShotSchema(BaseSchema):
 
 class AddShotToSceneSchema(BaseSchema):
     """
-    Body for adding a shot to a scene.
+    Body to add a shot to a scene.
     """
 
     shot_id: UUID = Field(..., description="Shot unique identifier")

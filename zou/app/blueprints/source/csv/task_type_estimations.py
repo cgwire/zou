@@ -26,9 +26,10 @@ SPECS = load_specs(__file__, "openapi.yml")
 
 def snap_to_whole(value):
     """
-    Return the whole number a float result lands a hair off, the value
-    otherwise: 2.05 hours make 122.99999999999999 minutes, and 22.8 hours
-    at 7.6 hours a day make 3.0000000000000004 days.
+    If the given float is very near a whole number, return that whole number.
+    Otherwise, return the value. For example, 2.05 hours make
+    122.99999999999999 minutes, and 22.8 hours at 7.6 hours a day make
+    3.0000000000000004 days.
     """
     whole = round(value)
     return whole if abs(value - whole) < 1e-6 else value
@@ -36,8 +37,8 @@ def snap_to_whole(value):
 
 def parse_number(value):
     """
-    Return the value as a float. Raise ValueError when it is not a finite
-    number.
+    Return the value as a float. If it is not a finite number, raise
+    ValueError.
     """
     number = float(value)
     if not math.isfinite(number):
@@ -48,18 +49,17 @@ def parse_number(value):
 def parse_real_date(value):
     """
     Return the day at 10:00 UTC. Each user counts a real date on their own
-    calendar day: 10:00 UTC stays that day from UTC-10 (Hawaii) to UTC+13
-    (New Zealand in summer), where midnight would fall on the day before
-    west of UTC.
+    calendar day. From UTC-10 (Hawaii) to UTC+13 (New Zealand in summer), 10:00
+    UTC stays on that day. West of UTC, midnight would fall on the day before.
     """
     return date_helpers.get_date_from_string(value) + timedelta(hours=10)
 
 
 def parse_changed_real_date(value):
     """
-    Return a real date that changes the stored one. A mistyped year such as
-    0024 would spread the task over centuries of quota days: it goes from
-    2000 to 2100.
+    Return a real date that changes the stored one. A typo in the year, such as
+    0024, would spread the task over centuries of quota days. Thus the year
+    must be from 2000 to 2100.
     """
     real_date = parse_real_date(value)
     if not 2000 <= real_date.year <= 2100:
@@ -74,8 +74,8 @@ CHANGED_REAL_DATE_FORMAT = (parse_changed_real_date, REAL_DATE_FORM)
 NUMBER_FORMAT = (parse_number, "a number with a dot, such as 1.5")
 WHOLE_NUMBER_FORMAT = (int, "a whole number")
 
-# The real dates of a task, which status changes set, by the column name
-# Kitsu gives them.
+# The real dates of a task, by the column name that Kitsu gives them. Status
+# changes set these dates.
 REAL_DATE_COLUMNS = {
     "WIP date": "real_start_date",
     "Feedback date": "end_date",
@@ -130,7 +130,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         elif self.for_entity == "Shot":
             self.add_shot_candidates(project_id, episode_id)
         elif self.for_entity == "Episode":
-            # The route episode is ignored: older Kitsu versions post the
+            # Ignore the episode of the route: older Kitsu versions post the
             # import of an episode task type under the current episode.
             for episode in episodes:
                 self.add_candidate(episode, "", episode["id"])
@@ -151,9 +151,10 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         }
         criterions = {"project_id": project_id}
         if episode_id not in [None, "main", "all"]:
-            # The assets of the episode and the ones cast into it, as the
-            # task type page of the episode lists them. get_assets compares
-            # the id uncast: a malformed one would fail as a 500.
+            # Get the assets of the episode and the assets cast into it, as the
+            # task type page of the episode lists them. get_assets compares the
+            # ID without a type conversion: a malformed ID would fail with a
+            # 500.
             self.check_id_parameter(episode_id)
             criterions["episode_id"] = episode_id
             self.own_episode_id = episode_id
@@ -190,8 +191,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def add_episode_child_candidates(self, project_id, episode_id):
         """
-        Register the sequences or the edits, under the name of their
-        episode as parent, an empty one when they have none.
+        Register the sequences or the edits under the name of their episode as
+        parent. If they have no episode, use an empty parent name.
         """
         criterions = {"project_id": project_id}
         if episode_id not in [None, "main", "all"]:
@@ -214,8 +215,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def add_candidate(self, entity, parent_name, episode_id):
         """
-        Register an entity a row can name, under the slug of its name. The
-        episode id (the source of an asset) is kept to tell candidates
+        Register an entity that a row can name, under the slug of its name.
+        Keep the episode ID (the source of an asset) to tell the candidates
         apart.
         """
         self.candidates.setdefault(slugify(entity["name"]), []).append(
@@ -233,12 +234,14 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def find_entity(self, parent, name):
         """
-        Return the candidate a row names, None when there is none. Parent
-        and name are compared apart, each through its slug, so that case,
-        spaces and accents do not matter. When several candidates share the
-        slugs, the ones named exactly like the row win, then the ones not
-        canceled, then, in an episode, its own assets over the ones cast
-        into it. More than one left refuses the row.
+        Return the candidate that a row names, or None if there is no
+        candidate. Compare the parent and the name separately, each through its
+        slug: case, spaces and accents do not matter. If two or more candidates
+        share the slugs, apply these rules in this order:
+        - the candidates with exactly the name of the row win,
+        - then the candidates that are not canceled win,
+        - then, in an episode, its own assets win over the assets cast into it.
+        If more than one candidate stays, refuse the row.
         """
         if name == "":
             return None
@@ -262,8 +265,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 if not candidate["canceled"]
             ] or candidates
         if len(candidates) > 1 and self.own_episode_id is not None:
-            # The own assets of the episode win: a file that names them
-            # only must keep importing now that the cast ones match too.
+            # The own assets of the episode win: a file that names only them
+            # must still import, now that the cast assets match too.
             candidates = [
                 candidate
                 for candidate in candidates
@@ -279,8 +282,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def describe_row(self, parent, name):
         """
-        Return the row entity as error messages name it, with its parent
-        when the parent counts.
+        Return the entity of the row as the error messages name it. If the
+        parent counts, add the parent.
         """
         if self.is_parent_ignored(parent):
             return f"Entity '{name}'"
@@ -288,8 +291,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def describe_episodes(self, candidates):
         """
-        Return the episodes of the candidates for an error message, an empty
-        string when the project has no episodes or for Episode rows.
+        Return the episodes of the candidates for an error message. If the
+        project has no episodes, or for Episode rows, return an empty string.
         """
         if not self.episode_names or self.for_entity == "Episode":
             return ""
@@ -307,8 +310,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def is_parent_ignored(self, parent):
         """
-        Episode rows have no parent, and a sequence or an edit row with
-        an empty Parent names any episode in scope.
+        Tell whether the parent of the row does not count. Episode rows have no
+        parent. A sequence or an edit row with an empty Parent names any
+        episode in scope.
         """
         return self.for_entity == "Episode" or (
             self.for_entity in ["Sequence", "Edit"] and parent == ""
@@ -316,8 +320,8 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def is_exact_match(self, candidate, parent, name):
         """
-        Tell whether the candidate has exactly the name and the parent name
-        of the row, the parent ignored when it does not count.
+        Tell whether the candidate has exactly the name and the parent name of
+        the row. If the parent does not count, ignore it.
         """
         return candidate["name"].strip() == name and (
             self.is_parent_ignored(parent)
@@ -373,10 +377,10 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             for column, field in REAL_DATE_COLUMNS.items():
                 real_date = self.read_cell(row, column, REAL_DATE_FORMAT)
                 stored_day = (task[field] or "")[:10]
-                # An export gives the day of a real date, not its time:
-                # imported back as is, the date keeps its time, whatever
-                # its year. isoformat pads a year below 1000 as the stored
-                # day does, where strftime does not on Linux.
+                # An export gives the day of a real date, not its time. If the
+                # import gets the same day back, the date keeps its time, for
+                # all years. isoformat pads a year below 1000 as the stored day
+                # does. On Linux, strftime does not.
                 if (
                     real_date is not None
                     and real_date.date().isoformat() != stored_day
@@ -386,8 +390,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                     )
             self.check_real_dates(task, new_data, parent, name)
 
-        # Merge descriptor cells into the task's own metadata instead of
-        # replacing it, so columns absent from the CSV are preserved.
+        # Merge the descriptor cells into the metadata of the task, do not
+        # replace it. Thus the metadata of the columns that the CSV does not
+        # have stays.
         if any(field in row for field in self.descriptor_fields):
             new_data["data"] = self.get_descriptor_values(row, task["data"])
 
@@ -446,9 +451,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def read_cell(self, row, column, value_format):
         """
-        Return the parsed value of a cell, None when it is empty. A value
-        that does not parse is refused with the name of its column and the
-        form expected.
+        Return the parsed value of a cell, or None if the cell is empty. If the
+        value does not parse, refuse it with the name of its column and the
+        expected form.
         """
         value = (row.get(column) or "").strip()
         if value == "":
@@ -464,20 +469,20 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def get_estimation_minutes(self, estimation):
         """
-        Return in minutes an estimation given in the unit Kitsu shows and
-        exports estimations in: hours when the organisation displays
+        Return in minutes an estimation in the unit that Kitsu uses to show and
+        export estimations. This unit is hours if the organisation shows
         durations in hours, days otherwise.
         """
         if self.organisation["format_duration_in_hours"]:
-            # Unrounded, as Kitsu stores the hours typed in its lists:
-            # whole minutes would bring 0.66 hours back as 0.67.
+            # Do not round: Kitsu stores the hours typed in its lists without
+            # rounding. Whole minutes would bring 0.66 hours back as 0.67.
             return snap_to_whole(estimation * 60)
         return round(estimation * self.organisation["hours_by_day"] * 60)
 
     def get_estimation_days(self, estimation):
         """
-        Return in days an estimation given in the unit Kitsu shows and
-        exports estimations in.
+        Return in days an estimation in the unit that Kitsu uses to show and
+        export estimations.
         """
         if self.organisation["format_duration_in_hours"]:
             return snap_to_whole(

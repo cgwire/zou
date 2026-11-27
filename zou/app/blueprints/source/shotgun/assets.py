@@ -108,8 +108,8 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
         return entity
 
     def post_processing(self):
-        # We handle the fact that an asset can have multiple parents by using
-        # the entities out field as a children field.
+        # An asset can have more than one parent. Thus, use the entities out
+        # field as a children field.
         for key in self.parent_map.keys():
             try:
                 asset = assets_service.get_asset_by_shotgun_id(key)

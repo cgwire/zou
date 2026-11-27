@@ -30,9 +30,9 @@ from zou.app.utils.openapi import load_specs, swag_from
 
 SPECS = load_specs(__file__, "openapi/entity.yml")
 
-# A shot version takes the next change of its author up to a minute after
-# its last change, and up to five minutes after its creation, when that
-# change fits it: see EntityResource.get_recent_version.
+# A shot version takes the next change of its author for up to one minute after
+# its last change, and up to five minutes after its creation, if that change
+# fits: see EntityResource.get_recent_version.
 SHOT_VERSION_FOLD_DELAY = 60
 SHOT_VERSION_FOLD_MAX_DURATION = 5 * 60
 
@@ -44,8 +44,8 @@ class EntityEventMixin(object):
         # The update route clears the cache itself.
         if event_name == "delete":
             self.clear_entity_type_cache(entity_dict)
-        # ConceptFolder gives concept-folder:update and concept_folder_id,
-        # the names the concept folder routes emit.
+        # ConceptFolder gives concept-folder:update and concept_folder_id. The
+        # concept folder routes emit these names.
         words = [word.lower() for word in re.findall("[A-Z][a-z]*", type_name)]
         events.emit(
             f"{'-'.join(words)}:{event_name}",
@@ -104,7 +104,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
-            # Each entity follows the role held on its own project.
+            # Each entity uses the role of the user on its project.
             query = entities_service.filter_entities_by_projects(
                 query,
                 user_service.build_related_projects_filter(),
@@ -119,7 +119,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
 
     def check_creation_integrity(self, data):
         """
-        Check if entity has a valid status.
+        Make sure that the entity has a valid status.
         """
         if "status" in data:
             types = [entity_status for entity_status, _ in ENTITY_STATUSES]
@@ -167,7 +167,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def pre_update(self, instance_dict, data):
         """
-        Validate that the update won't violate the unique constraint
+        Make sure that the update does not violate the unique constraint
         on (name, project_id, entity_type_id, parent_id).
         """
         current_name = instance_dict.get("name")
@@ -230,9 +230,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     def pre_delete(self, entity):
         """
         Delete the links of the entity, and the subscriptions of a sequence,
-        without committing: the deletion of the entity commits them along,
-        or its refusal by the database (tasks, versions, child entities)
-        rolls them back.
+        with no commit. The deletion of the entity commits these changes. If
+        the database refuses the deletion (tasks, versions, child entities),
+        it rolls them back.
         """
         entities_service.remove_entity_links_no_commit(entity)
         return entity
@@ -261,9 +261,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
 
-            # Only a payload that carries ready_for can change it: without
-            # this test every asset update recomputed the casting stats of
-            # each shot the asset is cast in.
+            # Only a payload with ready_for can change it. Without this test,
+            # each asset update calculated again the casting stats of all the
+            # shots that use the asset.
             is_ready_for_changed = (
                 "ready_for" in data
                 and fields.serialize_value(entity.ready_for)
@@ -290,9 +290,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return entity_dict, 200
 
         except StatementError as exception:
-            # Only malformed values are answered here. Anything else (a
-            # permission refusal, a service error) keeps its own status
-            # through the application handlers instead of becoming a 400.
+            # This block answers only malformed values. The application
+            # handlers give all other errors (a permission refusal, a service
+            # error) their own status, not a 400.
             current_app.logger.error(str(exception), exc_info=1)
             return (
                 {"error": True, "message": build_db_error_message(exception)},
@@ -304,11 +304,11 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def save_version_if_needed(self, shot, previous_shot):
         """
-        Record a version of given shot or edit when its frame range or its
-        name changed. A client may send one update per field or per keystroke
-        (frame in then frame out, a number typed slowly), so such a burst
-        by one person is folded into a single version holding the final
-        values: see get_recent_version.
+        If the frame range or the name of the given shot or edit changed,
+        record a version of it. A client can send one update for each field
+        or each keystroke (frame in, then frame out, a number typed slowly).
+        Thus, such a series of updates by one person goes into one version
+        with the final values: see get_recent_version.
         """
         frames = self.get_frame_range(shot.get("data"))
         previous_frames = self.get_frame_range(previous_shot.get("data"))
@@ -326,32 +326,33 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def get_frame_range(self, data):
         """
-        Return the frame in and frame out a shot version tracks.
+        Return the frame in and the frame out that a shot version records.
         """
         data = data or {}
         return data.get("frame_in", 0), data.get("frame_out", 0)
 
     def get_recent_version(self, shot, previous_shot, person_id):
         """
-        Return the last version of given shot when the change given person
-        just made can be folded into it, or None. That version must:
+        Return the last version of the given shot if the last change of the
+        given person can go into it. If not, return None. That version must:
 
-        - be recorded by given person. When someone else recorded the last
-          version, an older one of given person is not folded into either:
-          the history stays in order.
-        - hold the frame values this change leaves alone as the shot had
-          them, and the name the shot had when this change sets the frame
-          range. A version recorded before a rename holds the old name:
-          folding a frame change would pair it with a range the shot never
-          had under that name. One recorded before a frame change made by a
-          route that records no version holds the old value: folding would
-          credit that change to given person. The values this change sets
-          are not compared: a second rename is folded, and so is a
-          keystroke whose request read the shot before the previous one
-          was saved.
-        - be changed at most a minute before, and created at most five
-          minutes before. Only versions count: an update that recorded
-          nothing does not extend the window.
+        - have the given person as its author. If another person recorded the
+          last version, the change does not go into an older version of the
+          given person either. Thus the history stays in order.
+        - have the frame values that this change does not set, as the shot
+          had them. If this change sets the frame range, the version must
+          also have the name that the shot had. A version recorded before a
+          rename has the old name. A frame change in it would pair that name
+          with a range that the shot never had under that name. A version
+          recorded before a frame change by a route that records no version
+          has the old value. If this change goes into it, the version gives
+          that change to the given person. The function does not compare the
+          values that this change sets. Thus a second rename goes into the
+          version. A keystroke also goes into it when its request read the
+          shot before the save of the previous keystroke.
+        - have its last change at most one minute before, and its creation
+          at most five minutes before. Only versions count: an update that
+          recorded nothing does not make the window longer.
         """
         version = shots_service.get_last_shot_version_raw(shot["id"])
         if version is None or str(version.person_id) != str(person_id):
@@ -392,7 +393,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def update_data(self, data, instance_id):
         """
-        Check if the entity has a valid status.
+        Make sure that the entity has a valid status.
         """
         data = super().update_data(data, instance_id)
         if "status" in data:

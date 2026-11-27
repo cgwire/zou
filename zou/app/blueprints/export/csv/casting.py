@@ -22,7 +22,8 @@ class CastingCsvExport(MethodView, ArgsMixin):
         """
         Export casting csv
         """
-        project = projects_service.get_project(project_id)  # Check existence
+        # Make sure the project exists.
+        project = projects_service.get_project(project_id)
         self.check_permissions(project_id)
 
         episode_id = self.get_episode_id()

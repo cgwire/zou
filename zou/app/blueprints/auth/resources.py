@@ -90,8 +90,8 @@ SSO_REFUSED = {
 
 def _build_2fa_registration_response(response_data, user_id):
     """
-    After a successful 2FA registration, re-emit JWT cookies without
-    the requires_2fa_setup claim so the user gets full access.
+    After a successful 2FA registration, send the JWT cookies again
+    without the requires_2fa_setup claim. The user then gets full access.
     """
     additional_claims = {"identity_type": "person"}
     access_token, refresh_token = auth_service.create_auth_tokens(
@@ -112,12 +112,12 @@ def _build_2fa_registration_response(response_data, user_id):
 
 def _check_existing_two_factor(body):
     """
-    Before a method is added to an account that already has 2FA, check one
-    of the factors already enabled, as disabling a method does. Without it
-    a session left open is enough to add a factor of one's own. The first
-    method of an account needs nothing: there is no factor to present yet.
-    The service calls it once the new code is checked: a factor is used up
-    by its check.
+    If the account already has 2FA, check one of its enabled factors before
+    the caller adds a method, as the removal of a method does. Without this
+    check, an open session is enough to add a factor of one's own. The
+    first method of an account needs no check: there is no factor to
+    present yet. The service calls this function after it checks the new
+    code, because the check of a factor uses it up.
     """
     person = persons_service.get_current_user(unsafe=True)
     if not auth_service.person_two_factor_authentication_enabled(person):
@@ -136,8 +136,8 @@ def _check_existing_two_factor(body):
         raise WrongExistingOTPException
 
 
-# Told apart from wrong_OTP: the client knows which of the two codes to ask
-# again.
+# A different flag from wrong_OTP: the client then knows which of the two
+# codes to ask for again.
 WRONG_EXISTING_OTP_RESPONSE = (
     {
         "error": True,
@@ -194,11 +194,12 @@ class LogoutResource(MethodView):
 
 def _build_login_response(user, email):
     """
-    Tokens, cookies and login log of a successful authentication. A user
-    the 2FA policy applies to who has not set it up gets restricted
-    tokens, and the response says so.
+    Create the tokens, the cookies and the login log of a successful
+    authentication. If the 2FA policy applies to the user and the user did
+    not configure 2FA, the user gets restricted tokens. The response says
+    so.
     """
-    # Check if 2FA enforcement requires restricted access
+    # Check whether the 2FA enforcement requires restricted access.
     requires_2fa_setup = False
     if app.config["ENFORCE_2FA"]:
         if not auth_service.is_user_exempt_from_2fa(user, app):
@@ -219,8 +220,8 @@ def _build_login_response(user, email):
         sensitive=user["role"] == "admin"
     )
 
-    # check_auth() serializes the person without relations, so add
-    # departments to reach parity with /auth/authenticated.
+    # check_auth() serializes the person without relations, so add the
+    # departments to get the same data as /auth/authenticated.
     user["departments"] = persons_service.get_person(user["id"])["departments"]
 
     response_data = {
@@ -399,9 +400,9 @@ class RefreshTokenResource(MethodView):
         user = persons_service.get_current_user()
         additional_claims = {"identity_type": "person"}
 
-        # The refresh token carries the claims of the login: an SSO session
-        # allowed to skip 2FA must not get restricted on refresh, and the
-        # new access token keeps the claim.
+        # The refresh token carries the claims of the login. If an SSO
+        # session can skip 2FA, it must not become restricted after a
+        # refresh, and the new access token keeps the claim.
         if get_jwt().get("skip_2fa_setup"):
             additional_claims["skip_2fa_setup"] = True
         elif app.config["ENFORCE_2FA"]:
@@ -554,8 +555,8 @@ class ChangePasswordResource(MethodView):
             return {"error": True, "message": "Old password is wrong."}, 400
         except TooManyLoginFailedAttempts:
             # check_auth applies the login lockout here too. The caller
-            # holds a token for the account, telling him the truth
-            # discloses nothing.
+            # holds a token for the account, so the true answer discloses
+            # nothing to him.
             return (
                 {
                     "error": True,
@@ -614,9 +615,9 @@ class ResetPasswordResource(MethodView):
         """
         body = validation.validate_request_body(SendPasswordResetSchema)
 
-        # Always answer the same way whether or not the account exists or is
-        # active, so this public endpoint cannot be used to enumerate
-        # registered users.
+        # Always give the same answer, whether or not the account exists or
+        # is active. Then nobody can use this public endpoint to enumerate
+        # the registered users.
         generic_response = {"success": "Reset token sent"}
         try:
             user = persons_service.get_person_by_email(body.email)
@@ -750,8 +751,8 @@ class TOTPResource(MethodView):
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            # Checked before the 2FA code: checking it uses up a recovery
-            # code or an email code.
+            # Check this before the 2FA code: the check of the 2FA code
+            # uses up a recovery code or an email code.
             if not person["totp_enabled"]:
                 raise TOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
@@ -794,11 +795,12 @@ class EmailOTPResource(MethodView, ArgsMixin):
             location="values",
         )
 
-        # Answer with the same status and the same body whether or not the
-        # account exists, is active and has OTP by email enabled, so this
-        # public endpoint cannot be used to enumerate registered users.
-        # Response time still tracks the one branch that mails the OTP,
-        # emails.send_email talking SMTP synchronously.
+        # Answer with the same status and the same body, whether or not the
+        # account exists, is active and has OTP by email enabled. Then
+        # nobody can use this public endpoint to enumerate the registered
+        # users. The response time is still longer in the one branch that
+        # sends the OTP email, because emails.send_email uses SMTP
+        # synchronously.
         generic_response = {"success": True}
         try:
             person = persons_service.get_person_by_email_desktop_login(
@@ -878,8 +880,8 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            # Checked before the 2FA code: checking it uses up a recovery
-            # code or an email code.
+            # Check this before the 2FA code: the check of the 2FA code
+            # uses up a recovery code or an email code.
             if not person["email_otp_enabled"]:
                 raise EmailOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
@@ -910,8 +912,8 @@ class EmailOTPResource(MethodView, ArgsMixin):
 
 class FIDOResource(MethodView, ArgsMixin):
     """
-    Resource to allow a user to register/unregister FIDO device or to get a
-    challenge for a FIDO device.
+    Resource that lets a user register or unregister a FIDO device, or get
+    a challenge for a FIDO device.
     """
 
     @swag_from(SPECS["FIDOResource_get"])
@@ -927,11 +929,11 @@ class FIDOResource(MethodView, ArgsMixin):
         )
 
         # An unknown address, a deactivated account and an account without
-        # FIDO all get the same answer, so this public endpoint does not
-        # tell a registered address from an unknown one. What a
-        # challenge still discloses is that the account has FIDO enabled;
-        # hiding that too would mean handing out a decoy challenge no
-        # authenticator could ever honour.
+        # FIDO all get the same answer. Thus this public endpoint does not
+        # show the difference between a registered address and an unknown
+        # one. A challenge still discloses that the account has FIDO
+        # enabled. To hide that too, the endpoint must give a decoy
+        # challenge that no authenticator can honour.
         try:
             person = persons_service.get_person_by_email_desktop_login(
                 args["email"]
@@ -1009,8 +1011,9 @@ class FIDOResource(MethodView, ArgsMixin):
             person = persons_service.get_current_user(unsafe=True)
             if not person["fido_enabled"]:
                 raise FIDONotEnabledException
-            # Checked before the 2FA code: checking it uses up a recovery
-            # code or an email code, for nothing on a key already removed.
+            # Check this before the 2FA code: the check of the 2FA code
+            # uses up a recovery code or an email code, for nothing if the
+            # key is already removed.
             if body.device_name not in person["fido_devices"]:
                 raise FIDODeviceNotFoundException
             if not auth_service.check_two_factor_authentication(
@@ -1094,9 +1097,9 @@ class RecoveryCodesResource(MethodView):
 
 def link_sso_person(protocol, issuer, subject, email, create_info):
     """
-    First login of an identity: bind it to the person holding its email,
-    created when there is none. A protected account is never reached this
-    way, an administrator binds it explicitly.
+    On the first login of an identity, bind the identity to the person with
+    its email. If no person has this email, create one. This function never
+    binds a protected account: an administrator binds it explicitly.
     """
     try:
         user = persons_service.get_person_by_email(email)
@@ -1113,8 +1116,8 @@ def link_sso_person(protocol, issuer, subject, email, create_info):
 
 def is_saml_person_info_new(person, person_info):
     """
-    Tell whether the attributes of an assertion differ from what given
-    person holds. The departments are a list of ids, in any order.
+    Tell whether the attributes of an assertion differ from the data of the
+    given person. The departments are a list of IDs, in any order.
     """
     return any(
         (
@@ -1160,20 +1163,20 @@ class SAMLSSOResource(MethodView):
                 "country",
             ]
         }
-        # Align the country with its stored canonical form so an unchanged
-        # value does not re-trigger an update on every login. An empty value
-        # clears the stored country (the IdP is authoritative), but a
-        # malformed value is dropped so a transient bad assertion neither
-        # wipes a previously stored valid code nor breaks the SSO sign-in.
+        # Change the country to its stored canonical form. Then an unchanged
+        # value does not start an update again at each login. An empty value
+        # clears the stored country, because the IdP is the reference. A
+        # malformed value is dropped: then a temporary bad assertion does not
+        # clear a valid stored code and does not break the SSO sign-in.
         if "country" in person_info:
             is_valid, normalized = normalize_country(person_info["country"])
             if is_valid:
                 person_info["country"] = normalized
             else:
                 del person_info["country"]
-        # The studio follows the country: an empty value clears it, a
-        # malformed one is dropped without a lookup, and an unknown one once
-        # the lookup fails.
+        # The studio follows the country. An empty value clears the studio. A
+        # malformed value is dropped without a lookup, and an unknown value is
+        # dropped after the lookup fails.
         if "studio_id" in person_info:
             studio_id = person_info["studio_id"]
             if not studio_id:
@@ -1212,9 +1215,9 @@ class SAMLSSOResource(MethodView):
         )
 
         if user["active"]:
-            # Honour 2FA enforcement unless SAML sessions are configured
-            # to skip it (e.g. when the identity provider already
-            # enforces MFA), mirroring the OIDC callback.
+            # Apply the 2FA enforcement, except if the configuration lets
+            # SAML sessions skip it (for example, if the identity provider
+            # already enforces MFA). The OIDC callback does the same.
             requires_2fa_setup = False
             if config.ENFORCE_2FA and not config.SAML_SKIP_2FA:
                 if not auth_service.is_user_exempt_from_2fa(user, app):
@@ -1245,14 +1248,15 @@ class SAMLSSOResource(MethodView):
 
     def get_person(self, authn_response, email, person_info):
         """
-        Return the person to sign in. With SAML_SUBJECT_ATTRIBUTE set, it is
-        the one bound to the issuer and subject of the assertion: the NameID
-        email is mutable, it only finds the account on the first login.
-        Without it, SAML carries no stable id and the email is all there is.
-        An unknown person is created, with a random password, from the
-        attributes of the assertion.
+        Return the person to sign in. If SAML_SUBJECT_ATTRIBUTE is set, it
+        is the person bound to the issuer and subject of the assertion. The
+        NameID email can change, so it only finds the account on the first
+        login. If SAML_SUBJECT_ATTRIBUTE is not set, SAML carries no stable
+        ID and the email is the only data available. If the person is
+        unknown, create it from the attributes of the assertion, with a
+        random password.
         """
-        # create_person requires the names, the assertion may not carry them.
+        # create_person requires the names, but the assertion can omit them.
         create_info = {"first_name": "", "last_name": "", **person_info}
         if not config.SAML_SUBJECT_ATTRIBUTE:
             try:
@@ -1267,8 +1271,9 @@ class SAMLSSOResource(MethodView):
         issuer = authn_response.issuer()
         subject = get_subject_from_ava(authn_response.ava)
         if not issuer or not subject:
-            # An assertion without the attribute is refused, not matched by
-            # email: dropping it would otherwise be a way around the binding.
+            # Refuse an assertion without the attribute, do not match it by
+            # email. Otherwise, the removal of the attribute is a way around
+            # the binding.
             raise PersonNotFoundException()
         try:
             return persons_service.get_person_by_sso_identity(
@@ -1293,7 +1298,7 @@ class SAMLLoginResource(MethodView):
                 "saml_client"
             ].prepare_for_authenticate()
         except client_base.SAMLError:
-            # retry with new client
+            # Try again with a new client.
             current_app.extensions["saml_client"] = saml_client_for(
                 config.SAML_METADATA_URL
             )
@@ -1351,9 +1356,10 @@ class OIDCCallbackResource(MethodView):
         if not issuer or not subject:
             return {"error": "OIDC authentication failed."}, 400
 
-        # The email claim is mutable and set by the provider's
-        # administrators: it only finds the account on the first login,
-        # then the issuer and subject, which never change, identify it.
+        # The administrators of the provider set the email claim and can
+        # change it. Thus the email only finds the account on the first
+        # login. After that, the issuer and the subject identify the
+        # account, because they never change.
         try:
             user = persons_service.get_person_by_sso_identity(
                 "oidc", issuer, subject
@@ -1368,15 +1374,16 @@ class OIDCCallbackResource(MethodView):
             if not oidc.is_email_verified(claims):
                 return {"error": "Email address is not verified."}, 400
 
-        # Some providers (notably Azure AD/Entra ID) omit name claims from the
-        # ID token and only expose them on the userinfo endpoint. Fetch it as a
-        # best-effort fallback when the token carried no usable name claims; a
-        # failure here must not block an otherwise valid login.
+        # Some providers (for example Azure AD/Entra ID) do not put the name
+        # claims in the ID token. They only give them on the userinfo
+        # endpoint. If the token has no usable name claims, try to get them
+        # from this endpoint. A failure here must not block a login that is
+        # otherwise valid.
         if not oidc.map_claims(claims):
             try:
                 userinfo = client.userinfo(token=token)
-                # OIDC Core 5.3.2: a response for another subject must
-                # not be used.
+                # OIDC Core 5.3.2: do not use a response for another
+                # subject.
                 if userinfo.get("sub") == subject:
                     claims = {**userinfo, **claims}
             except Exception:
@@ -1387,8 +1394,9 @@ class OIDCCallbackResource(MethodView):
         person_info = oidc.map_claims(claims)
 
         if user is None:
-            # first_name/last_name are required by create_person; default them
-            # in case the provider did not return the corresponding claims.
+            # create_person requires first_name and last_name. Give them a
+            # default value in case the provider did not return the related
+            # claims.
             create_info = {"first_name": "", "last_name": "", **person_info}
             try:
                 user = link_sso_person(
@@ -1413,8 +1421,9 @@ class OIDCCallbackResource(MethodView):
         )
 
         if user["active"]:
-            # Honour 2FA enforcement unless OIDC sessions are configured to
-            # skip it (e.g. when the identity provider already enforces MFA).
+            # Apply the 2FA enforcement, except if the configuration lets
+            # OIDC sessions skip it (for example, if the identity provider
+            # already enforces MFA).
             requires_2fa_setup = False
             if config.ENFORCE_2FA and not config.OIDC_SKIP_2FA:
                 if not auth_service.is_user_exempt_from_2fa(user, app):

@@ -18,11 +18,13 @@ SPECS = load_specs(__file__, "openapi.yml")
 class SearchResource(MethodView, ArgsMixin):
     def scope_to_vendor(self, entity_type, entities):
         """
-        Narrow a search answer to what a vendor may read: the entities they
-        hold a task on, without the metadata reserved to other departments.
+        Limit a search result to the data that a vendor can read. Keep the
+        entities that they have a task on, and remove the metadata that
+        only other departments can read.
 
-        The listings apply both rules already. The index knows neither, so
-        it answers the whole production to whoever can reach the project.
+        The listings apply these two rules already. The index does not know
+        them, so it gives the whole production to all users who can access
+        the project.
         """
         return permissions_service.mask_metadata_for_vendor(
             entity_type,
@@ -58,8 +60,9 @@ class SearchResource(MethodView, ArgsMixin):
 
         if "persons" in index_names:
             if permissions.has_client_permissions():
-                # The index cannot be narrowed to the teams a client meets,
-                # and their context already holds those people.
+                # The index cannot limit the persons to the teams that a
+                # client meets, and the context of the client already
+                # holds those persons.
                 results["persons"] = []
             else:
                 results["persons"] = index_service.search_persons(

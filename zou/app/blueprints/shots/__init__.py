@@ -47,7 +47,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 
 routes = [
     ("/data/shots", AllShotsResource),
-    # Same listing, second path kept because gazu queries shots/all.
+    # Same list. This second path stays because gazu queries shots/all.
     ("/data/shots/all", AllShotsResource),
     ("/data/shots/with-tasks", ShotsAndTasksResource),
     ("/data/shots/<shot_id>", ShotResource),

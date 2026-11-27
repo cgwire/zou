@@ -43,7 +43,8 @@ class PersonsCsvExport(BaseCsvExport):
 
     def keep_salary_for_admins(self, row):
         """
-        The export is open to the managers, the daily salary is not.
+        The managers can get the export, but only the admins get the daily
+        salary.
         """
         if not permissions.has_admin_permissions():
             del row[SALARY_COLUMN]
