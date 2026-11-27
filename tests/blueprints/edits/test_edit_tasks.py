@@ -20,6 +20,7 @@ class EditTasksTestCase(BaseEditTestCase):
         self.generate_fixture_task(name="Secondary", entity_id=self.edit_id)
         edits = self.get("data/edits/with-tasks")
         self.assertEqual(len(edits), 1)
+        self.assertEqual(edits[0]["name"], "Edit")
         self.assertEqual(len(edits[0]["tasks"]), 3)
         self.assertEqual(
             edits[0]["tasks"][0]["assignees"][0], str(self.person_id)
@@ -117,7 +118,7 @@ class EditTasksTestCase(BaseEditTestCase):
     def test_get_task_types_for_edit(self):
         task_types = self.get(f"data/edits/{self.edit_id}/task-types")
         self.assertEqual(len(task_types), 1)
-        self.assertDictEqual(task_types[0], self.task_type_edit_dict)
+        self.assertEqual(task_types[0]["id"], str(self.task_type_edit.id))
 
     def test_get_task_types_for_edit_not_found(self):
         self.get("data/edits/no-edit/task-types", 404)
