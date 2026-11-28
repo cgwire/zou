@@ -276,6 +276,21 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             openldap_group("Kitsu", [f"uid=dave,ou=People,{BASE_DN}"]),
         )
 
+    def test_search_users_skips_entries_without_login(self):
+        people = f"ou=People,{BASE_DN}"
+        nologin = openldap_person("nologin")
+        del nologin["uid"]
+        settings = self.directory(
+            [
+                (f"uid=alice,{people}", openldap_person("alice")),
+                (f"cn=nologin,{people}", nologin),
+            ],
+            LDAP_IS_AD_SIMPLE=False,
+        )
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
     def test_search_users_openldap_ambiguous_group(self):
         for nested in [False, True]:
             settings = self.nested_openldap_directory(

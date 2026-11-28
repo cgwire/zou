@@ -546,7 +546,15 @@ def search_users(conn, settings):
         build_person_filter(settings),
         get_user_attributes(settings),
     ):
-        if is_excluded(settings, get_desktop_login(entry, settings)):
+        desktop_login = get_desktop_login(entry, settings)
+        if not desktop_login:
+            # No login to match or create a person with.
+            current_app.logger.warning(
+                f"LDAP entry {entry.entry_dn} skipped: no "
+                f"{get_login_attribute(settings)} attribute."
+            )
+            continue
+        if is_excluded(settings, desktop_login):
             continue
         if (
             group_members is not None
