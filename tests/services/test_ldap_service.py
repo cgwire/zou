@@ -916,6 +916,40 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertIsNotNone(person)
         self.assertTrue(person.is_generated_from_ldap)
 
+    def test_search_users_ad_group_dn_with_spaces(self):
+        """
+        A group DN written with spaces after the commas is the same group:
+        ldap3 refuses it as a search base, it was taken for a missing one.
+        """
+        group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
+        spaced = ", ".join(group.split(","))
+        for nested in [False, True]:
+            settings = self.directory(
+                [
+                    (group, {"objectClass": "group"}),
+                    (
+                        f"cn=jdoe,cn=Users,{BASE_DN}",
+                        ad_user("jdoe", memberOf=[group]),
+                    ),
+                    (f"cn=other,cn=Users,{BASE_DN}", ad_user("other")),
+                ],
+                LDAP_GROUP=spaced,
+                LDAP_ADMIN_GROUP=spaced,
+                LDAP_NESTED_GROUPS=nested,
+            )
+            if nested:
+                # The mock refuses the extensible match of the nested
+                # filter: only the group check is exercised.
+                conn = ldap_service.open_service_connection(settings)
+                ldap_service.check_group_exists(conn, settings)
+                continue
+            conn = ldap_service.open_service_connection(settings)
+            users = ldap_service.search_users(conn, settings)
+            self.assertEqual(
+                [(user["desktop_login"], user["role"]) for user in users],
+                [("jdoe", "admin")],
+            )
+
     def test_search_users_ad_group_missing(self):
         settings = self.directory(
             [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],

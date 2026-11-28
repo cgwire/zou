@@ -251,7 +251,7 @@ def build_member_of_filter(settings, group):
     Active Directory filter matching the members of the given group DN, and
     of its subgroups with LDAP_NESTED_GROUPS.
     """
-    group = escape_filter_chars(group)
+    group = escape_filter_chars(compact_dn(group))
     if settings["LDAP_NESTED_GROUPS"]:
         # LDAP_MATCHING_RULE_IN_CHAIN: members of the subgroups too.
         return f"(memberOf:{IN_CHAIN_RULE}:={group})"
@@ -311,6 +311,14 @@ def clean_value(value):
     if cleaned_value == "[]":
         cleaned_value = ""
     return cleaned_value
+
+
+def compact_dn(dn):
+    """
+    DN without the spaces around its parts, the form ldap3 accepts as a
+    search base. Case is kept: the directory reads it.
+    """
+    return ",".join(part.strip() for part in to_dn(dn))
 
 
 def normalize_dn(dn):
@@ -417,8 +425,7 @@ def get_group_member_dns(conn, settings, group=None):
     if is_dn(group):
         try:
             conn.search(
-                # Without the spaces after the commas, refused by ldap3.
-                ",".join(part.strip() for part in to_dn(group)),
+                compact_dn(group),
                 "(objectClass=groupOfUniqueNames)",
                 search_scope=ldap3.BASE,
                 attributes=["uniqueMember"],
@@ -579,7 +586,11 @@ def check_group_exists(conn, settings, group=None):
         return
     if is_ad(settings):
         try:
-            conn.search(group, "(objectClass=group)", search_scope=ldap3.BASE)
+            conn.search(
+                compact_dn(group),
+                "(objectClass=group)",
+                search_scope=ldap3.BASE,
+            )
         except (
             ldap3.core.exceptions.LDAPNoSuchObjectResult,
             ldap3.core.exceptions.LDAPInvalidDNSyntaxResult,
