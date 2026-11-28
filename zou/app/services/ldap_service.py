@@ -81,6 +81,7 @@ def get_settings():
         "LDAP_CONNECT_TIMEOUT",
         "LDAP_TIMEOUT",
         "LDAP_FOLLOW_REFERRALS",
+        "LDAP_ALLOWED_REFERRAL_HOSTS",
     ]
     return {key: current_app.config[key] for key in keys}
 
@@ -158,6 +159,20 @@ def get_tls(settings):
     )
 
 
+def get_allowed_referral_hosts(settings):
+    """
+    Hosts a referral may send the connection to, with the same credentials:
+    the directory host and the ones of LDAP_ALLOWED_REFERRAL_HOSTS. ldap3
+    compares the host names as they are written, without any resolution.
+    """
+    hosts = [settings["LDAP_HOST"]]
+    for host in settings["LDAP_ALLOWED_REFERRAL_HOSTS"].split(","):
+        host = host.strip()
+        if host and host not in hosts:
+            hosts.append(host)
+    return [(host, True) for host in hosts]
+
+
 def get_server(settings, get_info=ldap3.ALL):
     """
     The directory server described by the settings. Reading its info (schema
@@ -169,6 +184,7 @@ def get_server(settings, get_info=ldap3.ALL):
         use_ssl=settings["LDAP_SSL"],
         tls=get_tls(settings),
         connect_timeout=settings["LDAP_CONNECT_TIMEOUT"],
+        allowed_referral_hosts=get_allowed_referral_hosts(settings),
     )
 
 

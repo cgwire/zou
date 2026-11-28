@@ -164,6 +164,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             "LDAP_CONNECT_TIMEOUT": 5,
             "LDAP_TIMEOUT": 10,
             "LDAP_FOLLOW_REFERRALS": True,
+            "LDAP_ALLOWED_REFERRAL_HOSTS": "",
         }
         settings.update(overrides)
         return settings
@@ -932,6 +933,53 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         )
         self.assertIs(
             self.connection_kwargs(settings)["auto_referrals"], False
+        )
+
+    def test_referrals_stay_on_the_directory_host(self):
+        settings = self.tls_settings(LDAP_SSL=False)
+        server = self.connection_kwargs(settings)["server"]
+        self.assertEqual(
+            server.allowed_referral_hosts, [("dc.studio.local", True)]
+        )
+
+    def test_referrals_to_allowed_hosts(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False,
+            LDAP_ALLOWED_REFERRAL_HOSTS=(
+                " dc2.studio.local, ,dc.studio.local,dc3.studio.local"
+            ),
+        )
+        server = self.connection_kwargs(settings)["server"]
+        self.assertEqual(
+            server.allowed_referral_hosts,
+            [
+                ("dc.studio.local", True),
+                ("dc2.studio.local", True),
+                ("dc3.studio.local", True),
+            ],
+        )
+
+    def test_referral_to_another_host_is_not_followed(self):
+        """
+        ldap3 picks no referral among the ones to a host that is not
+        allowed: no connection, no credentials sent.
+        """
+        settings = self.tls_settings(LDAP_SSL=False)
+        server = ldap_service.get_server(settings, get_info=ldap3.NONE)
+        conn = ldap3.Connection(server, client_strategy=ldap3.MOCK_SYNC)
+        self.assertEqual(
+            conn.strategy.valid_referral_list(
+                ["ldap://evil.example.com/dc=studio,dc=local"]
+            ),
+            [],
+        )
+        self.assertEqual(
+            len(
+                conn.strategy.valid_referral_list(
+                    ["ldap://dc.studio.local/dc=studio,dc=local"]
+                )
+            ),
+            1,
         )
 
     def test_paged_search_skips_referrals(self):
