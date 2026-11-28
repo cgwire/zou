@@ -13,6 +13,18 @@ import tempfile
 
 import click
 import orjson as json
+from ldap3.core.exceptions import (
+    LDAPAttributeError,
+    LDAPBindError,
+    LDAPException,
+    LDAPInvalidCredentialsResult,
+    LDAPInvalidFilterError,
+    LDAPPasswordIsMandatoryError,
+    LDAPSocketOpenError,
+    LDAPSocketReceiveError,
+    LDAPSSLConfigurationError,
+    LDAPStartTLSError,
+)
 from sqlalchemy.sql.expression import not_
 from tabulate import tabulate
 
@@ -25,6 +37,8 @@ from zou.app.commands import (
 )
 from zou.app.exceptions import (
     IsUserLimitReachedException,
+    LdapAmbiguousGroupException,
+    LdapGroupNotFoundException,
     PersonNotFoundException,
 )
 from zou.app.models.entity import Entity
@@ -446,8 +460,14 @@ def sync_with_ldap_server():
     Connect to a LDAP server, then creates all related accounts.
     """
     settings = ldap_service.get_settings()
-    conn = ldap_service.open_service_connection(settings)
-    users = ldap_service.search_users(conn, settings)
+    try:
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+    except (
+        LDAPException,
+        LdapGroupNotFoundException,
+    ) as exception:
+        _ldap_sync_error(settings, exception)
     if len(users) == 0:
         # An empty list deactivates every LDAP person. A wrong base DN or
         # group filter is more likely than an empty directory.
@@ -457,6 +477,54 @@ def sync_with_ldap_server():
         )
         sys.exit(1)
     _ldap_update_persons(users)
+
+
+def _ldap_sync_error(settings, exception):
+    """
+    Explain why the sync stopped before any change, then exit.
+    """
+    server = f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
+    if isinstance(exception, LDAPPasswordIsMandatoryError):
+        reason = "LDAP_PASSWORD is not set."
+    elif isinstance(exception, LdapAmbiguousGroupException):
+        reason = f"{exception}"
+    elif isinstance(exception, LdapGroupNotFoundException):
+        reason = (
+            f"{exception}. Check LDAP_GROUP, the LDAP_*_GROUP settings and "
+            "LDAP_BASE_DN."
+        )
+    elif isinstance(exception, LDAPSocketReceiveError):
+        reason = (
+            f"{server} did not answer within LDAP_TIMEOUT "
+            f"({settings['LDAP_TIMEOUT']} s)."
+        )
+    elif isinstance(exception, LDAPStartTLSError):
+        reason = (
+            f"StartTLS failed on {server}: check LDAP_START_TLS, "
+            f"LDAP_VERIFY_CERTIFICATES and LDAP_CA_FILE ({exception})."
+        )
+    elif isinstance(exception, LDAPSSLConfigurationError):
+        reason = f"TLS configuration error: {exception}."
+    elif isinstance(exception, LDAPSocketOpenError):
+        reason = (
+            f"cannot connect to {server} within LDAP_CONNECT_TIMEOUT "
+            f"({settings['LDAP_CONNECT_TIMEOUT']} s), or TLS failed: "
+            f"{exception}."
+        )
+    elif isinstance(exception, (LDAPBindError, LDAPInvalidCredentialsResult)):
+        reason = "the service account bind failed: check LDAP_USER and LDAP_PASSWORD."
+    elif isinstance(exception, (LDAPAttributeError, LDAPInvalidFilterError)):
+        reason = (
+            "check LDAP_USER_FILTER and the LDAP_*_ATTRIBUTE settings "
+            f"({exception})."
+        )
+    else:
+        reason = f"{type(exception).__name__}: {exception}."
+    print(
+        f"LDAP sync stopped, no account was changed: {reason}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def import_data_from_another_instance(

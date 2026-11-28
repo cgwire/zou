@@ -342,11 +342,8 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             desktop_login="dave",
             is_generated_from_ldap=True,
         )
-        with mock.patch.object(
-            ldap_service, "get_settings", return_value=settings
-        ):
-            with self.assertRaises(LdapAmbiguousGroupException):
-                commands_service.sync_with_ldap_server()
+        errors = self.failed_sync(settings)
+        self.assertIn("Several LDAP groups are named Kitsu", errors)
         self.assertEqual(Person.get(dave["id"]).role.code, "user")
 
     def test_search_users_openldap_nested_groups(self):
@@ -701,6 +698,50 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             commands_service.sync_with_ldap_server()
         return stderr.getvalue()
 
+    def failed_sync(self, settings, **patches):
+        """
+        Run a sync that must stop, and return what it wrote on the error
+        output.
+        """
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ), mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            with self.assertRaises(SystemExit) as context:
+                commands_service.sync_with_ldap_server()
+        self.assertEqual(context.exception.code, 1)
+        errors = stderr.getvalue()
+        self.assertIn("LDAP sync stopped, no account was changed", errors)
+        return errors
+
+    def test_sync_error_without_password(self):
+        settings = self.directory([], LDAP_PASSWORD="")
+        self.assertIn("LDAP_PASSWORD is not set", self.failed_sync(settings))
+
+    def test_sync_errors_of_the_connection(self):
+        settings = self.directory([])
+        exceptions = ldap3.core.exceptions
+        for error, message in [
+            (exceptions.LDAPSocketReceiveError("timed out"), "LDAP_TIMEOUT"),
+            (exceptions.LDAPStartTLSError("refused"), "StartTLS failed"),
+            (
+                exceptions.LDAPSSLConfigurationError("both set"),
+                "TLS configuration error",
+            ),
+            (
+                exceptions.LDAPSocketOpenError("unreachable"),
+                "LDAP_CONNECT_TIMEOUT",
+            ),
+            (
+                exceptions.LDAPBindError("refused"),
+                "LDAP_USER and LDAP_PASSWORD",
+            ),
+            (exceptions.LDAPInvalidFilterError("bad"), "LDAP_USER_FILTER"),
+        ]:
+            with mock.patch.object(
+                ldap_service, "open_service_connection", side_effect=error
+            ):
+                self.assertIn(message, self.failed_sync(settings))
+
     def test_sync_leaves_protected_account_untouched(self):
         settings = self.role_directory()
         dave = self.ldap_person_with_role("dave", "admin")
@@ -897,11 +938,9 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             desktop_login="jdoe",
             is_generated_from_ldap=True,
         )
-        with mock.patch.object(
-            ldap_service, "get_settings", return_value=settings
-        ):
-            with self.assertRaises(LdapGroupNotFoundException):
-                commands_service.sync_with_ldap_server()
+        errors = self.failed_sync(settings)
+        self.assertIn("LDAP group not found: cn=Missing", errors)
+        self.assertIn("Check LDAP_GROUP", errors)
         self.assertTrue(Person.get(person["id"]).active)
 
     def test_sync_with_ldap_server_no_user_keeps_persons(self):
