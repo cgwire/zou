@@ -111,6 +111,8 @@ When at least one role group is set, the directory owns the role of the LDAP per
 
 Accounts listed in `PROTECTED_ACCOUNTS` always keep the legacy bind (the DN is rebuilt from `LDAP_BASE_DN`), even with `LDAP_SEARCH_BIND`. They must sit directly under `LDAP_BASE_DN` (or use NTLM / `LDAP_FALLBACK`).
 
+With LDAP, `PROTECTED_ACCOUNTS` should hold local accounts only. The sync never changes nor deactivates a protected account, and never takes over a local account whose email or desktop login matches a directory user: it leaves the account as it is and prints a warning on the error output (and in the logs). Fix the account by hand, or remove it from `PROTECTED_ACCOUNTS`.
+
 ## SAML
 
 | Variable | Default | Description |

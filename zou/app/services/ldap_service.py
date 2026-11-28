@@ -778,9 +778,33 @@ def find_ldap_person(user):
 def is_role_managed(user, person):
     """
     Whether the directory sets the role of the person: a role group is
-    configured and the person is not a protected account.
+    configured and the person is an LDAP person, not a protected account.
     """
-    return "role" in user and person["email"] not in config.PROTECTED_ACCOUNTS
+    return (
+        "role" in user
+        and person["is_generated_from_ldap"]
+        and person["email"] not in config.PROTECTED_ACCOUNTS
+    )
+
+
+def get_sync_conflict(person):
+    """
+    Why the sync must leave the given person untouched, or None. Protected
+    accounts must be local accounts, out of the directory. A local account
+    matching a directory user is never taken over: its owner may not be
+    the directory user.
+    """
+    if person["email"] in config.PROTECTED_ACCOUNTS:
+        return (
+            f"{person['email']} is in PROTECTED_ACCOUNTS: protected "
+            "accounts must be local accounts, out of the directory sync"
+        )
+    if not person["is_generated_from_ldap"]:
+        return (
+            f"{person['email']} is a local account that matches a "
+            "directory user"
+        )
+    return None
 
 
 def provision_person(user, person=None):

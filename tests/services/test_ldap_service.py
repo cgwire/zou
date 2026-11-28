@@ -1,3 +1,4 @@
+import io
 import socket
 import ssl
 import tempfile
@@ -605,6 +606,67 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             ):
                 commands_service.sync_with_ldap_server()
         self.assertEqual(Person.get(dave["id"]).role.code, "admin")
+
+    def sync(self, settings):
+        """
+        Run the sync and return what it wrote on the error output.
+        """
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ), mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            commands_service.sync_with_ldap_server()
+        return stderr.getvalue()
+
+    def test_sync_leaves_protected_account_untouched(self):
+        settings = self.role_directory()
+        dave = self.ldap_person_with_role("dave", "admin")
+        Person.get(dave["id"]).update({"first_name": "Local"})
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["dave@studio.local"]
+        ):
+            errors = self.sync(settings)
+        stored = Person.get(dave["id"])
+        self.assertEqual(stored.first_name, "Local")
+        self.assertEqual(stored.role.code, "admin")
+        self.assertIn("dave", errors)
+        self.assertIn("PROTECTED_ACCOUNTS", errors)
+
+    def test_sync_keeps_protected_account_gone_from_directory(self):
+        settings = self.role_directory()
+        erin = self.ldap_person_with_role("erin", "admin")
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["erin@studio.local"]
+        ):
+            errors = self.sync(settings)
+        self.assertTrue(Person.get(erin["id"]).active)
+        self.assertIn("erin", errors)
+        self.assertIn("PROTECTED_ACCOUNTS", errors)
+
+    def test_sync_never_takes_over_a_local_account(self):
+        settings = self.role_directory()
+        local = persons_service.create_person(
+            "alice@studio.local",
+            b"",
+            "Local",
+            "Alice",
+            role="user",
+            desktop_login="alice",
+        )
+        errors = self.sync(settings)
+        stored = Person.get(local["id"])
+        self.assertFalse(stored.is_generated_from_ldap)
+        self.assertEqual(stored.first_name, "Local")
+        self.assertEqual(stored.role.code, "user")
+        self.assertIsNone(stored.ldap_uid)
+        self.assertIn("alice", errors)
+        self.assertIn("local account", errors)
+
+    def test_local_person_role_is_not_managed(self):
+        user = {"role": "admin"}
+        person = {"email": "x@studio.local", "is_generated_from_ldap": False}
+        self.assertFalse(ldap_service.is_role_managed(user, person))
+        person["is_generated_from_ldap"] = True
+        self.assertTrue(ldap_service.is_role_managed(user, person))
 
     def test_provision_person_role(self):
         person = self.ldap_person_with_role("dave", "admin")

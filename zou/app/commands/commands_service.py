@@ -293,6 +293,7 @@ def _ldap_update_persons(users):
     """
     persons_to_update = []
     persons_to_create = []
+    persons_left = []
     for user in sorted(users, key=lambda k: k["active"]):
         person = None
         try:
@@ -312,14 +313,34 @@ def _ldap_update_persons(users):
 
         if person is None:
             persons_to_create.append(user)
-        else:
+            continue
+        conflict = ldap_service.get_sync_conflict(person)
+        if conflict is None:
             persons_to_update.append((person, user))
+        else:
+            persons_left.append(person["id"])
+            _ldap_alert(
+                f"User {user['desktop_login']} left untouched: {conflict}."
+            )
 
     for person in (
         Person.query.filter_by(is_generated_from_ldap=True, active=True)
-        .filter(not_(Person.id.in_([p[0]["id"] for p in persons_to_update])))
+        .filter(
+            not_(
+                Person.id.in_(
+                    [p[0]["id"] for p in persons_to_update] + persons_left
+                )
+            )
+        )
         .all()
     ):
+        conflict = ldap_service.get_sync_conflict(person.serialize())
+        if conflict is not None:
+            _ldap_alert(
+                f"User {person.desktop_login} not found in LDAP, left "
+                f"untouched: {conflict}."
+            )
+            continue
         persons_service.update_person(
             person.id, {"active": False}, bypass_protected_accounts=True
         )
@@ -392,6 +413,14 @@ def _ldap_update_persons(users):
 
         if person is not None and user["thumbnail"] is not None:
             _ldap_save_thumbnail(person, user["thumbnail"])
+
+
+def _ldap_alert(message):
+    """
+    Report a problem of the directory sync that needs an admin.
+    """
+    print(f"Warning: {message}", file=sys.stderr)
+    app.logger.warning(f"LDAP sync: {message}")
 
 
 def _ldap_save_thumbnail(person, thumbnail):
