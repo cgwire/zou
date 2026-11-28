@@ -682,14 +682,41 @@ def check_user_password(settings, entry, password):
     """
     Check the password of a directory entry by binding with it.
     """
-    if not password:
-        raise WrongPasswordException()
     if is_ad(settings) and not settings["LDAP_IS_AD_SIMPLE"]:
         user = f"{settings['LDAP_DOMAIN']}\\{entry.sAMAccountName}"
         authentication = ldap3.NTLM
     else:
         user = entry.entry_dn
         authentication = ldap3.SIMPLE
+    check_bind(settings, user, authentication, password)
+
+
+def check_legacy_password(settings, desktop_login, password):
+    """
+    Check the password of a person by binding with an identity built from
+    its desktop login, without any search: the legacy LDAP login.
+    """
+    if settings["LDAP_IS_AD_SIMPLE"]:
+        user = f"cn={desktop_login},{settings['LDAP_BASE_DN']}"
+        authentication = ldap3.SIMPLE
+    elif settings["LDAP_IS_AD"]:
+        user = f"{settings['LDAP_DOMAIN']}\\{desktop_login}"
+        authentication = ldap3.NTLM
+    else:
+        user = f"uid={desktop_login},{settings['LDAP_BASE_DN']}"
+        authentication = ldap3.SIMPLE
+    check_bind(settings, user, authentication, password)
+
+
+def check_bind(settings, user, authentication, password):
+    """
+    Bind with the given identity and password, through the same connection
+    settings as the service account (TLS, timeouts). An empty password makes
+    an unauthenticated bind (RFC 4513, 5.1.2) that some directories accept:
+    it is refused before any bind.
+    """
+    if not password:
+        raise WrongPasswordException()
     try:
         conn = connect(
             settings, user, password, authentication, get_info=ldap3.NONE

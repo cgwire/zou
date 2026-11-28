@@ -273,67 +273,34 @@ def ldap_auth_strategy(person, password, app):
     Connect to an active directory server to know if the given user can
     be authenticated. If the person is not from LDAP, the default auth
     strategy can try to connect. This occurs only if the LDAP_FALLBACK
-    flag is set in the configuration.
+    flag is set in the configuration. The bind goes through the connection
+    of ldap_service, thus the TLS and timeout settings apply to it.
     """
     if person["is_generated_from_ldap"]:
-        # An empty password makes an unauthenticated bind (RFC 4513,
-        # 5.1.2), and some directories accept it. ldap3 refuses it before
-        # it sends the bind. The login returned that error as a server
-        # failure.
-        if not password:
-            raise WrongPasswordException()
-
-        from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
-        from ldap3.core.exceptions import (
-            LDAPInvalidCredentialsResult,
-            LDAPSocketOpenError,
-        )
-
+        settings = ldap_service.get_settings()
         try:
-            SSL = app.config["LDAP_SSL"]
-            if app.config["LDAP_IS_AD_SIMPLE"]:
-                user = f"cn={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
-                authentication = SIMPLE
-            elif app.config["LDAP_IS_AD"]:
-                user = (
-                    f"{app.config['LDAP_DOMAIN']}\\{person['desktop_login']}"
-                )
-                authentication = NTLM
-            else:
-                user = f"uid={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
-                authentication = SIMPLE
-
-            ldap_server = (
-                f"{app.config['LDAP_HOST']}:{app.config['LDAP_PORT']}"
+            ldap_service.check_legacy_password(
+                settings, person["desktop_login"], password
             )
-            server = Server(
-                ldap_server,
-                get_info=ALL,
-                use_ssl=SSL,
-                connect_timeout=app.config["LDAP_CONNECT_TIMEOUT"],
-            )
-            conn = Connection(
-                server,
-                user=user,
-                password=password,
-                authentication=authentication,
-                raise_exceptions=True,
-                receive_timeout=app.config["LDAP_TIMEOUT"],
-            )
-            conn.bind()
             return person
-
         except LDAPSocketOpenError:
             app.logger.error(
-                f"Cannot connect to LDAP/Active directory server {ldap_server} "
+                "Cannot connect to LDAP/Active directory server "
+                f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
             )
-            raise LDAPSocketOpenError()
-
-        except LDAPInvalidCredentialsResult:
+            raise
+        except (LDAPSSLConfigurationError, LDAPStartTLSError) as exception:
             app.logger.error(
-                f"LDAP cannot authenticate user: {person['email']}"
+                "LDAP TLS error, check LDAP_SSL, LDAP_START_TLS and the "
+                f"server certificate: {exception}"
             )
-            raise WrongPasswordException()
+            raise NoAuthStrategyConfigured()
+        except WrongPasswordException:
+            if password:
+                app.logger.error(
+                    f"LDAP cannot authenticate user: {person['email']}"
+                )
+            raise
 
     elif app.config["LDAP_FALLBACK"]:
         return local_auth_strategy(person, password, app)

@@ -69,7 +69,7 @@ The JWT settings (7 days access, 15 days refresh, cookies and headers, `SameSite
 
 ## LDAP
 
-Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. The sync command and the search-bind login (`LDAP_SEARCH_BIND`) bind with the service account `LDAP_USER` / `LDAP_PASSWORD`.
+Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. The sync command and the search-bind login (`LDAP_SEARCH_BIND`) bind with the service account `LDAP_USER` / `LDAP_PASSWORD`. Every connection to the directory (the sync, the search-bind login and the legacy login) uses the same TLS, timeout and referral settings.
 
 | Variable | Default | Description |
 |----------|---------|-------------|

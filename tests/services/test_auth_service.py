@@ -1,4 +1,5 @@
 import datetime
+import ssl
 from unittest import mock
 
 import ldap3
@@ -8,6 +9,7 @@ from ldap3.core.exceptions import (
     LDAPPasswordIsMandatoryError,
     LDAPSocketOpenError,
     LDAPSocketReceiveError,
+    LDAPStartTLSError,
 )
 
 from tests.services.cases import AuthTestCase
@@ -213,9 +215,7 @@ class LdapStrategyTestCase(AuthTestCase):
         self.person.update({"is_generated_from_ldap": True})
         with mock.patch("ldap3.Connection") as connection:
             self.assertEqual(self.authenticate()["first_name"], "John")
-            connection.return_value.bind.side_effect = (
-                LDAPInvalidCredentialsResult()
-            )
+            connection.side_effect = LDAPInvalidCredentialsResult()
             self.assertRaises(WrongPasswordException, self.authenticate)
         self.assertEqual(self.failed_attemps(), 1)
 
@@ -232,10 +232,60 @@ class LdapStrategyTestCase(AuthTestCase):
     def test_a_directory_that_does_not_answer(self):
         self.person.update({"is_generated_from_ldap": True})
         with mock.patch("ldap3.Connection") as connection:
-            connection.return_value.bind.side_effect = LDAPSocketReceiveError(
+            connection.side_effect = LDAPSocketReceiveError(
                 "error receiving data: timed out"
             )
             self.assertRaises(TimeoutError, self.authenticate)
+        self.assertEqual(self.failed_attemps(), 0)
+
+    def test_the_bind_uses_start_tls(self):
+        """
+        The legacy login shares the connection of the search-bind login:
+        StartTLS and the certificate check apply to it too.
+        """
+        self.person.update({"is_generated_from_ldap": True})
+        self.use_timeouts(
+            LDAP_START_TLS=True,
+            LDAP_VERIFY_CERTIFICATES=True,
+            LDAP_HOST="ldap.studio.local",
+        )
+        with mock.patch("ldap3.Server") as server, mock.patch(
+            "ldap3.Connection"
+        ) as connection:
+            self.authenticate()
+        self.assertEqual(
+            connection.call_args.kwargs["auto_bind"],
+            ldap3.AUTO_BIND_TLS_BEFORE_BIND,
+        )
+        tls = server.call_args.kwargs["tls"]
+        self.assertEqual(tls.validate, ssl.CERT_REQUIRED)
+        self.assertEqual(tls.sni, "ldap.studio.local")
+
+    def test_the_bind_builds_the_legacy_identity(self):
+        self.person.update(
+            {"is_generated_from_ldap": True, "desktop_login": "jdoe"}
+        )
+        self.use_timeouts(
+            LDAP_IS_AD=False,
+            LDAP_IS_AD_SIMPLE=False,
+            LDAP_BASE_DN="ou=people,dc=studio,dc=local",
+        )
+        with mock.patch("ldap3.Connection") as connection:
+            self.authenticate()
+        self.assertEqual(
+            connection.call_args.kwargs["user"],
+            "uid=jdoe,ou=people,dc=studio,dc=local",
+        )
+        self.assertEqual(
+            connection.call_args.kwargs["authentication"], ldap3.SIMPLE
+        )
+
+    def test_a_failed_start_tls_refuses_the_login(self):
+        self.person.update({"is_generated_from_ldap": True})
+        self.use_timeouts(LDAP_START_TLS=True)
+        with mock.patch("ldap3.Connection") as connection:
+            connection.side_effect = LDAPStartTLSError("no TLS")
+            self.assertRaises(NoAuthStrategyConfigured, self.authenticate)
         self.assertEqual(self.failed_attemps(), 0)
 
     def use_timeouts(self, **settings):
