@@ -541,6 +541,23 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
         self.assertEqual(self.directory_keys(), [])
 
+    def test_entry_without_login_is_refused(self):
+        """
+        Found by email, an entry without a login attribute is refused
+        before the password, as the sync skips it.
+        """
+        self.use_directory(
+            [self.jdoe()], LDAP_LOGIN_ATTRIBUTE="sAMAccountName"
+        )
+        with mock.patch.object(
+            ldap_service, "check_user_password"
+        ) as check_user_password:
+            self.assertRaises(
+                WrongUserException, self.login, "jdoe@studio.local"
+            )
+        check_user_password.assert_not_called()
+        self.assertIsNone(Person.get_by(email="jdoe@studio.local"))
+
     def test_unknown_identifier(self):
         self.use_directory([self.jdoe()])
         self.assertRaises(WrongUserException, self.login, "nobody")

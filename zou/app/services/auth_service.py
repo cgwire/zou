@@ -421,9 +421,17 @@ def find_search_bind_user(person, identifier, password, app):
 
     # Refused before the password: Active Directory rejects the bind of a
     # disabled account, so its state is never read after it. An excluded
-    # account, usually a service account, must receive no bind at all.
+    # account, usually a service account, must receive no bind at all. An
+    # entry without a login has no desktop login to give its person: the
+    # sync skips it too.
+    if entry is not None and not user["desktop_login"]:
+        app.logger.warning(
+            f"LDAP login refused for {entry.entry_dn}: the entry has no "
+            "login attribute."
+        )
     if (
         entry is None
+        or not user["desktop_login"]
         or not user["active"]
         or ldap_service.is_excluded(settings, user["desktop_login"])
     ):
