@@ -420,6 +420,13 @@ class LdapAmbiguousUserException(Exception):
     pass
 
 
+class LdapAmbiguousGroupException(LdapGroupNotFoundException):
+    """
+    Several directory groups match a configured group name. It stops the
+    sync and the login as a missing group does.
+    """
+
+
 class LdapAccountConflictException(Exception):
     pass
 

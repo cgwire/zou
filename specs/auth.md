@@ -69,4 +69,5 @@ role helper, which otherwise reads the global role.
 - Minimum length: 8 characters (configurable via `MIN_PASSWORD_LENGTH`)
 - Bcrypt hashing with configurable rounds (`BCRYPT_LOG_ROUNDS`, default 12)
 - Failed login attempt tracking (`login_failed_attemps` on Person model)
+- Failed login attempts of an LDAP user not yet in Zou (search-bind login): counted in Redis under `ldap-login-failed:<ldap uid or DN>`, expiring one lockout delay after the last failure, cleared on success
 - Protected accounts (`PROTECTED_ACCOUNTS` config) exempt from password reset

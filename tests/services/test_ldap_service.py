@@ -1,16 +1,28 @@
+import io
+import socket
+import ssl
+import tempfile
+import time
 import uuid
 from unittest import mock
 
 import ldap3
 
 from tests.base import ApiDBTestCase
-from tests.services.ldap_fixtures import BASE_DN, LdapDirectoryMixin, ad_user
-from zou.app import app
+from tests.services.ldap_fixtures import (
+    BASE_DN,
+    LdapDirectoryMixin,
+    ad_user,
+    openldap_group,
+    openldap_person,
+)
+from zou.app import app, config
 from zou.app.commands import commands_service
 from zou.app.exceptions import (
     InactiveUserException,
     IsUserLimitReachedException,
     LdapAccountConflictException,
+    LdapAmbiguousGroupException,
     LdapAmbiguousUserException,
     LdapGroupNotFoundException,
     WrongPasswordException,
@@ -58,6 +70,757 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         settings = self.directory([], LDAP_GROUP="cn=Kitsu (prod),dc=x")
         person_filter = ldap_service.build_person_filter(settings)
         self.assertIn("cn=Kitsu \\28prod\\29,dc=x", person_filter)
+
+    def test_build_person_filter_default(self):
+        settings = self.directory([])
+        self.assertEqual(
+            ldap_service.build_person_filter(settings),
+            "(&(objectClass=person)(!(objectClass=computer)))",
+        )
+        settings = self.directory([], LDAP_IS_AD_SIMPLE=False)
+        self.assertEqual(
+            ldap_service.build_person_filter(settings),
+            "(&(objectClass=person))",
+        )
+
+    def test_build_person_filter_custom_user_filter(self):
+        group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
+        settings = self.directory(
+            [],
+            LDAP_GROUP=group,
+            LDAP_USER_FILTER="(&(objectClass=user)(department=Anim))",
+        )
+        self.assertEqual(
+            ldap_service.build_person_filter(settings, "(cn=jdoe)"),
+            "(&(&(objectClass=user)(department=Anim))"
+            f"(memberOf={group})(cn=jdoe))",
+        )
+
+    def test_build_person_filter_wraps_bare_user_filter(self):
+        settings = self.directory([], LDAP_USER_FILTER="department=Anim")
+        self.assertEqual(
+            ldap_service.build_person_filter(settings),
+            "(&(department=Anim))",
+        )
+
+    def test_search_users_custom_user_filter(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=alice,cn=Users,{BASE_DN}",
+                    ad_user("alice", department="Anim"),
+                ),
+                (
+                    f"cn=bob,cn=Users,{BASE_DN}",
+                    ad_user("bob", department="Compta"),
+                ),
+            ],
+            LDAP_USER_FILTER="(&(objectClass=person)(department=Anim))",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
+    def test_find_user_entry_custom_user_filter(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=bob,cn=Users,{BASE_DN}",
+                    ad_user("bob", department="Compta"),
+                ),
+            ],
+            LDAP_USER_FILTER="(&(objectClass=person)(department=Anim))",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        self.assertIsNone(ldap_service.find_user_entry(conn, settings, "bob"))
+
+    def test_search_users_reads_every_page(self):
+        logins = ["alice", "bob", "carol", "dave", "eve"]
+        settings = self.directory(
+            [
+                (f"cn={login},cn=Users,{BASE_DN}", ad_user(login))
+                for login in logins
+            ]
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with mock.patch.object(ldap_service, "SEARCH_PAGE_SIZE", 2):
+            with mock.patch.object(
+                conn, "search", wraps=conn.search
+            ) as search:
+                users = ldap_service.search_users(conn, settings)
+        self.assertEqual(
+            sorted(user["desktop_login"] for user in users), logins
+        )
+        self.assertEqual(search.call_count, 3)
+        for call in search.call_args_list:
+            self.assertEqual(call.kwargs["paged_size"], 2)
+
+    def tls_settings(self, **overrides):
+        settings = {
+            "LDAP_HOST": "dc.studio.local",
+            "LDAP_PORT": "636",
+            "LDAP_SSL": True,
+            "LDAP_START_TLS": False,
+            "LDAP_VERIFY_CERTIFICATES": False,
+            "LDAP_CA_FILE": "",
+            "LDAP_CONNECT_TIMEOUT": 5,
+            "LDAP_TIMEOUT": 10,
+            "LDAP_FOLLOW_REFERRALS": True,
+            "LDAP_ALLOWED_REFERRAL_HOSTS": "",
+        }
+        settings.update(overrides)
+        return settings
+
+    def test_get_server_does_not_verify_by_default(self):
+        server = ldap_service.get_server(self.tls_settings())
+        self.assertTrue(server.ssl)
+        self.assertEqual(server.tls.validate, ssl.CERT_NONE)
+
+    def test_get_server_verifies_certificates(self):
+        server = ldap_service.get_server(
+            self.tls_settings(LDAP_VERIFY_CERTIFICATES=True)
+        )
+        self.assertEqual(server.tls.validate, ssl.CERT_REQUIRED)
+        self.assertIsNone(server.tls.ca_certs_file)
+        self.assertEqual(server.tls.sni, "dc.studio.local")
+
+    def test_get_server_verifies_with_ca_file(self):
+        with tempfile.NamedTemporaryFile(suffix=".pem") as ca_file:
+            server = ldap_service.get_server(
+                self.tls_settings(
+                    LDAP_VERIFY_CERTIFICATES=True, LDAP_CA_FILE=ca_file.name
+                )
+            )
+        self.assertEqual(server.tls.validate, ssl.CERT_REQUIRED)
+        self.assertEqual(server.tls.ca_certs_file, ca_file.name)
+
+    def test_get_server_missing_ca_file(self):
+        with self.assertRaises(
+            ldap3.core.exceptions.LDAPSSLConfigurationError
+        ):
+            ldap_service.get_server(
+                self.tls_settings(
+                    LDAP_VERIFY_CERTIFICATES=True,
+                    LDAP_CA_FILE="/nonexistent/ca.pem",
+                )
+            )
+
+    def test_build_person_filter_nested_groups(self):
+        group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
+        settings = self.directory(
+            [], LDAP_GROUP=group, LDAP_NESTED_GROUPS=True
+        )
+        self.assertIn(
+            f"(memberOf:1.2.840.113556.1.4.1941:={group})",
+            ldap_service.build_person_filter(settings),
+        )
+        settings["LDAP_NESTED_GROUPS"] = False
+        self.assertIn(
+            f"(memberOf={group})", ldap_service.build_person_filter(settings)
+        )
+
+    def nested_openldap_directory(self, extra_entries=(), **overrides):
+        people = f"ou=People,{BASE_DN}"
+        groups = f"ou=Groups,{BASE_DN}"
+        return self.directory(
+            [
+                (f"uid={login},{people}", openldap_person(login))
+                for login in ["alice", "bob", "carol", "dave"]
+            ]
+            + [
+                (
+                    f"cn=Kitsu,{groups}",
+                    openldap_group(
+                        "Kitsu",
+                        [f"uid=alice,{people}", f"cn=Anim,{groups}"],
+                    ),
+                ),
+                (
+                    f"cn=Anim,{groups}",
+                    openldap_group(
+                        "Anim", [f"uid=bob,{people}", f"cn=Layout,{groups}"]
+                    ),
+                ),
+                (
+                    f"cn=Layout,{groups}",
+                    openldap_group(
+                        "Layout",
+                        [f"uid=carol,{people}", f"cn=Kitsu,{groups}"],
+                    ),
+                ),
+                (
+                    f"cn=Compta,{groups}",
+                    openldap_group("Compta", [f"uid=dave,{people}"]),
+                ),
+                *extra_entries,
+            ],
+            **{
+                "LDAP_IS_AD_SIMPLE": False,
+                "LDAP_GROUP": "Kitsu",
+                **overrides,
+            },
+        )
+
+    def test_search_users_openldap_direct_members_only(self):
+        settings = self.nested_openldap_directory()
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
+    def duplicate_kitsu_group(self):
+        """
+        A second group named Kitsu, elsewhere under the base DN.
+        """
+        return (
+            f"cn=Kitsu,ou=Projects,{BASE_DN}",
+            openldap_group("Kitsu", [f"uid=dave,ou=People,{BASE_DN}"]),
+        )
+
+    def test_search_users_skips_entries_without_login(self):
+        people = f"ou=People,{BASE_DN}"
+        nologin = openldap_person("nologin")
+        del nologin["uid"]
+        settings = self.directory(
+            [
+                (f"uid=alice,{people}", openldap_person("alice")),
+                (f"cn=nologin,{people}", nologin),
+            ],
+            LDAP_IS_AD_SIMPLE=False,
+        )
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
+    def test_search_users_openldap_ambiguous_group(self):
+        for nested in [False, True]:
+            settings = self.nested_openldap_directory(
+                [self.duplicate_kitsu_group()], LDAP_NESTED_GROUPS=nested
+            )
+            conn = ldap_service.open_service_connection(settings)
+            with self.assertRaises(LdapAmbiguousGroupException) as context:
+                ldap_service.search_users(conn, settings)
+            self.assertIn(f"ou=Projects,{BASE_DN}", str(context.exception))
+
+    def test_search_users_openldap_group_dn(self):
+        for nested, expected in [
+            (False, ["alice"]),
+            (True, ["alice", "bob", "carol"]),
+        ]:
+            settings = self.nested_openldap_directory(
+                [self.duplicate_kitsu_group()],
+                LDAP_NESTED_GROUPS=nested,
+                LDAP_GROUP=f"CN=Kitsu, ou=Groups,{BASE_DN}",
+            )
+            conn = ldap_service.open_service_connection(settings)
+            users = ldap_service.search_users(conn, settings)
+            self.assertEqual(
+                sorted(user["desktop_login"] for user in users), expected
+            )
+
+    def test_search_users_openldap_missing_group_dn(self):
+        for nested in [False, True]:
+            settings = self.nested_openldap_directory(
+                LDAP_NESTED_GROUPS=nested,
+                LDAP_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}",
+            )
+            conn = ldap_service.open_service_connection(settings)
+            with self.assertRaises(LdapGroupNotFoundException):
+                ldap_service.search_users(conn, settings)
+
+    def test_sync_ambiguous_role_group_keeps_persons(self):
+        settings = self.nested_openldap_directory(
+            [self.duplicate_kitsu_group()],
+            LDAP_GROUP="",
+            LDAP_ADMIN_GROUP="Kitsu",
+        )
+        dave = persons_service.create_person(
+            "dave@studio.local",
+            b"",
+            "Dave",
+            "Doe",
+            role="user",
+            desktop_login="dave",
+            is_generated_from_ldap=True,
+        )
+        errors = self.failed_sync(settings)
+        self.assertIn("Several LDAP groups are named Kitsu", errors)
+        self.assertEqual(Person.get(dave["id"]).role.code, "user")
+
+    def test_search_users_openldap_nested_groups(self):
+        settings = self.nested_openldap_directory(LDAP_NESTED_GROUPS=True)
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual(
+            sorted(user["desktop_login"] for user in users),
+            ["alice", "bob", "carol"],
+        )
+
+    def test_get_group_member_dns_nested_missing_group(self):
+        settings = self.nested_openldap_directory(
+            LDAP_NESTED_GROUPS=True, LDAP_GROUP="Missing"
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with self.assertRaises(LdapGroupNotFoundException):
+            ldap_service.get_group_member_dns(conn, settings)
+
+    def test_open_service_connection_without_password(self):
+        for mode in [
+            {"LDAP_IS_AD_SIMPLE": True},
+            {"LDAP_IS_AD_SIMPLE": False, "LDAP_IS_AD": True},
+            {"LDAP_IS_AD_SIMPLE": False},
+        ]:
+            settings = self.directory([], LDAP_PASSWORD="", **mode)
+            with self.assertRaises(
+                ldap3.core.exceptions.LDAPPasswordIsMandatoryError
+            ):
+                ldap_service.open_service_connection(settings)
+
+    def connection_kwargs(self, settings):
+        with mock.patch.object(ldap3, "Connection") as connection:
+            ldap_service.connect(settings, "user", "secret", ldap3.SIMPLE)
+        (server,) = connection.call_args.args
+        return {"server": server, **connection.call_args.kwargs}
+
+    def test_connect_without_start_tls(self):
+        settings = self.tls_settings(LDAP_SSL=False)
+        self.assertIs(self.connection_kwargs(settings)["auto_bind"], True)
+
+    def test_connect_with_start_tls(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False, LDAP_PORT="389", LDAP_START_TLS=True
+        )
+        self.assertEqual(
+            self.connection_kwargs(settings)["auto_bind"],
+            ldap3.AUTO_BIND_TLS_BEFORE_BIND,
+        )
+
+    def test_connect_start_tls_verifies_certificates(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False,
+            LDAP_START_TLS=True,
+            LDAP_VERIFY_CERTIFICATES=True,
+        )
+        server = self.connection_kwargs(settings)["server"]
+        self.assertFalse(server.ssl)
+        self.assertEqual(server.tls.validate, ssl.CERT_REQUIRED)
+
+    def test_connect_ssl_and_start_tls(self):
+        settings = self.tls_settings(LDAP_START_TLS=True)
+        with self.assertRaises(
+            ldap3.core.exceptions.LDAPSSLConfigurationError
+        ):
+            ldap_service.connect(settings, "user", "secret", ldap3.SIMPLE)
+
+    def test_get_login_attribute_default(self):
+        settings = self.directory([])
+        self.assertEqual(ldap_service.get_login_attribute(settings), "cn")
+        settings.update(LDAP_IS_AD_SIMPLE=False, LDAP_IS_AD=True)
+        self.assertEqual(
+            ldap_service.get_login_attribute(settings), "sAMAccountName"
+        )
+        settings.update(LDAP_IS_AD=False)
+        self.assertEqual(ldap_service.get_login_attribute(settings), "uid")
+
+    def test_get_login_attribute_custom(self):
+        settings = self.directory([], LDAP_LOGIN_ATTRIBUTE=" sAMAccountName ")
+        self.assertEqual(
+            ldap_service.get_login_attribute(settings), "sAMAccountName"
+        )
+        self.assertIn(
+            "sAMAccountName", ldap_service.get_user_attributes(settings)
+        )
+
+    def test_get_login_attribute_invalid(self):
+        for attribute in ["uid)(objectClass=*", "a b", "-uid"]:
+            settings = self.directory([], LDAP_LOGIN_ATTRIBUTE=attribute)
+            with self.assertRaises(
+                ldap3.core.exceptions.LDAPInvalidFilterError
+            ):
+                ldap_service.get_login_attribute(settings)
+
+    def test_search_users_custom_login_attribute(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=John Doe,cn=Users,{BASE_DN}",
+                    ad_user("John Doe", sAMAccountName="jdoe"),
+                )
+            ],
+            LDAP_LOGIN_ATTRIBUTE="sAMAccountName",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["jdoe"])
+        entry = ldap_service.find_user_entry(conn, settings, "jdoe")
+        self.assertEqual(entry.entry_dn, f"cn=John Doe,cn=Users,{BASE_DN}")
+        self.assertIsNone(
+            ldap_service.find_user_entry(conn, settings, "John Doe")
+        )
+
+    def mapped_directory(self):
+        return self.directory(
+            [
+                (
+                    f"cn=jdoe,cn=Users,{BASE_DN}",
+                    ad_user(
+                        "jdoe",
+                        displayName="Johnny",
+                        department="Doe",
+                        otherMailbox="john.doe@studio.com",
+                        jpegPhoto=b"photo",
+                    ),
+                )
+            ],
+            LDAP_FIRST_NAME_ATTRIBUTE="displayName",
+            LDAP_LAST_NAME_ATTRIBUTE="department",
+            LDAP_EMAIL_ATTRIBUTE="otherMailbox",
+            LDAP_THUMBNAIL_ATTRIBUTE="jpegPhoto",
+        )
+
+    def test_search_users_attribute_mapping(self):
+        settings = self.mapped_directory()
+        self.assertTrue(
+            {"displayName", "department", "otherMailbox", "jpegPhoto"}
+            <= set(ldap_service.get_user_attributes(settings))
+        )
+        conn = ldap_service.open_service_connection(settings)
+        (user,) = ldap_service.search_users(conn, settings)
+        self.assertEqual(user["first_name"], "Johnny")
+        self.assertEqual(user["last_name"], "Doe")
+        self.assertEqual(user["email"], "john.doe@studio.com")
+        self.assertEqual(user["thumbnail"], b"photo")
+
+    def test_search_users_default_attribute_mapping(self):
+        settings = self.directory(
+            [
+                (
+                    f"cn=jdoe,cn=Users,{BASE_DN}",
+                    ad_user("jdoe", thumbnailPhoto=b"photo"),
+                )
+            ]
+        )
+        conn = ldap_service.open_service_connection(settings)
+        (user,) = ldap_service.search_users(conn, settings)
+        self.assertEqual(user["first_name"], "Given")
+        self.assertEqual(user["last_name"], "Jdoe")
+        self.assertEqual(user["email"], "jdoe@studio.local")
+        self.assertEqual(user["thumbnail"], b"photo")
+
+    def test_find_user_entry_by_mapped_email(self):
+        settings = self.mapped_directory()
+        conn = ldap_service.open_service_connection(settings)
+        entry = ldap_service.find_user_entry(
+            conn, settings, "john.doe@studio.com"
+        )
+        self.assertEqual(entry.entry_dn, f"cn=jdoe,cn=Users,{BASE_DN}")
+        self.assertIsNone(
+            ldap_service.find_user_entry(conn, settings, "jdoe@studio.local")
+        )
+
+    def test_invalid_mapped_attribute(self):
+        for key in [
+            "LDAP_FIRST_NAME_ATTRIBUTE",
+            "LDAP_LAST_NAME_ATTRIBUTE",
+            "LDAP_EMAIL_ATTRIBUTE",
+            "LDAP_THUMBNAIL_ATTRIBUTE",
+        ]:
+            settings = self.directory([], **{key: "mail)(cn=*"})
+            with self.assertRaises(
+                ldap3.core.exceptions.LDAPInvalidFilterError
+            ):
+                ldap_service.get_user_attributes(settings)
+
+    def role_directory(self, **overrides):
+        groups = f"ou=Groups,{BASE_DN}"
+        admins = f"cn=Admins,{groups}"
+        managers = f"cn=Managers,{groups}"
+        clients = f"cn=Clients,{groups}"
+        return self.directory(
+            [
+                (admins, {"objectClass": "group"}),
+                (managers, {"objectClass": "group"}),
+                (clients, {"objectClass": "group"}),
+                (
+                    f"cn=alice,cn=Users,{BASE_DN}",
+                    ad_user("alice", memberOf=[managers, admins]),
+                ),
+                (
+                    f"cn=bob,cn=Users,{BASE_DN}",
+                    ad_user("bob", memberOf=[managers]),
+                ),
+                (
+                    f"cn=carol,cn=Users,{BASE_DN}",
+                    ad_user("carol", memberOf=[clients]),
+                ),
+                (f"cn=dave,cn=Users,{BASE_DN}", ad_user("dave")),
+            ],
+            **{
+                "LDAP_ADMIN_GROUP": admins,
+                "LDAP_MANAGER_GROUP": managers,
+                "LDAP_CLIENT_GROUP": clients,
+                **overrides,
+            },
+        )
+
+    def test_search_users_role_groups(self):
+        settings = self.role_directory()
+        conn = ldap_service.open_service_connection(settings)
+        roles = {
+            user["desktop_login"]: user["role"]
+            for user in ldap_service.search_users(conn, settings)
+        }
+        self.assertEqual(
+            roles,
+            {
+                "alice": "admin",
+                "bob": "manager",
+                "carol": "client",
+                "dave": "user",
+            },
+        )
+
+    def test_search_users_without_role_group(self):
+        settings = self.role_directory(
+            LDAP_ADMIN_GROUP="", LDAP_MANAGER_GROUP="", LDAP_CLIENT_GROUP=""
+        )
+        conn = ldap_service.open_service_connection(settings)
+        for user in ldap_service.search_users(conn, settings):
+            self.assertNotIn("role", user)
+
+    def test_search_users_role_group_missing(self):
+        settings = self.role_directory(
+            LDAP_ADMIN_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}"
+        )
+        conn = ldap_service.open_service_connection(settings)
+        with self.assertRaises(LdapGroupNotFoundException):
+            ldap_service.search_users(conn, settings)
+
+    def test_get_entry_role(self):
+        settings = self.role_directory()
+        conn = ldap_service.open_service_connection(settings)
+        for login, role in [
+            ("alice", "admin"),
+            ("bob", "manager"),
+            ("carol", "client"),
+            ("dave", "user"),
+        ]:
+            entry = ldap_service.find_user_entry(conn, settings, login)
+            self.assertEqual(
+                ldap_service.get_entry_role(conn, settings, entry), role
+            )
+        settings["LDAP_ADMIN_GROUP"] = ""
+        settings["LDAP_MANAGER_GROUP"] = ""
+        settings["LDAP_CLIENT_GROUP"] = ""
+        self.assertIsNone(ldap_service.get_entry_role(conn, settings, entry))
+
+    def test_openldap_role_groups(self):
+        people = f"ou=People,{BASE_DN}"
+        settings = self.directory(
+            [
+                (f"uid={login},{people}", openldap_person(login))
+                for login in ["alice", "bob"]
+            ]
+            + [
+                (
+                    f"cn=Supervisors,ou=Groups,{BASE_DN}",
+                    openldap_group("Supervisors", [f"uid=alice,{people}"]),
+                )
+            ],
+            LDAP_IS_AD_SIMPLE=False,
+            LDAP_SUPERVISOR_GROUP="Supervisors",
+        )
+        conn = ldap_service.open_service_connection(settings)
+        roles = {
+            user["desktop_login"]: user["role"]
+            for user in ldap_service.search_users(conn, settings)
+        }
+        self.assertEqual(roles, {"alice": "supervisor", "bob": "user"})
+        entry = ldap_service.find_user_entry(conn, settings, "alice")
+        self.assertEqual(
+            ldap_service.get_entry_role(conn, settings, entry), "supervisor"
+        )
+
+    def ldap_person_with_role(self, login, role, email=None):
+        return persons_service.create_person(
+            email or f"{login}@studio.local",
+            b"",
+            login.title(),
+            "Doe",
+            role=role,
+            desktop_login=login,
+            is_generated_from_ldap=True,
+        )
+
+    def test_sync_applies_role_groups(self):
+        settings = self.role_directory()
+        alice = self.ldap_person_with_role("alice", "user")
+        bob = self.ldap_person_with_role("bob", "admin")
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(alice["id"]).role.code, "admin")
+        self.assertEqual(Person.get(bob["id"]).role.code, "manager")
+        self.assertEqual(
+            Person.get_by(desktop_login="carol").role.code, "client"
+        )
+
+    def test_sync_keeps_role_without_role_group(self):
+        settings = self.role_directory(
+            LDAP_ADMIN_GROUP="", LDAP_MANAGER_GROUP="", LDAP_CLIENT_GROUP=""
+        )
+        bob = self.ldap_person_with_role("bob", "supervisor")
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(bob["id"]).role.code, "supervisor")
+
+    def test_sync_keeps_role_of_protected_account(self):
+        settings = self.role_directory()
+        dave = self.ldap_person_with_role("dave", "admin")
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["dave@studio.local"]
+        ):
+            with mock.patch.object(
+                ldap_service, "get_settings", return_value=settings
+            ):
+                commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(dave["id"]).role.code, "admin")
+
+    def sync(self, settings):
+        """
+        Run the sync and return what it wrote on the error output.
+        """
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ), mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            commands_service.sync_with_ldap_server()
+        return stderr.getvalue()
+
+    def failed_sync(self, settings, **patches):
+        """
+        Run a sync that must stop, and return what it wrote on the error
+        output.
+        """
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ), mock.patch("sys.stderr", new_callable=io.StringIO) as stderr:
+            with self.assertRaises(SystemExit) as context:
+                commands_service.sync_with_ldap_server()
+        self.assertEqual(context.exception.code, 1)
+        errors = stderr.getvalue()
+        self.assertIn("LDAP sync stopped, no account was changed", errors)
+        return errors
+
+    def test_sync_error_without_password(self):
+        settings = self.directory([], LDAP_PASSWORD="")
+        self.assertIn("LDAP_PASSWORD is not set", self.failed_sync(settings))
+
+    def test_sync_errors_of_the_connection(self):
+        settings = self.directory([])
+        exceptions = ldap3.core.exceptions
+        for error, message in [
+            (exceptions.LDAPSocketReceiveError("timed out"), "LDAP_TIMEOUT"),
+            (exceptions.LDAPStartTLSError("refused"), "StartTLS failed"),
+            (
+                exceptions.LDAPSSLConfigurationError("both set"),
+                "TLS configuration error",
+            ),
+            (
+                exceptions.LDAPSocketOpenError("unreachable"),
+                "LDAP_CONNECT_TIMEOUT",
+            ),
+            (
+                exceptions.LDAPBindError("refused"),
+                "LDAP_USER and LDAP_PASSWORD",
+            ),
+            (exceptions.LDAPInvalidFilterError("bad"), "LDAP_USER_FILTER"),
+        ]:
+            with mock.patch.object(
+                ldap_service, "open_service_connection", side_effect=error
+            ):
+                self.assertIn(message, self.failed_sync(settings))
+
+    def test_sync_leaves_protected_account_untouched(self):
+        settings = self.role_directory()
+        dave = self.ldap_person_with_role("dave", "admin")
+        Person.get(dave["id"]).update({"first_name": "Local"})
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["dave@studio.local"]
+        ):
+            errors = self.sync(settings)
+        stored = Person.get(dave["id"])
+        self.assertEqual(stored.first_name, "Local")
+        self.assertEqual(stored.role.code, "admin")
+        self.assertIn("dave", errors)
+        self.assertIn("PROTECTED_ACCOUNTS", errors)
+
+    def test_sync_keeps_protected_account_gone_from_directory(self):
+        settings = self.role_directory()
+        erin = self.ldap_person_with_role("erin", "admin")
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["erin@studio.local"]
+        ):
+            errors = self.sync(settings)
+        self.assertTrue(Person.get(erin["id"]).active)
+        self.assertIn("erin", errors)
+        self.assertIn("PROTECTED_ACCOUNTS", errors)
+
+    def test_sync_never_takes_over_a_local_account(self):
+        settings = self.role_directory()
+        local = persons_service.create_person(
+            "alice@studio.local",
+            b"",
+            "Local",
+            "Alice",
+            role="user",
+            desktop_login="alice",
+        )
+        errors = self.sync(settings)
+        stored = Person.get(local["id"])
+        self.assertFalse(stored.is_generated_from_ldap)
+        self.assertEqual(stored.first_name, "Local")
+        self.assertEqual(stored.role.code, "user")
+        self.assertIsNone(stored.ldap_uid)
+        self.assertIn("alice", errors)
+        self.assertIn("local account", errors)
+
+    def test_local_person_role_is_not_managed(self):
+        user = {"role": "admin"}
+        person = {"email": "x@studio.local", "is_generated_from_ldap": False}
+        self.assertFalse(ldap_service.is_role_managed(user, person))
+        person["is_generated_from_ldap"] = True
+        self.assertTrue(ldap_service.is_role_managed(user, person))
+
+    def test_provision_person_role(self):
+        person = self.ldap_person_with_role("dave", "admin")
+        user = {
+            "email": "dave@studio.local",
+            "first_name": "Dave",
+            "last_name": "Doe",
+            "active": True,
+            "desktop_login": "dave",
+            "ldap_uid": None,
+            "role": "user",
+        }
+        with mock.patch.object(
+            config, "PROTECTED_ACCOUNTS", ["dave@studio.local"]
+        ):
+            ldap_service.provision_person(
+                user, persons_service.get_person(person["id"])
+            )
+        self.assertEqual(Person.get(person["id"]).role.code, "admin")
+        ldap_service.provision_person(
+            user, persons_service.get_person(person["id"])
+        )
+        self.assertEqual(Person.get(person["id"]).role.code, "user")
+        del user["role"]
+        persons_service.update_person(person["id"], {"role": "manager"})
+        ldap_service.provision_person(
+            user, persons_service.get_person(person["id"])
+        )
+        self.assertEqual(Person.get(person["id"]).role.code, "manager")
 
     def test_search_users_excluded_account(self):
         settings = self.directory(
@@ -153,6 +916,40 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertIsNotNone(person)
         self.assertTrue(person.is_generated_from_ldap)
 
+    def test_search_users_ad_group_dn_with_spaces(self):
+        """
+        A group DN written with spaces after the commas is the same group:
+        ldap3 refuses it as a search base, it was taken for a missing one.
+        """
+        group = f"cn=Kitsu,ou=Groups,{BASE_DN}"
+        spaced = ", ".join(group.split(","))
+        for nested in [False, True]:
+            settings = self.directory(
+                [
+                    (group, {"objectClass": "group"}),
+                    (
+                        f"cn=jdoe,cn=Users,{BASE_DN}",
+                        ad_user("jdoe", memberOf=[group]),
+                    ),
+                    (f"cn=other,cn=Users,{BASE_DN}", ad_user("other")),
+                ],
+                LDAP_GROUP=spaced,
+                LDAP_ADMIN_GROUP=spaced,
+                LDAP_NESTED_GROUPS=nested,
+            )
+            if nested:
+                # The mock refuses the extensible match of the nested
+                # filter: only the group check is exercised.
+                conn = ldap_service.open_service_connection(settings)
+                ldap_service.check_group_exists(conn, settings)
+                continue
+            conn = ldap_service.open_service_connection(settings)
+            users = ldap_service.search_users(conn, settings)
+            self.assertEqual(
+                [(user["desktop_login"], user["role"]) for user in users],
+                [("jdoe", "admin")],
+            )
+
     def test_search_users_ad_group_missing(self):
         settings = self.directory(
             [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],
@@ -175,11 +972,9 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             desktop_login="jdoe",
             is_generated_from_ldap=True,
         )
-        with mock.patch.object(
-            ldap_service, "get_settings", return_value=settings
-        ):
-            with self.assertRaises(LdapGroupNotFoundException):
-                commands_service.sync_with_ldap_server()
+        errors = self.failed_sync(settings)
+        self.assertIn("LDAP group not found: cn=Missing", errors)
+        self.assertIn("Check LDAP_GROUP", errors)
         self.assertTrue(Person.get(person["id"]).active)
 
     def test_sync_with_ldap_server_no_user_keeps_persons(self):
@@ -328,7 +1123,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertFalse(ldap_service.is_excluded(settings, "svc3"))
 
     def test_get_server_short_timeout(self):
-        settings = {"LDAP_HOST": "h", "LDAP_PORT": "389", "LDAP_SSL": False}
+        settings = self.tls_settings(LDAP_SSL=False)
         with mock.patch.object(ldap3, "Server") as server:
             ldap_service.get_server(settings)
             ldap_service.get_server(settings, get_info=ldap3.NONE)
@@ -336,6 +1131,121 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         self.assertEqual(first.kwargs["get_info"], ldap3.ALL)
         self.assertEqual(second.kwargs["get_info"], ldap3.NONE)
         self.assertEqual(first.kwargs["connect_timeout"], 5)
+
+    def test_get_server_connect_timeout(self):
+        settings = self.tls_settings(LDAP_CONNECT_TIMEOUT=2)
+        self.assertEqual(ldap_service.get_server(settings).connect_timeout, 2)
+
+    def test_connect_receive_timeout(self):
+        settings = self.tls_settings(LDAP_SSL=False, LDAP_TIMEOUT=7)
+        self.assertEqual(
+            self.connection_kwargs(settings)["receive_timeout"], 7
+        )
+
+    def test_connect_follows_referrals_by_default(self):
+        settings = self.tls_settings(LDAP_SSL=False)
+        self.assertIs(self.connection_kwargs(settings)["auto_referrals"], True)
+
+    def test_connect_without_referrals(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False, LDAP_FOLLOW_REFERRALS=False
+        )
+        self.assertIs(
+            self.connection_kwargs(settings)["auto_referrals"], False
+        )
+
+    def test_referrals_stay_on_the_directory_host(self):
+        settings = self.tls_settings(LDAP_SSL=False)
+        server = self.connection_kwargs(settings)["server"]
+        self.assertEqual(
+            server.allowed_referral_hosts, [("dc.studio.local", True)]
+        )
+
+    def test_referrals_to_allowed_hosts(self):
+        settings = self.tls_settings(
+            LDAP_SSL=False,
+            LDAP_ALLOWED_REFERRAL_HOSTS=(
+                " dc2.studio.local, ,dc.studio.local,dc3.studio.local"
+            ),
+        )
+        server = self.connection_kwargs(settings)["server"]
+        self.assertEqual(
+            server.allowed_referral_hosts,
+            [
+                ("dc.studio.local", True),
+                ("dc2.studio.local", True),
+                ("dc3.studio.local", True),
+            ],
+        )
+
+    def test_referral_to_another_host_is_not_followed(self):
+        """
+        ldap3 picks no referral among the ones to a host that is not
+        allowed: no connection, no credentials sent.
+        """
+        settings = self.tls_settings(LDAP_SSL=False)
+        server = ldap_service.get_server(settings, get_info=ldap3.NONE)
+        conn = ldap3.Connection(server, client_strategy=ldap3.MOCK_SYNC)
+        self.assertEqual(
+            conn.strategy.valid_referral_list(
+                ["ldap://evil.example.com/dc=studio,dc=local"]
+            ),
+            [],
+        )
+        self.assertEqual(
+            len(
+                conn.strategy.valid_referral_list(
+                    ["ldap://dc.studio.local/dc=studio,dc=local"]
+                )
+            ),
+            1,
+        )
+
+    def test_paged_search_skips_referrals(self):
+        settings = self.directory(
+            [(f"cn=jdoe,cn=Users,{BASE_DN}", ad_user("jdoe"))],
+            LDAP_FOLLOW_REFERRALS=False,
+        )
+        conn = ldap_service.open_service_connection(settings)
+        referral = {
+            "type": "searchResRef",
+            "uri": [f"ldap://other.studio.local/{BASE_DN}"],
+        }
+        search = conn.search
+
+        def search_with_referral(*args, **kwargs):
+            result = search(*args, **kwargs)
+            conn.response.append(referral)
+            conn._entries = None
+            return result
+
+        with mock.patch.object(conn, "search", search_with_referral):
+            users = ldap_service.search_users(conn, settings)
+        self.assertEqual([user["desktop_login"] for user in users], ["jdoe"])
+
+    def test_connect_to_a_silent_server(self):
+        """
+        A directory that accepts the connection and never answers makes the
+        connection fail after LDAP_TIMEOUT instead of blocking for ever.
+        """
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        self.addCleanup(server.close)
+        settings = self.tls_settings(
+            LDAP_HOST="127.0.0.1",
+            LDAP_PORT=str(server.getsockname()[1]),
+            LDAP_SSL=False,
+            LDAP_TIMEOUT=1,
+        )
+        start = time.monotonic()
+        with self.assertRaises(ldap3.core.exceptions.LDAPSocketReceiveError):
+            ldap_service.connect(
+                settings, "cn=svc", "secret", ldap3.SIMPLE, ldap3.NONE
+            )
+        # Under the 5 s connect timeout, that ldap3 applies to the reads
+        # too when no receive timeout is set.
+        self.assertLess(time.monotonic() - start, 3)
 
     def test_find_user_entry_stale_ldap_uid(self):
         settings = self.directory(

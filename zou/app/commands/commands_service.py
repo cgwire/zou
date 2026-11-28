@@ -13,6 +13,18 @@ import tempfile
 
 import click
 import orjson as json
+from ldap3.core.exceptions import (
+    LDAPAttributeError,
+    LDAPBindError,
+    LDAPException,
+    LDAPInvalidCredentialsResult,
+    LDAPInvalidFilterError,
+    LDAPPasswordIsMandatoryError,
+    LDAPSocketOpenError,
+    LDAPSocketReceiveError,
+    LDAPSSLConfigurationError,
+    LDAPStartTLSError,
+)
 from sqlalchemy.sql.expression import not_
 from tabulate import tabulate
 
@@ -25,6 +37,8 @@ from zou.app.commands import (
 )
 from zou.app.exceptions import (
     IsUserLimitReachedException,
+    LdapAmbiguousGroupException,
+    LdapGroupNotFoundException,
     PersonNotFoundException,
 )
 from zou.app.models.entity import Entity
@@ -293,6 +307,7 @@ def _ldap_update_persons(users):
     """
     persons_to_update = []
     persons_to_create = []
+    persons_left = []
     for user in sorted(users, key=lambda k: k["active"]):
         person = None
         try:
@@ -312,14 +327,34 @@ def _ldap_update_persons(users):
 
         if person is None:
             persons_to_create.append(user)
-        else:
+            continue
+        conflict = ldap_service.get_sync_conflict(person)
+        if conflict is None:
             persons_to_update.append((person, user))
+        else:
+            persons_left.append(person["id"])
+            _ldap_alert(
+                f"User {user['desktop_login']} left untouched: {conflict}."
+            )
 
     for person in (
         Person.query.filter_by(is_generated_from_ldap=True, active=True)
-        .filter(not_(Person.id.in_([p[0]["id"] for p in persons_to_update])))
+        .filter(
+            not_(
+                Person.id.in_(
+                    [p[0]["id"] for p in persons_to_update] + persons_left
+                )
+            )
+        )
         .all()
     ):
+        conflict = ldap_service.get_sync_conflict(person.serialize())
+        if conflict is not None:
+            _ldap_alert(
+                f"User {person.desktop_login} not found in LDAP, left "
+                f"untouched: {conflict}."
+            )
+            continue
         persons_service.update_person(
             person.id, {"active": False}, bypass_protected_accounts=True
         )
@@ -334,26 +369,20 @@ def _ldap_update_persons(users):
             ):
                 raise IsUserLimitReachedException
 
-            if any(
-                user[key] != person[key]
-                for key in [
-                    key
-                    for key in user.keys()
-                    if key not in ["thumbnail", "emails"]
-                ]
-            ):
+            fields = {
+                "email": user["email"],
+                "first_name": user["first_name"],
+                "last_name": user["last_name"],
+                "active": user["active"],
+                "is_generated_from_ldap": True,
+                "desktop_login": user["desktop_login"],
+                "ldap_uid": user["ldap_uid"],
+            }
+            if ldap_service.is_role_managed(user, person):
+                fields["role"] = user["role"]
+            if any(person[key] != value for key, value in fields.items()):
                 persons_service.update_person(
-                    person["id"],
-                    {
-                        "email": user["email"],
-                        "first_name": user["first_name"],
-                        "last_name": user["last_name"],
-                        "active": user["active"],
-                        "is_generated_from_ldap": True,
-                        "desktop_login": user["desktop_login"],
-                        "ldap_uid": user["ldap_uid"],
-                    },
-                    bypass_protected_accounts=True,
+                    person["id"], fields, bypass_protected_accounts=True
                 )
                 print(f"User {user['desktop_login']} updated.")
         except IsUserLimitReachedException:
@@ -381,6 +410,7 @@ def _ldap_update_persons(users):
                     "default".encode("utf-8"),
                     user["first_name"],
                     user["last_name"],
+                    role=user.get("role", "user"),
                     desktop_login=user["desktop_login"],
                     is_generated_from_ldap=True,
                     ldap_uid=user["ldap_uid"],
@@ -397,6 +427,14 @@ def _ldap_update_persons(users):
 
         if person is not None and user["thumbnail"] is not None:
             _ldap_save_thumbnail(person, user["thumbnail"])
+
+
+def _ldap_alert(message):
+    """
+    Report a problem of the directory sync that needs an admin.
+    """
+    print(f"Warning: {message}", file=sys.stderr)
+    app.logger.warning(f"LDAP sync: {message}")
 
 
 def _ldap_save_thumbnail(person, thumbnail):
@@ -422,8 +460,14 @@ def sync_with_ldap_server():
     Connect to a LDAP server, then creates all related accounts.
     """
     settings = ldap_service.get_settings()
-    conn = ldap_service.open_service_connection(settings)
-    users = ldap_service.search_users(conn, settings)
+    try:
+        conn = ldap_service.open_service_connection(settings)
+        users = ldap_service.search_users(conn, settings)
+    except (
+        LDAPException,
+        LdapGroupNotFoundException,
+    ) as exception:
+        _ldap_sync_error(settings, exception)
     if len(users) == 0:
         # An empty list deactivates every LDAP person. A wrong base DN or
         # group filter is more likely than an empty directory.
@@ -433,6 +477,54 @@ def sync_with_ldap_server():
         )
         sys.exit(1)
     _ldap_update_persons(users)
+
+
+def _ldap_sync_error(settings, exception):
+    """
+    Explain why the sync stopped before any change, then exit.
+    """
+    server = f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
+    if isinstance(exception, LDAPPasswordIsMandatoryError):
+        reason = "LDAP_PASSWORD is not set."
+    elif isinstance(exception, LdapAmbiguousGroupException):
+        reason = f"{exception}"
+    elif isinstance(exception, LdapGroupNotFoundException):
+        reason = (
+            f"{exception}. Check LDAP_GROUP, the LDAP_*_GROUP settings and "
+            "LDAP_BASE_DN."
+        )
+    elif isinstance(exception, LDAPSocketReceiveError):
+        reason = (
+            f"{server} did not answer within LDAP_TIMEOUT "
+            f"({settings['LDAP_TIMEOUT']} s)."
+        )
+    elif isinstance(exception, LDAPStartTLSError):
+        reason = (
+            f"StartTLS failed on {server}: check LDAP_START_TLS, "
+            f"LDAP_VERIFY_CERTIFICATES and LDAP_CA_FILE ({exception})."
+        )
+    elif isinstance(exception, LDAPSSLConfigurationError):
+        reason = f"TLS configuration error: {exception}."
+    elif isinstance(exception, LDAPSocketOpenError):
+        reason = (
+            f"cannot connect to {server} within LDAP_CONNECT_TIMEOUT "
+            f"({settings['LDAP_CONNECT_TIMEOUT']} s), or TLS failed: "
+            f"{exception}."
+        )
+    elif isinstance(exception, (LDAPBindError, LDAPInvalidCredentialsResult)):
+        reason = "the service account bind failed: check LDAP_USER and LDAP_PASSWORD."
+    elif isinstance(exception, (LDAPAttributeError, LDAPInvalidFilterError)):
+        reason = (
+            "check LDAP_USER_FILTER and the LDAP_*_ATTRIBUTE settings "
+            f"({exception})."
+        )
+    else:
+        reason = f"{type(exception).__name__}: {exception}."
+    print(
+        f"LDAP sync stopped, no account was changed: {reason}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def import_data_from_another_instance(

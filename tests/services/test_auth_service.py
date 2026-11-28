@@ -1,11 +1,15 @@
 import datetime
+import ssl
 from unittest import mock
 
+import ldap3
 import pytest
 from ldap3.core.exceptions import (
     LDAPInvalidCredentialsResult,
     LDAPPasswordIsMandatoryError,
     LDAPSocketOpenError,
+    LDAPSocketReceiveError,
+    LDAPStartTLSError,
 )
 
 from tests.services.cases import AuthTestCase
@@ -211,11 +215,83 @@ class LdapStrategyTestCase(AuthTestCase):
         self.person.update({"is_generated_from_ldap": True})
         with mock.patch("ldap3.Connection") as connection:
             self.assertEqual(self.authenticate()["first_name"], "John")
-            connection.return_value.bind.side_effect = (
-                LDAPInvalidCredentialsResult()
-            )
+            connection.side_effect = LDAPInvalidCredentialsResult()
             self.assertRaises(WrongPasswordException, self.authenticate)
         self.assertEqual(self.failed_attemps(), 1)
+
+    def test_the_bind_has_timeouts(self):
+        self.person.update({"is_generated_from_ldap": True})
+        self.use_timeouts(LDAP_CONNECT_TIMEOUT=3, LDAP_TIMEOUT=7)
+        with mock.patch("ldap3.Server") as server, mock.patch(
+            "ldap3.Connection"
+        ) as connection:
+            self.authenticate()
+        self.assertEqual(server.call_args.kwargs["connect_timeout"], 3)
+        self.assertEqual(connection.call_args.kwargs["receive_timeout"], 7)
+
+    def test_a_directory_that_does_not_answer(self):
+        self.person.update({"is_generated_from_ldap": True})
+        with mock.patch("ldap3.Connection") as connection:
+            connection.side_effect = LDAPSocketReceiveError(
+                "error receiving data: timed out"
+            )
+            self.assertRaises(TimeoutError, self.authenticate)
+        self.assertEqual(self.failed_attemps(), 0)
+
+    def test_the_bind_uses_start_tls(self):
+        """
+        The legacy login shares the connection of the search-bind login:
+        StartTLS and the certificate check apply to it too.
+        """
+        self.person.update({"is_generated_from_ldap": True})
+        self.use_timeouts(
+            LDAP_START_TLS=True,
+            LDAP_VERIFY_CERTIFICATES=True,
+            LDAP_HOST="ldap.studio.local",
+        )
+        with mock.patch("ldap3.Server") as server, mock.patch(
+            "ldap3.Connection"
+        ) as connection:
+            self.authenticate()
+        self.assertEqual(
+            connection.call_args.kwargs["auto_bind"],
+            ldap3.AUTO_BIND_TLS_BEFORE_BIND,
+        )
+        tls = server.call_args.kwargs["tls"]
+        self.assertEqual(tls.validate, ssl.CERT_REQUIRED)
+        self.assertEqual(tls.sni, "ldap.studio.local")
+
+    def test_the_bind_builds_the_legacy_identity(self):
+        self.person.update(
+            {"is_generated_from_ldap": True, "desktop_login": "jdoe"}
+        )
+        self.use_timeouts(
+            LDAP_IS_AD=False,
+            LDAP_IS_AD_SIMPLE=False,
+            LDAP_BASE_DN="ou=people,dc=studio,dc=local",
+        )
+        with mock.patch("ldap3.Connection") as connection:
+            self.authenticate()
+        self.assertEqual(
+            connection.call_args.kwargs["user"],
+            "uid=jdoe,ou=people,dc=studio,dc=local",
+        )
+        self.assertEqual(
+            connection.call_args.kwargs["authentication"], ldap3.SIMPLE
+        )
+
+    def test_a_failed_start_tls_refuses_the_login(self):
+        self.person.update({"is_generated_from_ldap": True})
+        self.use_timeouts(LDAP_START_TLS=True)
+        with mock.patch("ldap3.Connection") as connection:
+            connection.side_effect = LDAPStartTLSError("no TLS")
+            self.assertRaises(NoAuthStrategyConfigured, self.authenticate)
+        self.assertEqual(self.failed_attemps(), 0)
+
+    def use_timeouts(self, **settings):
+        for key, value in settings.items():
+            self.addCleanup(app.config.__setitem__, key, app.config[key])
+            app.config[key] = value
 
     def test_an_empty_password_leaves_local_people_to_their_rules(self):
         """
@@ -411,6 +487,77 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
         self.assertIsNone(Person.get_by(desktop_login="jdoe"))
 
+    def directory_keys(self):
+        return [
+            key
+            for key in auth_tokens_store.keys()
+            if key.startswith("ldap-login-failed:")
+        ]
+
+    def test_unknown_person_locked_out_after_failed_logins(self):
+        """
+        A directory user new to Zou has no person row: the failures are
+        counted in the store, by entry, whatever identifier is typed.
+        """
+        self.use_directory([self.jdoe()])
+        for identifier in ["jdoe", "jdoe@studio.local"] * 2 + ["jdoe"]:
+            self.assertRaises(
+                WrongPasswordException, self.login, identifier, "wrong"
+            )
+        with mock.patch.object(
+            ldap_service, "check_user_password"
+        ) as check_user_password:
+            self.assertRaises(TooManyLoginFailedAttempts, self.login, "jdoe")
+        check_user_password.assert_not_called()
+        self.assertIsNone(Person.get_by(desktop_login="jdoe"))
+        (key,) = self.directory_keys()
+        ttl = auth_tokens_store.revoked_tokens_store.ttl(key)
+        self.assertTrue(
+            0 < ttl <= auth_service.LOGIN_LOCKOUT_DELAY.total_seconds()
+        )
+
+    def test_unknown_person_lockout_ends_with_the_counter(self):
+        self.use_directory([self.jdoe()])
+        for _ in range(auth_service.MAX_LOGIN_FAILED_ATTEMPS):
+            self.assertRaises(
+                WrongPasswordException, self.login, "jdoe", "wrong"
+            )
+        self.assertRaises(TooManyLoginFailedAttempts, self.login, "jdoe")
+        for key in self.directory_keys():
+            auth_tokens_store.delete(key)
+        self.assertEqual(self.login("jdoe")["desktop_login"], "jdoe")
+
+    def test_unknown_person_counter_cleared_on_success(self):
+        self.use_directory([self.jdoe()])
+        self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
+        self.assertEqual(len(self.directory_keys()), 1)
+        logged = self.login("jdoe")
+        self.assertEqual(self.directory_keys(), [])
+        self.assertEqual(Person.get(logged["id"]).login_failed_attemps, 0)
+
+    def test_known_person_failures_stay_in_the_database(self):
+        self.use_directory([self.jdoe()])
+        self.ldap_person()
+        self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
+        self.assertEqual(self.directory_keys(), [])
+
+    def test_entry_without_login_is_refused(self):
+        """
+        Found by email, an entry without a login attribute is refused
+        before the password, as the sync skips it.
+        """
+        self.use_directory(
+            [self.jdoe()], LDAP_LOGIN_ATTRIBUTE="sAMAccountName"
+        )
+        with mock.patch.object(
+            ldap_service, "check_user_password"
+        ) as check_user_password:
+            self.assertRaises(
+                WrongUserException, self.login, "jdoe@studio.local"
+            )
+        check_user_password.assert_not_called()
+        self.assertIsNone(Person.get_by(email="jdoe@studio.local"))
+
     def test_unknown_identifier(self):
         self.use_directory([self.jdoe()])
         self.assertRaises(WrongUserException, self.login, "nobody")
@@ -465,6 +612,112 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
     def test_no_service_account(self):
         self.use_directory([self.jdoe()], LDAP_USER="")
         self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
+    def test_first_login_with_custom_login_attribute(self):
+        self.use_directory(
+            [
+                self.jdoe(
+                    dn=f"cn=John Doe,cn=Users,{BASE_DN}",
+                    cn="John Doe",
+                    sAMAccountName="jdoe",
+                )
+            ],
+            LDAP_LOGIN_ATTRIBUTE="sAMAccountName",
+        )
+        person = self.login("jdoe")
+        self.assertEqual(person["desktop_login"], "jdoe")
+
+    def test_unknown_mapped_attribute(self):
+        self.use_directory(
+            [self.jdoe()], LDAP_FIRST_NAME_ATTRIBUTE="notAnAttribute"
+        )
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
+    def test_invalid_login_attribute(self):
+        self.use_directory([self.jdoe()], LDAP_LOGIN_ATTRIBUTE="a b")
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
+    def role_settings(self):
+        admins = f"cn=Admins,ou=Groups,{BASE_DN}"
+        return admins, {"LDAP_ADMIN_GROUP": admins}
+
+    def test_first_login_takes_role_from_group(self):
+        admins, settings = self.role_settings()
+        self.use_directory(
+            [(admins, {"objectClass": "group"}), self.jdoe(memberOf=admins)],
+            **settings,
+        )
+        person = self.login("jdoe")
+        self.assertEqual(person["role"], "admin")
+
+    def test_login_demotes_person_out_of_role_group(self):
+        admins, settings = self.role_settings()
+        person = self.ldap_person(role="admin")
+        self.use_directory(
+            [(admins, {"objectClass": "group"}), self.jdoe()], **settings
+        )
+        self.login("jdoe")
+        self.assertEqual(Person.get(person["id"]).role.code, "user")
+
+    def test_login_role_group_missing(self):
+        person = self.ldap_person(role="admin")
+        self.use_directory(
+            [self.jdoe()],
+            LDAP_ADMIN_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}",
+        )
+        self.assertRaises(LdapGroupNotFoundException, self.login, "jdoe")
+        self.assertEqual(Person.get(person["id"]).role.code, "admin")
+
+    def test_no_service_password(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()], LDAP_PASSWORD="")
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_start_tls_failure(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()])
+        with mock.patch.object(
+            ldap_service,
+            "open_service_connection",
+            side_effect=ldap3.core.exceptions.LDAPStartTLSError("refused"),
+        ):
+            self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_directory_timeout(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()])
+        with mock.patch.object(
+            ldap_service,
+            "find_user_entry",
+            side_effect=LDAPSocketReceiveError(
+                "error receiving data: timed out"
+            ),
+        ):
+            self.assertRaises(TimeoutError, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
+
+    def test_missing_ca_file(self):
+        self.use_directory(
+            [self.jdoe()],
+            LDAP_VERIFY_CERTIFICATES=True,
+            LDAP_CA_FILE="/nonexistent/ca.pem",
+        )
+        with mock.patch.object(
+            ldap_service,
+            "get_server",
+            side_effect=lambda settings, **kwargs: ldap3.Server(
+                "mock", tls=ldap_service.get_tls(settings)
+            ),
+        ):
+            self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+
+    def test_invalid_user_filter(self):
+        person = self.ldap_person()
+        self.use_directory([self.jdoe()], LDAP_USER_FILTER="(objectClass=")
+        self.assertRaises(NoAuthStrategyConfigured, self.login, "jdoe")
+        self.assertTrue(Person.get(person["id"]).active)
 
     def lock(self, person_id):
         auth_service.update_login_failed_attempts(

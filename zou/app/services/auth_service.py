@@ -21,9 +21,15 @@ from flask_jwt_extended import (
     get_jti,
 )
 from ldap3.core.exceptions import (
+    LDAPAttributeError,
     LDAPBindError,
     LDAPInvalidCredentialsResult,
+    LDAPInvalidFilterError,
+    LDAPPasswordIsMandatoryError,
     LDAPSocketOpenError,
+    LDAPSocketReceiveError,
+    LDAPSSLConfigurationError,
+    LDAPStartTLSError,
 )
 from sqlalchemy import func
 from sqlalchemy.orm.attributes import flag_modified
@@ -150,6 +156,7 @@ def check_auth(
         person = None
 
     login_failed_attemps = 0
+    directory_key = None
     if person is not None:
         login_failed_attemps = check_login_failed_attempts(person)
 
@@ -169,16 +176,32 @@ def check_auth(
                     # apply to it before the password is tried.
                     person = ldap_person
                     login_failed_attemps = check_login_failed_attempts(person)
+                if person is None:
+                    # A directory user new to Zou has no person row to
+                    # count its failures: they are counted in the store.
+                    directory_key = get_directory_lockout_key(entry, user)
+                    check_directory_login_failed_attempts(directory_key)
                 person = search_bind_auth_strategy(
                     person, entry, user, password, app
                 )
+                if directory_key is not None:
+                    auth_tokens_store.delete(directory_key)
             else:
                 ldap_auth_strategy(person, password, app)
         else:
             raise NoAuthStrategyConfigured()
+    except LDAPSocketReceiveError as exception:
+        # Not a wrong password: the attempt is not counted.
+        app.logger.error(
+            f"The LDAP directory did not answer within LDAP_TIMEOUT: "
+            f"{exception}"
+        )
+        raise TimeoutError()
     except WrongPasswordException:
         if person is not None:
             add_login_failed_attempt(person["id"])
+        elif directory_key is not None:
+            add_directory_login_failed_attempt(directory_key)
         raise WrongPasswordException()
 
     # After the password, and before the second factor: a deactivated
@@ -260,61 +283,34 @@ def ldap_auth_strategy(person, password, app):
     Connect to an active directory server to know if the given user can
     be authenticated. If the person is not from LDAP, the default auth
     strategy can try to connect. This occurs only if the LDAP_FALLBACK
-    flag is set in the configuration.
+    flag is set in the configuration. The bind goes through the connection
+    of ldap_service, thus the TLS and timeout settings apply to it.
     """
     if person["is_generated_from_ldap"]:
-        # An empty password makes an unauthenticated bind (RFC 4513,
-        # 5.1.2), and some directories accept it. ldap3 refuses it before
-        # it sends the bind. The login returned that error as a server
-        # failure.
-        if not password:
-            raise WrongPasswordException()
-
-        from ldap3 import ALL, NTLM, SIMPLE, Connection, Server
-        from ldap3.core.exceptions import (
-            LDAPInvalidCredentialsResult,
-            LDAPSocketOpenError,
-        )
-
+        settings = ldap_service.get_settings()
         try:
-            SSL = app.config["LDAP_SSL"]
-            if app.config["LDAP_IS_AD_SIMPLE"]:
-                user = f"cn={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
-                authentication = SIMPLE
-            elif app.config["LDAP_IS_AD"]:
-                user = (
-                    f"{app.config['LDAP_DOMAIN']}\\{person['desktop_login']}"
-                )
-                authentication = NTLM
-            else:
-                user = f"uid={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
-                authentication = SIMPLE
-
-            ldap_server = (
-                f"{app.config['LDAP_HOST']}:{app.config['LDAP_PORT']}"
+            ldap_service.check_legacy_password(
+                settings, person["desktop_login"], password
             )
-            server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
-            conn = Connection(
-                server,
-                user=user,
-                password=password,
-                authentication=authentication,
-                raise_exceptions=True,
-            )
-            conn.bind()
             return person
-
         except LDAPSocketOpenError:
             app.logger.error(
-                f"Cannot connect to LDAP/Active directory server {ldap_server} "
+                "Cannot connect to LDAP/Active directory server "
+                f"{settings['LDAP_HOST']}:{settings['LDAP_PORT']}"
             )
-            raise LDAPSocketOpenError()
-
-        except LDAPInvalidCredentialsResult:
+            raise
+        except (LDAPSSLConfigurationError, LDAPStartTLSError) as exception:
             app.logger.error(
-                f"LDAP cannot authenticate user: {person['email']}"
+                "LDAP TLS error, check LDAP_SSL, LDAP_START_TLS and the "
+                f"server certificate: {exception}"
             )
-            raise WrongPasswordException()
+            raise NoAuthStrategyConfigured()
+        except WrongPasswordException:
+            if password:
+                app.logger.error(
+                    f"LDAP cannot authenticate user: {person['email']}"
+                )
+            raise
 
     elif app.config["LDAP_FALLBACK"]:
         return local_auth_strategy(person, password, app)
@@ -368,6 +364,21 @@ def find_search_bind_user(person, identifier, password, app):
             "LDAP_PASSWORD."
         )
         raise NoAuthStrategyConfigured()
+    except LDAPPasswordIsMandatoryError:
+        app.logger.error(
+            "LDAP_SEARCH_BIND is enabled but LDAP_PASSWORD is not set."
+        )
+        raise NoAuthStrategyConfigured()
+    except LDAPSSLConfigurationError as exception:
+        app.logger.error(f"LDAP TLS configuration error: {exception}")
+        raise NoAuthStrategyConfigured()
+    except LDAPStartTLSError as exception:
+        app.logger.error(
+            "LDAP StartTLS failed, check LDAP_START_TLS and the server "
+            f"certificate: {exception}"
+        )
+        raise NoAuthStrategyConfigured()
+    role = None
     try:
         if person is None:
             entry = ldap_service.find_user_entry(conn, settings, identifier)
@@ -379,16 +390,26 @@ def find_search_bind_user(person, identifier, password, app):
                 ldap_uid=person["ldap_uid"],
                 desktop_login=person["desktop_login"],
             )
+        if entry is not None:
+            role = ldap_service.get_entry_role(conn, settings, entry)
     except LdapAmbiguousUserException as exception:
         app.logger.error(f"LDAP login refused: {exception}")
         _spend_password_check_time(password)
         raise WrongUserException()
+    except (LDAPAttributeError, LDAPInvalidFilterError) as exception:
+        app.logger.error(
+            "LDAP login impossible, check LDAP_USER_FILTER and the "
+            f"LDAP_*_ATTRIBUTE settings: {exception}"
+        )
+        raise NoAuthStrategyConfigured()
     finally:
         conn.unbind()
 
     user = None
     if entry is not None:
         user = ldap_service.entry_to_user(entry, settings)
+        if role is not None:
+            user["role"] = role
         if person is None:
             try:
                 person = ldap_service.find_ldap_person(user)
@@ -400,9 +421,17 @@ def find_search_bind_user(person, identifier, password, app):
 
     # Refused before the password: Active Directory rejects the bind of a
     # disabled account, so its state is never read after it. An excluded
-    # account, usually a service account, must receive no bind at all.
+    # account, usually a service account, must receive no bind at all. An
+    # entry without a login has no desktop login to give its person: the
+    # sync skips it too.
+    if entry is not None and not user["desktop_login"]:
+        app.logger.warning(
+            f"LDAP login refused for {entry.entry_dn}: the entry has no "
+            "login attribute."
+        )
     if (
         entry is None
+        or not user["desktop_login"]
         or not user["active"]
         or ldap_service.is_excluded(settings, user["desktop_login"])
     ):
@@ -1154,6 +1183,35 @@ def check_login_failed_attempts(person):
 
     update_login_failed_attempts(person["id"], 0)
     return 0
+
+
+def get_directory_lockout_key(entry, user):
+    """
+    Store key of the failed login counter of a directory user that has no
+    person yet. It derives from the entry, not from the typed identifier:
+    the login, the email and the UPN of a user share one counter.
+    """
+    identifier = user["ldap_uid"] or ldap_service.normalize_dn(entry.entry_dn)
+    return f"ldap-login-failed:{identifier}"
+
+
+def check_directory_login_failed_attempts(key):
+    """
+    Raise when the directory user of given key is in a lockout window, with
+    the rules of check_login_failed_attempts. The counter expires
+    LOGIN_LOCKOUT_DELAY after the last failure: the lockout ends then, and
+    a new lock needs a new burst.
+    """
+    count = auth_tokens_store.get(key)
+    if count is not None and int(count) >= MAX_LOGIN_FAILED_ATTEMPS:
+        raise TooManyLoginFailedAttempts()
+
+
+def add_directory_login_failed_attempt(key):
+    """
+    Count one more failed login for the directory user of given key.
+    """
+    auth_tokens_store.increment(key, int(LOGIN_LOCKOUT_DELAY.total_seconds()))
 
 
 def logout(jti, refresh_jti=None):

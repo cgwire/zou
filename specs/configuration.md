@@ -69,7 +69,7 @@ The JWT settings (7 days access, 15 days refresh, cookies and headers, `SameSite
 
 ## LDAP
 
-Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. The sync command and the search-bind login (`LDAP_SEARCH_BIND`) bind with the service account `LDAP_USER` / `LDAP_PASSWORD`.
+Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. The sync command and the search-bind login (`LDAP_SEARCH_BIND`) bind with the service account `LDAP_USER` / `LDAP_PASSWORD`. Every connection to the directory (the sync, the search-bind login and the legacy login) uses the same TLS, timeout and referral settings.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -77,18 +77,41 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_PORT` | 389 | Directory port |
 | `LDAP_BASE_DN` | cn=Users,dc=zou,dc=local | Base of the user search |
 | `LDAP_DOMAIN` | zou.local | NTLM domain (Active Directory) |
-| `LDAP_GROUP` | (none) | Restrict the sync to the members of this group. A group missing from the directory, or a search that returns no user, stops the sync before any account is deactivated. With `LDAP_SEARCH_BIND`, it also gates the login: a non-member is refused and their account deactivated |
+| `LDAP_GROUP` | (none) | Restrict the sync to the members of this group. A group missing from the directory, or a search that returns no user, stops the sync before any account is deactivated. With `LDAP_SEARCH_BIND`, it also gates the login: a non-member is refused and their account deactivated. On OpenLDAP, a `groupOfUniqueNames` name or DN; a name shared by several groups under `LDAP_BASE_DN` stops the sync and the login as a missing group does: set the DN then |
+| `LDAP_ADMIN_GROUP` | (none) | Members of this group get the admin role. Same form as `LDAP_GROUP`: a DN on Active Directory, a `groupOfUniqueNames` name or DN on OpenLDAP |
+| `LDAP_MANAGER_GROUP` | (none) | Members get the manager role |
+| `LDAP_SUPERVISOR_GROUP` | (none) | Members get the supervisor role |
+| `LDAP_CLIENT_GROUP` | (none) | Members get the client role |
+| `LDAP_VENDOR_GROUP` | (none) | Members get the vendor role |
+| `LDAP_NESTED_GROUPS` | false | Also accept the members of the subgroups of `LDAP_GROUP`, at any depth. On Active Directory it uses the `LDAP_MATCHING_RULE_IN_CHAIN` rule. On OpenLDAP the subgroups must be `groupOfUniqueNames` entries under `LDAP_BASE_DN` |
 | `LDAP_IS_AD` | false | The directory is an Active Directory (NTLM bind, `sAMAccountName`) |
 | `LDAP_IS_AD_SIMPLE` | false | Active Directory with a simple bind and `cn` as login |
 | `LDAP_SSL` | false | Connect with LDAPS |
+| `LDAP_CONNECT_TIMEOUT` | 5 | Seconds to wait for the connection to the directory |
+| `LDAP_TIMEOUT` | 10 | Seconds to wait for each answer of the directory (a bind, a search page). Past it, the login is refused and the sync stops, before any account changes |
+| `LDAP_FOLLOW_REFERRALS` | true | Follow the referral the directory answers instead of a result (a search base held by another server): contact that server with the same credentials. The continuation references inside a search result (e.g. `DomainDnsZones` on Active Directory) are never followed and are ignored. Not followed, a referred search returns no entry |
+| `LDAP_ALLOWED_REFERRAL_HOSTS` | (none) | Comma-separated hosts a referral may lead to, besides `LDAP_HOST`. A referral to any other host is not followed, so the credentials never leave the allowed servers. The names are compared as written, without DNS resolution: write them as the directory returns them. `*` allows any host (the former behavior) |
+| `LDAP_START_TLS` | false | Encrypt a plain connection (usually port 389) with StartTLS before the bind. A failed StartTLS stops the connection before any password is sent. Cannot be used with `LDAP_SSL` |
+| `LDAP_VERIFY_CERTIFICATES` | false | With `LDAP_SSL` or `LDAP_START_TLS`, check the server certificate (trusted CA and host name). Off, any certificate is accepted |
+| `LDAP_CA_FILE` | (none) | With `LDAP_VERIFY_CERTIFICATES`, PEM file of the CA that signed the server certificate. Empty, the system CAs are used |
 | `LDAP_FALLBACK` | false | When the directory is unreachable, accept the local password of the account |
-| `LDAP_SEARCH_BIND` | false | Log users in by search then bind: find the entry anywhere under `LDAP_BASE_DN` with the service account, then bind with its DN. Unknown users of the directory get their account created on first login; accounts gone from the directory (or the group), disabled or excluded are refused before the password is tried, and deactivated. Deactivation happens at a login attempt only, so keep the sync scheduled. Requires `LDAP_USER` |
+| `LDAP_SEARCH_BIND` | false | Log users in by search then bind: find the entry anywhere under `LDAP_BASE_DN` with the service account, then bind with its DN. Unknown users of the directory get their account created on first login; until then, their failed logins are counted in Redis, by directory entry, with the same lockout as the accounts (5 failures, 1 minute); accounts gone from the directory (or the group), disabled or excluded are refused before the password is tried, and deactivated. Deactivation happens at a login attempt only, so keep the sync scheduled. Requires `LDAP_USER` |
+| `LDAP_LOGIN_ATTRIBUTE` | (none) | Attribute holding the login, for the sync and the search-bind login, e.g. `sAMAccountName` with `LDAP_IS_AD_SIMPLE`. Empty: `cn` with `LDAP_IS_AD_SIMPLE`, `sAMAccountName` with `LDAP_IS_AD`, `uid` otherwise. The legacy login keeps rebuilding the DN with the default attribute. Changing it on a running instance changes the desktop login of the existing accounts at the next sync. An entry without this attribute is skipped by the sync and refused by the search-bind login |
+| `LDAP_FIRST_NAME_ATTRIBUTE` | (none) | Attribute holding the first name. Empty: `givenName`. Falls back to `cn` when the attribute is empty |
+| `LDAP_LAST_NAME_ATTRIBUTE` | (none) | Attribute holding the last name. Empty: `sn` |
+| `LDAP_EMAIL_ATTRIBUTE` | (none) | Attribute holding the emails, also searched for a login by email (with `userPrincipalName` on Active Directory). Empty: `mail` |
+| `LDAP_THUMBNAIL_ATTRIBUTE` | (none) | Attribute holding the photo. Empty: `thumbnailPhoto` on Active Directory, `jpegPhoto` otherwise |
+| `LDAP_USER_FILTER` | (none) | LDAP filter selecting the user entries, for the sync and the search-bind login, e.g. `(&(objectClass=user)(department=Animation))`. It replaces the default `(&(objectClass=person)(!(objectClass=computer)))` on Active Directory and `(objectClass=person)` elsewhere. The `LDAP_GROUP` and login filters are still added to it |
 | `LDAP_USER` | (none) | Service account used by the sync and the search-bind login: a login, or a full bind DN on OpenLDAP |
-| `LDAP_PASSWORD` | password | Password of the service account |
+| `LDAP_PASSWORD` | (none) | Password of the service account. Required by the sync and the search-bind login |
 | `LDAP_EXCLUDED_ACCOUNTS` | (none) | Comma-separated logins left out by the sync and refused by the search-bind login |
 | `EMAIL_DOMAIN` | studio.local | Domain of the email built for a directory user without `mail`, and preferred among several addresses |
 
+When at least one role group is set, the directory owns the role of the LDAP persons: the sync and the search-bind login set it at each run, and a role changed in Kitsu is overwritten. A user in several role groups gets the highest role (admin > manager > supervisor > client > vendor), a user in none gets the user role. A role group missing from the directory stops the sync and the login before any role changes. `LDAP_NESTED_GROUPS` applies to the role groups too. With no role group set, roles are left as they are. The roles of local persons and of `PROTECTED_ACCOUNTS` never change. The legacy login (without `LDAP_SEARCH_BIND`) does not read the role groups.
+
 Accounts listed in `PROTECTED_ACCOUNTS` always keep the legacy bind (the DN is rebuilt from `LDAP_BASE_DN`), even with `LDAP_SEARCH_BIND`. They must sit directly under `LDAP_BASE_DN` (or use NTLM / `LDAP_FALLBACK`).
+
+With LDAP, `PROTECTED_ACCOUNTS` should hold local accounts only. The sync never changes nor deactivates a protected account, and never takes over a local account whose email or desktop login matches a directory user: it leaves the account as it is and prints a warning on the error output (and in the logs). Fix the account by hand, or remove it from `PROTECTED_ACCOUNTS`.
 
 ## SAML
 
