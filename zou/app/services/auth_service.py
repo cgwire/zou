@@ -156,6 +156,7 @@ def check_auth(
         person = None
 
     login_failed_attemps = 0
+    directory_key = None
     if person is not None:
         login_failed_attemps = check_login_failed_attempts(person)
 
@@ -175,9 +176,16 @@ def check_auth(
                     # apply to it before the password is tried.
                     person = ldap_person
                     login_failed_attemps = check_login_failed_attempts(person)
+                if person is None:
+                    # A directory user new to Zou has no person row to
+                    # count its failures: they are counted in the store.
+                    directory_key = get_directory_lockout_key(entry, user)
+                    check_directory_login_failed_attempts(directory_key)
                 person = search_bind_auth_strategy(
                     person, entry, user, password, app
                 )
+                if directory_key is not None:
+                    auth_tokens_store.delete(directory_key)
             else:
                 ldap_auth_strategy(person, password, app)
         else:
@@ -192,6 +200,8 @@ def check_auth(
     except WrongPasswordException:
         if person is not None:
             add_login_failed_attempt(person["id"])
+        elif directory_key is not None:
+            add_directory_login_failed_attempt(directory_key)
         raise WrongPasswordException()
 
     # After the password, and before the second factor: a deactivated
@@ -1165,6 +1175,35 @@ def check_login_failed_attempts(person):
 
     update_login_failed_attempts(person["id"], 0)
     return 0
+
+
+def get_directory_lockout_key(entry, user):
+    """
+    Store key of the failed login counter of a directory user that has no
+    person yet. It derives from the entry, not from the typed identifier:
+    the login, the email and the UPN of a user share one counter.
+    """
+    identifier = user["ldap_uid"] or ldap_service.normalize_dn(entry.entry_dn)
+    return f"ldap-login-failed:{identifier}"
+
+
+def check_directory_login_failed_attempts(key):
+    """
+    Raise when the directory user of given key is in a lockout window, with
+    the rules of check_login_failed_attempts. The counter expires
+    LOGIN_LOCKOUT_DELAY after the last failure: the lockout ends then, and
+    a new lock needs a new burst.
+    """
+    count = auth_tokens_store.get(key)
+    if count is not None and int(count) >= MAX_LOGIN_FAILED_ATTEMPS:
+        raise TooManyLoginFailedAttempts()
+
+
+def add_directory_login_failed_attempt(key):
+    """
+    Count one more failed login for the directory user of given key.
+    """
+    auth_tokens_store.increment(key, int(LOGIN_LOCKOUT_DELAY.total_seconds()))
 
 
 def logout(jti, refresh_jti=None):

@@ -31,6 +31,13 @@ class AuthTokensTestCase(ApiTestCase):
         self.store.add("key-1", "false")
         self.assertFalse(self.store.is_revoked("key-1"))
 
+    def test_increment(self):
+        self.assertEqual(self.store.increment("counter", 30), 1)
+        self.assertEqual(self.store.increment("counter", 60), 2)
+        self.assertEqual(self.store.get("counter"), "2")
+        ttl = self.store.revoked_tokens_store.ttl("counter")
+        self.assertTrue(30 < ttl <= 60)
+
     def test_keys(self):
         self.store.add("key-1", "true")
         self.store.add("key-2", "true")

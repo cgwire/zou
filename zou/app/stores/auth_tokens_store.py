@@ -96,6 +96,19 @@ def _write_token_set(pipe, key, tokens, now):
         pipe.delete(key)
 
 
+def increment(key, ttl):
+    """
+    Add one to the counter stored at given key and return the new count.
+    The counter expires ttl seconds after its last increment. Both commands
+    run in one transaction: parallel increments all count.
+    """
+    pipe = revoked_tokens_store.pipeline()
+    pipe.incr(key)
+    pipe.expire(key, ttl)
+    count, _ = pipe.execute()
+    return count
+
+
 def delete(key):
     """
     Remove auth token corresponding at given key.

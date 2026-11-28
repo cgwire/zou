@@ -487,6 +487,60 @@ class LdapSearchBindTestCase(LdapDirectoryMixin, AuthTestCase):
         self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
         self.assertIsNone(Person.get_by(desktop_login="jdoe"))
 
+    def directory_keys(self):
+        return [
+            key
+            for key in auth_tokens_store.keys()
+            if key.startswith("ldap-login-failed:")
+        ]
+
+    def test_unknown_person_locked_out_after_failed_logins(self):
+        """
+        A directory user new to Zou has no person row: the failures are
+        counted in the store, by entry, whatever identifier is typed.
+        """
+        self.use_directory([self.jdoe()])
+        for identifier in ["jdoe", "jdoe@studio.local"] * 2 + ["jdoe"]:
+            self.assertRaises(
+                WrongPasswordException, self.login, identifier, "wrong"
+            )
+        with mock.patch.object(
+            ldap_service, "check_user_password"
+        ) as check_user_password:
+            self.assertRaises(TooManyLoginFailedAttempts, self.login, "jdoe")
+        check_user_password.assert_not_called()
+        self.assertIsNone(Person.get_by(desktop_login="jdoe"))
+        (key,) = self.directory_keys()
+        ttl = auth_tokens_store.revoked_tokens_store.ttl(key)
+        self.assertTrue(
+            0 < ttl <= auth_service.LOGIN_LOCKOUT_DELAY.total_seconds()
+        )
+
+    def test_unknown_person_lockout_ends_with_the_counter(self):
+        self.use_directory([self.jdoe()])
+        for _ in range(auth_service.MAX_LOGIN_FAILED_ATTEMPS):
+            self.assertRaises(
+                WrongPasswordException, self.login, "jdoe", "wrong"
+            )
+        self.assertRaises(TooManyLoginFailedAttempts, self.login, "jdoe")
+        for key in self.directory_keys():
+            auth_tokens_store.delete(key)
+        self.assertEqual(self.login("jdoe")["desktop_login"], "jdoe")
+
+    def test_unknown_person_counter_cleared_on_success(self):
+        self.use_directory([self.jdoe()])
+        self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
+        self.assertEqual(len(self.directory_keys()), 1)
+        logged = self.login("jdoe")
+        self.assertEqual(self.directory_keys(), [])
+        self.assertEqual(Person.get(logged["id"]).login_failed_attemps, 0)
+
+    def test_known_person_failures_stay_in_the_database(self):
+        self.use_directory([self.jdoe()])
+        self.ldap_person()
+        self.assertRaises(WrongPasswordException, self.login, "jdoe", "x")
+        self.assertEqual(self.directory_keys(), [])
+
     def test_unknown_identifier(self):
         self.use_directory([self.jdoe()])
         self.assertRaises(WrongUserException, self.login, "nobody")
