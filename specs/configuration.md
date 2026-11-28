@@ -77,8 +77,8 @@ Used when `AUTH_STRATEGY=auth_remote_ldap` and by `zou sync-with-ldap-server`. T
 | `LDAP_PORT` | 389 | Directory port |
 | `LDAP_BASE_DN` | cn=Users,dc=zou,dc=local | Base of the user search |
 | `LDAP_DOMAIN` | zou.local | NTLM domain (Active Directory) |
-| `LDAP_GROUP` | (none) | Restrict the sync to the members of this group. A group missing from the directory, or a search that returns no user, stops the sync before any account is deactivated. With `LDAP_SEARCH_BIND`, it also gates the login: a non-member is refused and their account deactivated |
-| `LDAP_ADMIN_GROUP` | (none) | Members of this group get the admin role. Same form as `LDAP_GROUP`: a DN on Active Directory, a `groupOfUniqueNames` name on OpenLDAP |
+| `LDAP_GROUP` | (none) | Restrict the sync to the members of this group. A group missing from the directory, or a search that returns no user, stops the sync before any account is deactivated. With `LDAP_SEARCH_BIND`, it also gates the login: a non-member is refused and their account deactivated. On OpenLDAP, a `groupOfUniqueNames` name or DN; a name shared by several groups under `LDAP_BASE_DN` stops the sync and the login as a missing group does: set the DN then |
+| `LDAP_ADMIN_GROUP` | (none) | Members of this group get the admin role. Same form as `LDAP_GROUP`: a DN on Active Directory, a `groupOfUniqueNames` name or DN on OpenLDAP |
 | `LDAP_MANAGER_GROUP` | (none) | Members get the manager role |
 | `LDAP_SUPERVISOR_GROUP` | (none) | Members get the supervisor role |
 | `LDAP_CLIENT_GROUP` | (none) | Members get the client role |

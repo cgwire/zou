@@ -16,6 +16,7 @@ from zou.app.exceptions import (
     InactiveUserException,
     IsUserLimitReachedException,
     LdapAccountConflictException,
+    LdapAmbiguousGroupException,
     LdapAmbiguousUserException,
     LdapGroupNotFoundException,
     PersonNotFoundException,
@@ -393,10 +394,19 @@ def entry_to_user(entry, settings):
     }
 
 
+def is_dn(group):
+    """
+    Whether a configured group is written as a DN rather than as a name.
+    """
+    return "=" in group
+
+
 def get_group_member_dns(conn, settings, group=None):
     """
-    Normalized DNs of the members of the given group name, by default the
-    configured group (OpenLDAP only). None when no group is configured.
+    Normalized DNs of the members of the given group, by default the
+    configured group (OpenLDAP only). The group is a DN or a name; several
+    groups with the same name are refused, not picked at random. None when
+    no group is configured.
     """
     if group is None:
         group = settings["LDAP_GROUP"]
@@ -404,25 +414,57 @@ def get_group_member_dns(conn, settings, group=None):
         return None
     if settings["LDAP_NESTED_GROUPS"]:
         return get_nested_group_member_dns(conn, settings, group)
-    escaped = escape_filter_chars(group)
-    conn.search(
-        settings["LDAP_BASE_DN"],
-        f"(&(objectClass=groupOfUniqueNames)(cn={escaped}))",
-        attributes=["uniqueMember"],
-    )
+    if is_dn(group):
+        try:
+            conn.search(
+                # Without the spaces after the commas, refused by ldap3.
+                ",".join(part.strip() for part in to_dn(group)),
+                "(objectClass=groupOfUniqueNames)",
+                search_scope=ldap3.BASE,
+                attributes=["uniqueMember"],
+            )
+        except (
+            ldap3.core.exceptions.LDAPNoSuchObjectResult,
+            ldap3.core.exceptions.LDAPInvalidDNSyntaxResult,
+            ldap3.core.exceptions.LDAPInvalidDnError,
+        ):
+            raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
+    else:
+        escaped = escape_filter_chars(group)
+        conn.search(
+            settings["LDAP_BASE_DN"],
+            f"(&(objectClass=groupOfUniqueNames)(cn={escaped}))",
+            attributes=["uniqueMember"],
+        )
     if len(conn.entries) == 0:
         raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
+    if len(conn.entries) > 1:
+        raise_ambiguous_group(
+            group, [entry.entry_dn for entry in conn.entries]
+        )
     return {normalize_dn(dn) for dn in conn.entries[0].uniqueMember.values}
+
+
+def raise_ambiguous_group(group, dns):
+    """
+    Refuse a group name shared by several groups: whoever can create a
+    group under the base DN could otherwise choose who gets its role.
+    """
+    raise LdapAmbiguousGroupException(
+        f"Several LDAP groups are named {group}: {'; '.join(dns)}. "
+        "Set the group DN instead."
+    )
 
 
 def get_nested_group_member_dns(conn, settings, group):
     """
-    Normalized DNs of the members of the given group name and of its
-    subgroups, at any depth (OpenLDAP only). The groups are read in one
-    search under the base DN, then expanded in memory.
+    Normalized DNs of the members of the given group (a DN or a name) and
+    of its subgroups, at any depth (OpenLDAP only). The groups are read in
+    one search under the base DN, then expanded in memory.
     """
     groups = {}
-    root = None
+    roots = []
+    wanted_dn = normalize_dn(group) if is_dn(group) else None
     for entry in paged_search(
         conn,
         settings["LDAP_BASE_DN"],
@@ -433,12 +475,16 @@ def get_nested_group_member_dns(conn, settings, group):
         groups[dn] = [
             normalize_dn(member) for member in entry.uniqueMember.values
         ]
-        if root is None and group.lower() in [
-            name.lower() for name in entry.cn.values
-        ]:
-            root = dn
-    if root is None:
+        if wanted_dn is not None:
+            if dn == wanted_dn:
+                roots.append(entry.entry_dn)
+        elif group.lower() in [name.lower() for name in entry.cn.values]:
+            roots.append(entry.entry_dn)
+    if len(roots) == 0:
         raise LdapGroupNotFoundException(f"LDAP group not found: {group}")
+    if len(roots) > 1:
+        raise_ambiguous_group(group, roots)
+    root = normalize_dn(roots[0])
     members = set()
     seen_groups = {root}
     to_expand = [root]

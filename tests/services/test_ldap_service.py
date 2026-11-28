@@ -22,6 +22,7 @@ from zou.app.exceptions import (
     InactiveUserException,
     IsUserLimitReachedException,
     LdapAccountConflictException,
+    LdapAmbiguousGroupException,
     LdapAmbiguousUserException,
     LdapGroupNotFoundException,
     WrongPasswordException,
@@ -218,7 +219,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
             f"(memberOf={group})", ldap_service.build_person_filter(settings)
         )
 
-    def nested_openldap_directory(self, **overrides):
+    def nested_openldap_directory(self, extra_entries=(), **overrides):
         people = f"ou=People,{BASE_DN}"
         groups = f"ou=Groups,{BASE_DN}"
         return self.directory(
@@ -251,6 +252,7 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
                     f"cn=Compta,{groups}",
                     openldap_group("Compta", [f"uid=dave,{people}"]),
                 ),
+                *extra_entries,
             ],
             **{
                 "LDAP_IS_AD_SIMPLE": False,
@@ -264,6 +266,73 @@ class LdapServiceTestCase(LdapDirectoryMixin, ApiDBTestCase):
         conn = ldap_service.open_service_connection(settings)
         users = ldap_service.search_users(conn, settings)
         self.assertEqual([user["desktop_login"] for user in users], ["alice"])
+
+    def duplicate_kitsu_group(self):
+        """
+        A second group named Kitsu, elsewhere under the base DN.
+        """
+        return (
+            f"cn=Kitsu,ou=Projects,{BASE_DN}",
+            openldap_group("Kitsu", [f"uid=dave,ou=People,{BASE_DN}"]),
+        )
+
+    def test_search_users_openldap_ambiguous_group(self):
+        for nested in [False, True]:
+            settings = self.nested_openldap_directory(
+                [self.duplicate_kitsu_group()], LDAP_NESTED_GROUPS=nested
+            )
+            conn = ldap_service.open_service_connection(settings)
+            with self.assertRaises(LdapAmbiguousGroupException) as context:
+                ldap_service.search_users(conn, settings)
+            self.assertIn(f"ou=Projects,{BASE_DN}", str(context.exception))
+
+    def test_search_users_openldap_group_dn(self):
+        for nested, expected in [
+            (False, ["alice"]),
+            (True, ["alice", "bob", "carol"]),
+        ]:
+            settings = self.nested_openldap_directory(
+                [self.duplicate_kitsu_group()],
+                LDAP_NESTED_GROUPS=nested,
+                LDAP_GROUP=f"CN=Kitsu, ou=Groups,{BASE_DN}",
+            )
+            conn = ldap_service.open_service_connection(settings)
+            users = ldap_service.search_users(conn, settings)
+            self.assertEqual(
+                sorted(user["desktop_login"] for user in users), expected
+            )
+
+    def test_search_users_openldap_missing_group_dn(self):
+        for nested in [False, True]:
+            settings = self.nested_openldap_directory(
+                LDAP_NESTED_GROUPS=nested,
+                LDAP_GROUP=f"cn=Missing,ou=Groups,{BASE_DN}",
+            )
+            conn = ldap_service.open_service_connection(settings)
+            with self.assertRaises(LdapGroupNotFoundException):
+                ldap_service.search_users(conn, settings)
+
+    def test_sync_ambiguous_role_group_keeps_persons(self):
+        settings = self.nested_openldap_directory(
+            [self.duplicate_kitsu_group()],
+            LDAP_GROUP="",
+            LDAP_ADMIN_GROUP="Kitsu",
+        )
+        dave = persons_service.create_person(
+            "dave@studio.local",
+            b"",
+            "Dave",
+            "Doe",
+            role="user",
+            desktop_login="dave",
+            is_generated_from_ldap=True,
+        )
+        with mock.patch.object(
+            ldap_service, "get_settings", return_value=settings
+        ):
+            with self.assertRaises(LdapAmbiguousGroupException):
+                commands_service.sync_with_ldap_server()
+        self.assertEqual(Person.get(dave["id"]).role.code, "user")
 
     def test_search_users_openldap_nested_groups(self):
         settings = self.nested_openldap_directory(LDAP_NESTED_GROUPS=True)
